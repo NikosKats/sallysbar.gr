@@ -1,0 +1,3 @@
+;/*FB_PKG_DELIM*/
+
+__d("MWEBPushResetPinPage",["deferredLoadComponent","react","requireDeferred"],(function(t,n,r,o,a,i,l){"use strict";var e,s=e||(e=o("react")),u=r("deferredLoadComponent")(r("requireDeferred")("MWEBResetPinStep.react").__setRef("MWEBPushResetPinPage"));function c(e,t){t(function(){return s.jsx(u,{onClose:e,pushPage:t})},{withoutBackButton:!0,withoutCloseButton:!0})}l.default=c}),98);
