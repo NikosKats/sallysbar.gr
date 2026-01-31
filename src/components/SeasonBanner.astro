@@ -1,0 +1,15 @@
+---
+type Props = {
+  isOpenNow: boolean;
+  opensFromText: string;
+};
+
+const { isOpenNow, opensFromText } = Astro.props as Props;
+---
+
+{!isOpenNow && (
+  <div class="w-full rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/80">
+    <span class="font-semibold text-white">Seasonal venue:</span>
+    {opensFromText}
+  </div>
+)}

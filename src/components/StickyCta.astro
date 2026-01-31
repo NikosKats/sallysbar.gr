@@ -1,0 +1,43 @@
+---
+type Props = {
+  mapsUrl: string;
+  phoneE164: string;
+  instagramUrl: string;
+  isOpenNow: boolean;
+};
+
+const { mapsUrl, phoneE164, instagramUrl, isOpenNow } = Astro.props as Props;
+---
+
+<div class="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-black/80 backdrop-blur md:hidden">
+  <div class="mx-auto flex max-w-3xl gap-2 p-3">
+    
+    <a
+      class="flex-1 rounded-xl bg-white/10 px-4 py-3 text-center text-sm font-semibold text-white hover:bg-white/15"
+      href={mapsUrl}
+      target="_blank"
+      rel="noopener"
+    >
+      Directions
+    </a>
+
+    {isOpenNow ? (
+      <a
+        class="flex-1 rounded-xl bg-white px-4 py-3 text-center text-sm font-semibold text-black hover:bg-white/90"
+        href={`tel:${phoneE164}`}
+      >
+        Call
+      </a>
+    ) : (
+      <a
+        class="flex-1 rounded-xl bg-white px-4 py-3 text-center text-sm font-semibold text-black hover:bg-white/90"
+        href={instagramUrl}
+        target="_blank"
+        rel="noopener"
+      >
+        Instagram
+      </a>
+    )}
+
+  </div>
+</div>
