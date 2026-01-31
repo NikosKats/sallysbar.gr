@@ -9,9 +9,6 @@ const desc = site.description;
 const year = new Date().getFullYear();
 
 const HERO_COUNT = 10;
-
- 
- 
 ---
 
 <html lang="en">
@@ -19,7 +16,14 @@ const HERO_COUNT = 10;
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
 
-    <link rel="preload" as="image" href="/hero/1-hero.jpg">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+
+    <link rel="preload" as="image" href="/hero/1-hero.jpg" />
 
     <title>{title}</title>
     <meta name="description" content={desc} />
@@ -65,19 +69,16 @@ const HERO_COUNT = 10;
     />
   </head>
 
-  <body class="min-h-screen bg-[#0b0b10] text-white">
+  <body class="min-h-screen bg-[#0b0b10] text-white font-body">
     <!-- HERO -->
     <section class="relative overflow-hidden">
-   
-
       <img
-  id="hero-image"
-  src="/hero/1-hero.jpg"
-  alt="Sally's Bar nightlife in Skala, Kefalonia"
-  class="absolute inset-0 h-full w-full object-cover transition-opacity duration-700 opacity-100"
-  loading="eager"
-/>
-
+        id="hero-image"
+        src="/hero/1-hero.jpg"
+        alt="Sally's Bar nightlife in Skala, Kefalonia"
+        class="absolute inset-0 h-full w-full object-cover transition-opacity duration-700 opacity-100"
+        loading="eager"
+      />
 
       <div class="absolute inset-0 bg-black/50"></div>
 
@@ -86,9 +87,18 @@ const HERO_COUNT = 10;
           Skala • Kefalonia
         </div>
 
-        <h1 class="mt-4 text-5xl font-semibold leading-tight md:text-7xl">
-          {site.name}
-        </h1>
+        <div class="mt-4 flex items-center gap-4">
+          <img
+            src="logo/1-logo.png"
+            alt="Sally's Bar logo"
+            class="h-12 w-12 md:h-16 md:w-16"
+            loading="eager"
+          />
+
+          <h1 class="text-5xl font-semibold leading-tight md:text-7xl">
+            {site.name}
+          </h1>
+        </div>
 
         <p class="mt-6 max-w-2xl text-xl text-white/70">
           <span class="text-white font-semibold">{site.tagline}</span><br />
@@ -322,7 +332,6 @@ const HERO_COUNT = 10;
     </div>
 
     <script>
-
       const lightbox = document.getElementById("lightbox");
       const lightboxImg = document.getElementById("lightbox-img");
 
@@ -347,33 +356,28 @@ const HERO_COUNT = 10;
         }
       });
 
+      const HERO_COUNT = 10;
+      const INTERVAL = 5000; // 5 seconds
 
-    
-  const HERO_COUNT = 10;
-  const INTERVAL = 5000; // 5 seconds
+      const hero = document.getElementById("hero-image");
+      let current = Math.floor(Math.random() * HERO_COUNT) + 1;
 
-  const hero = document.getElementById("hero-image");
-  let current = Math.floor(Math.random() * HERO_COUNT) + 1;
+      setInterval(() => {
+        let next;
+        do {
+          next = Math.floor(Math.random() * HERO_COUNT) + 1;
+        } while (next === current);
 
-  setInterval(() => {
-    let next;
-    do {
-      next = Math.floor(Math.random() * HERO_COUNT) + 1;
-    } while (next === current);
+        hero.classList.remove("opacity-100");
+        hero.classList.add("opacity-0");
 
-    hero.classList.remove("opacity-100");
-    hero.classList.add("opacity-0");
-
-    setTimeout(() => {
-      hero.src = `/hero/${next}-hero.jpg`;
-      hero.classList.remove("opacity-0");
-      hero.classList.add("opacity-100");
-      current = next;
-    }, 700);
-  }, INTERVAL);
- 
+        setTimeout(() => {
+          hero.src = `/hero/${next}-hero.jpg`;
+          hero.classList.remove("opacity-0");
+          hero.classList.add("opacity-100");
+          current = next;
+        }, 700);
+      }, INTERVAL);
     </script>
-
-
   </body>
 </html>
