@@ -37,7 +37,9 @@ export default {
   why3Title: "Atmosphere & Location",
   why3Text: "Perfect after dinner and easy to reach in the heart of Skala.",
 },
-
+season: {
+  label: "Seasonal venue:",
+},
   nav: {
     home: "Home",
     menu: "Menu",
@@ -45,6 +47,16 @@ export default {
     visit: "Visit",
   },
 
+  sticky: {
+  directions: "📍 Directions",
+  call: "📞 Call",
+  instaShort: "📸 Insta",
+  instagram: "📸 Instagram",
+  more: "➕ More",
+  facebook: "👍 Facebook",
+  tripadvisor: "🏆 TripAdvisor",
+  googleReviews: "⭐ Google Reviews",
+},
   cta: {
     viewMenu: "View Menu",
     directions: "Directions",
@@ -70,4 +82,10 @@ export default {
     msgInstagram: "Message on Instagram",
     call: "Call",
   },
+  footer: {
+  directions: "📍 Directions",
+  instagram: "📸 Instagram",
+  facebook: "👍 Facebook",
+  tripadvisor: "🏆 TripAdvisor",
+},
 };

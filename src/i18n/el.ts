@@ -36,13 +36,25 @@ home: {
   why3Title: "Ατμόσφαιρα & Τοποθεσία",
   why3Text: "Ιδανικό μετά το δείπνο και στο κέντρο της Σκάλας.",
 },
+season: {
+  label: "Εποχιακό κατάστημα:",
+},
   nav: {
     home: "Αρχική",
     menu: "Μενού",
     careers: "Θέσεις Εργασίας",
     visit: "Τοποθεσία",
   },
-
+sticky: {
+  directions: "📍 Οδηγίες",
+  call: "📞 Κλήση",
+  instaShort: "📸 Insta",
+  instagram: "📸 Instagram",
+  more: "➕ Περισσότερα",
+  facebook: "👍 Facebook",
+  tripadvisor: "🏆 TripAdvisor",
+  googleReviews: "⭐ Κριτικές Google",
+},
   cta: {
     viewMenu: "Δες Μενού",
     directions: "Οδηγίες",
@@ -68,4 +80,10 @@ home: {
     msgInstagram: "Μήνυμα στο Instagram",
     call: "Κλήση",
   },
+  footer: {
+  directions: "📍 Οδηγίες",
+  instagram: "📸 Instagram",
+  facebook: "👍 Facebook",
+  tripadvisor: "🏆 TripAdvisor",
+},
 };

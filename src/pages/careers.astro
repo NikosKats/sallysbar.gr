@@ -4,22 +4,27 @@ import Header from "../components/Header.astro";
 import Footer from "../components/Footer.astro";
 
 import { site } from "../data/site";
+import en from "../i18n/en";
+
+const t = en;
+
+const title = `${t.careers.title} • ${site.name}`;
 ---
 
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Careers • Sally’s Bar</title>
+    <title>{title}</title>
+    <link rel="canonical" href="https://sallysbar.gr/careers" />
   </head>
 
   <body class="min-h-screen bg-[#0b0b10] text-white font-body">
     <Header />
-<main class="mx-auto max-w-3xl px-6 py-10 pt-28">
-    <h1 class="text-4xl font-semibold">Careers</h1>
-      <p class="mt-4 text-white/70">
-        Seasonal roles for summer. Send a message on Instagram or call us.
-      </p>
+
+    <main class="mx-auto max-w-3xl px-6 py-10 pt-28">
+      <h1 class="text-4xl font-semibold">{t.careers.title}</h1>
+      <p class="mt-4 text-white/70">{t.careers.subtitle}</p>
 
       <div class="mt-8 flex flex-wrap gap-3">
         <a
@@ -27,19 +32,18 @@ import { site } from "../data/site";
           href={site.socials.instagram}
           target="_blank"
         >
-          Message on Instagram
+          {t.careers.msgInstagram}
         </a>
 
         <a
           class="rounded-2xl border border-white/20 px-6 py-3 font-semibold hover:bg-white/10"
           href={`tel:${site.phoneE164}`}
         >
-          Call
+          {t.careers.call}
         </a>
       </div>
     </main>
 
-
-     <Footer />
+    <Footer />
   </body>
 </html>

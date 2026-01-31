@@ -1,15 +1,23 @@
 ---
+import { getLangFromPath, dict } from "../i18n";
+
 type Props = {
   isOpenNow: boolean;
   opensFromText: string;
 };
 
 const { isOpenNow, opensFromText } = Astro.props as Props;
+
+const url = new URL(Astro.request.url);
+const lang = getLangFromPath(url.pathname);
+const t = dict[lang];
 ---
 
 {!isOpenNow && (
   <div class="w-full rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-white/80">
-    <span class="font-semibold text-white">Seasonal venue:</span>
+    <span class="font-semibold text-white">
+      {t.season.label}
+    </span>{" "}
     {opensFromText}
   </div>
 )}

@@ -1,6 +1,15 @@
 ---
-import { site } from "../data/site";
+import { site, getSiteCopy } from "../data/site";
+import { getLangFromPath, dict } from "../i18n";
+
 const year = new Date().getFullYear();
+
+const url = new URL(Astro.request.url);
+const lang = getLangFromPath(url.pathname);
+const t = dict[lang];
+
+// bilingual site copy
+const copy = getSiteCopy(lang);
 ---
 
 <footer class="border-t border-white/10 bg-[#0b0b10]">
@@ -10,7 +19,8 @@ const year = new Date().getFullYear();
     <div class="text-sm text-white/70">
       <div class="font-semibold text-white">{site.name}</div>
       <div class="mt-1">{site.addressFull}</div>
-      <div class="mt-1">{site.hours.text}</div>
+      <div class="mt-1">{copy.hoursText}</div>
+
       <div class="mt-4 text-xs text-white/40">
         © {year} {site.name}
       </div>
@@ -23,7 +33,7 @@ const year = new Date().getFullYear();
         target="_blank"
         class="rounded-full border border-white/15 px-4 py-2 text-sm text-white/80 hover:text-white hover:bg-white/10 transition"
       >
-        📍 Directions
+        {t.footer.directions}
       </a>
 
       <a
@@ -31,7 +41,7 @@ const year = new Date().getFullYear();
         target="_blank"
         class="rounded-full border border-white/15 px-4 py-2 text-sm text-white/80 hover:text-white hover:bg-white/10 transition"
       >
-        📸 Instagram
+        {t.footer.instagram}
       </a>
 
       <a
@@ -39,7 +49,7 @@ const year = new Date().getFullYear();
         target="_blank"
         class="rounded-full border border-white/15 px-4 py-2 text-sm text-white/80 hover:text-white hover:bg-white/10 transition"
       >
-        👍 Facebook
+        {t.footer.facebook}
       </a>
 
       <a
@@ -47,7 +57,7 @@ const year = new Date().getFullYear();
         target="_blank"
         class="rounded-full border border-white/15 px-4 py-2 text-sm text-white/80 hover:text-white hover:bg-white/10 transition"
       >
-        🏆 TripAdvisor
+        {t.footer.tripadvisor}
       </a>
     </div>
   </div>

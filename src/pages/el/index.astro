@@ -5,14 +5,19 @@ import SeasonBanner from "../../components/SeasonBanner.astro";
 import StickyCta from "../../components/StickyCta.astro";
 import Footer from "../../components/Footer.astro";
 
-import { site } from "../../data/site";
+import { site, getSiteCopy } from "../../data/site";
 import el from "../../i18n/el";
 
 const t = el;
 
-const title = `${site.name} – ${site.tagline}`;
-const desc = site.description;
+// EL page
+const copy = getSiteCopy("el");
+
+const title = `${site.name} – ${copy.tagline}`;
+const desc = copy.description;
 const year = new Date().getFullYear();
+
+const HERO_COUNT = 10;
 ---
 
 <html lang="el">
@@ -93,14 +98,14 @@ const year = new Date().getFullYear();
         </div>
 
         <p class="mt-6 max-w-2xl text-xl text-white/70">
-          <span class="text-white font-semibold">{site.tagline}</span><br />
+          <span class="text-white font-semibold">{copy.tagline}</span><br />
           {t.home.heroSubline}
         </p>
 
         <div class="mt-6">
           <SeasonBanner
             isOpenNow={site.season.isOpenNow}
-            opensFromText={site.season.opensFromText}
+            opensFromText={copy.opensFromText}
           />
         </div>
 
@@ -161,7 +166,7 @@ const year = new Date().getFullYear();
           </div>
 
           <div class="rounded-full border border-white/10 px-3 py-1">
-            {site.hours.text}
+            {copy.hoursText}
           </div>
 
           <div class="rounded-full border border-white/10 px-3 py-1">
@@ -311,16 +316,14 @@ const year = new Date().getFullYear();
           }
         });
 
-        const HERO_COUNT = 10;
         const INTERVAL = 5000;
-
         const hero = document.getElementById("hero-image");
-        let current = Math.floor(Math.random() * HERO_COUNT) + 1;
+        let current = Math.floor(Math.random() * {HERO_COUNT}) + 1;
 
         setInterval(() => {
           let next;
           do {
-            next = Math.floor(Math.random() * HERO_COUNT) + 1;
+            next = Math.floor(Math.random() * {HERO_COUNT}) + 1;
           } while (next === current);
 
           hero.classList.remove("opacity-100");
