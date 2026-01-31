@@ -1,14 +1,32 @@
 ---
+import { getLangFromPath, withLangPrefix, dict } from "../i18n";
+
+const url = new URL(Astro.request.url);
+const lang = getLangFromPath(url.pathname);
+const t = dict[lang];
+
+// strip /el for switching
+const pathNoLang = url.pathname.startsWith("/el")
+  ? url.pathname.replace(/^\/el/, "") || "/"
+  : url.pathname;
+
+const otherLang = lang === "en" ? "el" : "en";
+const switchHref = withLangPrefix(otherLang, pathNoLang);
+
+// IMPORTANT: build links WITH language prefix
 const nav = [
-  { label: "Home", href: "/" },
-  { label: "Menu", href: "/menu" },
-  { label: "Careers", href: "/careers" },
-  { label: "Visit", href: "/#visit" },
+  { label: "Home", href: withLangPrefix(lang, "/") },
+  { label: "Menu", href: withLangPrefix(lang, "/menu") },
+  { label: "Careers", href: withLangPrefix(lang, "/careers") },
+  // anchor: keep same page, but with language prefix
+  { label: "Visit", href: withLangPrefix(lang, "/") + "#visit" },
 ];
 
-// if you already have `site` data with urls, you can swap these
-const ctaHref = "/menu";
-const brandHref = "/";
+const ctaHref = withLangPrefix(lang, "/menu");
+const brandHref = withLangPrefix(lang, "/");
+
+// language button label
+const switchLabel = lang === "en" ? "Ελληνικά" : "English";
 ---
 
 <header class="fixed top-0 inset-x-0 z-50">
@@ -18,7 +36,7 @@ const brandHref = "/";
         <!-- Brand -->
         <a href={brandHref} class="flex items-center gap-3">
           <img
-            src="logo/1-logo.png"
+            src="/logo/1-logo.png"
             alt="Sally's Bar logo"
             class="h-8 w-8 rounded-md object-contain"
             loading="eager"
@@ -37,8 +55,16 @@ const brandHref = "/";
           ))}
         </nav>
 
-        <!-- Desktop CTA -->
-        <div class="hidden md:flex">
+        <!-- Desktop right actions (Switcher + CTA) -->
+        <div class="hidden md:flex items-center gap-2">
+          <a
+            href={switchHref}
+            class="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm text-white/90 hover:bg-white/10 transition"
+            aria-label="Switch language"
+          >
+            {switchLabel}
+          </a>
+
           <a
             href={ctaHref}
             class="rounded-full bg-white px-5 py-2 text-sm font-semibold text-black hover:bg-white/90 transition"
@@ -66,6 +92,14 @@ const brandHref = "/";
       <!-- Mobile drawer -->
       <div id="mobileMenu" class="md:hidden hidden border-t border-white/10 px-4 py-4">
         <div class="flex flex-col gap-3 text-sm">
+          <!-- Language switcher in mobile -->
+          <a
+            href={switchHref}
+            class="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white/90 hover:bg-white/10"
+          >
+            {switchLabel}
+          </a>
+
           {nav.map((i) => (
             <a href={i.href} class="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white/90 hover:bg-white/10">
               {i.label}
@@ -104,7 +138,6 @@ const brandHref = "/";
       }
     });
 
-    // close when clicking a link
     menu?.addEventListener("click", (e) => {
       const a = e.target.closest("a");
       if (a) closeMenu();
