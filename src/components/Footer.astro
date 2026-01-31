@@ -1,0 +1,54 @@
+---
+import { site } from "../data/site";
+const year = new Date().getFullYear();
+---
+
+<footer class="border-t border-white/10 bg-[#0b0b10]">
+  <div class="mx-auto max-w-6xl px-6 py-10 grid gap-6 md:grid-cols-2">
+    
+    <!-- Identity -->
+    <div class="text-sm text-white/70">
+      <div class="font-semibold text-white">{site.name}</div>
+      <div class="mt-1">{site.addressFull}</div>
+      <div class="mt-1">{site.hours.text}</div>
+      <div class="mt-4 text-xs text-white/40">
+        © {year} {site.name}
+      </div>
+    </div>
+
+    <!-- Links -->
+    <div class="flex flex-wrap items-start gap-3 md:justify-end">
+      <a
+        href={site.mapsShareUrl}
+        target="_blank"
+        class="rounded-full border border-white/15 px-4 py-2 text-sm text-white/80 hover:text-white hover:bg-white/10 transition"
+      >
+        📍 Directions
+      </a>
+
+      <a
+        href={site.socials.instagram}
+        target="_blank"
+        class="rounded-full border border-white/15 px-4 py-2 text-sm text-white/80 hover:text-white hover:bg-white/10 transition"
+      >
+        📸 Instagram
+      </a>
+
+      <a
+        href={site.socials.facebook}
+        target="_blank"
+        class="rounded-full border border-white/15 px-4 py-2 text-sm text-white/80 hover:text-white hover:bg-white/10 transition"
+      >
+        👍 Facebook
+      </a>
+
+      <a
+        href={site.socials.tripadvisor}
+        target="_blank"
+        class="rounded-full border border-white/15 px-4 py-2 text-sm text-white/80 hover:text-white hover:bg-white/10 transition"
+      >
+        🏆 TripAdvisor
+      </a>
+    </div>
+  </div>
+</footer>
