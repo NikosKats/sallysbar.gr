@@ -1,0 +1,123 @@
+---
+import "../../styles/global.css";
+// import { menu } from "../data/menu";
+import { getMenu, formatPriceEUR } from "../../lib/menuService";
+import { site } from "../../data/site";
+
+const { categories, items } = await getMenu();
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{site.name} — Admin Menu</title>
+    <meta name="robots" content="noindex,nofollow" />
+  </head>
+
+  <body class="min-h-screen bg-[#0b0b10] text-white">
+    <header class="sticky top-0 z-50 border-b border-white/10 bg-[#0b0b10]/80 backdrop-blur">
+      <div class="mx-auto max-w-6xl px-4 py-3 flex items-center gap-3">
+        <div class="font-semibold">Admin · Menu</div>
+        <div class="ml-auto flex items-center gap-2">
+          <a href="/menu" class="rounded-full border border-white/15 px-3 py-2 text-sm hover:bg-white/10">View Menu</a>
+          <a href="/" class="rounded-full border border-white/15 px-3 py-2 text-sm hover:bg-white/10">Home</a>
+        </div>
+      </div>
+    </header>
+
+    <main class="mx-auto max-w-6xl px-4 py-8 grid gap-6 lg:grid-cols-[320px_1fr]">
+      <!-- Sidebar: Categories -->
+      <aside class="rounded-2xl border border-white/10 bg-white/5 p-4">
+        <div class="flex items-center justify-between gap-3">
+          <h2 class="font-semibold">Categories</h2>
+          <button class="rounded-xl bg-white px-3 py-2 text-sm font-semibold text-black hover:bg-white/90" type="button">
+            + New
+          </button>
+        </div>
+
+        <ul class="mt-4 space-y-2">
+          {categories.map((c) => (
+            <li class="rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+              <div class="flex items-center justify-between gap-3">
+                <div class="min-w-0">
+                  <div class="font-semibold truncate">{c.name}</div>
+                  <div class="text-xs text-white/50">slug: {c.slug} · sort: {c.sort}</div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button class="rounded-lg border border-white/15 px-2 py-1 text-xs hover:bg-white/10" type="button">Edit</button>
+                  <button class="rounded-lg border border-white/15 px-2 py-1 text-xs hover:bg-white/10" type="button">Del</button>
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+
+        <div class="mt-4 text-xs text-white/50">
+          (UI only for now — next step we wire these buttons to real API + D1.)
+        </div>
+      </aside>
+
+      <!-- Main: Items table -->
+      <section class="rounded-2xl border border-white/10 bg-white/5 p-4">
+        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 class="font-semibold">Items</h2>
+            <p class="text-sm text-white/60">Edit names, descriptions, prices, visibility.</p>
+          </div>
+
+          <div class="flex flex-wrap gap-2">
+            <select class="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm">
+              <option>All categories</option>
+              {categories.map((c) => <option value={c.id}>{c.name}</option>)}
+            </select>
+
+            <button class="rounded-xl bg-white px-3 py-2 text-sm font-semibold text-black hover:bg-white/90" type="button">
+              + New Item
+            </button>
+          </div>
+        </div>
+
+        <div class="mt-4 overflow-x-auto rounded-2xl border border-white/10">
+          <table class="w-full text-sm">
+            <thead class="bg-black/30 text-white/70">
+              <tr>
+                <th class="px-3 py-2 text-left font-semibold">Name</th>
+                <th class="px-3 py-2 text-left font-semibold">Category</th>
+                <th class="px-3 py-2 text-left font-semibold">Price</th>
+                <th class="px-3 py-2 text-left font-semibold">Visible</th>
+                <th class="px-3 py-2 text-right font-semibold">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-white/10">
+              {items.map((it) => {
+                const cat = categories.find(c => c.id === it.category_id);
+                return (
+                  <tr>
+                    <td class="px-3 py-2">
+                      <div class="font-semibold">{it.name}</div>
+                      {it.description && <div class="text-xs text-white/60">{it.description}</div>}
+                    </td>
+                    <td class="px-3 py-2 text-white/70">{cat?.name ?? "-"}</td>
+                    <td class="px-3 py-2">{formatPriceEUR(it.price_cents)}</td>
+                    <td class="px-3 py-2">{it.is_visible ? "Yes" : "No"}</td>
+                    <td class="px-3 py-2 text-right">
+                      <div class="inline-flex gap-2">
+                        <button class="rounded-lg border border-white/15 px-2 py-1 text-xs hover:bg-white/10" type="button">Edit</button>
+                        <button class="rounded-lg border border-white/15 px-2 py-1 text-xs hover:bg-white/10" type="button">Del</button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="mt-4 text-xs text-white/50">
+          Next: make these buttons open a modal form, then wire to `/api/admin/*`.
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

@@ -4,10 +4,28 @@ import Header from "../components/Header.astro";
 import Footer from "../components/Footer.astro";
 import StickyCta from "../components/StickyCta.astro";
 import { site } from "../data/site";
-import { menu } from "../data/menu";
+
+import { getMenu, formatPriceEUR } from "../lib/menuService";
 
 const title = `Menu • ${site.name}`;
 const desc = `Cocktails, beer, wine and spirits at ${site.name} in Skala, Kefalonia.`;
+
+const { categories, items } = await getMenu();
+
+// Group items by category
+const byCategory = new Map<number, typeof items>();
+for (const it of items) {
+  const list = byCategory.get(it.category_id) ?? [];
+  list.push(it);
+  byCategory.set(it.category_id, list);
+}
+
+// Collect unique tags for filter chips
+const tagSet = new Set<string>();
+for (const it of items) {
+  (it.tags ?? []).forEach((t) => tagSet.add(t));
+}
+const allTags = Array.from(tagSet).sort((a, b) => a.localeCompare(b));
 ---
 
 <html lang="en">
@@ -20,70 +38,155 @@ const desc = `Cocktails, beer, wine and spirits at ${site.name} in Skala, Kefalo
   </head>
 
   <body class="min-h-screen bg-[#0b0b10] text-white font-body pb-24 md:pb-0">
+    <a id="top" class="block scroll-mt-24"></a>
     <Header />
 
-    <main class="mx-auto max-w-3xl px-6 py-10">
-      <h1 class="text-4xl font-semibold md:text-5xl">Menu</h1>
-      <p class="mt-2 text-white/70">
-        Cocktails €5–10 • {site.hours.text}
-      </p>
+    <main class="mx-auto max-w-3xl px-6 py-10 pt-28">
+      <!-- Header -->
+      <div class="flex flex-col gap-3">
+        <h1 class="text-4xl font-semibold md:text-5xl">Menu</h1>
 
-      <!-- Quick jump chips -->
-      <div class="mt-6 flex flex-wrap gap-2">
-        {menu.map((s) => (
-          <a
-            href={`#${s.id}`}
-            class="rounded-full border border-white/15 px-4 py-2 text-sm text-white/80 hover:text-white hover:bg-white/10 transition"
-          >
-            {s.title}
-          </a>
-        ))}
+        <div class="flex flex-col gap-2 text-white/70">
+          <p>Cocktails €5–10 • {site.hours.text}</p>
+
+          <div class="flex flex-wrap gap-2">
+            <a
+              href={site.mapsShareUrl}
+              target="_blank"
+              class="inline-flex items-center justify-center rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm text-white/80 hover:text-white hover:bg-white/10 transition"
+            >
+              Directions
+            </a>
+            <a
+              href={site.socials.instagram}
+              target="_blank"
+              class="inline-flex items-center justify-center rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm text-white/80 hover:text-white hover:bg-white/10 transition"
+            >
+              Instagram
+            </a>
+          </div>
+        </div>
       </div>
 
-      <div class="mt-10 space-y-10">
-        {menu.map((section) => (
-          <section id={section.id} class="scroll-mt-24">
-            <div class="flex items-end justify-between gap-4">
-              <h2 class="text-2xl font-semibold">{section.title}</h2>
-              {section.note && <p class="text-sm text-white/60">{section.note}</p>}
+      <!-- Search + Tag filter -->
+      <div class="mt-8 rounded-2xl border border-white/10 bg-white/5 p-4">
+        <div class="flex flex-col gap-3">
+          <label class="text-sm text-white/70" for="menuSearch">Search menu</label>
+
+          <div class="flex items-center gap-3">
+            <input
+              id="menuSearch"
+              type="search"
+              placeholder="Search cocktails, beers, tags…"
+              class="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white placeholder:text-white/40 outline-none focus:border-white/20"
+            />
+
+            <button
+              id="clearSearch"
+              type="button"
+              class="shrink-0 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white/80 hover:bg-white/10 transition"
+              aria-label="Clear search"
+            >
+              Clear
+            </button>
+          </div>
+
+          {allTags.length > 0 && (
+            <div class="flex flex-wrap gap-2 pt-1">
+              <button
+                type="button"
+                data-tag="__all__"
+                class="tag-chip rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-white"
+              >
+                All
+              </button>
+
+              {allTags.map((t) => (
+                <button
+                  type="button"
+                  data-tag={t}
+                  class="tag-chip rounded-full border border-white/10 bg-black/30 px-3 py-1.5 text-xs text-white/70 hover:bg-white/10 hover:text-white transition"
+                >
+                  {t}
+                </button>
+              ))}
             </div>
+          )}
+        </div>
+      </div>
 
-            {section.items.length === 0 ? (
-              <div class="mt-4 rounded-2xl border border-white/10 bg-white/5 p-5 text-sm text-white/60">
-                Coming soon.
+      <!-- Sticky jump chips -->
+      <div class="sticky top-16 z-40 mt-6 -mx-6 border-y border-white/10 bg-[#0b0b10]/80 px-6 py-3 backdrop-blur">
+        <div class="flex flex-wrap gap-2">
+          {categories.map((c) => (
+            <a
+              href={`#${c.slug}`}
+              class="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-white/80 hover:text-white hover:bg-white/10 transition"
+            >
+              {c.name}
+            </a>
+          ))}
+        </div>
+      </div>
+
+      <!-- Sections -->
+      <div class="mt-10 space-y-10" id="menuRoot">
+        {categories.map((c) => {
+          const list = byCategory.get(c.id) ?? [];
+          return (
+            <section id={c.slug} class="scroll-mt-28 menu-section">
+              <div class="flex flex-wrap items-end justify-between gap-4">
+                <h2 class="text-2xl font-semibold">{c.name}</h2>
+                <a href="#top" class="text-sm text-white/50 hover:text-white/80 transition">
+                  Back to top
+                </a>
               </div>
-            ) : (
-              <div class="mt-4 divide-y divide-white/10 rounded-2xl border border-white/10 bg-white/5">
-                {section.items.map((item) => (
-                  <div class="flex items-start justify-between gap-6 p-5">
-                    <div>
-                      <div class="flex flex-wrap items-center gap-2">
-                        <div class="font-semibold">{item.name}</div>
-                        {item.tags?.map((t) => (
-                          <span class="rounded-full border border-white/10 bg-black/30 px-2 py-0.5 text-xs text-white/70">
-                            {t}
-                          </span>
-                        ))}
-                        {item.abv && (
-                          <span class="rounded-full border border-white/10 bg-black/30 px-2 py-0.5 text-xs text-white/60">
-                            {item.abv}
-                          </span>
-                        )}
-                      </div>
-                      {item.desc && <p class="mt-1 text-sm text-white/70">{item.desc}</p>}
-                    </div>
 
-                    {item.price && (
-                      <div class="shrink-0 rounded-full border border-white/10 bg-black/30 px-3 py-1 text-sm text-white/80">
-                        {item.price}
+              {list.length === 0 ? (
+                <div class="mt-4 rounded-2xl border border-white/10 bg-white/5 p-5 text-sm text-white/60">
+                  Coming soon.
+                </div>
+              ) : (
+                <div class="mt-4 rounded-2xl border border-white/10 bg-white/5">
+                  <div class="divide-y divide-white/10">
+                    {list.map((item) => (
+                      <div
+                        class="menu-item flex items-start justify-between gap-6 p-5 md:p-6"
+                        data-name={item.name}
+                        data-desc={item.description ?? ""}
+                        data-tags={(item.tags ?? []).join(",")}
+                      >
+                        <div class="min-w-0">
+                          <div class="flex flex-wrap items-center gap-2">
+                            <div class="font-semibold">{item.name}</div>
+
+                            {item.tags?.map((t) => (
+                              <span class="rounded-full border border-white/10 bg-black/30 px-2 py-0.5 text-xs text-white/70">
+                                {t}
+                              </span>
+                            ))}
+                          </div>
+
+                          {item.description && item.description.length > 0 && (
+                            <p class="mt-2 text-sm text-white/70 leading-relaxed">
+                              {item.description}
+                            </p>
+                          )}
+                        </div>
+
+                        <div class="shrink-0">
+                          <div class="rounded-full border border-white/10 bg-black/30 px-3 py-1.5 text-sm text-white/90">
+                            {formatPriceEUR(item.price_cents)}
+                          </div>
+                        </div>
                       </div>
-                    )}
+                    ))}
                   </div>
-                ))}
-              </div>
-            )}
-          </section>
-        ))}
+                </div>
+              )}
+            </section>
+          );
+        })}
       </div>
 
       <div class="mt-10 rounded-2xl border border-white/10 bg-white/5 p-5 text-sm text-white/70">
@@ -100,5 +203,79 @@ const desc = `Cocktails, beer, wine and spirits at ${site.name} in Skala, Kefalo
       facebookUrl={site.socials.facebook}
       tripadvisorUrl={site.socials.tripadvisor}
     />
+
+    <script is:inline>
+      (() => {
+        const searchEl = document.getElementById("menuSearch");
+        const clearBtn = document.getElementById("clearSearch");
+        const chips = Array.from(document.querySelectorAll(".tag-chip"));
+        const items = Array.from(document.querySelectorAll(".menu-item"));
+        const sections = Array.from(document.querySelectorAll(".menu-section"));
+
+        let activeTag = "__all__";
+
+        function norm(s) {
+          return (s || "").toString().toLowerCase().trim();
+        }
+
+        function applyFilters() {
+          const q = norm(searchEl?.value);
+
+          items.forEach((el) => {
+            const name = norm(el.getAttribute("data-name"));
+            const desc = norm(el.getAttribute("data-desc"));
+            const tagsRaw = (el.getAttribute("data-tags") || "");
+            const tags = tagsRaw.split(",").map(norm).filter(Boolean);
+
+            const matchesSearch = !q || name.includes(q) || desc.includes(q) || tags.some(t => t.includes(q));
+            const matchesTag = activeTag === "__all__" || tags.includes(norm(activeTag));
+
+            const show = matchesSearch && matchesTag;
+            el.style.display = show ? "" : "none";
+          });
+
+          // hide empty sections
+          sections.forEach((sec) => {
+            const anyVisible = Array.from(sec.querySelectorAll(".menu-item")).some((el) => el.style.display !== "none");
+            sec.style.display = anyVisible ? "" : "none";
+          });
+        }
+
+        function setActiveChip(tag) {
+          activeTag = tag;
+
+          chips.forEach((c) => {
+            const isActive = c.getAttribute("data-tag") === tag;
+
+            c.classList.toggle("bg-white/10", isActive);
+            c.classList.toggle("border-white/15", isActive);
+            c.classList.toggle("text-white", isActive);
+
+            c.classList.toggle("bg-black/30", !isActive);
+            c.classList.toggle("border-white/10", !isActive);
+            c.classList.toggle("text-white/70", !isActive);
+          });
+
+          applyFilters();
+        }
+
+        if (searchEl) searchEl.addEventListener("input", applyFilters);
+
+        if (clearBtn) {
+          clearBtn.addEventListener("click", () => {
+            if (searchEl) searchEl.value = "";
+            setActiveChip("__all__");
+            searchEl?.focus();
+          });
+        }
+
+        chips.forEach((chip) => {
+          chip.addEventListener("click", () => setActiveChip(chip.getAttribute("data-tag") || "__all__"));
+        });
+
+        setActiveChip("__all__");
+        applyFilters();
+      })();
+    </script>
   </body>
 </html>
