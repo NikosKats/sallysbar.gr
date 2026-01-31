@@ -18,7 +18,7 @@ const { mapsUrl, phoneE164, instagramUrl, isOpenNow } = Astro.props as Props;
       target="_blank"
       rel="noopener"
     >
-      Directions
+     📍 Directions
     </a>
 
     {isOpenNow ? (
@@ -26,7 +26,7 @@ const { mapsUrl, phoneE164, instagramUrl, isOpenNow } = Astro.props as Props;
         class="flex-1 rounded-xl bg-white px-4 py-3 text-center text-sm font-semibold text-black hover:bg-white/90"
         href={`tel:${phoneE164}`}
       >
-        Call
+       📞 Call
       </a>
     ) : (
       <a
@@ -35,7 +35,7 @@ const { mapsUrl, phoneE164, instagramUrl, isOpenNow } = Astro.props as Props;
         target="_blank"
         rel="noopener"
       >
-        Instagram
+        📸 Instagram
       </a>
     )}
 

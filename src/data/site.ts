@@ -7,7 +7,7 @@ export const site = {
   phoneE164: "+306946272083",
   addressShort: "Skala 280 86",
   addressFull: "Skala 280 86, Kefalonia, Greece",
-  mapsShareUrl: "https://share.google/NqqzAsoif3XbcXr1D",
+  mapsShareUrl: "https://www.google.com/maps/dir//Sally's+Bar,+Skala+280+86/@38.0749985,20.7974741,18.27z/data=!4m16!1m7!3m6!1s0x13675f4867a5e573:0x842020188aa33527!2sSally's+Bar!8m2!3d38.0748829!4d20.7969726!16s%2Fg%2F11cnb3kb_m!4m7!1m0!1m5!1m1!1s0x13675f4867a5e573:0x842020188aa33527!2m2!1d20.7969363!2d38.0748852?entry=ttu&g_ep=EgoyMDI2MDEyOC4wIKXMDSoASAFQAw%3D%3D",
   hours: {
     days: "Daily",
     opens: "18:00",
