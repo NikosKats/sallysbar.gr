@@ -1,8 +1,8 @@
 export const site = {
   name: "Sally’s Bar",
-  tagline: "Cocktail Lounge & Nightlife in Skala, Kefalonia",
+  tagline: "Cocktails • Lounge • Late Night in Skala, Kefalonia",
   description:
-    "Top-rated cocktail bar in Skala, Kefalonia. Friendly staff, premium cocktails, and a vibrant atmosphere after sunset.",
+    "Sally’s Bar in Skala, Kefalonia — premium cocktails (€5–10), friendly staff, and the perfect vibe: classy early, lively late. Walk in, sip, stay.",
   phoneDisplay: "694 627 2083",
   phoneE164: "+306946272083",
   addressShort: "Skala 280 86",
@@ -16,6 +16,9 @@ export const site = {
   },
   ratings: {
     google: { rating: 4.4, count: 174 },
+  },
+  reviews: {
+    googleUrl: "https://www.google.com/maps/place/Sally's+Bar/@38.0748829,18.5557617,8z/data=!4m8!3m7!1s0x13675f4867a5e573:0x842020188aa33527!8m2!3d38.0748829!4d20.7969726!9m1!1b1!16s%2Fg%2F11cnb3kb_m?entry=ttu&g_ep=EgoyMDI2MDEyOC4wIKXMDSoASAFQAw%3D%3D",
   },
   socials: {
     instagram: "https://www.instagram.com/sallys_bar/",

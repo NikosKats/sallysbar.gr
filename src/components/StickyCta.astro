@@ -1,43 +1,123 @@
 ---
-type Props = {
-  mapsUrl: string;
-  phoneE164: string;
-  instagramUrl: string;
-  isOpenNow: boolean;
-};
-
-const { mapsUrl, phoneE164, instagramUrl, isOpenNow } = Astro.props as Props;
+const {
+  mapsUrl,
+  phoneE164,
+  instagramUrl,
+  facebookUrl,
+  tripadvisorUrl,
+} = Astro.props;
 ---
 
-<div class="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-black/80 backdrop-blur md:hidden">
-  <div class="mx-auto flex max-w-3xl gap-2 p-3">
-    
-    <a
-      class="flex-1 rounded-xl bg-white/10 px-4 py-3 text-center text-sm font-semibold text-white hover:bg-white/15"
-      href={mapsUrl}
-      target="_blank"
-      rel="noopener"
-    >
-     📍 Directions
-    </a>
-
-    {isOpenNow ? (
+<!-- Mobile sticky: 3 primary + More -->
+<div class="fixed bottom-4 left-4 right-4 z-50 md:hidden">
+  <div class="overflow-hidden rounded-2xl border border-white/10 bg-black/80 backdrop-blur-md shadow-2xl">
+    <div class="grid grid-cols-4">
       <a
-        class="flex-1 rounded-xl bg-white px-4 py-3 text-center text-sm font-semibold text-black hover:bg-white/90"
-        href={`tel:${phoneE164}`}
+        href={mapsUrl}
+        target="_blank"
+        class="py-3 text-center text-sm font-semibold bg-white text-black"
       >
-       📞 Call
+        📍 Directions
       </a>
-    ) : (
+
       <a
-        class="flex-1 rounded-xl bg-white px-4 py-3 text-center text-sm font-semibold text-black hover:bg-white/90"
+        href={`tel:${phoneE164}`}
+        class="py-3 text-center text-sm font-semibold text-white hover:bg-white/10 transition"
+      >
+        📞 Call
+      </a>
+
+      <a
         href={instagramUrl}
         target="_blank"
-        rel="noopener"
+        class="py-3 text-center text-sm font-semibold text-white hover:bg-white/10 transition"
       >
-        📸 Instagram
+        📸 Insta
       </a>
-    )}
 
+      <button
+        type="button"
+        class="py-3 text-center text-sm font-semibold text-white hover:bg-white/10 transition"
+        data-more-btn
+      >
+        ➕ More
+      </button>
+    </div>
+
+    <!-- Hidden panel with the remaining 2 + repeat all links -->
+    <div class="hidden border-t border-white/10 bg-black/70" data-more-panel>
+      <div class="grid grid-cols-2 gap-2 p-3">
+        <a
+          href={facebookUrl}
+          target="_blank"
+          class="rounded-xl border border-white/10 px-3 py-2 text-center text-sm font-semibold text-white hover:bg-white/10 transition"
+        >
+          👍 Facebook
+        </a>
+
+        <a
+          href={tripadvisorUrl}
+          target="_blank"
+          class="rounded-xl border border-white/10 px-3 py-2 text-center text-sm font-semibold text-white hover:bg-white/10 transition"
+        >
+          🏆 TripAdvisor
+        </a>
+      </div>
+    </div>
   </div>
 </div>
+
+<!-- Desktop quick links: show all 5 -->
+<div class="hidden md:block fixed bottom-6 right-6 z-50">
+  <div class="flex gap-2 rounded-2xl border border-white/10 bg-black/70 backdrop-blur-md p-2 shadow-2xl">
+    <a
+      href={mapsUrl}
+      target="_blank"
+      class="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-black hover:bg-white/90 transition"
+    >
+      📍 Directions
+    </a>
+
+    <a
+      href={`tel:${phoneE164}`}
+      class="rounded-xl border border-white/15 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10 transition"
+    >
+      📞 Call
+    </a>
+
+    <a
+      href={instagramUrl}
+      target="_blank"
+      class="rounded-xl border border-white/15 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10 transition"
+    >
+      📸 Instagram
+    </a>
+
+    <a
+      href={facebookUrl}
+      target="_blank"
+      class="rounded-xl border border-white/15 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10 transition"
+    >
+      👍 Facebook
+    </a>
+
+    <a
+      href={tripadvisorUrl}
+      target="_blank"
+      class="rounded-xl border border-white/15 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10 transition"
+    >
+      🏆 TripAdvisor
+    </a>
+  </div>
+</div>
+
+<script>
+  const btn = document.querySelector("[data-more-btn]");
+  const panel = document.querySelector("[data-more-panel]");
+
+  if (btn && panel) {
+    btn.addEventListener("click", () => {
+      panel.classList.toggle("hidden");
+    });
+  }
+</script>
