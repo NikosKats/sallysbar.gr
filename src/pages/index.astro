@@ -1,5 +1,6 @@
 ---
 import "../styles/global.css";
+import Header from "../components/Header.astro";
 import SeasonBanner from "../components/SeasonBanner.astro";
 import StickyCta from "../components/StickyCta.astro";
 import { site } from "../data/site";
@@ -70,6 +71,8 @@ const HERO_COUNT = 10;
   </head>
 
   <body class="min-h-screen bg-[#0b0b10] text-white font-body">
+    <Header />
+
     <!-- HERO -->
     <section class="relative overflow-hidden">
       <img
@@ -214,171 +217,173 @@ const HERO_COUNT = 10;
       </div>
     </section>
 
-    <!-- MAP -->
-    <section class="mx-auto max-w-6xl px-6 py-12">
-      <h2 class="text-3xl font-semibold">Visit Sally’s Tonight</h2>
+    <section id="visit" class="mx-auto max-w-6xl px-6 py-12">
+      <!-- MAP -->
+      <section class="mx-auto max-w-6xl px-6 py-12">
+        <h2 class="text-3xl font-semibold">Visit Sally’s Tonight</h2>
 
-      <div class="mt-6 overflow-hidden rounded-2xl border border-white/10">
-        <iframe
-          class="w-full h-[420px] border-0"
-          src="https://www.google.com/maps?q=Sally%27s%20Bar%20Skala%20Kefalonia&output=embed"
-          loading="lazy"
-        >
-        </iframe>
-      </div>
-    </section>
+        <div class="mt-6 overflow-hidden rounded-2xl border border-white/10">
+          <iframe
+            class="w-full h-[420px] border-0"
+            src="https://www.google.com/maps?q=Sally%27s%20Bar%20Skala%20Kefalonia&output=embed"
+            loading="lazy"
+          >
+          </iframe>
+        </div>
+      </section>
 
-    <!-- PHOTO STRIP -->
-    <section class="mx-auto max-w-6xl px-6 py-14">
-      <h2 class="text-3xl font-semibold">
-        Why Travelers End Up Staying All Night
-      </h2>
+      <!-- PHOTO STRIP -->
+      <section class="mx-auto max-w-6xl px-6 py-14">
+        <h2 class="text-3xl font-semibold">
+          Why Travelers End Up Staying All Night
+        </h2>
 
-      <div class="mt-10 grid gap-4 md:grid-cols-4 md:grid-rows-2">
-        <!-- BIG HERO IMAGE -->
-        <img
-          src="/photos/5.premium-drinks.jpg"
-          alt="Premium cocktails"
-          class="col-span-2 row-span-2 h-full w-full object-cover rounded-3xl"
-          loading="eager"
-        />
-
-        <!-- Supporting -->
-        <div class="gallery-img cursor-zoom-in">
+        <div class="mt-10 grid gap-4 md:grid-cols-4 md:grid-rows-2">
+          <!-- BIG HERO IMAGE -->
           <img
-            src="/photos/1.sallys-bar-cocktails-skala.jpg"
-            alt="Signature cocktails at Sally's Bar Skala Kefalonia"
-            class="h-full w-full object-cover rounded-3xl"
+            src="/photos/5.premium-drinks.jpg"
+            alt="Premium cocktails"
+            class="col-span-2 row-span-2 h-full w-full object-cover rounded-3xl"
             loading="eager"
           />
+
+          <!-- Supporting -->
+          <div class="gallery-img cursor-zoom-in">
+            <img
+              src="/photos/1.sallys-bar-cocktails-skala.jpg"
+              alt="Signature cocktails at Sally's Bar Skala Kefalonia"
+              class="h-full w-full object-cover rounded-3xl"
+              loading="eager"
+            />
+          </div>
+
+          <div class="gallery-img cursor-zoom-in">
+            <img
+              src="/photos/3.sallys-bar-lounge.jpg"
+              alt="Outdoor cocktail lounge in Skala"
+              class="h-full w-full object-cover rounded-3xl"
+              loading="eager"
+            />
+          </div>
+
+          <div class="gallery-img cursor-zoom-in">
+            <img
+              src="/photos/5.signature-cocktails.jpg"
+              alt="Signature cocktails at Sally's Bar Skala Kefalonia"
+              class="h-full w-full object-cover rounded-3xl"
+              loading="eager"
+            />
+          </div>
+
+          <div class="gallery-img cursor-zoom-in">
+            <img
+              src="/photos/5.bar-lighting.jpg"
+              alt="Bar lighting and evening vibe"
+              class="h-full w-full object-cover rounded-3xl"
+              loading="eager"
+            />
+          </div>
+        </div>
+      </section>
+
+      <!-- WHY VISIT -->
+      <section class="mx-auto max-w-6xl px-6 py-10 grid gap-6 md:grid-cols-3">
+        <div class="rounded-2xl border border-white/10 p-6 bg-white/5">
+          <h2 class="text-xl font-semibold">Friendly Staff</h2>
+          <p class="mt-3 text-white/70">
+            Welcoming service that makes travelers return during the same trip.
+          </p>
         </div>
 
-        <div class="gallery-img cursor-zoom-in">
-          <img
-            src="/photos/3.sallys-bar-lounge.jpg"
-            alt="Outdoor cocktail lounge in Skala"
-            class="h-full w-full object-cover rounded-3xl"
-            loading="eager"
-          />
+        <div class="rounded-2xl border border-white/10 p-6 bg-white/5">
+          <h2 class="text-xl font-semibold">Premium Cocktails</h2>
+          <p class="mt-3 text-white/70">
+            Crafted with quality spirits — made for a proper night out.
+          </p>
         </div>
 
-        <div class="gallery-img cursor-zoom-in">
-          <img
-            src="/photos/5.signature-cocktails.jpg"
-            alt="Signature cocktails at Sally's Bar Skala Kefalonia"
-            class="h-full w-full object-cover rounded-3xl"
-            loading="eager"
-          />
+        <div class="rounded-2xl border border-white/10 p-6 bg-white/5">
+          <h2 class="text-xl font-semibold">Atmosphere & Location</h2>
+          <p class="mt-3 text-white/70">
+            Perfect after dinner and easy to reach in the heart of Skala.
+          </p>
         </div>
+      </section>
 
-        <div class="gallery-img cursor-zoom-in">
-          <img
-            src="/photos/5.bar-lighting.jpg"
-            alt="Bar lighting and evening vibe"
-            class="h-full w-full object-cover rounded-3xl"
-            loading="eager"
-          />
-        </div>
-      </div>
-    </section>
+      <footer class="mx-auto max-w-6xl px-6 py-12 text-white/60 text-sm">
+        © {year}
+        {site.name} • {site.addressFull}
+      </footer>
 
-    <!-- WHY VISIT -->
-    <section class="mx-auto max-w-6xl px-6 py-10 grid gap-6 md:grid-cols-3">
-      <div class="rounded-2xl border border-white/10 p-6 bg-white/5">
-        <h2 class="text-xl font-semibold">Friendly Staff</h2>
-        <p class="mt-3 text-white/70">
-          Welcoming service that makes travelers return during the same trip.
-        </p>
-      </div>
-
-      <div class="rounded-2xl border border-white/10 p-6 bg-white/5">
-        <h2 class="text-xl font-semibold">Premium Cocktails</h2>
-        <p class="mt-3 text-white/70">
-          Crafted with quality spirits — made for a proper night out.
-        </p>
-      </div>
-
-      <div class="rounded-2xl border border-white/10 p-6 bg-white/5">
-        <h2 class="text-xl font-semibold">Atmosphere & Location</h2>
-        <p class="mt-3 text-white/70">
-          Perfect after dinner and easy to reach in the heart of Skala.
-        </p>
-      </div>
-    </section>
-
-    <footer class="mx-auto max-w-6xl px-6 py-12 text-white/60 text-sm">
-      © {year}
-      {site.name} • {site.addressFull}
-    </footer>
-
-    <StickyCta
-      mapsUrl={site.mapsShareUrl}
-      phoneE164={site.phoneE164}
-      instagramUrl={site.socials.instagram}
-      facebookUrl={site.socials.facebook}
-      tripadvisorUrl={site.socials.tripadvisor}
-      googleUrl={site.socials.google}
-      isOpenNow={site.season.isOpenNow}
-    />
-
-    <!-- LIGHTBOX -->
-    <div
-      id="lightbox"
-      class="fixed inset-0 bg-black/90 hidden items-center justify-center z-50"
-    >
-      <img
-        id="lightbox-img"
-        class="max-h-[90vh] max-w-[90vw] rounded-2xl shadow-2xl"
+      <StickyCta
+        mapsUrl={site.mapsShareUrl}
+        phoneE164={site.phoneE164}
+        instagramUrl={site.socials.instagram}
+        facebookUrl={site.socials.facebook}
+        tripadvisorUrl={site.socials.tripadvisor}
+        googleUrl={site.socials.google}
+        isOpenNow={site.season.isOpenNow}
       />
-    </div>
 
-    <script>
-      const lightbox = document.getElementById("lightbox");
-      const lightboxImg = document.getElementById("lightbox-img");
+      <!-- LIGHTBOX -->
+      <div
+        id="lightbox"
+        class="fixed inset-0 bg-black/90 hidden items-center justify-center z-50"
+      >
+        <img
+          id="lightbox-img"
+          class="max-h-[90vh] max-w-[90vw] rounded-2xl shadow-2xl"
+        />
+      </div>
 
-      document.querySelectorAll(".gallery-img img").forEach((img) => {
-        img.addEventListener("click", () => {
-          lightbox.classList.remove("hidden");
-          lightbox.classList.add("flex");
-          lightboxImg.src = img.src;
-          lightboxImg.alt = img.alt;
+      <script>
+        const lightbox = document.getElementById("lightbox");
+        const lightboxImg = document.getElementById("lightbox-img");
+
+        document.querySelectorAll(".gallery-img img").forEach((img) => {
+          img.addEventListener("click", () => {
+            lightbox.classList.remove("hidden");
+            lightbox.classList.add("flex");
+            lightboxImg.src = img.src;
+            lightboxImg.alt = img.alt;
+          });
         });
-      });
 
-      lightbox.addEventListener("click", () => {
-        lightbox.classList.add("hidden");
-        lightbox.classList.remove("flex");
-      });
-
-      document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape") {
+        lightbox.addEventListener("click", () => {
           lightbox.classList.add("hidden");
           lightbox.classList.remove("flex");
-        }
-      });
+        });
 
-      const HERO_COUNT = 10;
-      const INTERVAL = 5000; // 5 seconds
+        document.addEventListener("keydown", (e) => {
+          if (e.key === "Escape") {
+            lightbox.classList.add("hidden");
+            lightbox.classList.remove("flex");
+          }
+        });
 
-      const hero = document.getElementById("hero-image");
-      let current = Math.floor(Math.random() * HERO_COUNT) + 1;
+        const HERO_COUNT = 10;
+        const INTERVAL = 5000; // 5 seconds
 
-      setInterval(() => {
-        let next;
-        do {
-          next = Math.floor(Math.random() * HERO_COUNT) + 1;
-        } while (next === current);
+        const hero = document.getElementById("hero-image");
+        let current = Math.floor(Math.random() * HERO_COUNT) + 1;
 
-        hero.classList.remove("opacity-100");
-        hero.classList.add("opacity-0");
+        setInterval(() => {
+          let next;
+          do {
+            next = Math.floor(Math.random() * HERO_COUNT) + 1;
+          } while (next === current);
 
-        setTimeout(() => {
-          hero.src = `/hero/${next}-hero.jpg`;
-          hero.classList.remove("opacity-0");
-          hero.classList.add("opacity-100");
-          current = next;
-        }, 700);
-      }, INTERVAL);
-    </script>
+          hero.classList.remove("opacity-100");
+          hero.classList.add("opacity-0");
+
+          setTimeout(() => {
+            hero.src = `/hero/${next}-hero.jpg`;
+            hero.classList.remove("opacity-0");
+            hero.classList.add("opacity-100");
+            current = next;
+          }, 700);
+        }, INTERVAL);
+      </script>
+    </section>
   </body>
 </html>
