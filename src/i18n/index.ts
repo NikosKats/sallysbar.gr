@@ -10,5 +10,5 @@ export function getLangFromPath(pathname: string): Lang {
 
 export function withLangPrefix(lang: Lang, path: string) {
   if (lang === "el") return `/el${path === "/" ? "" : path}`;
-  return path; // English default = no prefix
+  return path; // English default
 }

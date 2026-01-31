@@ -1,4 +1,71 @@
 export default {
-  nav: { home: "Αρχική", menu: "Μενού", careers: "Καριέρα", visit: "Επίσκεψη" },
-  cta: { viewMenu: "Δες Μενού" },
+  langName: "Ελληνικά",
+  switchTo: "English",
+home: {
+  heroAlt: "Νυχτερινή ατμόσφαιρα στο Sally’s Bar στη Σκάλα, Κεφαλονιά",
+  locationLine: "Σκάλα • Κεφαλονιά",
+  heroSubline:
+    "Φιλικά πρόσωπα, premium κοκτέιλ και αξέχαστες βραδιές — κομψά μετά το δείπνο, πιο ζωντανά όσο προχωράει η νύχτα.",
+  ctaDirections: "Οδηγίες",
+  ctaCall: "Κλήση",
+  linkInstagram: "📸 Instagram",
+  linkFacebook: "👍 Facebook",
+  linkTripadvisor: "🏆 TripAdvisor",
+  linkGoogleReviews: "⭐ Κριτικές Google",
+  googleRatingLabel: "Βαθμολογία Google",
+  earlyTitle: "Νωρίς: Cocktail lounge",
+  earlyText:
+    "Ιδανικό για ζευγάρια & παρέες μετά το δείπνο. Premium κοκτέιλ, άνετη ατμόσφαιρα.",
+  lateTitle: "Αργά: Νυχτερινή ενέργεια",
+  lateText:
+    "Η ατμόσφαιρα ανεβαίνει όσο περνάει η ώρα — το ιδανικό κλείσιμο της βραδιάς στη Σκάλα.",
+  pricePill: "Κοκτέιλ €5–10",
+  ukLine:
+    "Επισκέπτες από UK; Ξεκινήστε με κοκτέιλ και μείνετε για το vibe — χωρίς κράτηση, ανοιχτά μέχρι αργά.",
+  visitTitle: "Ελάτε απόψε στο Sally’s",
+  photoStripTitle: "Γιατί οι ταξιδιώτες τελικά μένουν όλη νύχτα",
+  photoAltPremium: "Premium κοκτέιλ",
+  photoAltSignature: "Signature κοκτέιλ στο Sally’s Bar στη Σκάλα",
+  photoAltLounge: "Εξωτερικός χώρος & cocktail lounge στη Σκάλα",
+  photoAltSignature2: "Signature κοκτέιλ",
+  photoAltLighting: "Φωτισμός μπαρ και βραδινό vibe",
+  why1Title: "Φιλικό Προσωπικό",
+  why1Text: "Φιλοξενία που κάνει τους ταξιδιώτες να επιστρέφουν στο ίδιο ταξίδι.",
+  why2Title: "Premium Κοκτέιλ",
+  why2Text: "Με ποιοτικά ποτά — για μια σωστή βραδιά.",
+  why3Title: "Ατμόσφαιρα & Τοποθεσία",
+  why3Text: "Ιδανικό μετά το δείπνο και στο κέντρο της Σκάλας.",
+},
+  nav: {
+    home: "Αρχική",
+    menu: "Μενού",
+    careers: "Θέσεις Εργασίας",
+    visit: "Τοποθεσία",
+  },
+
+  cta: {
+    viewMenu: "Δες Μενού",
+    directions: "Οδηγίες",
+    instagram: "Instagram",
+    reviews: "Κριτικές",
+    backToTop: "Πάνω",
+    clear: "Καθαρισμός",
+    searchPlaceholder: "Αναζήτηση σε κοκτέιλ, μπύρες, tags…",
+    searchLabel: "Αναζήτηση μενού",
+  },
+
+  meta: {
+    menuTitle: "Μενού",
+    menuDesc: "Κοκτέιλ, μπύρα, κρασί και ποτά στη Σκάλα, Κεφαλονιά.",
+    cocktailsRange: "Κοκτέιλ €5–10",
+    allergiesNote: "Αλλεργίες; Ρωτήστε το προσωπικό. Οι τιμές μπορεί να αλλάξουν σε events.",
+    comingSoon: "Σύντομα διαθέσιμο.",
+  },
+
+  careers: {
+    title: "Θέσεις Εργασίας",
+    subtitle: "Εποχιακές θέσεις για το καλοκαίρι. Στείλτε μήνυμα στο Instagram ή καλέστε μας.",
+    msgInstagram: "Μήνυμα στο Instagram",
+    call: "Κλήση",
+  },
 };

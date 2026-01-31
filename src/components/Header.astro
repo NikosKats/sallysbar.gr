@@ -15,11 +15,10 @@ const switchHref = withLangPrefix(otherLang, pathNoLang);
 
 // IMPORTANT: build links WITH language prefix
 const nav = [
-  { label: "Home", href: withLangPrefix(lang, "/") },
-  { label: "Menu", href: withLangPrefix(lang, "/menu") },
-  { label: "Careers", href: withLangPrefix(lang, "/careers") },
-  // anchor: keep same page, but with language prefix
-  { label: "Visit", href: withLangPrefix(lang, "/") + "#visit" },
+  { label: t.nav.home, href: withLangPrefix(lang, "/") },
+  { label: t.nav.menu, href: withLangPrefix(lang, "/menu") },
+  { label: t.nav.careers, href: withLangPrefix(lang, "/careers") },
+  { label: t.nav.visit, href: withLangPrefix(lang, "/") + "#visit" },
 ];
 
 const ctaHref = withLangPrefix(lang, "/menu");

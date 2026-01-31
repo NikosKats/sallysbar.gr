@@ -10,8 +10,7 @@ import { getMenu, formatPriceEUR } from "../lib/menuService";
 const title = `Menu • ${site.name}`;
 const desc = `Cocktails, beer, wine and spirits at ${site.name} in Skala, Kefalonia.`;
 
-const { categories, items } = await getMenu();
-
+const { categories, items } = await getMenu("en");
 // Group items by category
 const byCategory = new Map<number, typeof items>();
 for (const it of items) {
