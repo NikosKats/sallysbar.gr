@@ -25,6 +25,7 @@ export const site = {
     tripadvisor:
       "https://www.tripadvisor.com/Attraction_Review-g664630-d8640650-Reviews-Sally_s_Bar-Skala_Kefalonia_Ionian_Islands.html",
     facebook: "https://www.facebook.com/groups/10894111027/",
+    google: "https://www.google.com/maps/place/Sally's+Bar/@38.0748829,18.5557617,8z/data=!4m8!3m7!1s0x13675f4867a5e573:0x842020188aa33527!8m2!3d38.0748829!4d20.7969726!9m1!1b1!16s%2Fg%2F11cnb3kb_m?entry=ttu&g_ep=EgoyMDI2MDEyOC4wIKXMDSoASAFQAw%3D%3D"
   },
   season: {
     isOpenNow: false,
