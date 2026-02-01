@@ -139,12 +139,22 @@ const t = dict[lang];
 </div>
 
 <script is:inline>
-  const btn = document.querySelector("[data-more-btn]");
-  const panel = document.querySelector("[data-more-panel]");
+  (() => {
+    function initStickyCta() {
+      const btn = document.querySelector("[data-more-btn]");
+      const panel = document.querySelector("[data-more-panel]");
 
-  if (btn && panel) {
-    btn.addEventListener("click", () => {
-      panel.classList.toggle("hidden");
-    });
-  }
+      if (!btn || !panel) return;
+
+      btn.addEventListener("click", () => {
+        panel.classList.toggle("hidden");
+      });
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", initStickyCta);
+    } else {
+      initStickyCta();
+    }
+  })();
 </script>

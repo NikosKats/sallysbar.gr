@@ -6,15 +6,14 @@ import StickyCta from "../components/StickyCta.astro";
 import Footer from "../components/Footer.astro";
 
 import { site, getSiteCopy } from "../data/site";
+import en from "../i18n/en";
 
-// EN page
+const t = en;
 const copy = getSiteCopy("en");
 
 const title = `${site.name} – ${copy.tagline}`;
 const desc = copy.description;
 const year = new Date().getFullYear();
-
-const HERO_COUNT = 10;
 ---
 
 <html lang="en">
@@ -35,27 +34,16 @@ const HERO_COUNT = 10;
     <meta name="description" content={desc} />
     <link rel="canonical" href="https://sallysbar.gr/" />
 
-    <link
-      rel="icon"
-      type="image/png"
-      href="/favicon/favicon-96x96.png"
-      sizes="96x96"
-    />
+    <link rel="icon" type="image/png" href="/favicon/favicon-96x96.png" sizes="96x96" />
     <link rel="icon" type="image/svg+xml" href="/favicon/favicon.svg" />
     <link rel="shortcut icon" href="/favicon/favicon.ico" />
-    <link
-      rel="apple-touch-icon"
-      sizes="180x180"
-      href="/favicon/apple-touch-icon.png"
-    />
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon.png" />
     <link rel="manifest" href="/favicon/site.webmanifest" />
 
-    <!-- Open Graph -->
     <meta property="og:title" content={title} />
     <meta property="og:description" content={desc} />
     <meta property="og:type" content="website" />
 
-    <!-- Google Business Schema -->
     <script
       type="application/ld+json"
       set:html={JSON.stringify({
@@ -84,7 +72,7 @@ const HERO_COUNT = 10;
       <img
         id="hero-image"
         src="/hero/1-hero.jpg"
-        alt="Sally's Bar nightlife in Skala, Kefalonia"
+        alt={t.home.heroAlt}
         class="absolute inset-0 h-full w-full object-cover transition-opacity duration-700 opacity-100"
         loading="eager"
       />
@@ -93,7 +81,7 @@ const HERO_COUNT = 10;
 
       <div class="relative mx-auto max-w-6xl px-6 py-32 md:py-40">
         <div class="text-xs uppercase tracking-[0.25em] text-white/60">
-          Skala • Kefalonia
+          {t.home.locationLine}
         </div>
 
         <div class="mt-4 flex items-center gap-4">
@@ -103,7 +91,6 @@ const HERO_COUNT = 10;
             class="h-12 w-12 md:h-16 md:w-16"
             loading="eager"
           />
-
           <h1 class="text-5xl font-semibold leading-tight md:text-7xl">
             {site.name}
           </h1>
@@ -111,8 +98,7 @@ const HERO_COUNT = 10;
 
         <p class="mt-6 max-w-2xl text-xl text-white/70">
           <span class="text-white font-semibold">{copy.tagline}</span><br />
-          Friendly faces, premium cocktails, and unforgettable nights — elegant after
-          dinner, vibrant as the night unfolds.
+          {t.home.heroSubline}
         </p>
 
         <div class="mt-6">
@@ -129,245 +115,95 @@ const HERO_COUNT = 10;
             target="_blank"
             class="rounded-2xl bg-white px-6 py-3 font-semibold text-black hover:bg-white/90"
           >
-            Get Directions
+            {t.home.ctaDirections}
           </a>
 
           <a
             href={`tel:${site.phoneE164}`}
             class="rounded-2xl border border-white/20 px-6 py-3 font-semibold hover:bg-white/10"
           >
-            Call
+            {t.home.ctaCall}
           </a>
         </div>
 
-        <!-- Secondary links -->
+        <!-- Social links -->
         <div class="mt-4 flex flex-wrap gap-2 text-sm">
-          <a
-            href={site.socials.instagram}
-            target="_blank"
-            class="rounded-full border border-white/15 px-4 py-2 text-white/80 hover:text-white hover:bg-white/10 transition"
-          >
-            📸 Instagram
+          <a href={site.socials.instagram} target="_blank" class="rounded-full border border-white/15 px-4 py-2 text-white/80 hover:bg-white/10">
+            {t.home.linkInstagram}
           </a>
-
-          <a
-            href={site.socials.facebook}
-            target="_blank"
-            class="rounded-full border border-white/15 px-4 py-2 text-white/80 hover:text-white hover:bg-white/10 transition"
-          >
-            👍 Facebook
+          <a href={site.socials.facebook} target="_blank" class="rounded-full border border-white/15 px-4 py-2 text-white/80 hover:bg-white/10">
+            {t.home.linkFacebook}
           </a>
-
-          <a
-            href={site.socials.tripadvisor}
-            target="_blank"
-            class="rounded-full border border-white/15 px-4 py-2 text-white/80 hover:text-white hover:bg-white/10 transition"
-          >
-            🏆 TripAdvisor
+          <a href={site.socials.tripadvisor} target="_blank" class="rounded-full border border-white/15 px-4 py-2 text-white/80 hover:bg-white/10">
+            {t.home.linkTripadvisor}
           </a>
-
-          <a
-            href={site.reviews.googleUrl}
-            target="_blank"
-            class="rounded-full border border-white/15 px-4 py-2 text-white/80 hover:text-white hover:bg-white/10 transition"
-          >
-            ⭐ Google Reviews
+          <a href={site.reviews.googleUrl} target="_blank" class="rounded-full border border-white/15 px-4 py-2 text-white/80 hover:bg-white/10">
+            {t.home.linkGoogleReviews}
           </a>
         </div>
 
         <!-- Social proof -->
         <div class="mt-8 flex flex-wrap gap-3 text-sm text-white/70">
           <div class="rounded-full border border-white/10 px-3 py-1">
-            ⭐ {site.ratings.google.rating} Google Rating
+            ⭐ {site.ratings.google.rating} {t.home.googleRatingLabel}
           </div>
-
           <div class="rounded-full border border-white/10 px-3 py-1">
             {copy.hoursText}
           </div>
-
           <div class="rounded-full border border-white/10 px-3 py-1">
             {site.addressFull}
           </div>
         </div>
 
+        <!-- Early / Late -->
         <div class="mt-8 grid gap-3 md:max-w-2xl md:grid-cols-2">
           <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
-            <div class="text-sm font-semibold">Early: Cocktail lounge</div>
-            <div class="mt-1 text-sm text-white/70">
-              Perfect for couples & groups after dinner. Premium cocktails,
-              relaxed seating.
-            </div>
+            <div class="text-sm font-semibold">{t.home.earlyTitle}</div>
+            <div class="mt-1 text-sm text-white/70">{t.home.earlyText}</div>
           </div>
-
           <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
-            <div class="text-sm font-semibold">Late: Nightlife energy</div>
-            <div class="mt-1 text-sm text-white/70">
-              Lively atmosphere as the night goes on — the place to finish your
-              evening in Skala.
-            </div>
+            <div class="text-sm font-semibold">{t.home.lateTitle}</div>
+            <div class="mt-1 text-sm text-white/70">{t.home.lateText}</div>
           </div>
         </div>
 
         <div class="mt-6">
           <div class="inline-block rounded-full border border-white/20 px-5 py-2 text-sm">
-            Cocktails €5–10
+            {t.home.pricePill}
           </div>
         </div>
 
-        <p class="mt-4 text-sm text-white/70">
-          Visiting from the UK? Start with cocktails, stay for the vibe — easy
-          walk-in, open late.
-        </p>
+        <p class="mt-4 text-sm text-white/70">{t.home.ukLine}</p>
       </div>
     </section>
 
-    <section id="visit" class="mx-auto max-w-6xl px-6 py-12">
-      <!-- MAP -->
-      <section class="mx-auto max-w-6xl px-6 py-12">
-        <h2 class="text-3xl font-semibold">Visit Sally’s Tonight</h2>
+    <Footer />
 
-        <div class="mt-6 overflow-hidden rounded-2xl border border-white/10">
-          <iframe
-            class="w-full h-[420px] border-0"
-            src="https://www.google.com/maps?q=Sally%27s%20Bar%20Skala%20Kefalonia&output=embed"
-            loading="lazy"
-          >
-          </iframe>
-        </div>
-      </section>
+    <StickyCta
+      mapsUrl={site.mapsShareUrl}
+      phoneE164={site.phoneE164}
+      instagramUrl={site.socials.instagram}
+      facebookUrl={site.socials.facebook}
+      tripadvisorUrl={site.socials.tripadvisor}
+      googleUrl={site.socials.google}
+      isOpenNow={site.season.isOpenNow}
+    />
 
-      <!-- PHOTO STRIP -->
-      <section class="mx-auto max-w-6xl px-6 py-14">
-        <h2 class="text-3xl font-semibold">
-          Why Travelers End Up Staying All Night
-        </h2>
-
-        <div class="mt-10 grid gap-4 md:grid-cols-4 md:grid-rows-2">
-          <img
-            src="/photos/5.premium-drinks.jpg"
-            alt="Premium cocktails"
-            class="col-span-2 row-span-2 h-full w-full object-cover rounded-3xl"
-            loading="eager"
-          />
-
-          <div class="gallery-img cursor-zoom-in">
-            <img
-              src="/photos/1.sallys-bar-cocktails-skala.jpg"
-              alt="Signature cocktails at Sally's Bar Skala Kefalonia"
-              class="h-full w-full object-cover rounded-3xl"
-              loading="eager"
-            />
-          </div>
-
-          <div class="gallery-img cursor-zoom-in">
-            <img
-              src="/photos/3.sallys-bar-lounge.jpg"
-              alt="Outdoor cocktail lounge in Skala"
-              class="h-full w-full object-cover rounded-3xl"
-              loading="eager"
-            />
-          </div>
-
-          <div class="gallery-img cursor-zoom-in">
-            <img
-              src="/photos/5.signature-cocktails.jpg"
-              alt="Signature cocktails at Sally's Bar Skala Kefalonia"
-              class="h-full w-full object-cover rounded-3xl"
-              loading="eager"
-            />
-          </div>
-
-          <div class="gallery-img cursor-zoom-in">
-            <img
-              src="/photos/5.bar-lighting.jpg"
-              alt="Bar lighting and evening vibe"
-              class="h-full w-full object-cover rounded-3xl"
-              loading="eager"
-            />
-          </div>
-        </div>
-      </section>
-
-      <!-- WHY VISIT -->
-      <section class="mx-auto max-w-6xl px-6 py-10 grid gap-6 md:grid-cols-3">
-        <div class="rounded-2xl border border-white/10 p-6 bg-white/5">
-          <h2 class="text-xl font-semibold">Friendly Staff</h2>
-          <p class="mt-3 text-white/70">
-            Welcoming service that makes travelers return during the same trip.
-          </p>
-        </div>
-
-        <div class="rounded-2xl border border-white/10 p-6 bg-white/5">
-          <h2 class="text-xl font-semibold">Premium Cocktails</h2>
-          <p class="mt-3 text-white/70">
-            Crafted with quality spirits — made for a proper night out.
-          </p>
-        </div>
-
-        <div class="rounded-2xl border border-white/10 p-6 bg-white/5">
-          <h2 class="text-xl font-semibold">Atmosphere & Location</h2>
-          <p class="mt-3 text-white/70">
-            Perfect after dinner and easy to reach in the heart of Skala.
-          </p>
-        </div>
-      </section>
-
-      <Footer />
-
-      <StickyCta
-        mapsUrl={site.mapsShareUrl}
-        phoneE164={site.phoneE164}
-        instagramUrl={site.socials.instagram}
-        facebookUrl={site.socials.facebook}
-        tripadvisorUrl={site.socials.tripadvisor}
-        googleUrl={site.socials.google}
-        isOpenNow={site.season.isOpenNow}
-      />
-
-      <!-- LIGHTBOX -->
-      <div
-        id="lightbox"
-        class="fixed inset-0 bg-black/90 hidden items-center justify-center z-50"
-      >
-        <img
-          id="lightbox-img"
-          class="max-h-[90vh] max-w-[90vw] rounded-2xl shadow-2xl"
-        />
-      </div>
-
-      <script is:inline>
-        const lightbox = document.getElementById("lightbox");
-        const lightboxImg = document.getElementById("lightbox-img");
-
-        document.querySelectorAll(".gallery-img img").forEach((img) => {
-          img.addEventListener("click", () => {
-            lightbox.classList.remove("hidden");
-            lightbox.classList.add("flex");
-            lightboxImg.src = img.src;
-            lightboxImg.alt = img.alt;
-          });
-        });
-
-        lightbox.addEventListener("click", () => {
-          lightbox.classList.add("hidden");
-          lightbox.classList.remove("flex");
-        });
-
-        document.addEventListener("keydown", (e) => {
-          if (e.key === "Escape") {
-            lightbox.classList.add("hidden");
-            lightbox.classList.remove("flex");
-          }
-        });
-
-        const INTERVAL = 5000; // 5 seconds
+    <!-- HERO ROTATION -->
+    <script is:inline>
+      (() => {
         const hero = document.getElementById("hero-image");
-        let current = Math.floor(Math.random() * {HERO_COUNT}) + 1;
+        if (!hero) return;
+
+        const HERO_COUNT = 10;
+        const INTERVAL = 5000;
+
+        let current = Math.floor(Math.random() * HERO_COUNT) + 1;
 
         setInterval(() => {
           let next;
           do {
-            next = Math.floor(Math.random() * {HERO_COUNT}) + 1;
+            next = Math.floor(Math.random() * HERO_COUNT) + 1;
           } while (next === current);
 
           hero.classList.remove("opacity-100");
@@ -380,7 +216,7 @@ const HERO_COUNT = 10;
             current = next;
           }, 700);
         }, INTERVAL);
-      </script>
-    </section>
+      })();
+    </script>
   </body>
 </html>

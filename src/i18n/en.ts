@@ -7,8 +7,8 @@ export default {
   locationLine: "Skala • Kefalonia",
   heroSubline:
     "Friendly faces, premium cocktails, and unforgettable nights — elegant after dinner, vibrant as the night unfolds.",
-  ctaDirections: "Get Directions",
-  ctaCall: "Call",
+  ctaDirections: "📍 Get Directions",
+  ctaCall: "📞 Call",
   linkInstagram: "📸 Instagram",
   linkFacebook: "👍 Facebook",
   linkTripadvisor: "🏆 TripAdvisor",

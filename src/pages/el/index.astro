@@ -16,8 +16,6 @@ const copy = getSiteCopy("el");
 const title = `${site.name} – ${copy.tagline}`;
 const desc = copy.description;
 const year = new Date().getFullYear();
-
-const HERO_COUNT = 10;
 ---
 
 <html lang="el">
@@ -38,10 +36,19 @@ const HERO_COUNT = 10;
     <meta name="description" content={desc} />
     <link rel="canonical" href="https://sallysbar.gr/el" />
 
-    <link rel="icon" type="image/png" href="/favicon/favicon-96x96.png" sizes="96x96" />
+    <link
+      rel="icon"
+      type="image/png"
+      href="/favicon/favicon-96x96.png"
+      sizes="96x96"
+    />
     <link rel="icon" type="image/svg+xml" href="/favicon/favicon.svg" />
     <link rel="shortcut icon" href="/favicon/favicon.ico" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/favicon/apple-touch-icon.png" />
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/favicon/apple-touch-icon.png"
+    />
     <link rel="manifest" href="/favicon/site.webmanifest" />
 
     <meta property="og:title" content={title} />
@@ -94,7 +101,9 @@ const HERO_COUNT = 10;
             class="h-12 w-12 md:h-16 md:w-16"
             loading="eager"
           />
-          <h1 class="text-5xl font-semibold leading-tight md:text-7xl">{site.name}</h1>
+          <h1 class="text-5xl font-semibold leading-tight md:text-7xl">
+            {site.name}
+          </h1>
         </div>
 
         <p class="mt-6 max-w-2xl text-xl text-white/70">
@@ -162,7 +171,8 @@ const HERO_COUNT = 10;
 
         <div class="mt-8 flex flex-wrap gap-3 text-sm text-white/70">
           <div class="rounded-full border border-white/10 px-3 py-1">
-            ⭐ {site.ratings.google.rating} {t.home.googleRatingLabel}
+            ⭐ {site.ratings.google.rating}
+            {t.home.googleRatingLabel}
           </div>
 
           <div class="rounded-full border border-white/10 px-3 py-1">
@@ -186,7 +196,9 @@ const HERO_COUNT = 10;
         </div>
 
         <div class="mt-6">
-          <div class="inline-block rounded-full border border-white/20 px-5 py-2 text-sm">
+          <div
+            class="inline-block rounded-full border border-white/20 px-5 py-2 text-sm"
+          >
             {t.home.pricePill}
           </div>
         </div>
@@ -204,8 +216,7 @@ const HERO_COUNT = 10;
             class="w-full h-[420px] border-0"
             src="https://www.google.com/maps?q=Sally%27s%20Bar%20Skala%20Kefalonia&output=embed"
             loading="lazy"
-            title="Google Maps"
-          ></iframe>
+            title="Google Maps"></iframe>
         </div>
       </section>
 
@@ -287,8 +298,14 @@ const HERO_COUNT = 10;
         isOpenNow={site.season.isOpenNow}
       />
 
-      <div id="lightbox" class="fixed inset-0 bg-black/90 hidden items-center justify-center z-50">
-        <img id="lightbox-img" class="max-h-[90vh] max-w-[90vw] rounded-2xl shadow-2xl" />
+      <div
+        id="lightbox"
+        class="fixed inset-0 bg-black/90 hidden items-center justify-center z-50"
+      >
+        <img
+          id="lightbox-img"
+          class="max-h-[90vh] max-w-[90vw] rounded-2xl shadow-2xl"
+        />
       </div>
 
       <script is:inline>
@@ -316,26 +333,32 @@ const HERO_COUNT = 10;
           }
         });
 
-        const INTERVAL = 5000;
-        const hero = document.getElementById("hero-image");
-        let current = Math.floor(Math.random() * {HERO_COUNT}) + 1;
+        (() => {
+          const hero = document.getElementById("hero-image");
+          if (!hero) return;
 
-        setInterval(() => {
-          let next;
-          do {
-            next = Math.floor(Math.random() * {HERO_COUNT}) + 1;
-          } while (next === current);
+          const HERO_COUNT = 10;
+          const INTERVAL = 5000;
 
-          hero.classList.remove("opacity-100");
-          hero.classList.add("opacity-0");
+          let current = Math.floor(Math.random() * HERO_COUNT) + 1;
 
-          setTimeout(() => {
-            hero.src = `/hero/${next}-hero.jpg`;
-            hero.classList.remove("opacity-0");
-            hero.classList.add("opacity-100");
-            current = next;
-          }, 700);
-        }, INTERVAL);
+          setInterval(() => {
+            let next;
+            do {
+              next = Math.floor(Math.random() * HERO_COUNT) + 1;
+            } while (next === current);
+
+            hero.classList.remove("opacity-100");
+            hero.classList.add("opacity-0");
+
+            setTimeout(() => {
+              hero.src = `/hero/${next}-hero.jpg`;
+              hero.classList.remove("opacity-0");
+              hero.classList.add("opacity-100");
+              current = next;
+            }, 700);
+          }, INTERVAL);
+        })();
       </script>
     </section>
   </body>

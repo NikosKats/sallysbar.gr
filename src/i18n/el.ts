@@ -6,8 +6,8 @@ home: {
   locationLine: "Σκάλα • Κεφαλονιά",
   heroSubline:
     "Φιλικά πρόσωπα, premium κοκτέιλ και αξέχαστες βραδιές — κομψά μετά το δείπνο, πιο ζωντανά όσο προχωράει η νύχτα.",
-  ctaDirections: "Οδηγίες",
-  ctaCall: "Κλήση",
+  ctaDirections: "📍 Οδηγίες",
+  ctaCall: "📞 Κλήση",
   linkInstagram: "📸 Instagram",
   linkFacebook: "👍 Facebook",
   linkTripadvisor: "🏆 TripAdvisor",
