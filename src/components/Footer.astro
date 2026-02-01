@@ -18,7 +18,11 @@ const copy = getSiteCopy(lang);
     <!-- Identity -->
     <div class="text-sm text-white/70">
       <div class="font-semibold text-white">{site.name}</div>
-      <div class="mt-1">{site.addressFull}</div>
+
+      <!-- ✅ bilingual address -->
+      <div class="mt-1">{copy.addressFull}</div>
+
+      <!-- ✅ bilingual hours -->
       <div class="mt-1">{copy.hoursText}</div>
 
       <div class="mt-4 text-xs text-white/40">
