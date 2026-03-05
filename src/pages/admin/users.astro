@@ -22,8 +22,10 @@ if (Astro.request.method === "POST") {
   if (!email || !["customer", "employee", "admin"].includes(role)) {
     inviteError = lang === "el" ? "Μη έγκυρο email ή ρόλος." : "Invalid email or role.";
   } else {
+    const origin = new URL(Astro.request.url).origin;
     const { error } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
       data: { full_name: name ?? "", role },
+      redirectTo: `${origin}/auth/set-password`,
     });
     if (error) inviteError = error.message;
     else inviteSuccess = lang === "el" ? `Πρόσκληση στάλθηκε στο ${email} ως ${role}.` : `Invite sent to ${email} as ${role}.`;
