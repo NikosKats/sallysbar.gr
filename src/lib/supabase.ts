@@ -1,5 +1,5 @@
 import { createServerClient, parseCookieHeader } from "@supabase/ssr";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { AstroCookies } from "astro";
 
 /**
@@ -34,8 +34,8 @@ export function createSupabaseServerClient(
  * Lazy proxy: client is created on first use so module-level init
  * doesn't throw when SUPABASE_SERVICE_ROLE_KEY isn't baked in at build time.
  */
-let _admin: ReturnType<typeof createClient> | undefined;
-export const supabaseAdmin = new Proxy({} as ReturnType<typeof createClient>, {
+let _admin: SupabaseClient<any> | undefined;
+export const supabaseAdmin: SupabaseClient<any> = new Proxy({} as SupabaseClient<any>, {
   get(_, prop) {
     if (!_admin) {
       _admin = createClient(

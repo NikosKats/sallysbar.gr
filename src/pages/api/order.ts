@@ -47,24 +47,40 @@ export const POST: APIRoute = async ({ request, locals }) => {
     (note ? `\n\n📝 <i>${note}</i>` : "") +
     `\n\n<code>#${order.id.slice(0, 8)}</code>`;
 
-  const msg = await sendMessage(
-    import.meta.env.TELEGRAM_BARMAN_CHAT_ID,
-    text,
-    {
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: "🔄 Preparing", callback_data: `preparing:${order.id}` }],
-        ],
-      },
-    }
-  );
+  const [barmanMsg, waiterMsg] = await Promise.all([
+    sendMessage(
+      import.meta.env.TELEGRAM_BARMAN_CHAT_ID,
+      text,
+      {
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: "🔄 Preparing", callback_data: `preparing:${order.id}` },
+              { text: "❌ Cancel", callback_data: `cancel:${order.id}` },
+            ],
+          ],
+        },
+      }
+    ),
+    sendMessage(
+      import.meta.env.TELEGRAM_WAITER_CHAT_ID,
+      text,
+      {
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "❌ Cancel", callback_data: `cancel:${order.id}` }],
+          ],
+        },
+      }
+    ),
+  ]);
 
-  // Store the barman message_id so we can edit it later
-  if (msg.ok) {
-    await supabaseAdmin
-      .from("orders")
-      .update({ barman_message_id: msg.result.message_id })
-      .eq("id", order.id);
+  // Store message IDs so we can edit them later
+  const updates: Record<string, number> = {};
+  if (barmanMsg.ok) updates.barman_message_id = barmanMsg.result.message_id;
+  if (waiterMsg.ok) updates.waiter_message_id = waiterMsg.result.message_id;
+  if (Object.keys(updates).length) {
+    await supabaseAdmin.from("orders").update(updates).eq("id", order.id);
   }
 
   return json({ ok: true, order_id: order.id });

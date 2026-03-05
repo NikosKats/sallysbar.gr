@@ -55,6 +55,7 @@ export const POST: APIRoute = async ({ request }) => {
       .update({ status: "preparing" })
       .eq("id", orderId);
 
+    // Barman message → show Ready button
     await editMessageText(
       import.meta.env.TELEGRAM_BARMAN_CHAT_ID,
       cb.message.message_id,
@@ -68,11 +69,14 @@ export const POST: APIRoute = async ({ request }) => {
       }
     );
 
-    // Notify waiter that order is being prepared
-    await sendMessage(
-      import.meta.env.TELEGRAM_WAITER_CHAT_ID,
-      `🔄 <b>Preparing — Table ${order.table_number}</b>\n\n${itemLines}${noteBlock}\n\nOrder is being prepared by the barman.`
-    );
+    // Edit waiter's existing message to update status (remove cancel button)
+    if (order.waiter_message_id) {
+      await editMessageText(
+        import.meta.env.TELEGRAM_WAITER_CHAT_ID,
+        order.waiter_message_id,
+        `🔄 <b>Preparing — Table ${order.table_number}</b>\n\n${itemLines}${noteBlock}${idTag}`
+      );
+    }
 
     await answerCallbackQuery(cb.id, "Marked as preparing.");
   }
@@ -87,7 +91,8 @@ export const POST: APIRoute = async ({ request }) => {
     await editMessageText(
       import.meta.env.TELEGRAM_BARMAN_CHAT_ID,
       cb.message.message_id,
-      `✅ <b>Ready — Table ${order.table_number}</b>\n\n${itemLines}${noteBlock}${idTag}`
+      `✅ <b>Ready — Table ${order.table_number}</b>\n\n${itemLines}${noteBlock}${idTag}`,
+      { reply_markup: { inline_keyboard: [] } }
     );
 
     // Notify waiter channel with a Delivered button
@@ -123,10 +128,33 @@ export const POST: APIRoute = async ({ request }) => {
     await editMessageText(
       import.meta.env.TELEGRAM_WAITER_CHAT_ID,
       cb.message.message_id,
-      `📦 <b>Delivered — Table ${order.table_number}</b>\n\n${itemLines}${idTag}`
+      `📦 <b>Delivered — Table ${order.table_number}</b>\n\n${itemLines}${idTag}`,
+      { reply_markup: { inline_keyboard: [] } }
     );
 
     await answerCallbackQuery(cb.id, "Order delivered! ✅");
+  }
+
+  if (action === "cancel") {
+    await supabaseAdmin
+      .from("orders")
+      .update({ status: "cancelled" })
+      .eq("id", orderId);
+
+    const cancelledText = `❌ <b>Cancelled — Table ${order.table_number}</b>\n\n${itemLines}${noteBlock}${idTag}`;
+
+    // Edit both barman and waiter messages — remove buttons from both
+    const noButtons = { reply_markup: { inline_keyboard: [] } };
+    await Promise.all([
+      order.barman_message_id
+        ? editMessageText(import.meta.env.TELEGRAM_BARMAN_CHAT_ID, order.barman_message_id, cancelledText, noButtons)
+        : Promise.resolve(),
+      order.waiter_message_id
+        ? editMessageText(import.meta.env.TELEGRAM_WAITER_CHAT_ID, order.waiter_message_id, cancelledText, noButtons)
+        : Promise.resolve(),
+    ]);
+
+    await answerCallbackQuery(cb.id, "Order cancelled.");
   }
 
   return new Response("ok");
