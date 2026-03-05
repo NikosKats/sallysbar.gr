@@ -10,32 +10,31 @@ if (!tableNumber || isNaN(tableNumber)) {
   return Astro.redirect("/");
 }
 
-const url = new URL(Astro.request.url);
+const url   = new URL(Astro.request.url);
 const lang  = url.searchParams.get("lang") === "el" ? "el" : "en";
-const token = url.searchParams.get("token") ?? "";
 const isEl  = lang === "el";
 
-const switchLang = isEl ? "en" : "el";
-const switchUrl  = token ? `?token=${token}&lang=${switchLang}` : `?lang=${switchLang}`;
+const switchLang  = isEl ? "en" : "el";
 const switchLabel = isEl ? "English" : "Ελληνικά";
 
 const t = {
-  table:        isEl ? `Τραπέζι ${tableNumber}`          : `Table ${tableNumber}`,
-  order:        isEl ? "Παραγγελία"                      : "Order",
-  pay:          isEl ? "Πληρωμή"                         : "Pay",
-  orderBottom:  isEl ? "Κάλεσε σερβιτόρο για παραγγελία" : "Call Waiter to Order",
-  payBottom:    isEl ? "Κάλεσε σερβιτόρο για πληρωμή"    : "Call Waiter to Pay",
-  notified:     isEl ? "Ειδοποιήθηκε ✓"                 : "Notified ✓",
-  calling:      isEl ? "Καλείται…"                       : "Calling…",
-  tryAgain:     isEl ? "Δοκίμασε ξανά"                   : "Try again",
+  table:        isEl ? `Τραπέζι ${tableNumber}`           : `Table ${tableNumber}`,
+  order:        isEl ? "Παραγγελία"                       : "Order",
+  pay:          isEl ? "Πληρωμή"                          : "Pay",
+  orderBottom:  isEl ? "Κάλεσε σερβιτόρο για παραγγελία"  : "Call Waiter to Order",
+  payBottom:    isEl ? "Κάλεσε σερβιτόρο για πληρωμή"     : "Call Waiter to Pay",
+  notified:     isEl ? "Ειδοποιήθηκε ✓"                  : "Notified ✓",
+  calling:      isEl ? "Καλείται…"                        : "Calling…",
+  tryAgain:     isEl ? "Δοκίμασε ξανά"                    : "Try again",
+  rateLimit:    isEl ? "Πολλές κλήσεις. Δοκίμασε σε λίγο." : "Too many calls. Try again soon.",
   feedback:     isEl ? "Ο σερβιτόρος ειδοποιήθηκε και θα έρθει σύντομα." : "Your waiter has been notified and will be with you shortly.",
-  howToPay:     isEl ? "Πώς θέλεις να πληρώσεις;"        : "How would you like to pay?",
-  card:         isEl ? "Κάρτα"                            : "Card",
-  cash:         isEl ? "Μετρητά"                          : "Cash",
+  howToPay:     isEl ? "Πώς θέλεις να πληρώσεις;"         : "How would you like to pay?",
+  card:         isEl ? "Κάρτα"                             : "Card",
+  cash:         isEl ? "Μετρητά"                           : "Cash",
   allergies:    isEl ? "Αλλεργίες; Ρώτησε το προσωπικό μας. Οι τιμές ενδέχεται να διαφέρουν κατά τη διάρκεια εκδηλώσεων." : "Allergies? Ask our staff. Prices may vary during events.",
-  reviewTitle:  isEl ? "Σου άρεσε το Sally's Bar;"        : "Enjoying your time at Sally's Bar?",
+  reviewTitle:  isEl ? "Σου άρεσε το Sally's Bar;"         : "Enjoying your time at Sally's Bar?",
   reviewSub:    isEl ? "Άφησέ μας μια κριτική — σημαίνει πολλά!" : "Leave us a review — it means a lot!",
-  reviewBtn:    isEl ? "Γράψε κριτική στο Google"         : "Leave a Google review",
+  reviewBtn:    isEl ? "Γράψε κριτική στο Google"          : "Leave a Google review",
 };
 
 const { categories, items } = await getMenu(lang);
@@ -63,45 +62,36 @@ for (const it of items) {
         <div class="text-sm font-semibold">{t.table}</div>
       </div>
       <div class="flex items-center gap-2">
-        <a
-          href={switchUrl}
-          class="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-white/80 hover:bg-white/10 transition"
-        >
+        <a id="langBtn" href={`?lang=${switchLang}`}
+          class="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-white/80 hover:bg-white/10 transition">
           {switchLabel}
         </a>
-        <button
-          id="orderBtn"
-          data-reason="order"
-          class="waiter-btn rounded-full border border-white/20 bg-white/10 text-white font-semibold px-3 py-1.5 text-xs hover:bg-white/20 active:scale-95 transition"
-        >
+        <button id="orderBtn" data-reason="order"
+          class="waiter-btn rounded-full border border-white/20 bg-white/10 text-white font-semibold px-3 py-1.5 text-xs hover:bg-white/20 active:scale-95 transition">
           {t.order}
         </button>
-        <button
-          id="payBtn"
-          data-reason="pay"
-          class="waiter-btn rounded-full bg-white text-black font-semibold px-3 py-1.5 text-xs hover:bg-white/90 active:scale-95 transition"
-        >
+        <button id="payBtn" data-reason="pay"
+          class="waiter-btn rounded-full bg-white text-black font-semibold px-3 py-1.5 text-xs hover:bg-white/90 active:scale-95 transition">
           {t.pay}
         </button>
       </div>
     </div>
 
     <!-- Feedback banner -->
-    <div
-      id="callFeedback"
-      class="hidden mx-6 mt-4 rounded-2xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-400"
-    >
+    <div id="callFeedback" class="hidden mx-6 mt-4 rounded-2xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-400">
       {t.feedback}
+    </div>
+    <!-- Rate limit banner -->
+    <div id="rateLimitMsg" class="hidden mx-6 mt-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-400">
+      {t.rateLimit}
     </div>
 
     <main class="mx-auto max-w-2xl px-6 py-8">
       <!-- Category jump chips -->
       <div class="flex flex-wrap gap-2 mb-8">
         {categories.map((c) => (
-          <a
-            href={`#${c.slug}`}
-            class="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-white/80 hover:text-white hover:bg-white/10 transition"
-          >
+          <a href={`#${c.slug}`}
+            class="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-white/80 hover:text-white hover:bg-white/10 transition">
             {c.name}
           </a>
         ))}
@@ -121,9 +111,7 @@ for (const it of items) {
                     <div class="min-w-0">
                       <div class="font-medium">{item.name}</div>
                       {item.description && (
-                        <p class="mt-1 text-xs text-white/60 leading-relaxed">
-                          {item.description}
-                        </p>
+                        <p class="mt-1 text-xs text-white/60 leading-relaxed">{item.description}</p>
                       )}
                     </div>
                     <div class="shrink-0 rounded-full border border-white/10 bg-black/30 px-3 py-1 text-sm text-white/90">
@@ -142,12 +130,9 @@ for (const it of items) {
       <!-- Google review -->
       <div class="mt-8 rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
         <p class="text-sm text-white/60 mb-4">{t.reviewTitle}<br/>{t.reviewSub}</p>
-        <a
-          href="https://www.google.com/maps/place/Sally's+Bar/@38.0748829,18.5557617,8z/data=!4m8!3m7!1s0x13675f4867a5e573:0x842020188aa33527!8m2!3d38.0748829!4d20.7969726!9m1!1b1!16s%2Fg%2F11cnb3kb_m?entry=ttu&g_ep=EgoyMDI2MDMwMi4wIKXMDSoASAFQAw%3D%3D"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="inline-flex items-center gap-2.5 rounded-2xl bg-white px-6 py-3 text-sm font-semibold text-black hover:bg-white/90 active:scale-95 transition"
-        >
+        <a href="https://www.google.com/maps/place/Sally's+Bar/@38.0748829,18.5557617,8z/data=!4m8!3m7!1s0x13675f4867a5e573:0x842020188aa33527!8m2!3d38.0748829!4d20.7969726!9m1!1b1!16s%2Fg%2F11cnb3kb_m?entry=ttu&g_ep=EgoyMDI2MDMwMi4wIKXMDSoASAFQAw%3D%3D"
+          target="_blank" rel="noopener noreferrer"
+          class="inline-flex items-center gap-2.5 rounded-2xl bg-white px-6 py-3 text-sm font-semibold text-black hover:bg-white/90 active:scale-95 transition">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
             <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -162,18 +147,12 @@ for (const it of items) {
     <!-- Sticky bottom bar -->
     <div class="fixed bottom-0 inset-x-0 border-t border-white/10 bg-[#0b0b10]/95 backdrop-blur px-4 py-3">
       <div class="mx-auto max-w-2xl flex gap-3">
-        <button
-          id="orderBtnBottom"
-          data-reason="order"
-          class="waiter-btn flex-1 rounded-2xl border border-white/20 bg-white/10 text-white font-semibold py-3.5 text-sm hover:bg-white/20 active:scale-95 transition"
-        >
+        <button id="orderBtnBottom" data-reason="order"
+          class="waiter-btn flex-1 rounded-2xl border border-white/20 bg-white/10 text-white font-semibold py-3.5 text-sm hover:bg-white/20 active:scale-95 transition">
           {t.orderBottom}
         </button>
-        <button
-          id="payBtnBottom"
-          data-reason="pay"
-          class="waiter-btn flex-1 rounded-2xl bg-white text-black font-semibold py-3.5 text-sm hover:bg-white/90 active:scale-95 transition"
-        >
+        <button id="payBtnBottom" data-reason="pay"
+          class="waiter-btn flex-1 rounded-2xl bg-white text-black font-semibold py-3.5 text-sm hover:bg-white/90 active:scale-95 transition">
           {t.payBottom}
         </button>
       </div>
@@ -188,16 +167,13 @@ for (const it of items) {
         <div class="flex gap-3">
           <button id="payCard" class="flex-1 flex flex-col items-center gap-3 rounded-2xl border border-white/10 bg-white/5 py-6 text-sm font-semibold hover:bg-white/10 active:scale-95 transition">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="1" y="4" width="22" height="16" rx="2"/>
-              <line x1="1" y1="10" x2="23" y2="10"/>
+              <rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/>
             </svg>
             {t.card}
           </button>
           <button id="payCash" class="flex-1 flex flex-col items-center gap-3 rounded-2xl border border-white/10 bg-white/5 py-6 text-sm font-semibold hover:bg-white/10 active:scale-95 transition">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="2" y="6" width="20" height="12" rx="2"/>
-              <circle cx="12" cy="12" r="3"/>
-              <path d="M6 12h.01M18 12h.01"/>
+              <rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M6 12h.01M18 12h.01"/>
             </svg>
             {t.cash}
           </button>
@@ -205,37 +181,47 @@ for (const it of items) {
       </div>
     </div>
 
-    <script define:vars={{ tableNumber, token, labels: { order: { top: t.order, bottom: t.orderBottom }, pay: { top: t.pay, bottom: t.payBottom } }, notified: t.notified, calling: t.calling, tryAgain: t.tryAgain }}>
-      const cooldowns = { order: false, pay: false };
+    <script define:vars={{ tableNumber, switchLang, labels: { order: { top: t.order, bottom: t.orderBottom }, pay: { top: t.pay, bottom: t.payBottom } }, notified: t.notified, calling: t.calling, tryAgain: t.tryAgain, rateLimit: t.rateLimit }}>
+      const SESSION_KEY = `tbl_token_${tableNumber}`;
 
-      const paySheet    = document.getElementById("paySheet");
-      const payBackdrop = document.getElementById("payBackdrop");
+      // ── Token management ──────────────────────────────────────────────
+      // On first load the QR URL has ?token=xxx. Store it in sessionStorage
+      // and strip it from the address bar so copying the URL is useless.
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlToken  = urlParams.get("token");
+      if (urlToken) {
+        sessionStorage.setItem(SESSION_KEY, urlToken);
+        urlParams.delete("token");
+        const clean = urlParams.toString() ? `?${urlParams}` : window.location.pathname;
+        history.replaceState({}, "", clean);
+      }
+      const token = sessionStorage.getItem(SESSION_KEY) ?? "";
 
-      function openPaySheet() {
-        if (cooldowns.pay) return;
-        paySheet.classList.remove("hidden");
-      }
-      function closePaySheet() {
-        paySheet.classList.add("hidden");
-      }
+      // Keep the language-switch link token-free (sessionStorage survives navigation)
+      // so the address bar stays clean on both languages.
+      document.getElementById("langBtn").href = `?lang=${switchLang}`;
+
+      // ── UI state ──────────────────────────────────────────────────────
+      const cooldowns      = { order: false, pay: false };
+      const paySheet       = document.getElementById("paySheet");
+      const payBackdrop    = document.getElementById("payBackdrop");
+      const feedbackEl     = document.getElementById("callFeedback");
+      const rateLimitEl    = document.getElementById("rateLimitMsg");
+
+      function openPaySheet()  { if (!cooldowns.pay) paySheet.classList.remove("hidden"); }
+      function closePaySheet() { paySheet.classList.add("hidden"); }
 
       payBackdrop.addEventListener("click", closePaySheet);
+      document.getElementById("payCard").addEventListener("click", () => { closePaySheet(); callWaiter("pay", "card"); });
+      document.getElementById("payCash").addEventListener("click", () => { closePaySheet(); callWaiter("pay", "cash"); });
 
-      document.getElementById("payCard").addEventListener("click", () => {
-        closePaySheet();
-        callWaiter("pay", "card");
-      });
-      document.getElementById("payCash").addEventListener("click", () => {
-        closePaySheet();
-        callWaiter("pay", "cash");
-      });
-
+      // ── Call waiter ───────────────────────────────────────────────────
       async function callWaiter(reason, method) {
         if (cooldowns[reason]) return;
         cooldowns[reason] = true;
 
         const btns = document.querySelectorAll(`.waiter-btn[data-reason="${reason}"]`);
-        const feedback = document.getElementById("callFeedback");
+        rateLimitEl.classList.add("hidden");
 
         btns.forEach(b => {
           b.textContent = calling;
@@ -244,13 +230,25 @@ for (const it of items) {
         });
 
         try {
-          await fetch("/api/call-waiter", {
+          const res = await fetch("/api/call-waiter", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ table: tableNumber, reason, method, token }),
           });
 
-          if (feedback) feedback.classList.remove("hidden");
+          if (res.status === 429) {
+            rateLimitEl.classList.remove("hidden");
+            cooldowns[reason] = false;
+            btns.forEach(b => {
+              b.textContent = b.id.includes("Bottom") ? labels[reason].bottom : labels[reason].top;
+              b.removeAttribute("disabled");
+              b.style.opacity = "";
+            });
+            setTimeout(() => rateLimitEl.classList.add("hidden"), 8000);
+            return;
+          }
+
+          feedbackEl.classList.remove("hidden");
           btns.forEach(b => { b.textContent = notified; });
 
           setTimeout(() => {
@@ -260,7 +258,7 @@ for (const it of items) {
               b.removeAttribute("disabled");
               b.style.opacity = "";
             });
-            if (feedback) feedback.classList.add("hidden");
+            feedbackEl.classList.add("hidden");
           }, 30000);
         } catch {
           cooldowns[reason] = false;

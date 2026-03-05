@@ -1,7 +1,10 @@
 import type { APIRoute } from "astro";
 import { sendMessage } from "../../lib/telegram";
+import { supabaseAdmin } from "../../lib/supabase";
 
-/** HMAC-SHA256 of the table number, truncated to 16 hex chars */
+const RATE_LIMIT     = 5;   // max calls per table
+const RATE_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
+
 async function makeToken(table: number): Promise<string> {
   const enc = new TextEncoder();
   const key = await crypto.subtle.importKey(
@@ -36,7 +39,7 @@ export const POST: APIRoute = async ({ request }) => {
     return json({ error: "Missing table number" }, 400);
   }
 
-  // Token validation — skip only if TABLE_SECRET not yet configured
+  // Token validation
   const secret = import.meta.env.TABLE_SECRET;
   if (secret) {
     const expected = await makeToken(table);
@@ -44,6 +47,21 @@ export const POST: APIRoute = async ({ request }) => {
       return json({ error: "Forbidden" }, 403);
     }
   }
+
+  // Rate limiting: max RATE_LIMIT calls per table per window
+  const windowStart = new Date(Date.now() - RATE_WINDOW_MS).toISOString();
+  const { count } = await supabaseAdmin
+    .from("waiter_calls")
+    .select("*", { count: "exact", head: true })
+    .eq("table_num", table)
+    .gte("called_at", windowStart);
+
+  if ((count ?? 0) >= RATE_LIMIT) {
+    return json({ error: "rate_limit" }, 429);
+  }
+
+  // Log the call
+  await supabaseAdmin.from("waiter_calls").insert({ table_num: table });
 
   const msg =
     reason === "pay-card" ? `💳 <b>Table ${table}</b> wants to pay by <b>card</b>!` :
