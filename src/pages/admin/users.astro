@@ -12,9 +12,9 @@ let inviteError = "";
 
 if (Astro.request.method === "POST") {
   const form = await Astro.request.formData();
-  const email  = (form.get("email")  as string)?.trim();
-  const name   = (form.get("name")   as string)?.trim();
-  const role   = (form.get("role")   as string)?.trim();
+  const email = (form.get("email") as string)?.trim();
+  const name  = (form.get("name")  as string)?.trim();
+  const role  = (form.get("role")  as string)?.trim();
 
   if (!email || !["customer", "employee", "admin"].includes(role)) {
     inviteError = "Invalid email or role.";
@@ -22,11 +22,8 @@ if (Astro.request.method === "POST") {
     const { error } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
       data: { full_name: name ?? "", role },
     });
-    if (error) {
-      inviteError = error.message;
-    } else {
-      inviteSuccess = `Invite sent to ${email} as ${role}.`;
-    }
+    if (error) inviteError = error.message;
+    else inviteSuccess = `Invite sent to ${email} as ${role}.`;
   }
 }
 
@@ -37,11 +34,11 @@ const { data: profiles } = await supabaseAdmin.from("profiles").select("id,role,
 const profileMap = Object.fromEntries((profiles ?? []).map(p => [p.id, p]));
 
 const users = (authUsers ?? []).map(u => ({
-  id: u.id,
-  email: u.email ?? "—",
-  name: profileMap[u.id]?.full_name ?? u.user_metadata?.full_name ?? "—",
-  role: profileMap[u.id]?.role ?? "customer",
-  joined: profileMap[u.id]?.created_at ?? u.created_at,
+  id:       u.id,
+  email:    u.email ?? "—",
+  name:     profileMap[u.id]?.full_name ?? u.user_metadata?.full_name ?? "",
+  role:     profileMap[u.id]?.role ?? "customer",
+  joined:   profileMap[u.id]?.created_at ?? u.created_at,
   provider: u.app_metadata?.provider ?? "email",
 })).sort((a, b) => new Date(b.joined).getTime() - new Date(a.joined).getTime());
 
@@ -65,14 +62,35 @@ function fmtDate(d: string) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Users — Admin — Sally's Bar</title>
     <meta name="robots" content="noindex,nofollow" />
+    <style>
+      dialog { background: #16161f; border: 1px solid rgba(255,255,255,.12); border-radius: 1rem; padding: 1.5rem; width: min(28rem, 95vw); color: #fff; }
+      dialog::backdrop { background: rgba(0,0,0,.6); }
+      .field { display: flex; flex-direction: column; gap: .375rem; margin-bottom: 1rem; }
+      .field label { font-size: .75rem; color: rgba(255,255,255,.4); }
+      .field input, .field select { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); border-radius: .625rem; padding: .625rem .875rem; font-size: .875rem; color: #fff; outline: none; width: 100%; }
+      .field input:focus, .field select:focus { border-color: rgba(255,255,255,.3); }
+      .field select option { background: #16161f; }
+      .modal-title { font-size: 1rem; font-weight: 600; margin-bottom: 1.25rem; }
+      .modal-actions { display: flex; justify-content: flex-end; gap: .5rem; margin-top: 1.25rem; }
+      .btn { border-radius: .625rem; padding: .5rem 1rem; font-size: .875rem; font-weight: 500; cursor: pointer; border: none; transition: opacity .15s; }
+      .btn-primary { background: #fff; color: #000; }
+      .btn-primary:hover { opacity: .9; }
+      .btn-primary:disabled { opacity: .4; cursor: not-allowed; }
+      .btn-ghost { background: rgba(255,255,255,.08); color: rgba(255,255,255,.7); }
+      .btn-ghost:hover { background: rgba(255,255,255,.13); }
+      .btn-danger { background: rgba(239,68,68,.15); color: #f87171; border: 1px solid rgba(239,68,68,.2); }
+      .btn-danger:hover { background: rgba(239,68,68,.25); }
+      .btn-danger:disabled { opacity: .4; cursor: not-allowed; }
+      #toast { position: fixed; bottom: 1.5rem; right: 1.5rem; padding: .75rem 1.25rem; border-radius: .75rem; font-size: .875rem; z-index: 9999; opacity: 0; transition: opacity .2s; pointer-events: none; }
+      #toast.show { opacity: 1; }
+      #toast.ok  { background: rgba(34,197,94,.15); border: 1px solid rgba(34,197,94,.25); color: #4ade80; }
+      #toast.err { background: rgba(239,68,68,.15); border: 1px solid rgba(239,68,68,.25); color: #f87171; }
+    </style>
   </head>
   <body class="min-h-screen bg-[#0b0b10] text-white">
     <Header />
-
-    <!-- Spacer for fixed header -->
     <div class="h-20"></div>
 
-    <!-- Admin sub-nav -->
     <div class="sticky top-20 z-40 border-b border-amber-400/20 bg-[#0b0b10]/95 backdrop-blur">
       <div class="mx-auto max-w-7xl px-4">
         <nav class="flex items-center gap-1 py-2 overflow-x-auto text-sm">
@@ -86,22 +104,16 @@ function fmtDate(d: string) {
 
     <main class="mx-auto max-w-7xl px-4 py-8 space-y-8">
 
-      <!-- Invite staff -->
+      <!-- Invite -->
       <div>
         <h2 class="text-xs font-semibold uppercase tracking-widest text-white/30 mb-4">Invite staff</h2>
         <div class="rounded-2xl border border-white/10 bg-white/5 p-6">
-
           {inviteSuccess && (
-            <div class="mb-4 rounded-xl bg-green-400/10 border border-green-400/20 text-green-400 text-sm px-4 py-3">
-              {inviteSuccess}
-            </div>
+            <div class="mb-4 rounded-xl bg-green-400/10 border border-green-400/20 text-green-400 text-sm px-4 py-3">{inviteSuccess}</div>
           )}
           {inviteError && (
-            <div class="mb-4 rounded-xl bg-red-400/10 border border-red-400/20 text-red-400 text-sm px-4 py-3">
-              {inviteError}
-            </div>
+            <div class="mb-4 rounded-xl bg-red-400/10 border border-red-400/20 text-red-400 text-sm px-4 py-3">{inviteError}</div>
           )}
-
           <form method="POST" class="flex flex-wrap gap-3 items-end">
             <div class="flex flex-col gap-1 flex-1 min-w-[180px]">
               <label class="text-xs text-white/40">Name</label>
@@ -116,8 +128,8 @@ function fmtDate(d: string) {
             <div class="flex flex-col gap-1">
               <label class="text-xs text-white/40">Role <span class="text-red-400">*</span></label>
               <select name="role" required
-                class="rounded-xl bg-white/5 border border-white/10 px-4 py-2.5 text-sm text-white outline-none focus:border-white/30 transition appearance-none pr-8">
-                <option value="employee">Employee (waiter / barman)</option>
+                class="rounded-xl bg-white/5 border border-white/10 px-4 py-2.5 text-sm text-white outline-none focus:border-white/30 transition">
+                <option value="employee">Employee</option>
                 <option value="admin">Admin</option>
                 <option value="customer">Customer</option>
               </select>
@@ -135,8 +147,7 @@ function fmtDate(d: string) {
       <div>
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-xs font-semibold uppercase tracking-widest text-white/30">
-            All users
-            <span class="ml-2 text-white/20">({users.length})</span>
+            All users <span class="ml-2 text-white/20">({users.length})</span>
           </h2>
         </div>
         <div class="rounded-2xl border border-white/10 overflow-hidden">
@@ -149,16 +160,20 @@ function fmtDate(d: string) {
                   <th class="text-left px-4 py-3 text-white/40 font-medium">Role</th>
                   <th class="text-left px-4 py-3 text-white/40 font-medium">Provider</th>
                   <th class="text-left px-4 py-3 text-white/40 font-medium">Joined</th>
-                  <th class="text-left px-4 py-3 text-white/40 font-medium">Action</th>
+                  <th class="text-left px-4 py-3 text-white/40 font-medium">Actions</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody id="userTable">
                 {users.map((u) => (
-                  <tr class="border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition" data-user-id={u.id}>
-                    <td class="px-4 py-3 font-medium text-white">{u.name}</td>
-                    <td class="px-4 py-3 text-white/60">{u.email}</td>
-                    <td class="px-4 py-3">
-                      <span class={`role-badge inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold ${roleBadge(u.role)}`}>
+                  <tr class="border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition"
+                    data-id={u.id}
+                    data-name={u.name}
+                    data-email={u.email}
+                    data-role={u.role}>
+                    <td class="px-4 py-3 font-medium text-white" data-col="name">{u.name || "—"}</td>
+                    <td class="px-4 py-3 text-white/60" data-col="email">{u.email}</td>
+                    <td class="px-4 py-3" data-col="role">
+                      <span class={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold ${roleBadge(u.role)}`}>
                         {u.role}
                       </span>
                     </td>
@@ -166,16 +181,12 @@ function fmtDate(d: string) {
                     <td class="px-4 py-3 text-white/40 whitespace-nowrap">{fmtDate(u.joined)}</td>
                     <td class="px-4 py-3">
                       <div class="flex items-center gap-2">
-                        <select class="role-select rounded-lg bg-white/5 border border-white/10 px-2 py-1 text-xs text-white outline-none focus:border-white/30 transition"
-                          data-current={u.role}>
-                          <option value="customer"  selected={u.role === "customer"}>customer</option>
-                          <option value="employee"  selected={u.role === "employee"}>employee</option>
-                          <option value="admin"     selected={u.role === "admin"}>admin</option>
-                        </select>
-                        <button class="save-role-btn rounded-lg bg-white/10 hover:bg-white/20 px-3 py-1 text-xs text-white/70 transition hidden">
-                          Save
+                        <button class="edit-btn rounded-lg bg-white/8 hover:bg-white/15 border border-white/10 px-3 py-1 text-xs text-white/70 transition">
+                          Edit
                         </button>
-                        <span class="save-status text-xs text-green-400 hidden">Saved</span>
+                        <button class="delete-btn rounded-lg bg-red-400/10 hover:bg-red-400/20 border border-red-400/20 px-3 py-1 text-xs text-red-400 transition">
+                          Delete
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -185,53 +196,156 @@ function fmtDate(d: string) {
           </div>
         </div>
       </div>
-
     </main>
 
+    <!-- Edit modal -->
+    <dialog id="editModal">
+      <p class="modal-title">Edit user</p>
+      <div class="field">
+        <label>Name</label>
+        <input id="editName" type="text" placeholder="Full name" />
+      </div>
+      <div class="field">
+        <label>Email</label>
+        <input id="editEmail" type="email" placeholder="email@example.com" />
+      </div>
+      <div class="field">
+        <label>Role</label>
+        <select id="editRole">
+          <option value="customer">customer</option>
+          <option value="employee">employee</option>
+          <option value="admin">admin</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="editCancel">Cancel</button>
+        <button class="btn btn-primary" id="editSave">Save changes</button>
+      </div>
+    </dialog>
+
+    <!-- Delete confirmation modal -->
+    <dialog id="deleteModal">
+      <p class="modal-title">Delete user</p>
+      <p style="font-size:.875rem;color:rgba(255,255,255,.6);margin-bottom:1.25rem;">
+        Are you sure you want to delete <strong id="deleteUserLabel" style="color:#fff"></strong>?
+        This cannot be undone.
+      </p>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="deleteCancel">Cancel</button>
+        <button class="btn btn-danger" id="deleteConfirm">Delete</button>
+      </div>
+    </dialog>
+
+    <div id="toast"></div>
+
     <script>
-      // Inline role update
-      document.querySelectorAll<HTMLTableRowElement>("tr[data-user-id]").forEach(row => {
-        const userId  = row.dataset.userId!;
-        const select  = row.querySelector<HTMLSelectElement>(".role-select")!;
-        const saveBtn = row.querySelector<HTMLButtonElement>(".save-role-btn")!;
-        const status  = row.querySelector<HTMLElement>(".save-status")!;
-        const badge   = row.querySelector<HTMLElement>(".role-badge")!;
+      const ROLE_COLORS: Record<string, string> = {
+        admin:    "bg-amber-400/10 text-amber-400 border border-amber-400/20",
+        employee: "bg-sky-400/10 text-sky-400 border border-sky-400/20",
+        customer: "bg-white/5 text-white/40 border border-white/10",
+      };
 
-        select.addEventListener("change", () => {
-          saveBtn.classList.toggle("hidden", select.value === select.dataset.current);
-          status.classList.add("hidden");
+      const editModal   = document.getElementById("editModal")   as HTMLDialogElement;
+      const deleteModal = document.getElementById("deleteModal") as HTMLDialogElement;
+      const toast       = document.getElementById("toast")!;
+
+      let activeRow: HTMLTableRowElement | null = null;
+      let deleteId = "";
+
+      function showToast(msg: string, type: "ok" | "err") {
+        toast.textContent = msg;
+        toast.className = `show ${type}`;
+        setTimeout(() => toast.classList.remove("show"), 3000);
+      }
+
+      // Wire edit buttons
+      document.getElementById("userTable")!.addEventListener("click", (e) => {
+        const btn = (e.target as HTMLElement).closest("button");
+        if (!btn) return;
+        const row = btn.closest("tr") as HTMLTableRowElement;
+
+        if (btn.classList.contains("edit-btn")) {
+          activeRow = row;
+          (document.getElementById("editName")  as HTMLInputElement).value  = row.dataset.name  ?? "";
+          (document.getElementById("editEmail") as HTMLInputElement).value  = row.dataset.email ?? "";
+          (document.getElementById("editRole")  as HTMLSelectElement).value = row.dataset.role  ?? "customer";
+          editModal.showModal();
+        }
+
+        if (btn.classList.contains("delete-btn")) {
+          deleteId = row.dataset.id!;
+          const label = row.dataset.email ?? row.dataset.name ?? deleteId;
+          document.getElementById("deleteUserLabel")!.textContent = label;
+          deleteModal.showModal();
+        }
+      });
+
+      document.getElementById("editCancel")!.addEventListener("click", () => editModal.close());
+      document.getElementById("deleteCancel")!.addEventListener("click", () => deleteModal.close());
+
+      // Save edit
+      document.getElementById("editSave")!.addEventListener("click", async () => {
+        if (!activeRow) return;
+        const saveBtn = document.getElementById("editSave") as HTMLButtonElement;
+        saveBtn.disabled = true;
+        saveBtn.textContent = "Saving…";
+
+        const id    = activeRow.dataset.id!;
+        const name  = (document.getElementById("editName")  as HTMLInputElement).value.trim();
+        const email = (document.getElementById("editEmail") as HTMLInputElement).value.trim();
+        const role  = (document.getElementById("editRole")  as HTMLSelectElement).value;
+
+        const res = await fetch("/api/admin/users", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id, name, email, role }),
         });
 
-        saveBtn.addEventListener("click", async () => {
-          saveBtn.textContent = "Saving…";
-          saveBtn.disabled = true;
+        if (res.ok) {
+          // Update row data attributes
+          activeRow.dataset.name  = name;
+          activeRow.dataset.email = email;
+          activeRow.dataset.role  = role;
+          // Update visible cells
+          activeRow.querySelector("[data-col=name]")!.textContent  = name || "—";
+          activeRow.querySelector("[data-col=email]")!.textContent = email;
+          const roleCell = activeRow.querySelector("[data-col=role]")!;
+          roleCell.innerHTML = `<span class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold ${ROLE_COLORS[role] ?? ""}">${role}</span>`;
+          editModal.close();
+          showToast("User updated.", "ok");
+        } else {
+          const err = await res.json().catch(() => ({}));
+          showToast(err.error ?? "Failed to update user.", "err");
+        }
 
-          const res = await fetch("/api/admin/set-role", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userId, role: select.value }),
-          });
+        saveBtn.disabled = false;
+        saveBtn.textContent = "Save changes";
+      });
 
-          if (res.ok) {
-            const roleColors: Record<string, string> = {
-              admin:    "bg-amber-400/10 text-amber-400 border border-amber-400/20",
-              employee: "bg-sky-400/10 text-sky-400 border border-sky-400/20",
-              customer: "bg-white/5 text-white/40 border border-white/10",
-            };
-            badge.className = `role-badge inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold ${roleColors[select.value] ?? ""}`;
-            badge.textContent = select.value;
-            (select as any).dataset.current = select.value;
-            saveBtn.classList.add("hidden");
-            status.classList.remove("hidden");
-            setTimeout(() => status.classList.add("hidden"), 2000);
-          } else {
-            const err = await res.json().catch(() => ({}));
-            alert(err.error ?? "Failed to update role.");
-          }
+      // Confirm delete
+      document.getElementById("deleteConfirm")!.addEventListener("click", async () => {
+        const confirmBtn = document.getElementById("deleteConfirm") as HTMLButtonElement;
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = "Deleting…";
 
-          saveBtn.textContent = "Save";
-          saveBtn.disabled = false;
+        const res = await fetch("/api/admin/users", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: deleteId }),
         });
+
+        if (res.ok) {
+          document.querySelector(`tr[data-id="${deleteId}"]`)?.remove();
+          deleteModal.close();
+          showToast("User deleted.", "ok");
+        } else {
+          const err = await res.json().catch(() => ({}));
+          showToast(err.error ?? "Failed to delete user.", "err");
+          deleteModal.close();
+        }
+
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = "Delete";
       });
     </script>
   </body>

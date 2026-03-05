@@ -27,23 +27,32 @@ for (const it of items) {
     <meta name="robots" content="noindex" />
   </head>
 
-  <body class="min-h-screen bg-[#0b0b10] text-white font-body pb-24">
+  <body class="min-h-screen bg-[#0b0b10] text-white font-body pb-32">
     <!-- Header -->
     <div class="sticky top-0 z-50 border-b border-white/10 bg-[#0b0b10]/90 backdrop-blur px-6 py-4 flex items-center justify-between">
       <div>
         <div class="text-xs text-white/50 uppercase tracking-widest">{site.name}</div>
         <div class="text-sm font-semibold">Table {tableNumber}</div>
       </div>
-
-      <button
-        id="callWaiterBtn"
-        class="rounded-full bg-white text-black font-semibold px-5 py-2.5 text-sm hover:bg-white/90 active:scale-95 transition"
-      >
-        Call Waiter
-      </button>
+      <div class="flex gap-2">
+        <button
+          id="orderBtn"
+          data-reason="order"
+          class="waiter-btn rounded-full border border-white/20 bg-white/10 text-white font-semibold px-4 py-2 text-xs hover:bg-white/20 active:scale-95 transition"
+        >
+          Order
+        </button>
+        <button
+          id="payBtn"
+          data-reason="pay"
+          class="waiter-btn rounded-full bg-white text-black font-semibold px-4 py-2 text-xs hover:bg-white/90 active:scale-95 transition"
+        >
+          Pay
+        </button>
+      </div>
     </div>
 
-    <!-- Call waiter feedback -->
+    <!-- Feedback banner -->
     <div
       id="callFeedback"
       class="hidden mx-6 mt-4 rounded-2xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-400"
@@ -97,71 +106,153 @@ for (const it of items) {
       <p class="mt-10 text-xs text-white/40 text-center">
         Allergies? Ask our staff. Prices may vary during events.
       </p>
+
+      <!-- Google review -->
+      <div class="mt-8 rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
+        <p class="text-sm text-white/60 mb-4">Enjoying your time at Sally's Bar?<br/>Leave us a review — it means a lot!</p>
+        <a
+          href="https://www.google.com/maps/place/Sally's+Bar/@38.0748829,18.5557617,8z/data=!4m8!3m7!1s0x13675f4867a5e573:0x842020188aa33527!8m2!3d38.0748829!4d20.7969726!9m1!1b1!16s%2Fg%2F11cnb3kb_m?entry=ttu&g_ep=EgoyMDI2MDMwMi4wIKXMDSoASAFQAw%3D%3D"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center gap-2.5 rounded-2xl bg-white px-6 py-3 text-sm font-semibold text-black hover:bg-white/90 active:scale-95 transition"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+          </svg>
+          Leave a Google review
+        </a>
+      </div>
     </main>
 
-    <!-- Sticky call waiter bar -->
-    <div class="fixed bottom-0 inset-x-0 border-t border-white/10 bg-[#0b0b10]/95 backdrop-blur px-6 py-4">
-      <button
-        id="callWaiterBtnBottom"
-        class="w-full rounded-2xl bg-white text-black font-semibold py-3.5 text-sm hover:bg-white/90 active:scale-95 transition"
-      >
-        Call Waiter — Table {tableNumber}
-      </button>
+    <!-- Sticky bottom bar -->
+    <div class="fixed bottom-0 inset-x-0 border-t border-white/10 bg-[#0b0b10]/95 backdrop-blur px-4 py-3">
+      <div class="mx-auto max-w-2xl flex gap-3">
+        <button
+          id="orderBtnBottom"
+          data-reason="order"
+          class="waiter-btn flex-1 rounded-2xl border border-white/20 bg-white/10 text-white font-semibold py-3.5 text-sm hover:bg-white/20 active:scale-95 transition"
+        >
+          Call Waiter to Order
+        </button>
+        <button
+          id="payBtnBottom"
+          data-reason="pay"
+          class="waiter-btn flex-1 rounded-2xl bg-white text-black font-semibold py-3.5 text-sm hover:bg-white/90 active:scale-95 transition"
+        >
+          Call Waiter to Pay
+        </button>
+      </div>
+    </div>
+
+    <!-- Pay method sheet -->
+    <div id="paySheet" class="fixed inset-0 z-50 hidden">
+      <div id="payBackdrop" class="absolute inset-0 bg-black/60"></div>
+      <div class="absolute bottom-0 inset-x-0 rounded-t-3xl border-t border-white/10 bg-[#16161f] px-6 pt-6 pb-10">
+        <div class="mx-auto mb-6 h-1 w-10 rounded-full bg-white/20"></div>
+        <p class="text-center text-sm font-semibold mb-6">How would you like to pay?</p>
+        <div class="flex gap-3">
+          <button id="payCard" class="flex-1 flex flex-col items-center gap-3 rounded-2xl border border-white/10 bg-white/5 py-6 text-sm font-semibold hover:bg-white/10 active:scale-95 transition">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="1" y="4" width="22" height="16" rx="2"/>
+              <line x1="1" y1="10" x2="23" y2="10"/>
+            </svg>
+            Card
+          </button>
+          <button id="payCash" class="flex-1 flex flex-col items-center gap-3 rounded-2xl border border-white/10 bg-white/5 py-6 text-sm font-semibold hover:bg-white/10 active:scale-95 transition">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="6" width="20" height="12" rx="2"/>
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M6 12h.01M18 12h.01"/>
+            </svg>
+            Cash
+          </button>
+        </div>
+      </div>
     </div>
 
     <script define:vars={{ tableNumber }}>
-      async function callWaiter() {
-        const btns = [
-          document.getElementById("callWaiterBtn"),
-          document.getElementById("callWaiterBtnBottom"),
-        ];
+      const cooldowns = { order: false, pay: false };
+
+      // Pay sheet
+      const paySheet   = document.getElementById("paySheet");
+      const payBackdrop = document.getElementById("payBackdrop");
+
+      function openPaySheet() {
+        if (cooldowns.pay) return;
+        paySheet.classList.remove("hidden");
+      }
+      function closePaySheet() {
+        paySheet.classList.add("hidden");
+      }
+
+      payBackdrop.addEventListener("click", closePaySheet);
+
+      document.getElementById("payCard").addEventListener("click", () => {
+        closePaySheet();
+        callWaiter("pay", "card");
+      });
+      document.getElementById("payCash").addEventListener("click", () => {
+        closePaySheet();
+        callWaiter("pay", "cash");
+      });
+
+      async function callWaiter(reason, method) {
+        if (cooldowns[reason]) return;
+        cooldowns[reason] = true;
+
+        const btns = document.querySelectorAll(`.waiter-btn[data-reason="${reason}"]`);
         const feedback = document.getElementById("callFeedback");
 
-        btns.forEach((b) => {
-          if (b) {
-            b.textContent = "Calling…";
-            b.setAttribute("disabled", "true");
-            b.style.opacity = "0.6";
-          }
+        btns.forEach(b => {
+          b.textContent = "Calling…";
+          b.setAttribute("disabled", "true");
+          b.style.opacity = "0.6";
         });
 
         try {
           await fetch("/api/call-waiter", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ table: tableNumber }),
+            body: JSON.stringify({ table: tableNumber, reason, method }),
           });
 
           if (feedback) feedback.classList.remove("hidden");
 
-          btns.forEach((b) => {
-            if (b) b.textContent = "Waiter notified ✓";
-          });
+          btns.forEach(b => { b.textContent = "Notified ✓"; });
 
-          // Re-enable after 30 seconds to prevent spam
           setTimeout(() => {
-            btns.forEach((b) => {
-              if (b) {
-                b.textContent = b.id === "callWaiterBtn" ? "Call Waiter" : `Call Waiter — Table ${tableNumber}`;
-                b.removeAttribute("disabled");
-                b.style.opacity = "";
-              }
+            cooldowns[reason] = false;
+            const labels = {
+              order: { top: "Order", bottom: "Call Waiter to Order" },
+              pay:   { top: "Pay",   bottom: "Call Waiter to Pay"  },
+            };
+            btns.forEach(b => {
+              b.textContent = b.id.includes("Bottom") ? labels[reason].bottom : labels[reason].top;
+              b.removeAttribute("disabled");
+              b.style.opacity = "";
             });
             if (feedback) feedback.classList.add("hidden");
           }, 30000);
         } catch {
-          btns.forEach((b) => {
-            if (b) {
-              b.textContent = "Try again";
-              b.removeAttribute("disabled");
-              b.style.opacity = "";
-            }
+          cooldowns[reason] = false;
+          btns.forEach(b => {
+            b.textContent = "Try again";
+            b.removeAttribute("disabled");
+            b.style.opacity = "";
           });
         }
       }
 
-      document.getElementById("callWaiterBtn")?.addEventListener("click", callWaiter);
-      document.getElementById("callWaiterBtnBottom")?.addEventListener("click", callWaiter);
+      // Order buttons call directly; Pay buttons open the sheet
+      document.querySelectorAll(".waiter-btn[data-reason='order']").forEach(btn => {
+        btn.addEventListener("click", () => callWaiter("order"));
+      });
+      document.querySelectorAll(".waiter-btn[data-reason='pay']").forEach(btn => {
+        btn.addEventListener("click", openPaySheet);
+      });
     </script>
   </body>
 </html>

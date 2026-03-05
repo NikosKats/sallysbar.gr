@@ -1,5 +1,5 @@
 import { defineMiddleware } from "astro:middleware";
-import { createSupabaseServerClient } from "./lib/supabase";
+import { createSupabaseServerClient, supabaseAdmin } from "./lib/supabase";
 
 // Routes that require admin role
 const ADMIN_ROUTES = ["/admin", "/el/admin"];
@@ -29,8 +29,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
     locals.user = user;
 
     if (user) {
-      // Fetch user role from profiles table
-      const { data: profile } = await supabase
+      // Fetch user role from profiles table (use admin client to bypass RLS)
+      const { data: profile } = await supabaseAdmin
         .from("profiles")
         .select("role")
         .eq("id", user.id)

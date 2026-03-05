@@ -4,21 +4,27 @@ import { getLangFromPath, withLangPrefix } from "../i18n";
 const url = new URL(Astro.request.url);
 const lang = getLangFromPath(url.pathname);
 const nextUrl = url.searchParams.get("next") ?? "/dashboard";
+const errorCode = url.searchParams.get("error");
 
 const isEl = lang === "el";
 const t = {
-  title:        isEl ? "Σύνδεση"                      : "Sign In",
+  title:        isEl ? "Σύνδεση"                           : "Sign In",
   email:        "Email",
-  password:     isEl ? "Κωδικός"                      : "Password",
-  submit:       isEl ? "Σύνδεση"                      : "Sign In",
-  submitting:   isEl ? "Σύνδεση…"                     : "Signing in…",
-  google:       isEl ? "Συνέχεια με Google"            : "Continue with Google",
-  noAccount:    isEl ? "Δεν έχεις λογαριασμό;"        : "Don't have an account?",
-  register:     isEl ? "Εγγραφή"                      : "Register",
-  orDivider:    isEl ? "ή"                             : "or",
-  errorInvalid: isEl ? "Λάθος email ή κωδικός."       : "Invalid email or password.",
+  password:     isEl ? "Κωδικός"                           : "Password",
+  submit:       isEl ? "Σύνδεση"                           : "Sign In",
+  noAccount:    isEl ? "Δεν έχεις λογαριασμό;"             : "Don't have an account?",
+  register:     isEl ? "Εγγραφή"                           : "Register",
+  orDivider:    isEl ? "ή"                                  : "or",
+  google:       isEl ? "Συνέχεια με Google"                 : "Continue with Google",
+  errorInvalid: isEl ? "Λάθος email ή κωδικός."            : "Invalid email or password.",
   errorGeneric: isEl ? "Κάτι πήγε στραβά. Δοκίμασε ξανά." : "Something went wrong. Try again.",
 };
+
+const errorMsg = errorCode === "invalid"
+  ? t.errorInvalid
+  : errorCode === "generic"
+  ? t.errorGeneric
+  : null;
 
 const registerHref = withLangPrefix(lang, "/register");
 ---
@@ -47,31 +53,19 @@ const registerHref = withLangPrefix(lang, "/register");
       .form { display: flex; flex-direction: column; gap: 1rem; }
       .btn-primary { width: 100%; border-radius: .75rem; background: #fff; padding: .75rem 1rem; font-size: .875rem; font-weight: 600; color: #000; border: none; cursor: pointer; transition: opacity .15s; margin-top: .25rem; }
       .btn-primary:hover { opacity: .9; }
-      .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
       .divider { display: flex; align-items: center; gap: .75rem; margin: 1.25rem 0; }
       .divider div { flex: 1; height: 1px; background: rgba(255,255,255,.1); }
       .divider span { font-size: .75rem; color: rgba(255,255,255,.3); }
       .btn-google { width: 100%; display: flex; align-items: center; justify-content: center; gap: .75rem; border-radius: .75rem; border: 1px solid rgba(255,255,255,.1); background: rgba(255,255,255,.05); padding: .75rem 1rem; font-size: .875rem; color: rgba(255,255,255,.9); cursor: pointer; transition: background .15s; }
       .btn-google:hover { background: rgba(255,255,255,.1); }
-      .btn-google:disabled { opacity: .5; cursor: not-allowed; }
       .footer-link { margin-top: 1.5rem; text-align: center; font-size: .875rem; color: rgba(255,255,255,.4); }
       .footer-link a { color: rgba(255,255,255,.7); text-decoration: underline; text-underline-offset: 2px; }
       .forgot-link { display: block; margin-top: .75rem; text-align: right; font-size: .75rem; color: rgba(255,255,255,.4); text-decoration: none; }
       .forgot-link:hover { color: rgba(255,255,255,.7); }
-      .alert { display: none; border-radius: .75rem; padding: .75rem 1rem; font-size: .875rem; margin-bottom: 1rem; }
-      .alert.error { background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.2); color: #f87171; }
-      .alert.visible { display: block; }
+      .alert { border-radius: .75rem; padding: .75rem 1rem; font-size: .875rem; margin-bottom: 1rem; background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.2); color: #f87171; }
     </style>
   </head>
   <body>
-    <div id="cfg"
-      data-next={nextUrl}
-      data-error-invalid={t.errorInvalid}
-      data-error-generic={t.errorGeneric}
-      data-label-submit={t.submit}
-      data-label-submitting={t.submitting}
-      hidden></div>
-
     <div class="card">
       <a href={withLangPrefix(lang, "/")} class="brand">
         <img src="/logo/1-logo.png" alt="Sally's Bar" />
@@ -81,18 +75,19 @@ const registerHref = withLangPrefix(lang, "/register");
       <div class="box">
         <h1>{t.title}</h1>
 
-        <div id="errorMsg" class="alert error"></div>
+        {errorMsg && <div class="alert">{errorMsg}</div>}
 
-        <form id="loginForm" class="form">
+        <form class="form" method="POST" action="/api/auth/login">
+          <input type="hidden" name="next" value={nextUrl} />
           <div class="field">
             <label for="email">{t.email}</label>
-            <input id="email" type="email" required autocomplete="email" placeholder="you@example.com" />
+            <input id="email" name="email" type="email" required autocomplete="email" placeholder="you@example.com" />
           </div>
           <div class="field">
             <label for="password">{t.password}</label>
-            <input id="password" type="password" required autocomplete="current-password" placeholder="••••••••" />
+            <input id="password" name="password" type="password" required autocomplete="current-password" placeholder="••••••••" />
           </div>
-          <button type="submit" id="submitBtn" class="btn-primary">{t.submit}</button>
+          <button type="submit" class="btn-primary">{t.submit}</button>
           <a href={withLangPrefix(lang, "/forgot-password")} class="forgot-link">
             {isEl ? "Ξέχασες τον κωδικό;" : "Forgot password?"}
           </a>
@@ -122,62 +117,19 @@ const registerHref = withLangPrefix(lang, "/register");
     <script>
       import { createBrowserClient } from "@supabase/ssr";
 
-      const cfg = document.getElementById("cfg") as HTMLElement;
-      const nextUrl      = cfg.dataset.next!;
-      const errorInvalid = cfg.dataset.errorInvalid!;
-      const errorGeneric = cfg.dataset.errorGeneric!;
-      const labelSubmit  = cfg.dataset.labelSubmit!;
-      const labelBusy    = cfg.dataset.labelSubmitting!;
-
       const supabase = createBrowserClient(
         import.meta.env.PUBLIC_SUPABASE_URL,
         import.meta.env.PUBLIC_SUPABASE_ANON_KEY
       );
 
-      const form      = document.getElementById("loginForm")  as HTMLFormElement;
-      const submitBtn = document.getElementById("submitBtn")  as HTMLButtonElement;
-      const googleBtn = document.getElementById("googleBtn")  as HTMLButtonElement;
-      const errorEl   = document.getElementById("errorMsg")   as HTMLElement;
-
-      function showError(msg: string) {
-        errorEl.textContent = msg;
-        errorEl.classList.add("visible");
-      }
-
-      form.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        errorEl.classList.remove("visible");
-        submitBtn.disabled = true;
-        submitBtn.textContent = labelBusy;
-
-        const email    = (document.getElementById("email")    as HTMLInputElement).value;
-        const password = (document.getElementById("password") as HTMLInputElement).value;
-
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-
-        if (error) {
-          showError(error.status === 400 ? errorInvalid : errorGeneric);
-          submitBtn.disabled = false;
-          submitBtn.textContent = labelSubmit;
-          return;
-        }
-
-        window.location.href = nextUrl;
-      });
-
-      googleBtn.addEventListener("click", async () => {
-        errorEl.classList.remove("visible");
-        googleBtn.disabled = true;
-        const { error } = await supabase.auth.signInWithOAuth({
+      document.getElementById("googleBtn")?.addEventListener("click", async () => {
+        const next = new URLSearchParams(window.location.search).get("next") ?? "/dashboard";
+        await supabase.auth.signInWithOAuth({
           provider: "google",
           options: {
-            redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextUrl)}`,
+            redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
           },
         });
-        if (error) {
-          showError(errorGeneric);
-          googleBtn.disabled = false;
-        }
       });
     </script>
   </body>
