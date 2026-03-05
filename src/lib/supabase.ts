@@ -16,7 +16,8 @@ export function createSupabaseServerClient(
     {
       cookies: {
         getAll() {
-          return parseCookieHeader(request.headers.get("Cookie") ?? "");
+          return parseCookieHeader(request.headers.get("Cookie") ?? "")
+            .filter((c): c is { name: string; value: string } => c.value !== undefined);
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value, options }) => {
@@ -30,9 +31,19 @@ export function createSupabaseServerClient(
 
 /**
  * Admin client with service role key — bypasses RLS.
- * Only use server-side, never expose to the browser.
+ * Lazy proxy: client is created on first use so module-level init
+ * doesn't throw when SUPABASE_SERVICE_ROLE_KEY isn't baked in at build time.
  */
-export const supabaseAdmin = createClient(
-  import.meta.env.PUBLIC_SUPABASE_URL,
-  import.meta.env.SUPABASE_SERVICE_ROLE_KEY
-);
+let _admin: ReturnType<typeof createClient> | undefined;
+export const supabaseAdmin = new Proxy({} as ReturnType<typeof createClient>, {
+  get(_, prop) {
+    if (!_admin) {
+      _admin = createClient(
+        import.meta.env.PUBLIC_SUPABASE_URL,
+        import.meta.env.SUPABASE_SERVICE_ROLE_KEY
+      );
+    }
+    const value = (_admin as any)[prop];
+    return typeof value === "function" ? value.bind(_admin) : value;
+  },
+});
