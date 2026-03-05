@@ -76,16 +76,6 @@ const displayName = user?.user_metadata?.full_name?.split(" ")[0]
               {i.label}
             </a>
           ))}
-          {role === "admin" && (
-            <a href="/admin/menu" class="text-amber-400/80 hover:text-amber-400 transition">
-              {adminLabel}
-            </a>
-          )}
-          {(role === "employee" || role === "admin") && (
-            <a href="/staff/orders" class="text-sky-400/80 hover:text-sky-400 transition">
-              {staffLabel}
-            </a>
-          )}
         </nav>
 
         <!-- Desktop right actions -->
@@ -99,17 +89,72 @@ const displayName = user?.user_metadata?.full_name?.split(" ")[0]
           </a>
 
           {user ? (
-            <div class="flex items-center gap-2">
-              <a
-                href="/dashboard"
-                class="text-sm text-white/50 hover:text-white/80 transition"
-              >{displayName}</a>
-              <a
-                href={logoutHref}
-                class="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm text-white/90 hover:bg-white/10 transition"
+            <div class="relative" id="userMenuWrapper">
+              <button
+                id="userMenuBtn"
+                type="button"
+                class="flex items-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm text-white/90 hover:bg-white/10 transition"
               >
-                {logoutLabel}
-              </a>
+                {displayName}
+                {role === "admin" && (
+                  <span class="rounded-full bg-amber-400/15 px-2 py-0.5 text-xs font-semibold text-amber-400">Admin</span>
+                )}
+                {role === "employee" && (
+                  <span class="rounded-full bg-sky-400/15 px-2 py-0.5 text-xs font-semibold text-sky-400">Staff</span>
+                )}
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" class="opacity-50 ml-0.5">
+                  <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
+
+              <div id="userMenuDropdown" class="hidden absolute right-0 top-full mt-2 w-52 rounded-2xl border border-white/10 bg-[#0b0b10] shadow-xl overflow-hidden z-50">
+                <div class="py-1.5">
+                  <a href="/account" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/5 transition">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-60"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.5"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    My Account
+                  </a>
+
+                  {role === "admin" && (
+                    <>
+                      <div class="mx-3 my-1.5 border-t border-white/10"></div>
+                      <p class="px-4 py-1 text-xs font-semibold uppercase tracking-widest text-amber-400/50">Admin</p>
+                      <a href="/admin" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-70"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/></svg>
+                        Dashboard
+                      </a>
+                      <a href="/admin/users" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-70"><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="1.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M19 8v6M16 11h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                        Users
+                      </a>
+                      <a href="/admin/menu" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-70"><path d="M4 6h16M4 10h16M4 14h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                        Edit Menu
+                      </a>
+                    </>
+                  )}
+
+                  {(role === "employee" || role === "admin") && (
+                    <>
+                      <div class="mx-3 my-1.5 border-t border-white/10"></div>
+                      <p class="px-4 py-1 text-xs font-semibold uppercase tracking-widest text-sky-400/50">Staff</p>
+                      <a href="/staff" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-sky-400/80 hover:text-sky-400 hover:bg-sky-400/5 transition">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-70"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><rect x="9" y="3" width="6" height="4" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>
+                        Active Orders
+                      </a>
+                      <a href="/staff/order" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-sky-400/80 hover:text-sky-400 hover:bg-sky-400/5 transition">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-70"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                        New Order
+                      </a>
+                    </>
+                  )}
+
+                  <div class="mx-3 my-1.5 border-t border-white/10"></div>
+                  <a href={logoutHref} class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-white/50 hover:text-white hover:bg-white/5 transition">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-60"><path d="M16 17l5-5-5-5M21 12H9M13 7V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h6a2 2 0 002-2v-2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    {logoutLabel}
+                  </a>
+                </div>
+              </div>
             </div>
           ) : (
             <a
@@ -120,12 +165,6 @@ const displayName = user?.user_metadata?.full_name?.split(" ")[0]
             </a>
           )}
 
-          <a
-            href={ctaHref}
-            class="rounded-full bg-white px-5 py-2 text-sm font-semibold text-black hover:bg-white/90 transition"
-          >
-            {t.cta.viewMenu}
-          </a>
         </div>
 
         <!-- Mobile hamburger -->
@@ -164,27 +203,39 @@ const displayName = user?.user_metadata?.full_name?.split(" ")[0]
             </a>
           ))}
 
-          {role === "admin" && (
-            <a href="/admin/menu" class="rounded-xl border border-amber-400/20 bg-amber-400/5 px-4 py-3 text-amber-400/80 hover:bg-amber-400/10">
-              {adminLabel}
-            </a>
-          )}
-
-          {(role === "employee" || role === "admin") && (
-            <a href="/staff/orders" class="rounded-xl border border-sky-400/20 bg-sky-400/5 px-4 py-3 text-sky-400/80 hover:bg-sky-400/10">
-              {staffLabel}
-            </a>
-          )}
-
           {user ? (
             <>
-              <a href="/dashboard" class="px-4 text-xs text-white/40 hover:text-white/70 transition">{displayName}</a>
-              <a
-                href={logoutHref}
-                class="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white/90 hover:bg-white/10"
-              >
-                {logoutLabel}
-              </a>
+              <div class="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
+                <div class="flex items-center gap-2 px-4 py-3 border-b border-white/10">
+                  <span class="text-sm text-white/70 font-medium">{displayName}</span>
+                  {role === "admin" && <span class="rounded-full bg-amber-400/15 px-2 py-0.5 text-xs font-semibold text-amber-400">Admin</span>}
+                  {role === "employee" && <span class="rounded-full bg-sky-400/15 px-2 py-0.5 text-xs font-semibold text-sky-400">Staff</span>}
+                </div>
+                <a href="/account" class="flex items-center px-4 py-3 text-sm text-white/60 hover:text-white hover:bg-white/5 transition">
+                  My Account
+                </a>
+                {role === "admin" && (
+                  <>
+                    <div class="border-t border-white/10"></div>
+                    <p class="px-4 pt-2.5 pb-1 text-xs font-semibold uppercase tracking-widest text-amber-400/50">Admin</p>
+                    <a href="/admin" class="flex items-center px-4 py-2.5 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">Dashboard</a>
+                    <a href="/admin/users" class="flex items-center px-4 py-2.5 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">Users</a>
+                    <a href="/admin/menu" class="flex items-center px-4 py-2.5 pb-2 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">Edit Menu</a>
+                  </>
+                )}
+                {(role === "employee" || role === "admin") && (
+                  <>
+                    <div class="border-t border-white/10"></div>
+                    <p class="px-4 pt-2.5 pb-1 text-xs font-semibold uppercase tracking-widest text-sky-400/50">Staff</p>
+                    <a href="/staff" class="flex items-center px-4 py-2.5 text-sm text-sky-400/80 hover:text-sky-400 hover:bg-sky-400/5 transition">Active Orders</a>
+                    <a href="/staff/order" class="flex items-center px-4 py-2.5 pb-2 text-sm text-sky-400/80 hover:text-sky-400 hover:bg-sky-400/5 transition">New Order</a>
+                  </>
+                )}
+                <div class="border-t border-white/10"></div>
+                <a href={logoutHref} class="flex items-center px-4 py-3 text-sm text-white/50 hover:text-white hover:bg-white/5 transition">
+                  {logoutLabel}
+                </a>
+              </div>
             </>
           ) : (
             <a
@@ -195,18 +246,13 @@ const displayName = user?.user_metadata?.full_name?.split(" ")[0]
             </a>
           )}
 
-          <a
-            href={ctaHref}
-            class="mt-2 rounded-xl bg-white px-4 py-3 text-center text-sm font-semibold text-black hover:bg-white/90"
-          >
-            {t.cta.viewMenu}
-          </a>
         </div>
       </div>
     </div>
   </div>
 
   <script is:inline>
+    // Mobile menu toggle
     const btn = document.getElementById("mobileMenuBtn");
     const menu = document.getElementById("mobileMenu");
 
@@ -230,6 +276,26 @@ const displayName = user?.user_metadata?.full_name?.split(" ")[0]
     menu?.addEventListener("click", (e) => {
       const a = e.target.closest("a");
       if (a) closeMenu();
+    });
+
+    // User dropdown toggle
+    const userBtn = document.getElementById("userMenuBtn");
+    const userDropdown = document.getElementById("userMenuDropdown");
+
+    userBtn?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      userDropdown?.classList.toggle("hidden");
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!document.getElementById("userMenuWrapper")?.contains(e.target)) {
+        userDropdown?.classList.add("hidden");
+      }
+    });
+
+    userDropdown?.addEventListener("click", (e) => {
+      const a = e.target.closest("a");
+      if (a) userDropdown.classList.add("hidden");
     });
   </script>
 </header>

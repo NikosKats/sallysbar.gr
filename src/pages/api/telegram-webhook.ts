@@ -52,7 +52,7 @@ export const POST: APIRoute = async ({ request }) => {
   if (action === "preparing") {
     await supabaseAdmin
       .from("orders")
-      .update({ status: "preparing", updated_at: new Date().toISOString() })
+      .update({ status: "preparing" })
       .eq("id", orderId);
 
     await editMessageText(
@@ -68,13 +68,19 @@ export const POST: APIRoute = async ({ request }) => {
       }
     );
 
+    // Notify waiter that order is being prepared
+    await sendMessage(
+      import.meta.env.TELEGRAM_WAITER_CHAT_ID,
+      `🔄 <b>Preparing — Table ${order.table_number}</b>\n\n${itemLines}${noteBlock}\n\nOrder is being prepared by the barman.`
+    );
+
     await answerCallbackQuery(cb.id, "Marked as preparing.");
   }
 
   if (action === "ready") {
     await supabaseAdmin
       .from("orders")
-      .update({ status: "ready", updated_at: new Date().toISOString() })
+      .update({ status: "ready" })
       .eq("id", orderId);
 
     // Remove buttons from barman message
@@ -110,7 +116,7 @@ export const POST: APIRoute = async ({ request }) => {
   if (action === "delivered") {
     await supabaseAdmin
       .from("orders")
-      .update({ status: "delivered", updated_at: new Date().toISOString() })
+      .update({ status: "delivered" })
       .eq("id", orderId);
 
     // Remove button from waiter message

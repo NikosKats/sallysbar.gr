@@ -120,7 +120,7 @@ const registerHref = withLangPrefix(lang, "/register");
     </div>
 
     <script>
-      import { createClient } from "@supabase/supabase-js";
+      import { createBrowserClient } from "@supabase/ssr";
 
       const cfg = document.getElementById("cfg") as HTMLElement;
       const nextUrl      = cfg.dataset.next!;
@@ -129,7 +129,7 @@ const registerHref = withLangPrefix(lang, "/register");
       const labelSubmit  = cfg.dataset.labelSubmit!;
       const labelBusy    = cfg.dataset.labelSubmitting!;
 
-      const supabase = createClient(
+      const supabase = createBrowserClient(
         import.meta.env.PUBLIC_SUPABASE_URL,
         import.meta.env.PUBLIC_SUPABASE_ANON_KEY
       );

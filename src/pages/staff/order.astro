@@ -1,5 +1,6 @@
 ---
 import "../../styles/global.css";
+import Header from "../../components/Header.astro";
 import { getMenu, formatPriceEUR } from "../../lib/menuService";
 
 // Protected by middleware — only employee/admin can access /staff/*
@@ -21,10 +22,17 @@ for (const it of items) {
   </head>
 
   <body class="min-h-screen bg-[#0b0b10] text-white font-body pb-32">
-    <!-- Header -->
-    <div class="sticky top-0 z-50 border-b border-white/10 bg-[#0b0b10]/90 backdrop-blur px-6 py-4 flex items-center justify-between">
-      <div class="font-semibold">New Order</div>
-      <a href="/staff" class="text-sm text-white/50 hover:text-white transition">← Back</a>
+    <Header />
+
+    <!-- Spacer for fixed header -->
+    <div class="h-20"></div>
+
+    <!-- Staff sub-nav -->
+    <div class="sticky top-20 z-40 border-b border-sky-400/20 bg-[#0b0b10]/95 backdrop-blur">
+      <div class="mx-auto max-w-2xl px-6 flex items-center gap-2 py-2 text-sm">
+        <a href="/staff" class="px-3 py-1.5 rounded-lg text-white/50 hover:text-sky-400 hover:bg-sky-400/5 transition">← Operations</a>
+        <span class="px-3 py-1.5 rounded-lg bg-sky-400/15 border border-sky-400/20 text-sky-400 font-medium">New Order</span>
+      </div>
     </div>
 
     <main class="mx-auto max-w-2xl px-6 py-6 space-y-6">

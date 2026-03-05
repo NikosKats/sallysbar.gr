@@ -131,7 +131,7 @@ const loginHref = withLangPrefix(lang, "/login");
     </div>
 
     <script>
-      import { createClient } from "@supabase/supabase-js";
+      import { createBrowserClient } from "@supabase/ssr";
 
       const cfg = document.getElementById("cfg") as HTMLElement;
       const redirectTo      = cfg.dataset.redirect!;
@@ -142,7 +142,7 @@ const loginHref = withLangPrefix(lang, "/login");
       const labelSubmit     = cfg.dataset.labelSubmit!;
       const labelBusy       = cfg.dataset.labelSubmitting!;
 
-      const supabase = createClient(
+      const supabase = createBrowserClient(
         import.meta.env.PUBLIC_SUPABASE_URL,
         import.meta.env.PUBLIC_SUPABASE_ANON_KEY
       );

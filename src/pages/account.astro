@@ -1,5 +1,6 @@
 ---
 import "../styles/global.css";
+import Header from "../components/Header.astro";
 import { createSupabaseServerClient } from "../lib/supabase";
 
 const user = Astro.locals.user;
@@ -26,23 +27,9 @@ const memberSince = profile?.created_at
     <meta name="robots" content="noindex,nofollow" />
   </head>
   <body class="min-h-screen bg-[#0b0b10] text-white">
+    <Header />
 
-    <!-- Top nav -->
-    <header class="sticky top-0 z-50 border-b border-white/10 bg-[#0b0b10]/90 backdrop-blur">
-      <div class="mx-auto max-w-3xl px-4 py-3 flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <a href="/" class="flex items-center gap-2 text-white/50 hover:text-white transition text-sm">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-            Sally's Bar
-          </a>
-        </div>
-        <a href="/logout" class="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white/60 hover:bg-white/10 transition">
-          Sign out
-        </a>
-      </div>
-    </header>
-
-    <main class="mx-auto max-w-3xl px-4 py-10 space-y-6">
+    <main class="mx-auto max-w-3xl px-4 pt-28 pb-10 space-y-6">
 
       <!-- Welcome -->
       <div>
