@@ -10,7 +10,35 @@ if (!tableNumber || isNaN(tableNumber)) {
   return Astro.redirect("/");
 }
 
-const { categories, items } = await getMenu("en");
+const url = new URL(Astro.request.url);
+const lang  = url.searchParams.get("lang") === "el" ? "el" : "en";
+const token = url.searchParams.get("token") ?? "";
+const isEl  = lang === "el";
+
+const switchLang = isEl ? "en" : "el";
+const switchUrl  = token ? `?token=${token}&lang=${switchLang}` : `?lang=${switchLang}`;
+const switchLabel = isEl ? "English" : "Ελληνικά";
+
+const t = {
+  table:        isEl ? `Τραπέζι ${tableNumber}`          : `Table ${tableNumber}`,
+  order:        isEl ? "Παραγγελία"                      : "Order",
+  pay:          isEl ? "Πληρωμή"                         : "Pay",
+  orderBottom:  isEl ? "Κάλεσε σερβιτόρο για παραγγελία" : "Call Waiter to Order",
+  payBottom:    isEl ? "Κάλεσε σερβιτόρο για πληρωμή"    : "Call Waiter to Pay",
+  notified:     isEl ? "Ειδοποιήθηκε ✓"                 : "Notified ✓",
+  calling:      isEl ? "Καλείται…"                       : "Calling…",
+  tryAgain:     isEl ? "Δοκίμασε ξανά"                   : "Try again",
+  feedback:     isEl ? "Ο σερβιτόρος ειδοποιήθηκε και θα έρθει σύντομα." : "Your waiter has been notified and will be with you shortly.",
+  howToPay:     isEl ? "Πώς θέλεις να πληρώσεις;"        : "How would you like to pay?",
+  card:         isEl ? "Κάρτα"                            : "Card",
+  cash:         isEl ? "Μετρητά"                          : "Cash",
+  allergies:    isEl ? "Αλλεργίες; Ρώτησε το προσωπικό μας. Οι τιμές ενδέχεται να διαφέρουν κατά τη διάρκεια εκδηλώσεων." : "Allergies? Ask our staff. Prices may vary during events.",
+  reviewTitle:  isEl ? "Σου άρεσε το Sally's Bar;"        : "Enjoying your time at Sally's Bar?",
+  reviewSub:    isEl ? "Άφησέ μας μια κριτική — σημαίνει πολλά!" : "Leave us a review — it means a lot!",
+  reviewBtn:    isEl ? "Γράψε κριτική στο Google"         : "Leave a Google review",
+};
+
+const { categories, items } = await getMenu(lang);
 const byCategory = new Map<number, typeof items>();
 for (const it of items) {
   const list = byCategory.get(it.category_id) ?? [];
@@ -19,35 +47,41 @@ for (const it of items) {
 }
 ---
 
-<html lang="en">
+<html lang={lang}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Table {tableNumber} — {site.name}</title>
+    <title>{t.table} — {site.name}</title>
     <meta name="robots" content="noindex" />
   </head>
 
   <body class="min-h-screen bg-[#0b0b10] text-white font-body pb-32">
     <!-- Header -->
-    <div class="sticky top-0 z-50 border-b border-white/10 bg-[#0b0b10]/90 backdrop-blur px-6 py-4 flex items-center justify-between">
+    <div class="sticky top-0 z-50 border-b border-white/10 bg-[#0b0b10]/90 backdrop-blur px-4 py-3 flex items-center justify-between gap-2">
       <div>
         <div class="text-xs text-white/50 uppercase tracking-widest">{site.name}</div>
-        <div class="text-sm font-semibold">Table {tableNumber}</div>
+        <div class="text-sm font-semibold">{t.table}</div>
       </div>
-      <div class="flex gap-2">
+      <div class="flex items-center gap-2">
+        <a
+          href={switchUrl}
+          class="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-white/80 hover:bg-white/10 transition"
+        >
+          {switchLabel}
+        </a>
         <button
           id="orderBtn"
           data-reason="order"
-          class="waiter-btn rounded-full border border-white/20 bg-white/10 text-white font-semibold px-4 py-2 text-xs hover:bg-white/20 active:scale-95 transition"
+          class="waiter-btn rounded-full border border-white/20 bg-white/10 text-white font-semibold px-3 py-1.5 text-xs hover:bg-white/20 active:scale-95 transition"
         >
-          Order
+          {t.order}
         </button>
         <button
           id="payBtn"
           data-reason="pay"
-          class="waiter-btn rounded-full bg-white text-black font-semibold px-4 py-2 text-xs hover:bg-white/90 active:scale-95 transition"
+          class="waiter-btn rounded-full bg-white text-black font-semibold px-3 py-1.5 text-xs hover:bg-white/90 active:scale-95 transition"
         >
-          Pay
+          {t.pay}
         </button>
       </div>
     </div>
@@ -57,7 +91,7 @@ for (const it of items) {
       id="callFeedback"
       class="hidden mx-6 mt-4 rounded-2xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-400"
     >
-      Your waiter has been notified and will be with you shortly.
+      {t.feedback}
     </div>
 
     <main class="mx-auto max-w-2xl px-6 py-8">
@@ -103,13 +137,11 @@ for (const it of items) {
         })}
       </div>
 
-      <p class="mt-10 text-xs text-white/40 text-center">
-        Allergies? Ask our staff. Prices may vary during events.
-      </p>
+      <p class="mt-10 text-xs text-white/40 text-center">{t.allergies}</p>
 
       <!-- Google review -->
       <div class="mt-8 rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
-        <p class="text-sm text-white/60 mb-4">Enjoying your time at Sally's Bar?<br/>Leave us a review — it means a lot!</p>
+        <p class="text-sm text-white/60 mb-4">{t.reviewTitle}<br/>{t.reviewSub}</p>
         <a
           href="https://www.google.com/maps/place/Sally's+Bar/@38.0748829,18.5557617,8z/data=!4m8!3m7!1s0x13675f4867a5e573:0x842020188aa33527!8m2!3d38.0748829!4d20.7969726!9m1!1b1!16s%2Fg%2F11cnb3kb_m?entry=ttu&g_ep=EgoyMDI2MDMwMi4wIKXMDSoASAFQAw%3D%3D"
           target="_blank"
@@ -122,7 +154,7 @@ for (const it of items) {
             <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
             <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
           </svg>
-          Leave a Google review
+          {t.reviewBtn}
         </a>
       </div>
     </main>
@@ -135,14 +167,14 @@ for (const it of items) {
           data-reason="order"
           class="waiter-btn flex-1 rounded-2xl border border-white/20 bg-white/10 text-white font-semibold py-3.5 text-sm hover:bg-white/20 active:scale-95 transition"
         >
-          Call Waiter to Order
+          {t.orderBottom}
         </button>
         <button
           id="payBtnBottom"
           data-reason="pay"
           class="waiter-btn flex-1 rounded-2xl bg-white text-black font-semibold py-3.5 text-sm hover:bg-white/90 active:scale-95 transition"
         >
-          Call Waiter to Pay
+          {t.payBottom}
         </button>
       </div>
     </div>
@@ -152,14 +184,14 @@ for (const it of items) {
       <div id="payBackdrop" class="absolute inset-0 bg-black/60"></div>
       <div class="absolute bottom-0 inset-x-0 rounded-t-3xl border-t border-white/10 bg-[#16161f] px-6 pt-6 pb-10">
         <div class="mx-auto mb-6 h-1 w-10 rounded-full bg-white/20"></div>
-        <p class="text-center text-sm font-semibold mb-6">How would you like to pay?</p>
+        <p class="text-center text-sm font-semibold mb-6">{t.howToPay}</p>
         <div class="flex gap-3">
           <button id="payCard" class="flex-1 flex flex-col items-center gap-3 rounded-2xl border border-white/10 bg-white/5 py-6 text-sm font-semibold hover:bg-white/10 active:scale-95 transition">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
               <rect x="1" y="4" width="22" height="16" rx="2"/>
               <line x1="1" y1="10" x2="23" y2="10"/>
             </svg>
-            Card
+            {t.card}
           </button>
           <button id="payCash" class="flex-1 flex flex-col items-center gap-3 rounded-2xl border border-white/10 bg-white/5 py-6 text-sm font-semibold hover:bg-white/10 active:scale-95 transition">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -167,17 +199,16 @@ for (const it of items) {
               <circle cx="12" cy="12" r="3"/>
               <path d="M6 12h.01M18 12h.01"/>
             </svg>
-            Cash
+            {t.cash}
           </button>
         </div>
       </div>
     </div>
 
-    <script define:vars={{ tableNumber }}>
+    <script define:vars={{ tableNumber, token, labels: { order: { top: t.order, bottom: t.orderBottom }, pay: { top: t.pay, bottom: t.payBottom } }, notified: t.notified, calling: t.calling, tryAgain: t.tryAgain }}>
       const cooldowns = { order: false, pay: false };
 
-      // Pay sheet
-      const paySheet   = document.getElementById("paySheet");
+      const paySheet    = document.getElementById("paySheet");
       const payBackdrop = document.getElementById("payBackdrop");
 
       function openPaySheet() {
@@ -207,7 +238,7 @@ for (const it of items) {
         const feedback = document.getElementById("callFeedback");
 
         btns.forEach(b => {
-          b.textContent = "Calling…";
+          b.textContent = calling;
           b.setAttribute("disabled", "true");
           b.style.opacity = "0.6";
         });
@@ -216,19 +247,14 @@ for (const it of items) {
           await fetch("/api/call-waiter", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ table: tableNumber, reason, method }),
+            body: JSON.stringify({ table: tableNumber, reason, method, token }),
           });
 
           if (feedback) feedback.classList.remove("hidden");
-
-          btns.forEach(b => { b.textContent = "Notified ✓"; });
+          btns.forEach(b => { b.textContent = notified; });
 
           setTimeout(() => {
             cooldowns[reason] = false;
-            const labels = {
-              order: { top: "Order", bottom: "Call Waiter to Order" },
-              pay:   { top: "Pay",   bottom: "Call Waiter to Pay"  },
-            };
             btns.forEach(b => {
               b.textContent = b.id.includes("Bottom") ? labels[reason].bottom : labels[reason].top;
               b.removeAttribute("disabled");
@@ -239,14 +265,13 @@ for (const it of items) {
         } catch {
           cooldowns[reason] = false;
           btns.forEach(b => {
-            b.textContent = "Try again";
+            b.textContent = tryAgain;
             b.removeAttribute("disabled");
             b.style.opacity = "";
           });
         }
       }
 
-      // Order buttons call directly; Pay buttons open the sheet
       document.querySelectorAll(".waiter-btn[data-reason='order']").forEach(btn => {
         btn.addEventListener("click", () => callWaiter("order"));
       });
