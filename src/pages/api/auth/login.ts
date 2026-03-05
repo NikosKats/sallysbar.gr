@@ -6,13 +6,14 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const email = formData.get("email")?.toString() ?? "";
   const password = formData.get("password")?.toString() ?? "";
   const next = formData.get("next")?.toString() ?? "/dashboard";
+  const captchaToken = formData.get("captchaToken")?.toString() ?? undefined;
 
   if (!email || !password) {
     return redirect(`/login?error=invalid&next=${encodeURIComponent(next)}`);
   }
 
   const supabase = createSupabaseServerClient(request, cookies);
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { error } = await supabase.auth.signInWithPassword({ email, password, options: { captchaToken } });
 
   if (error) {
     let code = "generic";

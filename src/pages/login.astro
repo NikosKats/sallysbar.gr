@@ -6,6 +6,7 @@ const lang = getLangFromPath(url.pathname);
 const nextUrl = url.searchParams.get("next") ?? "/dashboard";
 const errorCode = url.searchParams.get("error");
 const errorDetail = url.searchParams.get("msg");
+const turnstileSitekey = import.meta.env.PUBLIC_TURNSTILE_SITEKEY ?? "";
 
 const isEl = lang === "el";
 const t = {
@@ -40,6 +41,7 @@ const registerHref = withLangPrefix(lang, "/register");
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{t.title} — Sally's Bar</title>
     <link rel="icon" href="/favicon/favicon.ico" />
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
     <style>
       *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
       body { background: #0b0b10; color: #fff; font-family: Inter, system-ui, sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 3rem 1rem; }
@@ -67,6 +69,7 @@ const registerHref = withLangPrefix(lang, "/register");
       .forgot-link { display: block; margin-top: .75rem; text-align: right; font-size: .75rem; color: rgba(255,255,255,.4); text-decoration: none; }
       .forgot-link:hover { color: rgba(255,255,255,.7); }
       .alert { border-radius: .75rem; padding: .75rem 1rem; font-size: .875rem; margin-bottom: 1rem; background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.2); color: #f87171; }
+      .cf-turnstile { margin-top: .25rem; }
     </style>
   </head>
   <body>
@@ -91,7 +94,15 @@ const registerHref = withLangPrefix(lang, "/register");
             <label for="password">{t.password}</label>
             <input id="password" name="password" type="password" required autocomplete="current-password" placeholder="••••••••" />
           </div>
-          <button type="submit" class="btn-primary">{t.submit}</button>
+          <input type="hidden" name="captchaToken" id="captchaTokenInput" />
+          <div
+            class="cf-turnstile"
+            data-sitekey={turnstileSitekey}
+            data-theme="dark"
+            data-callback="onTurnstileSuccess"
+            data-expired-callback="onTurnstileExpired"
+          ></div>
+          <button type="submit" id="loginSubmitBtn" class="btn-primary" disabled>{t.submit}</button>
           <a href={withLangPrefix(lang, "/forgot-password")} class="forgot-link">
             {isEl ? "Ξέχασες τον κωδικό;" : "Forgot password?"}
           </a>
@@ -125,6 +136,18 @@ const registerHref = withLangPrefix(lang, "/register");
         import.meta.env.PUBLIC_SUPABASE_URL,
         import.meta.env.PUBLIC_SUPABASE_ANON_KEY
       );
+
+      const loginSubmitBtn = document.getElementById("loginSubmitBtn") as HTMLButtonElement;
+      const captchaInput   = document.getElementById("captchaTokenInput") as HTMLInputElement;
+
+      (window as any).onTurnstileSuccess = (token: string) => {
+        captchaInput.value = token;
+        loginSubmitBtn.disabled = false;
+      };
+      (window as any).onTurnstileExpired = () => {
+        captchaInput.value = "";
+        loginSubmitBtn.disabled = true;
+      };
 
       document.getElementById("googleBtn")?.addEventListener("click", async () => {
         const next = new URLSearchParams(window.location.search).get("next") ?? "/dashboard";
