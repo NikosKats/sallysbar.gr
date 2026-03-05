@@ -31,14 +31,25 @@ async function makeToken(table) {
     .slice(0, 16);
 }
 
+import { writeFileSync } from "fs";
+import { resolve } from "path";
+
 console.log(`\nGenerating tokens for ${tableCount} tables...\n`);
 console.log("Table  URL");
 console.log("-----  " + "-".repeat(60));
 
+const lines = [];
+
 for (let t = 1; t <= tableCount; t++) {
   const tok = await makeToken(t);
-  console.log(`  ${String(t).padStart(2)}   ${baseUrl}/${t}?token=${tok}`);
+  const entry = `${baseUrl}/${t}?token=${tok}`;
+  console.log(`  ${String(t).padStart(2)}   ${entry}`);
+  lines.push(`Table ${t}: ${entry}`);
 }
 
-console.log("\nPrint each URL as a QR code and place it on the matching table.");
+const outPath = resolve("scripts/table-urls.txt");
+writeFileSync(outPath, lines.join("\n") + "\n", "utf8");
+
+console.log(`\nSaved to scripts/table-urls.txt`);
+console.log("Print each URL as a QR code and place it on the matching table.");
 console.log("Add TABLE_SECRET to your .env and Cloudflare environment variables.\n");
