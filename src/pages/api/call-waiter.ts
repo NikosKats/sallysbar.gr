@@ -1,25 +1,10 @@
 import type { APIRoute } from "astro";
 import { sendMessage } from "../../lib/telegram";
 import { supabaseAdmin } from "../../lib/supabase";
+import { verifyTableToken } from "../../lib/tableToken";
 
-const RATE_LIMIT     = 5;   // max calls per table
-const RATE_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
-
-async function makeToken(table: number): Promise<string> {
-  const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    "raw",
-    enc.encode(import.meta.env.TABLE_SECRET),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-  const sig = await crypto.subtle.sign("HMAC", key, enc.encode(String(table)));
-  return Array.from(new Uint8Array(sig))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("")
-    .slice(0, 16);
-}
+const RATE_LIMIT     = 5;
+const RATE_WINDOW_MS = 10 * 60 * 1000;
 
 export const POST: APIRoute = async ({ request }) => {
   let table: number | undefined;
@@ -40,12 +25,8 @@ export const POST: APIRoute = async ({ request }) => {
   }
 
   // Token validation
-  const secret = import.meta.env.TABLE_SECRET;
-  if (secret) {
-    const expected = await makeToken(table);
-    if (token !== expected) {
-      return json({ error: "Forbidden" }, 403);
-    }
+  if (!await verifyTableToken(table, token)) {
+    return json({ error: "Forbidden" }, 403);
   }
 
   // Rate limiting: max RATE_LIMIT calls per table per window

@@ -16,4 +16,5 @@ interface ImportMetaEnv {
   readonly TELEGRAM_BARMAN_CHAT_ID: string;
   readonly TELEGRAM_WAITER_CHAT_ID: string;
   readonly TABLE_SECRET: string;
+  readonly ANTHROPIC_API_KEY: string;
 }
