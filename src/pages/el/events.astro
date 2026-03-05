@@ -1,0 +1,56 @@
+---
+import "../../styles/global.css";
+import Header from "../../components/Header.astro";
+import Footer from "../../components/Footer.astro";
+import StickyCta from "../../components/StickyCta.astro";
+import { site } from "../../data/site";
+---
+
+<html lang="el">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Events — Sally's Bar</title>
+    <meta name="robots" content="noindex" />
+    <link rel="icon" href="/favicon/favicon.ico" />
+  </head>
+  <body class="min-h-screen bg-[#0b0b10] text-white font-body">
+    <Header />
+
+    <main class="mx-auto max-w-2xl px-6 py-32 text-center">
+      <div class="text-xs uppercase tracking-widest text-white/40 mb-4">Events</div>
+      <h1 class="text-4xl font-semibold mb-4">Events στο Sally's</h1>
+      <p class="text-white/60 mb-8">
+        Το ημερολόγιο events έρχεται σύντομα. Ακολούθησέ μας στο Instagram για τα τελευταία νέα.
+      </p>
+
+      <div class="flex flex-col sm:flex-row gap-3 justify-center">
+        <a
+          href={site.socials.instagram}
+          target="_blank"
+          class="rounded-2xl bg-white px-6 py-3 font-semibold text-black hover:bg-white/90 transition"
+        >
+          📸 Ακολούθησε στο Instagram
+        </a>
+        <a
+          href={site.socials.facebook}
+          target="_blank"
+          class="rounded-2xl border border-white/20 px-6 py-3 font-semibold hover:bg-white/10 transition"
+        >
+          👍 Ακολούθησε στο Facebook
+        </a>
+      </div>
+    </main>
+
+    <Footer />
+    <StickyCta
+      mapsUrl={site.mapsShareUrl}
+      phoneE164={site.phoneE164}
+      instagramUrl={site.socials.instagram}
+      facebookUrl={site.socials.facebook}
+      tripadvisorUrl={site.socials.tripadvisor}
+      googleUrl={site.socials.google}
+      isOpenNow={site.season.isOpenNow}
+    />
+  </body>
+</html>

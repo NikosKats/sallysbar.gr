@@ -42,8 +42,17 @@ season: {
   nav: {
     home: "Αρχική",
     menu: "Μενού",
+    book: "Κράτηση",
+    events: "Events",
     careers: "Θέσεις Εργασίας",
     visit: "Τοποθεσία",
+  },
+
+  auth: {
+    signIn: "Σύνδεση",
+    signOut: "Αποσύνδεση",
+    register: "Εγγραφή",
+    myBookings: "Οι Κρατήσεις μου",
   },
 sticky: {
   directions: "📍 Οδηγίες",

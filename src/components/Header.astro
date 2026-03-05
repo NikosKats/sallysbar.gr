@@ -13,16 +13,31 @@ const pathNoLang = url.pathname.startsWith("/el")
 const otherLang = lang === "en" ? "el" : "en";
 const switchHref = withLangPrefix(otherLang, pathNoLang);
 
+// Auth state from middleware
+const user = Astro.locals.user;
+const role = Astro.locals.role;
+
+const isEl = lang === "el";
+const loginLabel = isEl ? "Σύνδεση" : "Sign In";
+const logoutLabel = isEl ? "Αποσύνδεση" : "Sign Out";
+const bookLabel = isEl ? "Κράτηση" : "Book";
+const eventsLabel = isEl ? "Events" : "Events";
+const adminLabel = "Admin";
+const staffLabel = isEl ? "Παραγγελίες" : "Orders";
+
 // IMPORTANT: build links WITH language prefix
 const nav = [
   { label: t.nav.home, href: withLangPrefix(lang, "/") },
   { label: t.nav.menu, href: withLangPrefix(lang, "/menu") },
+  { label: bookLabel, href: withLangPrefix(lang, "/book") },
+  { label: eventsLabel, href: withLangPrefix(lang, "/events") },
   { label: t.nav.careers, href: withLangPrefix(lang, "/careers") },
-  { label: t.nav.visit, href: withLangPrefix(lang, "/") + "#visit" },
 ];
 
 const ctaHref = withLangPrefix(lang, "/menu");
 const brandHref = withLangPrefix(lang, "/");
+const loginHref = withLangPrefix(lang, "/login");
+const logoutHref = "/logout";
 
 // language button label
 const switchLabel = t.switchTo;
@@ -30,6 +45,11 @@ const switchLabel = t.switchTo;
 // aria labels
 const ariaSwitch = lang === "en" ? "Switch to Greek" : "Switch to English";
 const ariaOpenMenu = lang === "en" ? "Open menu" : "Άνοιγμα μενού";
+
+// User display name (first name only)
+const displayName = user?.user_metadata?.full_name?.split(" ")[0]
+  ?? user?.email?.split("@")[0]
+  ?? "";
 ---
 
 <header class="fixed top-0 inset-x-0 z-50">
@@ -56,9 +76,19 @@ const ariaOpenMenu = lang === "en" ? "Open menu" : "Άνοιγμα μενού";
               {i.label}
             </a>
           ))}
+          {role === "admin" && (
+            <a href="/admin/menu" class="text-amber-400/80 hover:text-amber-400 transition">
+              {adminLabel}
+            </a>
+          )}
+          {(role === "employee" || role === "admin") && (
+            <a href="/staff/orders" class="text-sky-400/80 hover:text-sky-400 transition">
+              {staffLabel}
+            </a>
+          )}
         </nav>
 
-        <!-- Desktop right actions (Switcher + CTA) -->
+        <!-- Desktop right actions -->
         <div class="hidden md:flex items-center gap-2">
           <a
             href={switchHref}
@@ -67,6 +97,28 @@ const ariaOpenMenu = lang === "en" ? "Open menu" : "Άνοιγμα μενού";
           >
             {switchLabel}
           </a>
+
+          {user ? (
+            <div class="flex items-center gap-2">
+              <a
+                href="/dashboard"
+                class="text-sm text-white/50 hover:text-white/80 transition"
+              >{displayName}</a>
+              <a
+                href={logoutHref}
+                class="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm text-white/90 hover:bg-white/10 transition"
+              >
+                {logoutLabel}
+              </a>
+            </div>
+          ) : (
+            <a
+              href={loginHref}
+              class="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm text-white/90 hover:bg-white/10 transition"
+            >
+              {loginLabel}
+            </a>
+          )}
 
           <a
             href={ctaHref}
@@ -111,6 +163,37 @@ const ariaOpenMenu = lang === "en" ? "Open menu" : "Άνοιγμα μενού";
               {i.label}
             </a>
           ))}
+
+          {role === "admin" && (
+            <a href="/admin/menu" class="rounded-xl border border-amber-400/20 bg-amber-400/5 px-4 py-3 text-amber-400/80 hover:bg-amber-400/10">
+              {adminLabel}
+            </a>
+          )}
+
+          {(role === "employee" || role === "admin") && (
+            <a href="/staff/orders" class="rounded-xl border border-sky-400/20 bg-sky-400/5 px-4 py-3 text-sky-400/80 hover:bg-sky-400/10">
+              {staffLabel}
+            </a>
+          )}
+
+          {user ? (
+            <>
+              <a href="/dashboard" class="px-4 text-xs text-white/40 hover:text-white/70 transition">{displayName}</a>
+              <a
+                href={logoutHref}
+                class="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white/90 hover:bg-white/10"
+              >
+                {logoutLabel}
+              </a>
+            </>
+          ) : (
+            <a
+              href={loginHref}
+              class="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white/90 hover:bg-white/10"
+            >
+              {loginLabel}
+            </a>
+          )}
 
           <a
             href={ctaHref}

@@ -43,8 +43,17 @@ season: {
   nav: {
     home: "Home",
     menu: "Menu",
+    book: "Book",
+    events: "Events",
     careers: "Careers",
     visit: "Visit",
+  },
+
+  auth: {
+    signIn: "Sign In",
+    signOut: "Sign Out",
+    register: "Register",
+    myBookings: "My Bookings",
   },
 
   sticky: {
