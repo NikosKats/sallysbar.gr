@@ -4,6 +4,7 @@ import { getLangFromPath, withLangPrefix } from "../i18n";
 const url = new URL(Astro.request.url);
 const lang = getLangFromPath(url.pathname);
 const redirectTo = withLangPrefix(lang, "/");
+const turnstileSitekey = import.meta.env.PUBLIC_TURNSTILE_SITEKEY ?? "";
 
 const isEl = lang === "el";
 const t = {
@@ -36,6 +37,7 @@ const loginHref = withLangPrefix(lang, "/login");
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{t.title} — Sally's Bar</title>
     <link rel="icon" href="/favicon/favicon.ico" />
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
     <style>
       *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
       body { background: #0b0b10; color: #fff; font-family: Inter, system-ui, sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 3rem 1rem; }
@@ -67,6 +69,7 @@ const loginHref = withLangPrefix(lang, "/login");
       .alert.error { background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.2); color: #f87171; }
       .alert.success { background: rgba(34,197,94,.1); border: 1px solid rgba(34,197,94,.2); color: #4ade80; }
       .alert.visible { display: block; }
+      .cf-turnstile { margin-top: .25rem; }
     </style>
   </head>
   <body>
@@ -106,7 +109,14 @@ const loginHref = withLangPrefix(lang, "/login");
             <input id="password" type="password" required minlength="6" autocomplete="new-password" placeholder="••••••••" />
             <p class="hint">{t.passwordHint}</p>
           </div>
-          <button type="submit" id="submitBtn" class="btn-primary">{t.submit}</button>
+          <div
+            class="cf-turnstile"
+            data-sitekey={turnstileSitekey}
+            data-theme="dark"
+            data-callback="onTurnstileSuccess"
+            data-expired-callback="onTurnstileExpired"
+          ></div>
+          <button type="submit" id="submitBtn" class="btn-primary" disabled>{t.submit}</button>
         </form>
 
         <div class="divider">
@@ -153,6 +163,18 @@ const loginHref = withLangPrefix(lang, "/login");
       const errorEl    = document.getElementById("errorMsg")     as HTMLElement;
       const successEl  = document.getElementById("successMsg")   as HTMLElement;
 
+      // Turnstile token — set by Cloudflare widget callbacks
+      let captchaToken = "";
+
+      (window as any).onTurnstileSuccess = (token: string) => {
+        captchaToken = token;
+        submitBtn.disabled = false;
+      };
+      (window as any).onTurnstileExpired = () => {
+        captchaToken = "";
+        submitBtn.disabled = true;
+      };
+
       function showError(msg: string) {
         errorEl.textContent = msg;
         errorEl.classList.add("visible");
@@ -186,12 +208,15 @@ const loginHref = withLangPrefix(lang, "/login");
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
-          options: { data: { full_name: name } },
+          options: { data: { full_name: name }, captchaToken },
         });
 
         if (error) {
           showError(error.message?.includes("already registered") ? errorExists : errorGeneric);
-          submitBtn.disabled = false;
+          // Reset Turnstile so user can try again
+          (window as any).turnstile?.reset();
+          captchaToken = "";
+          submitBtn.disabled = true;
           submitBtn.textContent = labelSubmit;
           return;
         }
@@ -205,7 +230,9 @@ const loginHref = withLangPrefix(lang, "/login");
         // Email confirmation required
         showSuccess(successConfirm);
         form.reset();
-        submitBtn.disabled = false;
+        (window as any).turnstile?.reset();
+        captchaToken = "";
+        submitBtn.disabled = true;
         submitBtn.textContent = labelSubmit;
       });
 

@@ -16,12 +16,15 @@ const t = {
   register:     isEl ? "Εγγραφή"                           : "Register",
   orDivider:    isEl ? "ή"                                  : "or",
   google:       isEl ? "Συνέχεια με Google"                 : "Continue with Google",
-  errorInvalid: isEl ? "Λάθος email ή κωδικός."            : "Invalid email or password.",
-  errorGeneric: isEl ? "Κάτι πήγε στραβά. Δοκίμασε ξανά." : "Something went wrong. Try again.",
+  errorInvalid:      isEl ? "Λάθος email ή κωδικός."                              : "Invalid email or password.",
+  errorGeneric:      isEl ? "Κάτι πήγε στραβά. Δοκίμασε ξανά."                   : "Something went wrong. Try again.",
+  errorUnconfirmed:  isEl ? "Επιβεβαίωσε πρώτα το email σου."                     : "Please confirm your email before signing in.",
 };
 
 const errorMsg = errorCode === "invalid"
   ? t.errorInvalid
+  : errorCode === "unconfirmed"
+  ? t.errorUnconfirmed
   : errorCode === "generic"
   ? t.errorGeneric
   : null;

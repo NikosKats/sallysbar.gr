@@ -15,7 +15,9 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
-    const code = error.status === 400 ? "invalid" : "generic";
+    let code = "generic";
+    if (error.status === 400) code = "invalid";
+    else if (error.message?.toLowerCase().includes("email not confirmed")) code = "unconfirmed";
     return redirect(`/login?error=${code}&next=${encodeURIComponent(next)}`);
   }
 
