@@ -127,6 +127,23 @@ sticky: {
 
   admin: {
     nav: { overview: "Επισκόπηση", users: "Χρήστες", editMenu: "Επεξεργασία Μενού", newOrder: "Νέα Παραγγελία" },
+    menu: {
+      categories: "Κατηγορίες", newCat: "+ Νέα", sortLabel: "σειρά",
+      visible: "ορατό", hidden: "κρυφό", edit: "Επεξ.", del: "Διαγρ.",
+      items: "Προϊόντα", allCategories: "Όλες οι κατηγορίες", newItem: "+ Νέο Προϊόν",
+      nameCol: "Όνομα (EN / EL)", catCol: "Κατηγορία", priceCol: "Τιμή",
+      sortCol: "Σειρά", visibleCol: "Ορατό", yes: "Ναι", no: "Όχι",
+      newCategory: "Νέα Κατηγορία", editCategory: "Επεξεργασία Κατηγορίας",
+      newItemModal: "Νέο Προϊόν", editItemModal: "Επεξεργασία Προϊόντος",
+      confirmDelete: "Επιβεβαίωση Διαγραφής",
+      catUpdated: "Η κατηγορία ενημερώθηκε.", catCreated: "Η κατηγορία δημιουργήθηκε.", catDeleted: "Η κατηγορία διαγράφηκε.",
+      itemUpdated: "Το προϊόν ενημερώθηκε.", itemCreated: "Το προϊόν δημιουργήθηκε.", itemDeleted: "Το προϊόν διαγράφηκε.",
+      nameSlugRequired: "Το όνομα και το slug είναι υποχρεωτικά.",
+      fieldsRequired: "Όνομα, slug, κατηγορία και τιμή είναι υποχρεωτικά.",
+      catDeleteWarning: "Τα προϊόντα αυτής της κατηγορίας θα διαγραφούν επίσης.",
+      itemDeleteWarning: "Αυτή η ενέργεια δεν μπορεί να αναιρεθεί.",
+      saving: "Αποθήκευση…", save: "Αποθήκευση", cancel: "Ακύρωση", delete: "Διαγραφή",
+    },
     today: "Σήμερα",
     business: "Επιχείρηση",
     totalOrders: "Σύνολο παραγγελιών",

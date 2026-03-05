@@ -129,6 +129,23 @@ season: {
 
   admin: {
     nav: { overview: "Overview", users: "Users", editMenu: "Edit Menu", newOrder: "New Order" },
+    menu: {
+      categories: "Categories", newCat: "+ New", sortLabel: "sort",
+      visible: "visible", hidden: "hidden", edit: "Edit", del: "Del",
+      items: "Items", allCategories: "All categories", newItem: "+ New Item",
+      nameCol: "Name (EN / EL)", catCol: "Category", priceCol: "Price",
+      sortCol: "Sort", visibleCol: "Visible", yes: "Yes", no: "No",
+      newCategory: "New Category", editCategory: "Edit Category",
+      newItemModal: "New Item", editItemModal: "Edit Item",
+      confirmDelete: "Confirm Delete",
+      catUpdated: "Category updated.", catCreated: "Category created.", catDeleted: "Category deleted.",
+      itemUpdated: "Item updated.", itemCreated: "Item created.", itemDeleted: "Item deleted.",
+      nameSlugRequired: "Name and slug are required.",
+      fieldsRequired: "Name, slug, category, and price are required.",
+      catDeleteWarning: "Items in this category will also be removed.",
+      itemDeleteWarning: "This cannot be undone.",
+      saving: "Saving…", save: "Save", cancel: "Cancel", delete: "Delete",
+    },
     today: "Today",
     business: "Business",
     totalOrders: "Total orders",

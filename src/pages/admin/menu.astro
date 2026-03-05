@@ -74,8 +74,8 @@ const { categories, items } = await getMenuAdmin();
       <!-- Categories sidebar -->
       <aside class="rounded-2xl border border-white/10 bg-white/5 p-4 self-start">
         <div class="flex items-center justify-between mb-4">
-          <h2 class="font-semibold text-sm uppercase tracking-widest text-white/50">Categories</h2>
-          <button id="newCatBtn" class="rounded-xl bg-white px-3 py-1.5 text-sm font-semibold text-black hover:bg-white/90 transition">+ New</button>
+          <h2 class="font-semibold text-sm uppercase tracking-widest text-white/50">{t.admin.menu.categories}</h2>
+          <button id="newCatBtn" class="rounded-xl bg-white px-3 py-1.5 text-sm font-semibold text-black hover:bg-white/90 transition">{t.admin.menu.newCat}</button>
         </div>
         <ul id="catList" class="space-y-2">
           {categories.map((c) => (
@@ -85,12 +85,12 @@ const { categories, items } = await getMenuAdmin();
                   <div class="font-medium text-sm truncate">{c.title_en}</div>
                   <div class="text-xs text-white/40 truncate">{c.title_el}</div>
                   <div class="text-xs text-white/30 mt-0.5">
-                    sort {c.sort} · {c.is_visible ? "visible" : <span class="text-amber-400/70">hidden</span>}
+                    {t.admin.menu.sortLabel} {c.sort} · {c.is_visible ? t.admin.menu.visible : <span class="text-amber-400/70">{t.admin.menu.hidden}</span>}
                   </div>
                 </div>
                 <div class="flex items-center gap-1 shrink-0">
-                  <button class="edit-cat rounded-lg border border-white/10 px-2 py-1 text-xs hover:bg-white/10 transition">Edit</button>
-                  <button class="del-cat rounded-lg border border-red-400/20 px-2 py-1 text-xs text-red-400/70 hover:bg-red-400/10 transition">Del</button>
+                  <button class="edit-cat rounded-lg border border-white/10 px-2 py-1 text-xs hover:bg-white/10 transition">{t.admin.menu.edit}</button>
+                  <button class="del-cat rounded-lg border border-red-400/20 px-2 py-1 text-xs text-red-400/70 hover:bg-red-400/10 transition">{t.admin.menu.del}</button>
                 </div>
               </div>
             </li>
@@ -101,13 +101,13 @@ const { categories, items } = await getMenuAdmin();
       <!-- Items section -->
       <section class="rounded-2xl border border-white/10 bg-white/5 p-4">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
-          <h2 class="font-semibold text-sm uppercase tracking-widest text-white/50">Items</h2>
+          <h2 class="font-semibold text-sm uppercase tracking-widest text-white/50">{t.admin.menu.items}</h2>
           <div class="flex flex-wrap gap-2">
             <select id="catFilter" class="rounded-xl border border-white/10 bg-black/30 px-3 py-1.5 text-sm text-white/80 outline-none">
-              <option value="">All categories</option>
+              <option value="">{t.admin.menu.allCategories}</option>
               {categories.map((c) => <option value={c.id}>{c.title_en}</option>)}
             </select>
-            <button id="newItemBtn" class="rounded-xl bg-white px-3 py-1.5 text-sm font-semibold text-black hover:bg-white/90 transition">+ New Item</button>
+            <button id="newItemBtn" class="rounded-xl bg-white px-3 py-1.5 text-sm font-semibold text-black hover:bg-white/90 transition">{t.admin.menu.newItem}</button>
           </div>
         </div>
 
@@ -115,12 +115,12 @@ const { categories, items } = await getMenuAdmin();
           <table class="w-full text-sm">
             <thead>
               <tr class="border-b border-white/10 bg-black/30">
-                <th class="px-3 py-2.5 text-left text-xs font-semibold text-white/40 uppercase tracking-wider">Name (EN / EL)</th>
-                <th class="px-3 py-2.5 text-left text-xs font-semibold text-white/40 uppercase tracking-wider">Category</th>
-                <th class="px-3 py-2.5 text-left text-xs font-semibold text-white/40 uppercase tracking-wider">Price</th>
-                <th class="px-3 py-2.5 text-left text-xs font-semibold text-white/40 uppercase tracking-wider">Sort</th>
-                <th class="px-3 py-2.5 text-left text-xs font-semibold text-white/40 uppercase tracking-wider">Visible</th>
-                <th class="px-3 py-2.5 text-right text-xs font-semibold text-white/40 uppercase tracking-wider">Actions</th>
+                <th class="px-3 py-2.5 text-left text-xs font-semibold text-white/40 uppercase tracking-wider">{t.admin.menu.nameCol}</th>
+                <th class="px-3 py-2.5 text-left text-xs font-semibold text-white/40 uppercase tracking-wider">{t.admin.menu.catCol}</th>
+                <th class="px-3 py-2.5 text-left text-xs font-semibold text-white/40 uppercase tracking-wider">{t.admin.menu.priceCol}</th>
+                <th class="px-3 py-2.5 text-left text-xs font-semibold text-white/40 uppercase tracking-wider">{t.admin.menu.sortCol}</th>
+                <th class="px-3 py-2.5 text-left text-xs font-semibold text-white/40 uppercase tracking-wider">{t.admin.menu.visibleCol}</th>
+                <th class="px-3 py-2.5 text-right text-xs font-semibold text-white/40 uppercase tracking-wider">{t.admin.menu.actions ?? t.admin.actions}</th>
               </tr>
             </thead>
             <tbody id="itemsBody" class="divide-y divide-white/5">
@@ -137,14 +137,14 @@ const { categories, items } = await getMenuAdmin();
                     <td class="px-3 py-2.5 text-white/40 text-xs">{it.sort}</td>
                     <td class="px-3 py-2.5">
                       {it.is_visible
-                        ? <span class="inline-flex items-center gap-1 text-xs text-green-400"><span class="w-1.5 h-1.5 rounded-full bg-green-400 inline-block"></span>Yes</span>
-                        : <span class="inline-flex items-center gap-1 text-xs text-white/30"><span class="w-1.5 h-1.5 rounded-full bg-white/20 inline-block"></span>No</span>
+                        ? <span class="inline-flex items-center gap-1 text-xs text-green-400"><span class="w-1.5 h-1.5 rounded-full bg-green-400 inline-block"></span>{t.admin.menu.yes}</span>
+                        : <span class="inline-flex items-center gap-1 text-xs text-white/30"><span class="w-1.5 h-1.5 rounded-full bg-white/20 inline-block"></span>{t.admin.menu.no}</span>
                       }
                     </td>
                     <td class="px-3 py-2.5 text-right">
                       <div class="inline-flex gap-1.5">
-                        <button class="edit-item rounded-lg border border-white/10 px-2.5 py-1 text-xs hover:bg-white/10 transition">Edit</button>
-                        <button class="del-item rounded-lg border border-red-400/20 px-2.5 py-1 text-xs text-red-400/70 hover:bg-red-400/10 transition">Del</button>
+                        <button class="edit-item rounded-lg border border-white/10 px-2.5 py-1 text-xs hover:bg-white/10 transition">{t.admin.menu.edit}</button>
+                        <button class="del-item rounded-lg border border-red-400/20 px-2.5 py-1 text-xs text-red-400/70 hover:bg-red-400/10 transition">{t.admin.menu.del}</button>
                       </div>
                     </td>
                   </tr>
@@ -159,7 +159,7 @@ const { categories, items } = await getMenuAdmin();
     <!-- Category modal -->
     <dialog id="catModal">
       <div class="modal-header">
-        <h3 id="catModalTitle" class="font-semibold">New Category</h3>
+        <h3 id="catModalTitle" class="font-semibold">{t.admin.menu.newCategory}</h3>
         <button class="close-btn" data-close="catModal">✕</button>
       </div>
       <div class="modal-body">
@@ -192,15 +192,15 @@ const { categories, items } = await getMenuAdmin();
         </div>
       </div>
       <div class="modal-footer">
-        <button class="btn-ghost" data-close="catModal">Cancel</button>
-        <button class="btn-primary" id="catSaveBtn">Save</button>
+        <button class="btn-ghost" data-close="catModal">{t.admin.menu.cancel}</button>
+        <button class="btn-primary" id="catSaveBtn">{t.admin.menu.save}</button>
       </div>
     </dialog>
 
     <!-- Item modal -->
     <dialog id="itemModal">
       <div class="modal-header">
-        <h3 id="itemModalTitle" class="font-semibold">New Item</h3>
+        <h3 id="itemModalTitle" class="font-semibold">{t.admin.menu.newItemModal}</h3>
         <button class="close-btn" data-close="itemModal">✕</button>
       </div>
       <div class="modal-body">
@@ -255,35 +255,36 @@ const { categories, items } = await getMenuAdmin();
         </div>
       </div>
       <div class="modal-footer">
-        <button class="btn-ghost" data-close="itemModal">Cancel</button>
-        <button class="btn-primary" id="itemSaveBtn">Save</button>
+        <button class="btn-ghost" data-close="itemModal">{t.admin.menu.cancel}</button>
+        <button class="btn-primary" id="itemSaveBtn">{t.admin.menu.save}</button>
       </div>
     </dialog>
 
     <!-- Delete confirm modal -->
     <dialog id="deleteModal">
       <div class="modal-header">
-        <h3 class="font-semibold">Confirm Delete</h3>
+        <h3 class="font-semibold">{t.admin.menu.confirmDelete}</h3>
         <button class="close-btn" data-close="deleteModal">✕</button>
       </div>
       <div class="modal-body">
         <p id="deleteMsg" class="text-white/70 text-sm leading-relaxed"></p>
       </div>
       <div class="modal-footer">
-        <button class="btn-ghost" data-close="deleteModal">Cancel</button>
-        <button class="btn-danger" id="confirmDeleteBtn">Delete</button>
+        <button class="btn-ghost" data-close="deleteModal">{t.admin.menu.cancel}</button>
+        <button class="btn-danger" id="confirmDeleteBtn">{t.admin.menu.delete}</button>
       </div>
     </dialog>
 
     <div id="toast"></div>
 
     <!-- Seed data for JS -->
-    <script id="seedData" type="application/json" set:html={JSON.stringify({ categories, items })}></script>
+    <script id="seedData" type="application/json" set:html={JSON.stringify({ categories, items, i18n: t.admin.menu })}></script>
 
     <script>
       const seed = JSON.parse(document.getElementById("seedData")!.textContent!);
       let cats: any[]  = seed.categories;
       let items: any[] = seed.items;
+      const i18n: any  = seed.i18n;
 
       // ── Utilities ───────────────────────────────────────
       function slugify(s: string) {
@@ -334,11 +335,11 @@ const { categories, items } = await getMenuAdmin();
               <div class="min-w-0 flex-1">
                 <div class="font-medium text-sm truncate">${esc(c.title_en)}</div>
                 <div class="text-xs text-white/40 truncate">${esc(c.title_el)}</div>
-                <div class="text-xs text-white/30 mt-0.5">sort ${c.sort} · ${c.is_visible ? "visible" : '<span class="text-amber-400/70">hidden</span>'}</div>
+                <div class="text-xs text-white/30 mt-0.5">${i18n.sortLabel} ${c.sort} · ${c.is_visible ? i18n.visible : `<span class="text-amber-400/70">${i18n.hidden}</span>`}</div>
               </div>
               <div class="flex items-center gap-1 shrink-0">
-                <button class="edit-cat rounded-lg border border-white/10 px-2 py-1 text-xs hover:bg-white/10 transition">Edit</button>
-                <button class="del-cat rounded-lg border border-red-400/20 px-2 py-1 text-xs text-red-400/70 hover:bg-red-400/10 transition">Del</button>
+                <button class="edit-cat rounded-lg border border-white/10 px-2 py-1 text-xs hover:bg-white/10 transition">${i18n.edit}</button>
+                <button class="del-cat rounded-lg border border-red-400/20 px-2 py-1 text-xs text-red-400/70 hover:bg-red-400/10 transition">${i18n.del}</button>
               </div>
             </div>
           </li>`).join("");
@@ -350,8 +351,8 @@ const { categories, items } = await getMenuAdmin();
         document.getElementById("itemsBody")!.innerHTML = items.map(it => {
           const cat = cats.find(c => c.id === it.category_id);
           const vis = it.is_visible
-            ? `<span class="inline-flex items-center gap-1 text-xs text-green-400"><span class="w-1.5 h-1.5 rounded-full bg-green-400 inline-block"></span>Yes</span>`
-            : `<span class="inline-flex items-center gap-1 text-xs text-white/30"><span class="w-1.5 h-1.5 rounded-full bg-white/20 inline-block"></span>No</span>`;
+            ? `<span class="inline-flex items-center gap-1 text-xs text-green-400"><span class="w-1.5 h-1.5 rounded-full bg-green-400 inline-block"></span>${i18n.yes}</span>`
+            : `<span class="inline-flex items-center gap-1 text-xs text-white/30"><span class="w-1.5 h-1.5 rounded-full bg-white/20 inline-block"></span>${i18n.no}</span>`;
           return `
             <tr class="item-row hover:bg-white/[0.02] transition" data-id="${it.id}" data-cat="${it.category_id}">
               <td class="px-3 py-2.5"><div class="font-medium">${esc(it.name_en)}</div><div class="text-xs text-white/40">${esc(it.name_el)}</div></td>
@@ -361,8 +362,8 @@ const { categories, items } = await getMenuAdmin();
               <td class="px-3 py-2.5">${vis}</td>
               <td class="px-3 py-2.5 text-right">
                 <div class="inline-flex gap-1.5">
-                  <button class="edit-item rounded-lg border border-white/10 px-2.5 py-1 text-xs hover:bg-white/10 transition">Edit</button>
-                  <button class="del-item rounded-lg border border-red-400/20 px-2.5 py-1 text-xs text-red-400/70 hover:bg-red-400/10 transition">Del</button>
+                  <button class="edit-item rounded-lg border border-white/10 px-2.5 py-1 text-xs hover:bg-white/10 transition">${i18n.edit}</button>
+                  <button class="del-item rounded-lg border border-red-400/20 px-2.5 py-1 text-xs text-red-400/70 hover:bg-red-400/10 transition">${i18n.del}</button>
                 </div>
               </td>
             </tr>`;
@@ -381,7 +382,7 @@ const { categories, items } = await getMenuAdmin();
         // update category filter
         const filter = document.getElementById("catFilter") as HTMLSelectElement;
         const curFilter = filter.value;
-        filter.innerHTML = `<option value="">All categories</option>` +
+        filter.innerHTML = `<option value="">${i18n.allCategories}</option>` +
           cats.map(c => `<option value="${c.id}"${String(c.id) === curFilter ? " selected" : ""}>${esc(c.title_en)}</option>`).join("");
 
         // update item modal select
@@ -395,7 +396,7 @@ const { categories, items } = await getMenuAdmin();
       // ── Category CRUD ───────────────────────────────────
       function openCatModal(c?: any) {
         const isEdit = !!c;
-        document.getElementById("catModalTitle")!.textContent = isEdit ? "Edit Category" : "New Category";
+        document.getElementById("catModalTitle")!.textContent = isEdit ? i18n.editCategory : i18n.newCategory;
         (document.getElementById("catId")    as HTMLInputElement).value  = c?.id ?? "";
         (document.getElementById("catTitleEn") as HTMLInputElement).value = c?.title_en ?? "";
         (document.getElementById("catTitleEl") as HTMLInputElement).value = c?.title_el ?? "";
@@ -419,16 +420,16 @@ const { categories, items } = await getMenuAdmin();
         const sort     = Number((document.getElementById("catSort") as HTMLInputElement).value) || 0;
         const visible  = (document.getElementById("catVisible") as HTMLInputElement).checked;
 
-        if (!title_en || !slug) { toast("Name and slug are required.", "error"); return; }
+        if (!title_en || !slug) { toast(i18n.nameSlugRequired, "error"); return; }
 
         const btn = document.getElementById("catSaveBtn") as HTMLButtonElement;
-        btn.disabled = true; btn.textContent = "Saving…";
+        btn.disabled = true; btn.textContent = i18n.saving;
 
         const body: any = { title_en, title_el: title_el || title_en, slug, sort, is_visible: visible };
         if (id) body.id = id;
 
         const res = await api("/api/admin/menu/categories", id ? "PUT" : "POST", body);
-        btn.disabled = false; btn.textContent = "Save";
+        btn.disabled = false; btn.textContent = i18n.save;
 
         if (res.error) { toast(res.error, "error"); return; }
 
@@ -441,7 +442,7 @@ const { categories, items } = await getMenuAdmin();
 
         renderCats();
         closeModal("catModal");
-        toast(id ? "Category updated." : "Category created.");
+        toast(id ? i18n.catUpdated : i18n.catCreated);
       });
 
       function bindCatEvents() {
@@ -457,7 +458,7 @@ const { categories, items } = await getMenuAdmin();
             const cat = cats.find(c => String(c.id) === id);
             if (!cat) return;
             document.getElementById("deleteMsg")!.textContent =
-              `Delete category "${cat.title_en}"? Items in this category will also be removed.`;
+              `${i18n.delete} "${cat.title_en}"? ${i18n.catDeleteWarning}`;
             pendingDelete = async () => {
               const res = await api("/api/admin/menu/categories", "DELETE", { id: cat.id });
               if (res.error) { toast(res.error, "error"); return; }
@@ -465,7 +466,7 @@ const { categories, items } = await getMenuAdmin();
               items = items.filter(i => i.category_id !== cat.id);
               renderCats(); renderItems();
               closeModal("deleteModal");
-              toast("Category deleted.");
+              toast(i18n.catDeleted);
             };
             openModal("deleteModal");
           });
@@ -475,7 +476,7 @@ const { categories, items } = await getMenuAdmin();
       // ── Item CRUD ───────────────────────────────────────
       function openItemModal(it?: any) {
         const isEdit = !!it;
-        document.getElementById("itemModalTitle")!.textContent = isEdit ? "Edit Item" : "New Item";
+        document.getElementById("itemModalTitle")!.textContent = isEdit ? i18n.editItemModal : i18n.newItemModal;
         (document.getElementById("itemId")     as HTMLInputElement).value    = it?.id ?? "";
         (document.getElementById("itemCatId")  as HTMLSelectElement).value   = it?.category_id ?? cats[0]?.id ?? "";
         (document.getElementById("itemNameEn") as HTMLInputElement).value    = it?.name_en ?? "";
@@ -510,7 +511,7 @@ const { categories, items } = await getMenuAdmin();
         const visible     = (document.getElementById("itemVisible") as HTMLInputElement).checked;
 
         if (!name_en || !slug || !category_id || isNaN(priceEuros)) {
-          toast("Name, slug, category, and price are required.", "error");
+          toast(i18n.fieldsRequired, "error");
           return;
         }
 
@@ -526,10 +527,10 @@ const { categories, items } = await getMenuAdmin();
         if (id) body.id = id;
 
         const btn = document.getElementById("itemSaveBtn") as HTMLButtonElement;
-        btn.disabled = true; btn.textContent = "Saving…";
+        btn.disabled = true; btn.textContent = i18n.saving;
 
         const res = await api("/api/admin/menu/items", id ? "PUT" : "POST", body);
-        btn.disabled = false; btn.textContent = "Save";
+        btn.disabled = false; btn.textContent = i18n.save;
 
         if (res.error) { toast(res.error, "error"); return; }
 
@@ -542,7 +543,7 @@ const { categories, items } = await getMenuAdmin();
 
         renderItems();
         closeModal("itemModal");
-        toast(id ? "Item updated." : "Item created.");
+        toast(id ? i18n.itemUpdated : i18n.itemCreated);
       });
 
       function bindItemEvents() {
@@ -557,14 +558,14 @@ const { categories, items } = await getMenuAdmin();
             const id = (btn.closest("[data-id]") as HTMLElement).dataset.id;
             const item = items.find(i => String(i.id) === id);
             if (!item) return;
-            document.getElementById("deleteMsg")!.textContent = `Delete "${item.name_en}"? This cannot be undone.`;
+            document.getElementById("deleteMsg")!.textContent = `${i18n.delete} "${item.name_en}"? ${i18n.itemDeleteWarning}`;
             pendingDelete = async () => {
               const res = await api("/api/admin/menu/items", "DELETE", { id: item.id });
               if (res.error) { toast(res.error, "error"); return; }
               items = items.filter(i => i.id !== item.id);
               renderItems();
               closeModal("deleteModal");
-              toast("Item deleted.");
+              toast(i18n.itemDeleted);
             };
             openModal("deleteModal");
           });
