@@ -242,61 +242,61 @@ function fmtDate(d: string) {
     <div id="toast"></div>
 
     <script define:vars={{ tSave: t.admin.saveChanges, tSaving: t.admin.saving, tDelete: t.admin.delete, tDeleting: t.admin.deleting }}>
-      const ROLE_COLORS: Record<string, string> = {
+      const ROLE_COLORS = {
         admin:    "bg-amber-400/10 text-amber-400 border border-amber-400/20",
         employee: "bg-sky-400/10 text-sky-400 border border-sky-400/20",
         customer: "bg-white/5 text-white/40 border border-white/10",
       };
 
-      const editModal   = document.getElementById("editModal")   as HTMLDialogElement;
-      const deleteModal = document.getElementById("deleteModal") as HTMLDialogElement;
-      const toast       = document.getElementById("toast")!;
+      const editModal   = document.getElementById("editModal");
+      const deleteModal = document.getElementById("deleteModal");
+      const toast       = document.getElementById("toast");
 
-      let activeRow: HTMLTableRowElement | null = null;
+      let activeRow = null;
       let deleteId = "";
 
-      function showToast(msg: string, type: "ok" | "err") {
+      function showToast(msg, type) {
         toast.textContent = msg;
         toast.className = `show ${type}`;
         setTimeout(() => toast.classList.remove("show"), 3000);
       }
 
       // Wire edit buttons
-      document.getElementById("userTable")!.addEventListener("click", (e) => {
-        const btn = (e.target as HTMLElement).closest("button");
+      document.getElementById("userTable").addEventListener("click", (e) => {
+        const btn = e.target.closest("button");
         if (!btn) return;
-        const row = btn.closest("tr") as HTMLTableRowElement;
+        const row = btn.closest("tr");
 
         if (btn.classList.contains("edit-btn")) {
           activeRow = row;
-          (document.getElementById("editName")  as HTMLInputElement).value  = row.dataset.name  ?? "";
-          (document.getElementById("editEmail") as HTMLInputElement).value  = row.dataset.email ?? "";
-          (document.getElementById("editRole")  as HTMLSelectElement).value = row.dataset.role  ?? "customer";
+          document.getElementById("editName").value  = row.dataset.name  ?? "";
+          document.getElementById("editEmail").value = row.dataset.email ?? "";
+          document.getElementById("editRole").value  = row.dataset.role  ?? "customer";
           editModal.showModal();
         }
 
         if (btn.classList.contains("delete-btn")) {
-          deleteId = row.dataset.id!;
+          deleteId = row.dataset.id;
           const label = row.dataset.email ?? row.dataset.name ?? deleteId;
-          document.getElementById("deleteUserLabel")!.textContent = label;
+          document.getElementById("deleteUserLabel").textContent = label;
           deleteModal.showModal();
         }
       });
 
-      document.getElementById("editCancel")!.addEventListener("click", () => editModal.close());
-      document.getElementById("deleteCancel")!.addEventListener("click", () => deleteModal.close());
+      document.getElementById("editCancel").addEventListener("click", () => editModal.close());
+      document.getElementById("deleteCancel").addEventListener("click", () => deleteModal.close());
 
       // Save edit
-      document.getElementById("editSave")!.addEventListener("click", async () => {
+      document.getElementById("editSave").addEventListener("click", async () => {
         if (!activeRow) return;
-        const saveBtn = document.getElementById("editSave") as HTMLButtonElement;
+        const saveBtn = document.getElementById("editSave");
         saveBtn.disabled = true;
         saveBtn.textContent = tSaving;
 
-        const id    = activeRow.dataset.id!;
-        const name  = (document.getElementById("editName")  as HTMLInputElement).value.trim();
-        const email = (document.getElementById("editEmail") as HTMLInputElement).value.trim();
-        const role  = (document.getElementById("editRole")  as HTMLSelectElement).value;
+        const id    = activeRow.dataset.id;
+        const name  = document.getElementById("editName").value.trim();
+        const email = document.getElementById("editEmail").value.trim();
+        const role  = document.getElementById("editRole").value;
 
         const res = await fetch("/api/admin/users", {
           method: "PUT",
@@ -305,14 +305,12 @@ function fmtDate(d: string) {
         });
 
         if (res.ok) {
-          // Update row data attributes
           activeRow.dataset.name  = name;
           activeRow.dataset.email = email;
           activeRow.dataset.role  = role;
-          // Update visible cells
-          activeRow.querySelector("[data-col=name]")!.textContent  = name || "—";
-          activeRow.querySelector("[data-col=email]")!.textContent = email;
-          const roleCell = activeRow.querySelector("[data-col=role]")!;
+          activeRow.querySelector("[data-col=name]").textContent  = name || "—";
+          activeRow.querySelector("[data-col=email]").textContent = email;
+          const roleCell = activeRow.querySelector("[data-col=role]");
           roleCell.innerHTML = `<span class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold ${ROLE_COLORS[role] ?? ""}">${role}</span>`;
           editModal.close();
           showToast("User updated.", "ok");
@@ -326,8 +324,8 @@ function fmtDate(d: string) {
       });
 
       // Confirm delete
-      document.getElementById("deleteConfirm")!.addEventListener("click", async () => {
-        const confirmBtn = document.getElementById("deleteConfirm") as HTMLButtonElement;
+      document.getElementById("deleteConfirm").addEventListener("click", async () => {
+        const confirmBtn = document.getElementById("deleteConfirm");
         confirmBtn.disabled = true;
         confirmBtn.textContent = tDeleting;
 
