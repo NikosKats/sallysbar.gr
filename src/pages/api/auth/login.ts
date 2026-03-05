@@ -18,7 +18,8 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
     let code = "generic";
     if (error.status === 400) code = "invalid";
     else if (error.message?.toLowerCase().includes("email not confirmed")) code = "unconfirmed";
-    return redirect(`/login?error=${code}&next=${encodeURIComponent(next)}`);
+    const msg = encodeURIComponent(error.message ?? "unknown");
+    return redirect(`/login?error=${code}&msg=${msg}&next=${encodeURIComponent(next)}`);
   }
 
   return redirect(next);

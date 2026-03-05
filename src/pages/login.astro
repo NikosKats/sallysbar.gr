@@ -5,6 +5,7 @@ const url = new URL(Astro.request.url);
 const lang = getLangFromPath(url.pathname);
 const nextUrl = url.searchParams.get("next") ?? "/dashboard";
 const errorCode = url.searchParams.get("error");
+const errorDetail = url.searchParams.get("msg");
 
 const isEl = lang === "el";
 const t = {
@@ -78,7 +79,7 @@ const registerHref = withLangPrefix(lang, "/register");
       <div class="box">
         <h1>{t.title}</h1>
 
-        {errorMsg && <div class="alert">{errorMsg}</div>}
+        {errorMsg && <div class="alert">{errorMsg}{errorDetail && ` (${errorDetail})`}</div>}
 
         <form class="form" method="POST" action="/api/auth/login">
           <input type="hidden" name="next" value={nextUrl} />
