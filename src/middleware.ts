@@ -14,26 +14,32 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const { request, cookies, locals, redirect } = context;
   const pathname = new URL(request.url).pathname;
 
-  const supabase = createSupabaseServerClient(request, cookies);
-
-  // Get the authenticated user (verifies JWT with Supabase server)
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  locals.user = user ?? null;
+  locals.user = null;
   locals.session = null;
   locals.role = null;
 
-  if (user) {
-    // Fetch user role from profiles table
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
+  let user = null;
 
-    locals.role = (profile?.role as App.Locals["role"]) ?? "customer";
+  try {
+    const supabase = createSupabaseServerClient(request, cookies);
+
+    // Get the authenticated user (verifies JWT with Supabase server)
+    const { data } = await supabase.auth.getUser();
+    user = data.user ?? null;
+    locals.user = user;
+
+    if (user) {
+      // Fetch user role from profiles table
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+      locals.role = (profile?.role as App.Locals["role"]) ?? "customer";
+    }
+  } catch {
+    // Supabase unavailable — continue as unauthenticated
   }
 
   // Protect admin routes
