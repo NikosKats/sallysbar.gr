@@ -1,28 +1,60 @@
 ---
 import "../../styles/global.css";
 import Header from "../../components/Header.astro";
-// import { menu } from "../data/menu";
-import { getMenu, formatPriceEUR } from "../../lib/menuService";
-import { site } from "../../data/site";
+import { getMenuAdmin } from "../../lib/menuService";
 
-const { categories, items } = await getMenu();
+const { categories, items } = await getMenuAdmin();
 ---
 
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>{site.name} — Admin Menu</title>
+    <title>Edit Menu — Admin</title>
     <meta name="robots" content="noindex,nofollow" />
+    <style>
+      dialog { padding: 0; border: none; border-radius: 1rem; background: #111118; color: #fff; width: min(520px, 95vw); box-shadow: 0 25px 60px rgba(0,0,0,.6); }
+      dialog::backdrop { background: rgba(0,0,0,.7); backdrop-filter: blur(4px); }
+      dialog[open] { display: flex; flex-direction: column; }
+      .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 1.25rem 1.5rem; border-bottom: 1px solid rgba(255,255,255,.1); }
+      .modal-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; overflow-y: auto; max-height: 70vh; }
+      .modal-footer { padding: 1rem 1.5rem; border-top: 1px solid rgba(255,255,255,.1); display: flex; gap: .75rem; justify-content: flex-end; }
+      .field { display: flex; flex-direction: column; gap: .375rem; }
+      .field label { font-size: .75rem; color: rgba(255,255,255,.5); text-transform: uppercase; letter-spacing: .05em; }
+      .field input, .field textarea, .field select {
+        background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.12);
+        border-radius: .625rem; padding: .625rem .875rem; font-size: .875rem; color: #fff;
+        outline: none; transition: border-color .15s; width: 100%;
+      }
+      .field input:focus, .field textarea:focus, .field select:focus { border-color: rgba(255,255,255,.3); }
+      .field select option { background: #111118; }
+      .field textarea { resize: vertical; min-height: 72px; font-family: inherit; }
+      .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+      .btn-primary { border-radius: .625rem; background: #fff; padding: .625rem 1.25rem; font-size: .875rem; font-weight: 600; color: #000; border: none; cursor: pointer; transition: opacity .15s; }
+      .btn-primary:hover { opacity: .85; }
+      .btn-primary:disabled { opacity: .4; cursor: not-allowed; }
+      .btn-ghost { border-radius: .625rem; background: transparent; padding: .625rem 1.25rem; font-size: .875rem; color: rgba(255,255,255,.6); border: 1px solid rgba(255,255,255,.15); cursor: pointer; transition: background .15s; }
+      .btn-ghost:hover { background: rgba(255,255,255,.08); }
+      .btn-danger { border-radius: .625rem; background: rgba(239,68,68,.15); padding: .625rem 1.25rem; font-size: .875rem; font-weight: 600; color: #f87171; border: 1px solid rgba(239,68,68,.2); cursor: pointer; transition: background .15s; }
+      .btn-danger:hover { background: rgba(239,68,68,.25); }
+      .close-btn { background: none; border: none; color: rgba(255,255,255,.4); cursor: pointer; font-size: 1.25rem; line-height: 1; padding: .25rem; border-radius: .375rem; }
+      .close-btn:hover { color: #fff; background: rgba(255,255,255,.08); }
+      .checkbox-row { display: flex; align-items: center; gap: .5rem; }
+      .checkbox-row input[type=checkbox] { width: auto; }
+      .checkbox-row label { text-transform: none; font-size: .875rem; color: rgba(255,255,255,.7); letter-spacing: 0; }
+      #toast { position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 9999; display: flex; flex-direction: column; gap: .5rem; pointer-events: none; }
+      .toast-item { border-radius: .75rem; padding: .75rem 1.125rem; font-size: .875rem; font-weight: 500; animation: fadeInUp .2s ease; }
+      .toast-item.success { background: rgba(34,197,94,.15); border: 1px solid rgba(34,197,94,.25); color: #4ade80; }
+      .toast-item.error   { background: rgba(239,68,68,.15); border: 1px solid rgba(239,68,68,.25); color: #f87171; }
+      @keyframes fadeInUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+    </style>
   </head>
 
   <body class="min-h-screen bg-[#0b0b10] text-white">
     <Header />
-
-    <!-- Spacer for fixed header -->
     <div class="h-20"></div>
 
-    <!-- Admin sub-nav -->
+    <!-- Sub-nav -->
     <div class="sticky top-20 z-40 border-b border-amber-400/20 bg-[#0b0b10]/95 backdrop-blur">
       <div class="mx-auto max-w-7xl px-4">
         <nav class="flex items-center gap-1 py-2 overflow-x-auto text-sm">
@@ -34,85 +66,82 @@ const { categories, items } = await getMenu();
       </div>
     </div>
 
-    <main class="mx-auto max-w-6xl px-4 py-8 grid gap-6 lg:grid-cols-[320px_1fr]">
-      <!-- Sidebar: Categories -->
-      <aside class="rounded-2xl border border-white/10 bg-white/5 p-4">
-        <div class="flex items-center justify-between gap-3">
-          <h2 class="font-semibold">Categories</h2>
-          <button class="rounded-xl bg-white px-3 py-2 text-sm font-semibold text-black hover:bg-white/90" type="button">
-            + New
-          </button>
-        </div>
+    <main class="mx-auto max-w-7xl px-4 py-8 grid gap-6 lg:grid-cols-[300px_1fr]">
 
-        <ul class="mt-4 space-y-2">
+      <!-- Categories sidebar -->
+      <aside class="rounded-2xl border border-white/10 bg-white/5 p-4 self-start">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="font-semibold text-sm uppercase tracking-widest text-white/50">Categories</h2>
+          <button id="newCatBtn" class="rounded-xl bg-white px-3 py-1.5 text-sm font-semibold text-black hover:bg-white/90 transition">+ New</button>
+        </div>
+        <ul id="catList" class="space-y-2">
           {categories.map((c) => (
-            <li class="rounded-xl border border-white/10 bg-black/20 px-3 py-2">
-              <div class="flex items-center justify-between gap-3">
-                <div class="min-w-0">
-                  <div class="font-semibold truncate">{c.name}</div>
-                  <div class="text-xs text-white/50">slug: {c.slug} · sort: {c.sort}</div>
+            <li class="cat-row rounded-xl border border-white/10 bg-black/20 px-3 py-2.5" data-id={c.id}>
+              <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0 flex-1">
+                  <div class="font-medium text-sm truncate">{c.title_en}</div>
+                  <div class="text-xs text-white/40 truncate">{c.title_el}</div>
+                  <div class="text-xs text-white/30 mt-0.5">
+                    sort {c.sort} · {c.is_visible ? "visible" : <span class="text-amber-400/70">hidden</span>}
+                  </div>
                 </div>
-                <div class="flex items-center gap-2">
-                  <button class="rounded-lg border border-white/15 px-2 py-1 text-xs hover:bg-white/10" type="button">Edit</button>
-                  <button class="rounded-lg border border-white/15 px-2 py-1 text-xs hover:bg-white/10" type="button">Del</button>
+                <div class="flex items-center gap-1 shrink-0">
+                  <button class="edit-cat rounded-lg border border-white/10 px-2 py-1 text-xs hover:bg-white/10 transition">Edit</button>
+                  <button class="del-cat rounded-lg border border-red-400/20 px-2 py-1 text-xs text-red-400/70 hover:bg-red-400/10 transition">Del</button>
                 </div>
               </div>
             </li>
           ))}
         </ul>
-
-        <div class="mt-4 text-xs text-white/50">
-          (UI only for now — next step we wire these buttons to real API + D1.)
-        </div>
       </aside>
 
-      <!-- Main: Items table -->
+      <!-- Items section -->
       <section class="rounded-2xl border border-white/10 bg-white/5 p-4">
-        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h2 class="font-semibold">Items</h2>
-            <p class="text-sm text-white/60">Edit names, descriptions, prices, visibility.</p>
-          </div>
-
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
+          <h2 class="font-semibold text-sm uppercase tracking-widest text-white/50">Items</h2>
           <div class="flex flex-wrap gap-2">
-            <select class="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm">
-              <option>All categories</option>
-              {categories.map((c) => <option value={c.id}>{c.name}</option>)}
+            <select id="catFilter" class="rounded-xl border border-white/10 bg-black/30 px-3 py-1.5 text-sm text-white/80 outline-none">
+              <option value="">All categories</option>
+              {categories.map((c) => <option value={c.id}>{c.title_en}</option>)}
             </select>
-
-            <button class="rounded-xl bg-white px-3 py-2 text-sm font-semibold text-black hover:bg-white/90" type="button">
-              + New Item
-            </button>
+            <button id="newItemBtn" class="rounded-xl bg-white px-3 py-1.5 text-sm font-semibold text-black hover:bg-white/90 transition">+ New Item</button>
           </div>
         </div>
 
-        <div class="mt-4 overflow-x-auto rounded-2xl border border-white/10">
+        <div class="overflow-x-auto rounded-xl border border-white/10">
           <table class="w-full text-sm">
-            <thead class="bg-black/30 text-white/70">
-              <tr>
-                <th class="px-3 py-2 text-left font-semibold">Name</th>
-                <th class="px-3 py-2 text-left font-semibold">Category</th>
-                <th class="px-3 py-2 text-left font-semibold">Price</th>
-                <th class="px-3 py-2 text-left font-semibold">Visible</th>
-                <th class="px-3 py-2 text-right font-semibold">Actions</th>
+            <thead>
+              <tr class="border-b border-white/10 bg-black/30">
+                <th class="px-3 py-2.5 text-left text-xs font-semibold text-white/40 uppercase tracking-wider">Name (EN / EL)</th>
+                <th class="px-3 py-2.5 text-left text-xs font-semibold text-white/40 uppercase tracking-wider">Category</th>
+                <th class="px-3 py-2.5 text-left text-xs font-semibold text-white/40 uppercase tracking-wider">Price</th>
+                <th class="px-3 py-2.5 text-left text-xs font-semibold text-white/40 uppercase tracking-wider">Sort</th>
+                <th class="px-3 py-2.5 text-left text-xs font-semibold text-white/40 uppercase tracking-wider">Visible</th>
+                <th class="px-3 py-2.5 text-right text-xs font-semibold text-white/40 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-white/10">
+            <tbody id="itemsBody" class="divide-y divide-white/5">
               {items.map((it) => {
-                const cat = categories.find(c => c.id === it.category_id);
+                const cat = categories.find((c) => c.id === it.category_id);
                 return (
-                  <tr>
-                    <td class="px-3 py-2">
-                      <div class="font-semibold">{it.name}</div>
-                      {it.description && <div class="text-xs text-white/60">{it.description}</div>}
+                  <tr class="item-row hover:bg-white/[0.02] transition" data-id={it.id} data-cat={it.category_id}>
+                    <td class="px-3 py-2.5">
+                      <div class="font-medium">{it.name_en}</div>
+                      <div class="text-xs text-white/40">{it.name_el}</div>
                     </td>
-                    <td class="px-3 py-2 text-white/70">{cat?.name ?? "-"}</td>
-                    <td class="px-3 py-2">{formatPriceEUR(it.price_cents)}</td>
-                    <td class="px-3 py-2">{it.is_visible ? "Yes" : "No"}</td>
-                    <td class="px-3 py-2 text-right">
-                      <div class="inline-flex gap-2">
-                        <button class="rounded-lg border border-white/15 px-2 py-1 text-xs hover:bg-white/10" type="button">Edit</button>
-                        <button class="rounded-lg border border-white/15 px-2 py-1 text-xs hover:bg-white/10" type="button">Del</button>
+                    <td class="px-3 py-2.5 text-white/50 text-xs">{cat?.title_en ?? "—"}</td>
+                    <td class="px-3 py-2.5 font-mono text-xs">€{(it.price_cents / 100).toFixed(0)}</td>
+                    <td class="px-3 py-2.5 text-white/40 text-xs">{it.sort}</td>
+                    <td class="px-3 py-2.5">
+                      {it.is_visible
+                        ? <span class="inline-flex items-center gap-1 text-xs text-green-400"><span class="w-1.5 h-1.5 rounded-full bg-green-400 inline-block"></span>Yes</span>
+                        : <span class="inline-flex items-center gap-1 text-xs text-white/30"><span class="w-1.5 h-1.5 rounded-full bg-white/20 inline-block"></span>No</span>
+                      }
+                    </td>
+                    <td class="px-3 py-2.5 text-right">
+                      <div class="inline-flex gap-1.5">
+                        <button class="edit-item rounded-lg border border-white/10 px-2.5 py-1 text-xs hover:bg-white/10 transition">Edit</button>
+                        <button class="del-item rounded-lg border border-red-400/20 px-2.5 py-1 text-xs text-red-400/70 hover:bg-red-400/10 transition">Del</button>
                       </div>
                     </td>
                   </tr>
@@ -121,11 +150,438 @@ const { categories, items } = await getMenu();
             </tbody>
           </table>
         </div>
-
-        <div class="mt-4 text-xs text-white/50">
-          Next: make these buttons open a modal form, then wire to `/api/admin/*`.
-        </div>
       </section>
     </main>
+
+    <!-- Category modal -->
+    <dialog id="catModal">
+      <div class="modal-header">
+        <h3 id="catModalTitle" class="font-semibold">New Category</h3>
+        <button class="close-btn" data-close="catModal">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="catId" />
+        <div class="row2">
+          <div class="field">
+            <label>Name (English) *</label>
+            <input id="catTitleEn" required placeholder="Cocktails" />
+          </div>
+          <div class="field">
+            <label>Name (Greek)</label>
+            <input id="catTitleEl" placeholder="Κοκτέιλ" />
+          </div>
+        </div>
+        <div class="field">
+          <label>Slug *</label>
+          <input id="catSlug" required placeholder="cocktails" />
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label>Sort order</label>
+            <input id="catSort" type="number" placeholder="10" />
+          </div>
+          <div class="field" style="justify-content:flex-end;padding-bottom:.25rem;">
+            <div class="checkbox-row">
+              <input type="checkbox" id="catVisible" checked />
+              <label for="catVisible">Visible on menu</label>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-ghost" data-close="catModal">Cancel</button>
+        <button class="btn-primary" id="catSaveBtn">Save</button>
+      </div>
+    </dialog>
+
+    <!-- Item modal -->
+    <dialog id="itemModal">
+      <div class="modal-header">
+        <h3 id="itemModalTitle" class="font-semibold">New Item</h3>
+        <button class="close-btn" data-close="itemModal">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="itemId" />
+        <div class="field">
+          <label>Category *</label>
+          <select id="itemCatId">
+            {categories.map((c) => <option value={c.id}>{c.title_en}</option>)}
+          </select>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label>Name (English) *</label>
+            <input id="itemNameEn" required placeholder="Margarita" />
+          </div>
+          <div class="field">
+            <label>Name (Greek)</label>
+            <input id="itemNameEl" placeholder="Μαργαρίτα" />
+          </div>
+        </div>
+        <div class="field">
+          <label>Slug *</label>
+          <input id="itemSlug" required placeholder="margarita" />
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label>Description (EN)</label>
+            <textarea id="itemDescEn" placeholder="Tequila, lime, triple sec"></textarea>
+          </div>
+          <div class="field">
+            <label>Description (EL)</label>
+            <textarea id="itemDescEl" placeholder="Τεκίλα, λάιμ, triple sec"></textarea>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label>Price (€) *</label>
+            <input id="itemPrice" type="number" min="0" step="0.5" required placeholder="8" />
+          </div>
+          <div class="field">
+            <label>Sort order</label>
+            <input id="itemSort" type="number" placeholder="10" />
+          </div>
+        </div>
+        <div class="field">
+          <label>Tags (comma-separated)</label>
+          <input id="itemTags" placeholder="signature, alcohol-free" />
+        </div>
+        <div class="checkbox-row">
+          <input type="checkbox" id="itemVisible" checked />
+          <label for="itemVisible">Visible on menu</label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-ghost" data-close="itemModal">Cancel</button>
+        <button class="btn-primary" id="itemSaveBtn">Save</button>
+      </div>
+    </dialog>
+
+    <!-- Delete confirm modal -->
+    <dialog id="deleteModal">
+      <div class="modal-header">
+        <h3 class="font-semibold">Confirm Delete</h3>
+        <button class="close-btn" data-close="deleteModal">✕</button>
+      </div>
+      <div class="modal-body">
+        <p id="deleteMsg" class="text-white/70 text-sm leading-relaxed"></p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-ghost" data-close="deleteModal">Cancel</button>
+        <button class="btn-danger" id="confirmDeleteBtn">Delete</button>
+      </div>
+    </dialog>
+
+    <div id="toast"></div>
+
+    <!-- Seed data for JS -->
+    <script id="seedData" type="application/json" set:html={JSON.stringify({ categories, items })}></script>
+
+    <script>
+      const seed = JSON.parse(document.getElementById("seedData")!.textContent!);
+      let cats: any[]  = seed.categories;
+      let items: any[] = seed.items;
+
+      // ── Utilities ───────────────────────────────────────
+      function slugify(s: string) {
+        return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      }
+
+      function esc(s: any) {
+        return String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+      }
+
+      function toast(msg: string, type: "success"|"error" = "success") {
+        const el = document.createElement("div");
+        el.className = `toast-item ${type}`;
+        el.textContent = msg;
+        document.getElementById("toast")!.appendChild(el);
+        setTimeout(() => el.remove(), 3200);
+      }
+
+      function openModal(id: string)  { (document.getElementById(id) as HTMLDialogElement).showModal(); }
+      function closeModal(id: string) { (document.getElementById(id) as HTMLDialogElement).close(); }
+
+      document.querySelectorAll("[data-close]").forEach(btn => {
+        btn.addEventListener("click", () => closeModal((btn as HTMLElement).dataset.close!));
+      });
+
+      async function api(url: string, method: string, body: object) {
+        const res = await fetch(url, {
+          method,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        return res.json();
+      }
+
+      // ── Category filter ─────────────────────────────────
+      document.getElementById("catFilter")!.addEventListener("change", (e) => {
+        const val = (e.target as HTMLSelectElement).value;
+        document.querySelectorAll<HTMLTableRowElement>(".item-row").forEach(row => {
+          row.style.display = !val || row.dataset.cat === val ? "" : "none";
+        });
+      });
+
+      // ── Render helpers ──────────────────────────────────
+      function renderCats() {
+        document.getElementById("catList")!.innerHTML = cats.map(c => `
+          <li class="cat-row rounded-xl border border-white/10 bg-black/20 px-3 py-2.5" data-id="${c.id}">
+            <div class="flex items-start justify-between gap-2">
+              <div class="min-w-0 flex-1">
+                <div class="font-medium text-sm truncate">${esc(c.title_en)}</div>
+                <div class="text-xs text-white/40 truncate">${esc(c.title_el)}</div>
+                <div class="text-xs text-white/30 mt-0.5">sort ${c.sort} · ${c.is_visible ? "visible" : '<span class="text-amber-400/70">hidden</span>'}</div>
+              </div>
+              <div class="flex items-center gap-1 shrink-0">
+                <button class="edit-cat rounded-lg border border-white/10 px-2 py-1 text-xs hover:bg-white/10 transition">Edit</button>
+                <button class="del-cat rounded-lg border border-red-400/20 px-2 py-1 text-xs text-red-400/70 hover:bg-red-400/10 transition">Del</button>
+              </div>
+            </div>
+          </li>`).join("");
+        bindCatEvents();
+        syncCatSelects();
+      }
+
+      function renderItems() {
+        document.getElementById("itemsBody")!.innerHTML = items.map(it => {
+          const cat = cats.find(c => c.id === it.category_id);
+          const vis = it.is_visible
+            ? `<span class="inline-flex items-center gap-1 text-xs text-green-400"><span class="w-1.5 h-1.5 rounded-full bg-green-400 inline-block"></span>Yes</span>`
+            : `<span class="inline-flex items-center gap-1 text-xs text-white/30"><span class="w-1.5 h-1.5 rounded-full bg-white/20 inline-block"></span>No</span>`;
+          return `
+            <tr class="item-row hover:bg-white/[0.02] transition" data-id="${it.id}" data-cat="${it.category_id}">
+              <td class="px-3 py-2.5"><div class="font-medium">${esc(it.name_en)}</div><div class="text-xs text-white/40">${esc(it.name_el)}</div></td>
+              <td class="px-3 py-2.5 text-white/50 text-xs">${esc(cat?.title_en ?? "—")}</td>
+              <td class="px-3 py-2.5 font-mono text-xs">€${(it.price_cents / 100).toFixed(0)}</td>
+              <td class="px-3 py-2.5 text-white/40 text-xs">${it.sort}</td>
+              <td class="px-3 py-2.5">${vis}</td>
+              <td class="px-3 py-2.5 text-right">
+                <div class="inline-flex gap-1.5">
+                  <button class="edit-item rounded-lg border border-white/10 px-2.5 py-1 text-xs hover:bg-white/10 transition">Edit</button>
+                  <button class="del-item rounded-lg border border-red-400/20 px-2.5 py-1 text-xs text-red-400/70 hover:bg-red-400/10 transition">Del</button>
+                </div>
+              </td>
+            </tr>`;
+        }).join("");
+        bindItemEvents();
+        // reapply filter
+        const filterVal = (document.getElementById("catFilter") as HTMLSelectElement).value;
+        if (filterVal) {
+          document.querySelectorAll<HTMLTableRowElement>(".item-row").forEach(row => {
+            row.style.display = row.dataset.cat === filterVal ? "" : "none";
+          });
+        }
+      }
+
+      function syncCatSelects() {
+        // update category filter
+        const filter = document.getElementById("catFilter") as HTMLSelectElement;
+        const curFilter = filter.value;
+        filter.innerHTML = `<option value="">All categories</option>` +
+          cats.map(c => `<option value="${c.id}"${String(c.id) === curFilter ? " selected" : ""}>${esc(c.title_en)}</option>`).join("");
+
+        // update item modal select
+        const itemSel = document.getElementById("itemCatId") as HTMLSelectElement;
+        const curItem = itemSel.value;
+        itemSel.innerHTML = cats.map(c =>
+          `<option value="${c.id}"${String(c.id) === curItem ? " selected" : ""}>${esc(c.title_en)}</option>`
+        ).join("");
+      }
+
+      // ── Category CRUD ───────────────────────────────────
+      function openCatModal(c?: any) {
+        const isEdit = !!c;
+        document.getElementById("catModalTitle")!.textContent = isEdit ? "Edit Category" : "New Category";
+        (document.getElementById("catId")    as HTMLInputElement).value  = c?.id ?? "";
+        (document.getElementById("catTitleEn") as HTMLInputElement).value = c?.title_en ?? "";
+        (document.getElementById("catTitleEl") as HTMLInputElement).value = c?.title_el ?? "";
+        (document.getElementById("catSlug")  as HTMLInputElement).value  = c?.slug ?? "";
+        (document.getElementById("catSort")  as HTMLInputElement).value  = c?.sort ?? "";
+        (document.getElementById("catVisible") as HTMLInputElement).checked = c ? !!c.is_visible : true;
+        openModal("catModal");
+      }
+
+      document.getElementById("catTitleEn")!.addEventListener("input", function(this: HTMLInputElement) {
+        if (!(document.getElementById("catId") as HTMLInputElement).value) {
+          (document.getElementById("catSlug") as HTMLInputElement).value = slugify(this.value);
+        }
+      });
+
+      document.getElementById("catSaveBtn")!.addEventListener("click", async () => {
+        const id       = (document.getElementById("catId")      as HTMLInputElement).value;
+        const title_en = (document.getElementById("catTitleEn") as HTMLInputElement).value.trim();
+        const title_el = (document.getElementById("catTitleEl") as HTMLInputElement).value.trim();
+        const slug     = (document.getElementById("catSlug")    as HTMLInputElement).value.trim();
+        const sort     = Number((document.getElementById("catSort") as HTMLInputElement).value) || 0;
+        const visible  = (document.getElementById("catVisible") as HTMLInputElement).checked;
+
+        if (!title_en || !slug) { toast("Name and slug are required.", "error"); return; }
+
+        const btn = document.getElementById("catSaveBtn") as HTMLButtonElement;
+        btn.disabled = true; btn.textContent = "Saving…";
+
+        const body: any = { title_en, title_el: title_el || title_en, slug, sort, is_visible: visible };
+        if (id) body.id = id;
+
+        const res = await api("/api/admin/menu/categories", id ? "PUT" : "POST", body);
+        btn.disabled = false; btn.textContent = "Save";
+
+        if (res.error) { toast(res.error, "error"); return; }
+
+        if (id) {
+          const idx = cats.findIndex(c => String(c.id) === id);
+          if (idx !== -1) cats[idx] = res.category;
+        } else {
+          cats.push(res.category);
+        }
+
+        renderCats();
+        closeModal("catModal");
+        toast(id ? "Category updated." : "Category created.");
+      });
+
+      function bindCatEvents() {
+        document.querySelectorAll<HTMLElement>(".edit-cat").forEach(btn => {
+          btn.addEventListener("click", () => {
+            const id = (btn.closest("[data-id]") as HTMLElement).dataset.id;
+            openCatModal(cats.find(c => String(c.id) === id));
+          });
+        });
+        document.querySelectorAll<HTMLElement>(".del-cat").forEach(btn => {
+          btn.addEventListener("click", () => {
+            const id = (btn.closest("[data-id]") as HTMLElement).dataset.id;
+            const cat = cats.find(c => String(c.id) === id);
+            if (!cat) return;
+            document.getElementById("deleteMsg")!.textContent =
+              `Delete category "${cat.title_en}"? Items in this category will also be removed.`;
+            pendingDelete = async () => {
+              const res = await api("/api/admin/menu/categories", "DELETE", { id: cat.id });
+              if (res.error) { toast(res.error, "error"); return; }
+              cats  = cats.filter(c => c.id !== cat.id);
+              items = items.filter(i => i.category_id !== cat.id);
+              renderCats(); renderItems();
+              closeModal("deleteModal");
+              toast("Category deleted.");
+            };
+            openModal("deleteModal");
+          });
+        });
+      }
+
+      // ── Item CRUD ───────────────────────────────────────
+      function openItemModal(it?: any) {
+        const isEdit = !!it;
+        document.getElementById("itemModalTitle")!.textContent = isEdit ? "Edit Item" : "New Item";
+        (document.getElementById("itemId")     as HTMLInputElement).value    = it?.id ?? "";
+        (document.getElementById("itemCatId")  as HTMLSelectElement).value   = it?.category_id ?? cats[0]?.id ?? "";
+        (document.getElementById("itemNameEn") as HTMLInputElement).value    = it?.name_en ?? "";
+        (document.getElementById("itemNameEl") as HTMLInputElement).value    = it?.name_el ?? "";
+        (document.getElementById("itemSlug")   as HTMLInputElement).value    = it?.slug ?? "";
+        (document.getElementById("itemDescEn") as HTMLTextAreaElement).value = it?.description_en ?? "";
+        (document.getElementById("itemDescEl") as HTMLTextAreaElement).value = it?.description_el ?? "";
+        (document.getElementById("itemPrice")  as HTMLInputElement).value    = it ? (it.price_cents / 100).toFixed(0) : "";
+        (document.getElementById("itemSort")   as HTMLInputElement).value    = it?.sort ?? "";
+        (document.getElementById("itemTags")   as HTMLInputElement).value    = (it?.tags ?? []).join(", ");
+        (document.getElementById("itemVisible") as HTMLInputElement).checked = it ? !!it.is_visible : true;
+        openModal("itemModal");
+      }
+
+      document.getElementById("itemNameEn")!.addEventListener("input", function(this: HTMLInputElement) {
+        if (!(document.getElementById("itemId") as HTMLInputElement).value) {
+          (document.getElementById("itemSlug") as HTMLInputElement).value = slugify(this.value);
+        }
+      });
+
+      document.getElementById("itemSaveBtn")!.addEventListener("click", async () => {
+        const id          = (document.getElementById("itemId")     as HTMLInputElement).value;
+        const category_id = (document.getElementById("itemCatId")  as HTMLSelectElement).value;
+        const name_en     = (document.getElementById("itemNameEn") as HTMLInputElement).value.trim();
+        const name_el     = (document.getElementById("itemNameEl") as HTMLInputElement).value.trim();
+        const slug        = (document.getElementById("itemSlug")   as HTMLInputElement).value.trim();
+        const desc_en     = (document.getElementById("itemDescEn") as HTMLTextAreaElement).value.trim();
+        const desc_el     = (document.getElementById("itemDescEl") as HTMLTextAreaElement).value.trim();
+        const priceEuros  = Number((document.getElementById("itemPrice") as HTMLInputElement).value);
+        const sort        = Number((document.getElementById("itemSort")  as HTMLInputElement).value) || 0;
+        const tagsRaw     = (document.getElementById("itemTags") as HTMLInputElement).value;
+        const visible     = (document.getElementById("itemVisible") as HTMLInputElement).checked;
+
+        if (!name_en || !slug || !category_id || isNaN(priceEuros)) {
+          toast("Name, slug, category, and price are required.", "error");
+          return;
+        }
+
+        const tags = tagsRaw.split(",").map(t => t.trim()).filter(Boolean);
+        const body: any = {
+          category_id: Number(category_id),
+          name_en, name_el: name_el || name_en,
+          slug,
+          description_en: desc_en, description_el: desc_el,
+          price_cents: Math.round(priceEuros * 100),
+          sort, is_visible: visible, tags,
+        };
+        if (id) body.id = id;
+
+        const btn = document.getElementById("itemSaveBtn") as HTMLButtonElement;
+        btn.disabled = true; btn.textContent = "Saving…";
+
+        const res = await api("/api/admin/menu/items", id ? "PUT" : "POST", body);
+        btn.disabled = false; btn.textContent = "Save";
+
+        if (res.error) { toast(res.error, "error"); return; }
+
+        if (id) {
+          const idx = items.findIndex(i => String(i.id) === id);
+          if (idx !== -1) items[idx] = res.item;
+        } else {
+          items.push(res.item);
+        }
+
+        renderItems();
+        closeModal("itemModal");
+        toast(id ? "Item updated." : "Item created.");
+      });
+
+      function bindItemEvents() {
+        document.querySelectorAll<HTMLElement>(".edit-item").forEach(btn => {
+          btn.addEventListener("click", () => {
+            const id = (btn.closest("[data-id]") as HTMLElement).dataset.id;
+            openItemModal(items.find(i => String(i.id) === id));
+          });
+        });
+        document.querySelectorAll<HTMLElement>(".del-item").forEach(btn => {
+          btn.addEventListener("click", () => {
+            const id = (btn.closest("[data-id]") as HTMLElement).dataset.id;
+            const item = items.find(i => String(i.id) === id);
+            if (!item) return;
+            document.getElementById("deleteMsg")!.textContent = `Delete "${item.name_en}"? This cannot be undone.`;
+            pendingDelete = async () => {
+              const res = await api("/api/admin/menu/items", "DELETE", { id: item.id });
+              if (res.error) { toast(res.error, "error"); return; }
+              items = items.filter(i => i.id !== item.id);
+              renderItems();
+              closeModal("deleteModal");
+              toast("Item deleted.");
+            };
+            openModal("deleteModal");
+          });
+        });
+      }
+
+      // ── Delete confirm ──────────────────────────────────
+      let pendingDelete: (() => void) | null = null;
+      document.getElementById("confirmDeleteBtn")!.addEventListener("click", () => {
+        pendingDelete?.();
+        pendingDelete = null;
+      });
+
+      // ── New buttons ─────────────────────────────────────
+      document.getElementById("newCatBtn")!.addEventListener("click",  () => openCatModal());
+      document.getElementById("newItemBtn")!.addEventListener("click", () => openItemModal());
+
+      // ── Init ────────────────────────────────────────────
+      bindCatEvents();
+      bindItemEvents();
+    </script>
   </body>
 </html>
