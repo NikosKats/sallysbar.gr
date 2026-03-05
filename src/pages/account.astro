@@ -2,9 +2,13 @@
 import "../styles/global.css";
 import Header from "../components/Header.astro";
 import { createSupabaseServerClient } from "../lib/supabase";
+import { withLangPrefix, dict } from "../i18n";
 
 const user = Astro.locals.user;
-if (!user) return Astro.redirect("/login?next=/account");
+const lang = Astro.locals.lang ?? "en";
+if (!user) return Astro.redirect(withLangPrefix(lang, "/login") + "?next=/account");
+
+const t = dict[lang];
 
 const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
 const { data: profile } = await supabase
@@ -15,15 +19,15 @@ const { data: profile } = await supabase
 
 const displayName = profile?.full_name ?? user.user_metadata?.full_name ?? user.email?.split("@")[0] ?? "Guest";
 const memberSince = profile?.created_at
-  ? new Date(profile.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
+  ? new Date(profile.created_at).toLocaleDateString(lang === "el" ? "el-GR" : "en-GB", { day: "numeric", month: "long", year: "numeric" })
   : "—";
 ---
 
-<html lang="en">
+<html lang={lang}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>My Account — Sally's Bar</title>
+    <title>{t.account.title} — Sally's Bar</title>
     <meta name="robots" content="noindex,nofollow" />
   </head>
   <body class="min-h-screen bg-[#0b0b10] text-white">
@@ -34,33 +38,33 @@ const memberSince = profile?.created_at
       <!-- Welcome -->
       <div>
         <h1 class="text-2xl font-bold text-white">Hi, {displayName}</h1>
-        <p class="mt-1 text-sm text-white/40">Manage your account and bookings</p>
+        <p class="mt-1 text-sm text-white/40">{t.account.subtitle}</p>
       </div>
 
       <!-- Profile card -->
       <div class="rounded-2xl border border-white/10 bg-white/5 p-6 space-y-4">
-        <h2 class="text-sm font-semibold text-white/50 uppercase tracking-widest">Profile</h2>
+        <h2 class="text-sm font-semibold text-white/50 uppercase tracking-widest">{t.account.profileSection}</h2>
         <div class="grid sm:grid-cols-2 gap-4">
           <div>
-            <p class="text-xs text-white/30 mb-1">Name</p>
+            <p class="text-xs text-white/30 mb-1">{t.account.name}</p>
             <p class="text-sm text-white font-medium">{displayName}</p>
           </div>
           <div>
-            <p class="text-xs text-white/30 mb-1">Email</p>
+            <p class="text-xs text-white/30 mb-1">{t.account.email}</p>
             <p class="text-sm text-white font-medium">{user.email}</p>
           </div>
           <div>
-            <p class="text-xs text-white/30 mb-1">Member since</p>
+            <p class="text-xs text-white/30 mb-1">{t.account.memberSince}</p>
             <p class="text-sm text-white font-medium">{memberSince}</p>
           </div>
           <div>
-            <p class="text-xs text-white/30 mb-1">Account type</p>
+            <p class="text-xs text-white/30 mb-1">{t.account.accountType}</p>
             <p class="text-sm text-white font-medium capitalize">{profile?.role ?? "customer"}</p>
           </div>
         </div>
         <div class="pt-2 border-t border-white/10">
           <a href="/forgot-password" class="text-sm text-white/50 hover:text-white transition underline underline-offset-2">
-            Change password
+            {t.account.changePassword}
           </a>
         </div>
       </div>
@@ -69,11 +73,11 @@ const memberSince = profile?.created_at
       <div class="rounded-2xl border border-white/10 bg-white/5 p-6">
         <div class="flex items-start justify-between">
           <div>
-            <h2 class="text-sm font-semibold text-white/50 uppercase tracking-widest">Reservations</h2>
-            <p class="mt-3 text-sm text-white/40">Online reservations are coming soon.</p>
-            <p class="mt-1 text-sm text-white/30">Call us to book your table: <a href="tel:+302671069000" class="text-white/60 hover:text-white underline underline-offset-2">+30 26710 69000</a></p>
+            <h2 class="text-sm font-semibold text-white/50 uppercase tracking-widest">{t.account.reservationsSection}</h2>
+            <p class="mt-3 text-sm text-white/40">{t.account.reservationsSoon}</p>
+            <p class="mt-1 text-sm text-white/30">{t.account.reservationsCall} <a href="tel:+302671069000" class="text-white/60 hover:text-white underline underline-offset-2">+30 26710 69000</a></p>
           </div>
-          <span class="text-xs bg-white/10 text-white/40 px-2.5 py-1 rounded-full">Soon</span>
+          <span class="text-xs bg-white/10 text-white/40 px-2.5 py-1 rounded-full">{t.account.soon}</span>
         </div>
       </div>
 
@@ -81,11 +85,11 @@ const memberSince = profile?.created_at
       <div class="rounded-2xl border border-white/10 bg-white/5 p-6">
         <div class="flex items-start justify-between">
           <div>
-            <h2 class="text-sm font-semibold text-white/50 uppercase tracking-widest">Event bookings</h2>
-            <p class="mt-3 text-sm text-white/40">Event ticket booking is coming soon.</p>
-            <p class="mt-1 text-sm text-white/30">Follow us for upcoming events: <a href="https://instagram.com/sallysbar_kefalonia" class="text-white/60 hover:text-white underline underline-offset-2">@sallysbar_kefalonia</a></p>
+            <h2 class="text-sm font-semibold text-white/50 uppercase tracking-widest">{t.account.eventsSection}</h2>
+            <p class="mt-3 text-sm text-white/40">{t.account.eventsSoon}</p>
+            <p class="mt-1 text-sm text-white/30">{t.account.eventsFollow} <a href="https://instagram.com/sallysbar_kefalonia" class="text-white/60 hover:text-white underline underline-offset-2">@sallysbar_kefalonia</a></p>
           </div>
-          <span class="text-xs bg-white/10 text-white/40 px-2.5 py-1 rounded-full">Soon</span>
+          <span class="text-xs bg-white/10 text-white/40 px-2.5 py-1 rounded-full">{t.account.soon}</span>
         </div>
       </div>
 

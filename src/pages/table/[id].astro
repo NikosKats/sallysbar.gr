@@ -44,6 +44,15 @@ for (const it of items) {
   list.push(it);
   byCategory.set(it.category_id, list);
 }
+
+// Build a global item number map for easy customer reference
+const itemNumbers = new Map<number, number>();
+let itemCounter = 1;
+for (const c of categories) {
+  for (const it of byCategory.get(c.id) ?? []) {
+    itemNumbers.set(it.id, itemCounter++);
+  }
+}
 ---
 
 <html lang={lang}>
@@ -109,7 +118,9 @@ for (const it of items) {
                 {list.map((item) => (
                   <div class="flex items-start justify-between gap-4 p-4">
                     <div class="min-w-0 flex-1">
-                      <div class="font-medium">{item.name}</div>
+                      <div class="font-medium">
+                        <span class="text-white/30 text-xs font-normal mr-1.5">#{itemNumbers.get(item.id)}</span>{item.name}
+                      </div>
                       {item.description && (
                         <p class="mt-1 text-xs text-white/60 leading-relaxed">{item.description}</p>
                       )}

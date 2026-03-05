@@ -2,8 +2,12 @@
 import "../../styles/global.css";
 import Header from "../../components/Header.astro";
 import { getMenu, formatPriceEUR } from "../../lib/menuService";
+import { dict, withLangPrefix } from "../../i18n";
 
+const lang = Astro.locals.lang ?? "en";
+const t = dict[lang];
 // Protected by middleware — only employee/admin can access /staff/*
+// Always fetch menu in English so item names + numbers match the customer table page
 const { categories, items } = await getMenu("en");
 const byCategory = new Map<number, typeof items>();
 for (const it of items) {
@@ -11,13 +15,22 @@ for (const it of items) {
   list.push(it);
   byCategory.set(it.category_id, list);
 }
+
+// Global item numbers — must match the numbering on the customer table page
+const itemNumbers = new Map<number, number>();
+let itemCounter = 1;
+for (const c of categories) {
+  for (const it of byCategory.get(c.id) ?? []) {
+    itemNumbers.set(it.id, itemCounter++);
+  }
+}
 ---
 
-<html lang="en">
+<html lang={lang}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>New Order — Staff</title>
+    <title>{t.staff.newOrder} — Sally's Bar</title>
     <meta name="robots" content="noindex" />
   </head>
 
@@ -30,28 +43,28 @@ for (const it of items) {
     <!-- Staff sub-nav -->
     <div class="sticky top-20 z-40 border-b border-sky-400/20 bg-[#0b0b10]/95 backdrop-blur">
       <div class="mx-auto max-w-2xl px-6 flex items-center gap-2 py-2 text-sm">
-        <a href="/staff" class="px-3 py-1.5 rounded-lg text-white/50 hover:text-sky-400 hover:bg-sky-400/5 transition">← Operations</a>
-        <span class="px-3 py-1.5 rounded-lg bg-sky-400/15 border border-sky-400/20 text-sky-400 font-medium">New Order</span>
+        <a href={withLangPrefix(lang, "/staff")} class="px-3 py-1.5 rounded-lg text-white/50 hover:text-sky-400 hover:bg-sky-400/5 transition">{t.staff.back}</a>
+        <span class="px-3 py-1.5 rounded-lg bg-sky-400/15 border border-sky-400/20 text-sky-400 font-medium">{t.staff.newOrder}</span>
       </div>
     </div>
 
     <main class="mx-auto max-w-2xl px-6 py-6 space-y-6">
       <!-- Table number -->
       <div>
-        <label class="block text-sm text-white/60 mb-2" for="tableInput">Table number</label>
+        <label class="block text-sm text-white/60 mb-2" for="tableInput">{t.staff.tableNumber}</label>
         <input
           id="tableInput"
           type="number"
           min="1"
           max="99"
-          placeholder="e.g. 5"
+          placeholder={t.staff.tablePlaceholder}
           class="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white text-lg font-semibold placeholder:text-white/30 outline-none focus:border-white/30"
         />
       </div>
 
       <!-- Menu items -->
       <div>
-        <div class="text-sm text-white/60 mb-3">Select items</div>
+        <div class="text-sm text-white/60 mb-3">{t.staff.selectItems}</div>
         <div class="space-y-6">
           {categories.map((c) => {
             const list = byCategory.get(c.id) ?? [];
@@ -63,7 +76,9 @@ for (const it of items) {
                   {list.map((item) => (
                     <div class="flex items-center justify-between gap-4 px-4 py-3">
                       <div class="min-w-0 flex-1">
-                        <div class="text-sm font-medium">{item.name}</div>
+                        <div class="text-sm font-medium">
+                          <span class="text-white/30 text-xs font-normal mr-1">#{itemNumbers.get(item.id)}</span>{item.name}
+                        </div>
                         <div class="text-xs text-white/50">{formatPriceEUR(item.price_cents)}</div>
                       </div>
                       <div class="flex items-center gap-3 shrink-0">
@@ -103,31 +118,31 @@ for (const it of items) {
 
       <!-- Note -->
       <div>
-        <label class="block text-sm text-white/60 mb-2" for="noteInput">Note (optional)</label>
+        <label class="block text-sm text-white/60 mb-2" for="noteInput">{t.staff.note}</label>
         <input
           id="noteInput"
           type="text"
-          placeholder="e.g. no ice on the Mojito"
+          placeholder={t.staff.notePlaceholder}
           class="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/30 outline-none focus:border-white/30"
         />
       </div>
 
       <!-- Order summary -->
       <div id="summaryBlock" class="hidden rounded-2xl border border-white/10 bg-white/5 p-4">
-        <div class="text-sm text-white/60 mb-2">Order summary</div>
+        <div class="text-sm text-white/60 mb-2">{t.staff.orderSummary}</div>
         <div id="summaryList" class="space-y-1 text-sm"></div>
         <div class="mt-3 pt-3 border-t border-white/10 flex justify-between text-sm font-semibold">
-          <span>Total</span>
+          <span>{t.staff.total}</span>
           <span id="summaryTotal"></span>
         </div>
       </div>
 
       <!-- Success / error -->
       <div id="successMsg" class="hidden rounded-2xl border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-400">
-        Order sent to barman!
+        {t.staff.orderSent}
       </div>
       <div id="errorMsg" class="hidden rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
-        Something went wrong. Please try again.
+        {t.staff.orderError}
       </div>
     </main>
 
@@ -138,24 +153,24 @@ for (const it of items) {
         disabled
         class="w-full rounded-2xl bg-white text-black font-semibold py-3.5 text-sm disabled:opacity-30 disabled:cursor-not-allowed hover:bg-white/90 active:scale-95 transition"
       >
-        Send to Barman
+        {t.staff.sendToBarman}
       </button>
     </div>
 
-    <script>
-      const quantities: Record<string, { name: string; qty: number; price_cents: number }> = {};
+    <script define:vars={{ tSendToBarman: t.staff.sendToBarman, tSending: t.staff.sending }}>
+      const quantities = {};
 
-      const submitBtn = document.getElementById("submitBtn") as HTMLButtonElement;
-      const summaryBlock = document.getElementById("summaryBlock")!;
-      const summaryList = document.getElementById("summaryList")!;
-      const summaryTotal = document.getElementById("summaryTotal")!;
-      const successMsg = document.getElementById("successMsg")!;
-      const errorMsg = document.getElementById("errorMsg")!;
+      const submitBtn = document.getElementById("submitBtn");
+      const summaryBlock = document.getElementById("summaryBlock");
+      const summaryList = document.getElementById("summaryList");
+      const summaryTotal = document.getElementById("summaryTotal");
+      const successMsg = document.getElementById("successMsg");
+      const errorMsg = document.getElementById("errorMsg");
 
       function updateSummary() {
         const items = Object.values(quantities).filter((i) => i.qty > 0);
         const hasItems = items.length > 0;
-        const table = (document.getElementById("tableInput") as HTMLInputElement).value;
+        const table = document.getElementById("tableInput").value;
 
         submitBtn.disabled = !hasItems || !table;
 
@@ -171,10 +186,10 @@ for (const it of items) {
         }
       }
 
-      document.querySelectorAll<HTMLButtonElement>(".qty-btn").forEach((btn) => {
+      document.querySelectorAll(".qty-btn").forEach((btn) => {
         btn.addEventListener("click", () => {
-          const id = btn.dataset.id!;
-          const action = btn.dataset.action!;
+          const id = btn.dataset.id;
+          const action = btn.dataset.action;
           const name = btn.dataset.name ?? id;
           const price = Number(btn.dataset.price ?? 0);
 
@@ -183,24 +198,24 @@ for (const it of items) {
           if (action === "inc") quantities[id].qty++;
           if (action === "dec" && quantities[id].qty > 0) quantities[id].qty--;
 
-          const display = document.getElementById(`qty-${id}`)!;
+          const display = document.getElementById(`qty-${id}`);
           display.textContent = String(quantities[id].qty);
 
           updateSummary();
         });
       });
 
-      document.getElementById("tableInput")?.addEventListener("input", updateSummary);
+      document.getElementById("tableInput").addEventListener("input", updateSummary);
 
       submitBtn.addEventListener("click", async () => {
-        const table = Number((document.getElementById("tableInput") as HTMLInputElement).value);
-        const note = (document.getElementById("noteInput") as HTMLInputElement).value.trim();
+        const table = Number(document.getElementById("tableInput").value);
+        const note = document.getElementById("noteInput").value.trim();
         const items = Object.values(quantities).filter((i) => i.qty > 0);
 
         successMsg.classList.add("hidden");
         errorMsg.classList.add("hidden");
         submitBtn.disabled = true;
-        submitBtn.textContent = "Sending…";
+        submitBtn.textContent = tSending;
 
         try {
           const res = await fetch("/api/order", {
@@ -211,14 +226,13 @@ for (const it of items) {
 
           if (res.ok) {
             successMsg.classList.remove("hidden");
-            // Reset form
             Object.keys(quantities).forEach((k) => {
               quantities[k].qty = 0;
               const el = document.getElementById(`qty-${k}`);
               if (el) el.textContent = "0";
             });
-            (document.getElementById("tableInput") as HTMLInputElement).value = "";
-            (document.getElementById("noteInput") as HTMLInputElement).value = "";
+            document.getElementById("tableInput").value = "";
+            document.getElementById("noteInput").value = "";
             summaryBlock.classList.add("hidden");
           } else {
             errorMsg.classList.remove("hidden");
@@ -227,7 +241,7 @@ for (const it of items) {
           errorMsg.classList.remove("hidden");
         }
 
-        submitBtn.textContent = "Send to Barman";
+        submitBtn.textContent = tSendToBarman;
         updateSummary();
       });
     </script>

@@ -5,6 +5,7 @@ declare namespace App {
     user: import("@supabase/supabase-js").User | null;
     session: import("@supabase/supabase-js").Session | null;
     role: "customer" | "employee" | "admin" | null;
+    lang: "en" | "el";
   }
 }
 

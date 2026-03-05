@@ -1,3 +1,4 @@
 ---
-return Astro.redirect("/admin/menu");
+import { elRewrite } from "../../../lib/elRewrite";
+return Astro.rewrite(elRewrite(Astro.request, "/admin/menu"));
 ---

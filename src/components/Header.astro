@@ -1,17 +1,21 @@
 ---
-import { getLangFromPath, withLangPrefix, dict } from "../i18n";
+import { withLangPrefix, dict } from "../i18n";
 
-const url = new URL(Astro.request.url);
-const lang = getLangFromPath(url.pathname);
+// Use locals.lang set by middleware (survives Astro.rewrite — URL-based detection breaks after rewrite)
+const lang = Astro.locals.lang ?? "en";
 const t = dict[lang];
 
-// strip /el for switching
-const pathNoLang = url.pathname.startsWith("/el")
-  ? url.pathname.replace(/^\/el/, "") || "/"
-  : url.pathname;
+// strip /el for switching (use original request URL for the switcher path)
+const origPath = new URL(Astro.request.url).pathname;
+const pathNoLang = origPath.startsWith("/el")
+  ? origPath.replace(/^\/el/, "") || "/"
+  : origPath;
 
 const otherLang = lang === "en" ? "el" : "en";
-const switchHref = withLangPrefix(otherLang, pathNoLang);
+// When switching to English, add ?lang=en so middleware clears the Greek cookie
+const switchHref = otherLang === "en"
+  ? `${withLangPrefix("en", pathNoLang)}?lang=en`
+  : withLangPrefix("el", pathNoLang);
 
 // Auth state from middleware
 const user = Astro.locals.user;
@@ -34,10 +38,16 @@ const nav = [
   { label: t.nav.careers, href: withLangPrefix(lang, "/careers") },
 ];
 
-const ctaHref = withLangPrefix(lang, "/menu");
-const brandHref = withLangPrefix(lang, "/");
-const loginHref = withLangPrefix(lang, "/login");
-const logoutHref = "/logout";
+const ctaHref    = withLangPrefix(lang, "/menu");
+const brandHref  = withLangPrefix(lang, "/");
+const loginHref  = withLangPrefix(lang, "/login");
+const logoutHref = withLangPrefix(lang, "/logout");
+const accountHref   = withLangPrefix(lang, "/account");
+const adminHref     = withLangPrefix(lang, "/admin");
+const adminUsersHref = withLangPrefix(lang, "/admin/users");
+const adminMenuHref = withLangPrefix(lang, "/admin/menu");
+const staffHref     = withLangPrefix(lang, "/staff");
+const staffOrderHref = withLangPrefix(lang, "/staff/order");
 
 // language button label
 const switchLabel = t.switchTo;
@@ -109,26 +119,26 @@ const displayName = user?.user_metadata?.full_name?.split(" ")[0]
 
               <div id="userMenuDropdown" class="hidden absolute right-0 top-full mt-2 w-52 rounded-2xl border border-white/10 bg-[#0b0b10] shadow-xl overflow-hidden z-50">
                 <div class="py-1.5">
-                  <a href="/account" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/5 transition">
+                  <a href={accountHref} class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/5 transition">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-60"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.5"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-                    My Account
+                    {t.user.myAccount}
                   </a>
 
                   {role === "admin" && (
                     <>
                       <div class="mx-3 my-1.5 border-t border-white/10"></div>
-                      <p class="px-4 py-1 text-xs font-semibold uppercase tracking-widest text-amber-400/50">Admin</p>
-                      <a href="/admin" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">
+                      <p class="px-4 py-1 text-xs font-semibold uppercase tracking-widest text-amber-400/50">{t.user.adminSection}</p>
+                      <a href={adminHref} class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-70"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/></svg>
-                        Dashboard
+                        {t.user.dashboard}
                       </a>
-                      <a href="/admin/users" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">
+                      <a href={adminUsersHref} class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-70"><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="1.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M19 8v6M16 11h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-                        Users
+                        {t.user.users}
                       </a>
-                      <a href="/admin/menu" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">
+                      <a href={adminMenuHref} class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-70"><path d="M4 6h16M4 10h16M4 14h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-                        Edit Menu
+                        {t.user.editMenu}
                       </a>
                     </>
                   )}
@@ -136,14 +146,14 @@ const displayName = user?.user_metadata?.full_name?.split(" ")[0]
                   {(role === "employee" || role === "admin") && (
                     <>
                       <div class="mx-3 my-1.5 border-t border-white/10"></div>
-                      <p class="px-4 py-1 text-xs font-semibold uppercase tracking-widest text-sky-400/50">Staff</p>
-                      <a href="/staff" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-sky-400/80 hover:text-sky-400 hover:bg-sky-400/5 transition">
+                      <p class="px-4 py-1 text-xs font-semibold uppercase tracking-widest text-sky-400/50">{t.user.staffSection}</p>
+                      <a href={staffHref} class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-sky-400/80 hover:text-sky-400 hover:bg-sky-400/5 transition">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-70"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><rect x="9" y="3" width="6" height="4" rx="1" stroke="currentColor" stroke-width="1.5"/></svg>
-                        Active Orders
+                        {t.user.activeOrders}
                       </a>
-                      <a href="/staff/order" class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-sky-400/80 hover:text-sky-400 hover:bg-sky-400/5 transition">
+                      <a href={staffOrderHref} class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-sky-400/80 hover:text-sky-400 hover:bg-sky-400/5 transition">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-70"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-                        New Order
+                        {t.user.newOrder}
                       </a>
                     </>
                   )}
@@ -211,24 +221,24 @@ const displayName = user?.user_metadata?.full_name?.split(" ")[0]
                   {role === "admin" && <span class="rounded-full bg-amber-400/15 px-2 py-0.5 text-xs font-semibold text-amber-400">Admin</span>}
                   {role === "employee" && <span class="rounded-full bg-sky-400/15 px-2 py-0.5 text-xs font-semibold text-sky-400">Staff</span>}
                 </div>
-                <a href="/account" class="flex items-center px-4 py-3 text-sm text-white/60 hover:text-white hover:bg-white/5 transition">
-                  My Account
+                <a href={accountHref} class="flex items-center px-4 py-3 text-sm text-white/60 hover:text-white hover:bg-white/5 transition">
+                  {t.user.myAccount}
                 </a>
                 {role === "admin" && (
                   <>
                     <div class="border-t border-white/10"></div>
-                    <p class="px-4 pt-2.5 pb-1 text-xs font-semibold uppercase tracking-widest text-amber-400/50">Admin</p>
-                    <a href="/admin" class="flex items-center px-4 py-2.5 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">Dashboard</a>
-                    <a href="/admin/users" class="flex items-center px-4 py-2.5 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">Users</a>
-                    <a href="/admin/menu" class="flex items-center px-4 py-2.5 pb-2 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">Edit Menu</a>
+                    <p class="px-4 pt-2.5 pb-1 text-xs font-semibold uppercase tracking-widest text-amber-400/50">{t.user.adminSection}</p>
+                    <a href={adminHref} class="flex items-center px-4 py-2.5 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">{t.user.dashboard}</a>
+                    <a href={adminUsersHref} class="flex items-center px-4 py-2.5 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">{t.user.users}</a>
+                    <a href={adminMenuHref} class="flex items-center px-4 py-2.5 pb-2 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">{t.user.editMenu}</a>
                   </>
                 )}
                 {(role === "employee" || role === "admin") && (
                   <>
                     <div class="border-t border-white/10"></div>
-                    <p class="px-4 pt-2.5 pb-1 text-xs font-semibold uppercase tracking-widest text-sky-400/50">Staff</p>
-                    <a href="/staff" class="flex items-center px-4 py-2.5 text-sm text-sky-400/80 hover:text-sky-400 hover:bg-sky-400/5 transition">Active Orders</a>
-                    <a href="/staff/order" class="flex items-center px-4 py-2.5 pb-2 text-sm text-sky-400/80 hover:text-sky-400 hover:bg-sky-400/5 transition">New Order</a>
+                    <p class="px-4 pt-2.5 pb-1 text-xs font-semibold uppercase tracking-widest text-sky-400/50">{t.user.staffSection}</p>
+                    <a href={staffHref} class="flex items-center px-4 py-2.5 text-sm text-sky-400/80 hover:text-sky-400 hover:bg-sky-400/5 transition">{t.user.activeOrders}</a>
+                    <a href={staffOrderHref} class="flex items-center px-4 py-2.5 pb-2 text-sm text-sky-400/80 hover:text-sky-400 hover:bg-sky-400/5 transition">{t.user.newOrder}</a>
                   </>
                 )}
                 <div class="border-t border-white/10"></div>

@@ -5,7 +5,7 @@ import { createSupabaseServerClient, supabaseAdmin } from "./lib/supabase";
 const ADMIN_ROUTES = ["/admin", "/el/admin"];
 
 // Routes that require employee or admin role
-const STAFF_ROUTES = ["/staff"];
+const STAFF_ROUTES = ["/staff", "/el/staff"];
 
 // Routes that logged-in users should be redirected away from (to dashboard)
 const AUTH_ROUTES = ["/login", "/register", "/el/login", "/el/register", "/forgot-password", "/el/forgot-password"];
@@ -14,6 +14,9 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const { request, cookies, locals, redirect } = context;
   const pathname = new URL(request.url).pathname;
 
+  // x-astro-lang header is set by elRewrite() stubs so language survives middleware re-run on rewrite
+  const langHeader = request.headers.get("x-astro-lang");
+  locals.lang = (pathname.startsWith("/el") || langHeader === "el") ? "el" : "en";
   locals.user = null;
   locals.session = null;
   locals.role = null;
@@ -57,7 +60,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // Redirect already logged-in users away from auth pages
   const isAuthRoute = AUTH_ROUTES.some((r) => pathname.startsWith(r));
   if (isAuthRoute && user) {
-    return redirect("/dashboard");
+    const isEl = pathname.startsWith("/el");
+    return redirect(isEl ? "/el/dashboard" : "/dashboard");
   }
 
   return next();

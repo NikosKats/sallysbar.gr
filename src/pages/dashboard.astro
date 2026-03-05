@@ -1,9 +1,12 @@
 ---
+import { withLangPrefix } from "../i18n";
+
 const user = Astro.locals.user;
 const role = Astro.locals.role;
+const lang = Astro.locals.lang ?? "en";
 
-if (!user) return Astro.redirect("/login?next=/dashboard");
-if (role === "admin") return Astro.redirect("/admin");
-if (role === "employee") return Astro.redirect("/staff");
-return Astro.redirect("/account");
+if (!user) return Astro.redirect(withLangPrefix(lang, "/login") + "?next=/dashboard");
+if (role === "admin") return Astro.redirect(withLangPrefix(lang, "/admin"));
+if (role === "employee") return Astro.redirect(withLangPrefix(lang, "/staff"));
+return Astro.redirect(withLangPrefix(lang, "/account"));
 ---
