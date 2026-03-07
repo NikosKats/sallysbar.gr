@@ -24,10 +24,13 @@ export const POST: APIRoute = async ({ request, locals }) => {
     return json({ error: "Missing table or items" }, 400);
   }
 
+  // Compute order total
+  const total_cents = items.reduce((sum, i) => sum + i.qty * i.price_cents, 0);
+
   // Save to Supabase
   const { data: order, error } = await supabaseAdmin
     .from("orders")
-    .insert({ table_number: table, items, note, status: "pending" })
+    .insert({ table_number: table, items, note, status: "pending", total_cents, waiter_id: locals.user?.id ?? null })
     .select()
     .single();
 
@@ -36,14 +39,17 @@ export const POST: APIRoute = async ({ request, locals }) => {
     return json({ error: "Database error" }, 500);
   }
 
-  // Format Telegram message
+  // Format Telegram message with prices
   const itemLines = items
-    .map((i) => `  • ${i.qty}× ${i.name}`)
+    .map((i) => `  • ${i.qty}× ${i.name}  <i>€${((i.qty * i.price_cents) / 100).toFixed(2)}</i>`)
     .join("\n");
+
+  const totalFormatted = `€${(total_cents / 100).toFixed(2)}`;
 
   const text =
     `🍹 <b>New Order — Table ${table}</b>\n\n` +
-    `${itemLines}` +
+    `${itemLines}\n\n` +
+    `💶 <b>Total: ${totalFormatted}</b>` +
     (note ? `\n\n📝 <i>${note}</i>` : "") +
     `\n\n<code>#${order.id.slice(0, 8)}</code>`;
 

@@ -9,18 +9,37 @@ const t = dict[lang];
 const user = Astro.locals.user;
 const displayName = user?.user_metadata?.full_name?.split(" ")[0] ?? user?.email?.split("@")[0] ?? "Admin";
 
-const today = new Date();
+const now = new Date();
+
+const today = new Date(now);
 today.setHours(0, 0, 0, 0);
-const todayStr = today.toISOString();
+
+const weekStart = new Date(now);
+weekStart.setDate(now.getDate() - now.getDay());
+weekStart.setHours(0, 0, 0, 0);
+
+const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+const yearStart  = new Date(now.getFullYear(), 0, 1);
+
+// Last 30 days for calendar
+const calStart = new Date(now);
+calStart.setDate(now.getDate() - 29);
+calStart.setHours(0, 0, 0, 0);
 
 const [
   { data: todayOrders },
   { data: recentOrders },
+  { data: monthOrders },
+  { data: yearOrders },
+  { data: calOrders },
   { count: totalCustomers },
   { count: totalEmployees },
 ] = await Promise.all([
-  supabaseAdmin.from("orders").select("id,status,table_number,items").gte("created_at", todayStr),
-  supabaseAdmin.from("orders").select("id,table_number,items,status,note,created_at").order("created_at", { ascending: false }).limit(15),
+  supabaseAdmin.from("orders").select("id,status,table_number,items,total_cents,created_at").gte("created_at", today.toISOString()),
+  supabaseAdmin.from("orders").select("id,table_number,items,status,note,created_at,total_cents").order("created_at", { ascending: false }).limit(20),
+  supabaseAdmin.from("orders").select("id,status,total_cents,items,created_at").gte("created_at", monthStart.toISOString()),
+  supabaseAdmin.from("orders").select("id,status,total_cents,items,created_at").gte("created_at", yearStart.toISOString()),
+  supabaseAdmin.from("orders").select("id,status,total_cents,created_at").gte("created_at", calStart.toISOString()).neq("status", "cancelled"),
   supabaseAdmin.from("profiles").select("*", { count: "exact", head: true }).eq("role", "customer"),
   supabaseAdmin.from("profiles").select("*", { count: "exact", head: true }).in("role", ["employee", "admin"]),
 ]);
@@ -30,6 +49,71 @@ const preparing = todayOrders?.filter(o => o.status === "preparing").length ?? 0
 const ready     = todayOrders?.filter(o => o.status === "ready").length     ?? 0;
 const delivered = todayOrders?.filter(o => o.status === "delivered").length ?? 0;
 const totalToday = todayOrders?.length ?? 0;
+
+// Revenue helpers (exclude cancelled)
+function revenue(orders: any[] | null) {
+  return (orders ?? []).filter(o => o.status !== "cancelled").reduce((s: number, o: any) => s + (o.total_cents ?? 0), 0);
+}
+function fmtEur(cents: number) {
+  return `€${(cents / 100).toFixed(2)}`;
+}
+
+const revenueToday = revenue(todayOrders);
+const revenueWeek  = revenue((monthOrders ?? []).filter(o => new Date(o.created_at) >= weekStart));
+const revenueMonth = revenue(monthOrders);
+const revenueYear  = revenue(yearOrders);
+
+// Best sellers from year orders
+const salesMap = new Map<string, { name: string; qty: number; revenue_cents: number }>();
+for (const order of (yearOrders ?? [])) {
+  if (order.status === "cancelled") continue;
+  for (const item of (order.items ?? [])) {
+    const key = item.name as string;
+    const existing = salesMap.get(key) ?? { name: item.name, qty: 0, revenue_cents: 0 };
+    existing.qty += item.qty ?? 1;
+    existing.revenue_cents += (item.qty ?? 1) * (item.price_cents ?? 0);
+    salesMap.set(key, existing);
+  }
+}
+const bestSellers = [...salesMap.values()].sort((a, b) => b.qty - a.qty).slice(0, 8);
+
+// Calendar: daily data for last 30 days
+const dailyMap = new Map<string, { orders: number; revenue_cents: number }>();
+for (const o of (calOrders ?? [])) {
+  const day = o.created_at.slice(0, 10);
+  const d = dailyMap.get(day) ?? { orders: 0, revenue_cents: 0 };
+  d.orders++;
+  d.revenue_cents += o.total_cents ?? 0;
+  dailyMap.set(day, d);
+}
+// Build last-30-days array
+const calDays: { date: string; label: string; orders: number; revenue_cents: number }[] = [];
+for (let i = 29; i >= 0; i--) {
+  const d = new Date(now);
+  d.setDate(now.getDate() - i);
+  const key = d.toISOString().slice(0, 10);
+  const data = dailyMap.get(key) ?? { orders: 0, revenue_cents: 0 };
+  calDays.push({ date: key, label: `${d.getDate()}/${d.getMonth() + 1}`, ...data });
+}
+const maxDayRevenue = Math.max(...calDays.map(d => d.revenue_cents), 1);
+
+// Monthly breakdown for year
+const monthlyMap = new Map<string, { orders: number; revenue_cents: number }>();
+for (const o of (yearOrders ?? [])) {
+  if (o.status === "cancelled") continue;
+  const key = o.created_at.slice(0, 7); // YYYY-MM
+  const d = monthlyMap.get(key) ?? { orders: 0, revenue_cents: 0 };
+  d.orders++;
+  d.revenue_cents += o.total_cents ?? 0;
+  monthlyMap.set(key, d);
+}
+const monthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const monthlyData = monthNames.map((name, i) => {
+  const key = `${now.getFullYear()}-${String(i + 1).padStart(2, "0")}`;
+  const d = monthlyMap.get(key) ?? { orders: 0, revenue_cents: 0 };
+  return { name, ...d };
+});
+const maxMonthRevenue = Math.max(...monthlyData.map(d => d.revenue_cents), 1);
 
 function statusBadge(status: string) {
   const map: Record<string, string> = {
@@ -74,19 +158,22 @@ function itemSummary(items: any[]) {
       <div class="mx-auto max-w-7xl px-4">
         <nav class="flex items-center gap-1 py-2 overflow-x-auto text-sm">
           <span class="px-3 py-1.5 rounded-lg bg-amber-400/15 border border-amber-400/20 text-amber-400 font-medium whitespace-nowrap">{t.admin.nav.overview}</span>
+          <a href={withLangPrefix(lang, "/admin/analytics")} class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.analytics}</a>
+          <a href={withLangPrefix(lang, "/admin/calendar")} class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.calendar}</a>
+          <a href={withLangPrefix(lang, "/admin/orders")} class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.orders}</a>
+          <a href={withLangPrefix(lang, "/admin/tips")}  class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.tips}</a>
           <a href={withLangPrefix(lang, "/admin/users")} class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.users}</a>
           <a href={withLangPrefix(lang, "/admin/menu")} class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.editMenu}</a>
-          <a href={withLangPrefix(lang, "/staff/order")} class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.newOrder}</a>
         </nav>
       </div>
     </div>
 
-    <main class="mx-auto max-w-7xl px-4 py-8 space-y-8">
+    <main class="mx-auto max-w-7xl px-4 py-8 space-y-10">
 
-      <!-- Stats grid -->
-      <div>
+      <!-- Today's order status -->
+      <section>
         <h2 class="text-xs font-semibold uppercase tracking-widest text-white/30 mb-4">{t.admin.today}</h2>
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
           <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
             <p class="text-3xl font-bold text-white">{totalToday}</p>
             <p class="mt-1 text-sm text-white/50">{t.admin.totalOrders}</p>
@@ -103,11 +190,117 @@ function itemSummary(items: any[]) {
             <p class="text-3xl font-bold text-green-400">{ready + delivered}</p>
             <p class="mt-1 text-sm text-green-400/60">{t.admin.doneToday}</p>
           </div>
+          <div class="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-5 col-span-2 sm:col-span-1">
+            <p class="text-2xl font-bold text-amber-400">{fmtEur(revenueToday)}</p>
+            <p class="mt-1 text-sm text-amber-400/60">Revenue today</p>
+          </div>
         </div>
-      </div>
+      </section>
 
-      <!-- Business stats -->
-      <div>
+      <!-- Revenue overview -->
+      <section>
+        <h2 class="text-xs font-semibold uppercase tracking-widest text-white/30 mb-4">Revenue</h2>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+            <p class="text-2xl font-bold text-white">{fmtEur(revenueToday)}</p>
+            <p class="mt-1 text-sm text-white/50">Today</p>
+          </div>
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+            <p class="text-2xl font-bold text-white">{fmtEur(revenueWeek)}</p>
+            <p class="mt-1 text-sm text-white/50">This week</p>
+          </div>
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+            <p class="text-2xl font-bold text-white">{fmtEur(revenueMonth)}</p>
+            <p class="mt-1 text-sm text-white/50">This month</p>
+          </div>
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+            <p class="text-2xl font-bold text-white">{fmtEur(revenueYear)}</p>
+            <p class="mt-1 text-sm text-white/50">This year</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Monthly bar chart (this year) -->
+      <section>
+        <h2 class="text-xs font-semibold uppercase tracking-widest text-white/30 mb-4">Monthly Revenue — {now.getFullYear()}</h2>
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-6">
+          <div class="flex items-end gap-2 h-36">
+            {monthlyData.map((m) => {
+              const pct = maxMonthRevenue > 0 ? Math.max((m.revenue_cents / maxMonthRevenue) * 100, m.revenue_cents > 0 ? 4 : 0) : 0;
+              return (
+                <div class="flex-1 flex flex-col items-center gap-1 group relative">
+                  <div
+                    class="w-full rounded-t-md bg-amber-400/70 hover:bg-amber-400 transition-all cursor-default"
+                    style={`height:${pct}%`}
+                    title={`${m.name}: ${fmtEur(m.revenue_cents)} (${m.orders} orders)`}
+                  ></div>
+                  <span class="text-[10px] text-white/40">{m.name}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      <!-- Last 30 days calendar -->
+      <section>
+        <h2 class="text-xs font-semibold uppercase tracking-widest text-white/30 mb-4">Last 30 Days</h2>
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-4 overflow-x-auto">
+          <div class="flex gap-1.5 min-w-max">
+            {calDays.map((d) => {
+              const pct = maxDayRevenue > 0 ? Math.max((d.revenue_cents / maxDayRevenue) * 100, d.revenue_cents > 0 ? 8 : 0) : 0;
+              const isToday = d.date === now.toISOString().slice(0, 10);
+              return (
+                <div class="flex flex-col items-center gap-1 group" title={`${d.date}: ${fmtEur(d.revenue_cents)} — ${d.orders} orders`}>
+                  <div class="w-7 h-20 flex flex-col justify-end">
+                    <div
+                      class={`w-full rounded-t ${isToday ? "bg-amber-400" : "bg-amber-400/40 group-hover:bg-amber-400/70"} transition`}
+                      style={`height:${pct}%`}
+                    ></div>
+                  </div>
+                  <span class={`text-[9px] ${isToday ? "text-amber-400" : "text-white/30"}`}>{d.label}</span>
+                  {d.orders > 0 && <span class="text-[9px] text-white/50">{d.orders}</span>}
+                </div>
+              );
+            })}
+          </div>
+          <p class="text-xs text-white/30 mt-3">Bar height = revenue. Numbers = order count.</p>
+        </div>
+      </section>
+
+      <!-- Best sellers -->
+      <section>
+        <h2 class="text-xs font-semibold uppercase tracking-widest text-white/30 mb-4">Best Sellers — {now.getFullYear()}</h2>
+        {bestSellers.length === 0 ? (
+          <div class="rounded-2xl border border-white/10 p-8 text-center text-sm text-white/40">No data yet</div>
+        ) : (
+          <div class="rounded-2xl border border-white/10 overflow-hidden">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-white/10 bg-white/5">
+                  <th class="text-left px-4 py-3 text-white/40 font-medium">#</th>
+                  <th class="text-left px-4 py-3 text-white/40 font-medium">Item</th>
+                  <th class="text-right px-4 py-3 text-white/40 font-medium">Sold</th>
+                  <th class="text-right px-4 py-3 text-white/40 font-medium">Revenue</th>
+                </tr>
+              </thead>
+              <tbody>
+                {bestSellers.map((item, i) => (
+                  <tr class="border-b border-white/5 hover:bg-white/[0.02] transition">
+                    <td class="px-4 py-3 text-white/30 font-mono text-xs">{i + 1}</td>
+                    <td class="px-4 py-3 font-medium text-white">{item.name}</td>
+                    <td class="px-4 py-3 text-right text-white/70">{item.qty}</td>
+                    <td class="px-4 py-3 text-right text-amber-400 font-medium">{fmtEur(item.revenue_cents)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <!-- Business stats + quick actions -->
+      <section>
         <h2 class="text-xs font-semibold uppercase tracking-widest text-white/30 mb-4">{t.admin.business}</h2>
         <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
           <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
@@ -122,14 +315,13 @@ function itemSummary(items: any[]) {
             <p class="text-sm font-semibold text-amber-400 mb-3">{t.admin.quickActions}</p>
             <div class="flex flex-col gap-2">
               <a href={withLangPrefix(lang, "/admin/menu")} class="text-sm text-white/70 hover:text-white transition">{t.admin.editMenuLink}</a>
-              <a href={withLangPrefix(lang, "/staff/order")} class="text-sm text-white/70 hover:text-white transition">{t.admin.takeOrderLink}</a>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
       <!-- Recent orders -->
-      <div>
+      <section>
         <h2 class="text-xs font-semibold uppercase tracking-widest text-white/30 mb-4">{t.admin.recentOrders}</h2>
         <div class="rounded-2xl border border-white/10 overflow-hidden">
           {!recentOrders?.length ? (
@@ -141,6 +333,7 @@ function itemSummary(items: any[]) {
                   <tr class="border-b border-white/10 bg-white/5">
                     <th class="text-left px-4 py-3 text-white/40 font-medium">{t.admin.tableCol}</th>
                     <th class="text-left px-4 py-3 text-white/40 font-medium">{t.admin.itemsCol}</th>
+                    <th class="text-right px-4 py-3 text-white/40 font-medium">Total</th>
                     <th class="text-left px-4 py-3 text-white/40 font-medium">{t.admin.statusCol}</th>
                     <th class="text-left px-4 py-3 text-white/40 font-medium">{t.admin.timeCol}</th>
                   </tr>
@@ -150,6 +343,7 @@ function itemSummary(items: any[]) {
                     <tr class="border-b border-white/5 hover:bg-white/[0.02] transition">
                       <td class="px-4 py-3 font-medium text-white">#{order.table_number}</td>
                       <td class="px-4 py-3 text-white/60 max-w-xs truncate">{itemSummary(order.items)}</td>
+                      <td class="px-4 py-3 text-right text-amber-400 font-medium whitespace-nowrap">{order.total_cents ? fmtEur(order.total_cents) : "—"}</td>
                       <td class="px-4 py-3">
                         <span class={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${statusBadge(order.status)}`}>
                           {order.status}
@@ -163,7 +357,7 @@ function itemSummary(items: any[]) {
             </div>
           )}
         </div>
-      </div>
+      </section>
 
     </main>
   </body>

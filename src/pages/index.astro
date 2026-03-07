@@ -11,8 +11,8 @@ import en from "../i18n/en";
 const t = en;
 const copy = getSiteCopy("en");
 
-const title = `${site.name} – ${copy.tagline}`;
-const desc = copy.description;
+const title = "Sally's Bar Skala Kefalonia | Cocktails & Nightlife";
+const desc = "Sally's Bar is the best cocktail bar and nightlife spot in Skala, Kefalonia. Premium cocktails from €5, friendly staff, open daily 6PM–2AM in summer. Walk in — no reservation needed.";
 ---
 
 <html lang="en">
@@ -31,7 +31,11 @@ const desc = copy.description;
 
     <title>{title}</title>
     <meta name="description" content={desc} />
+    <meta name="keywords" content="skala kefalonia nightlife, bar skala kefalonia, cocktail bar kefalonia, kefalonia bars, kefalonia nightlife, skala bar, best bar kefalonia, sally's bar kefalonia, things to do skala kefalonia night, cocktails kefalonia" />
     <link rel="canonical" href="https://sallysbar.gr/" />
+    <link rel="alternate" hreflang="en" href="https://sallysbar.gr/" />
+    <link rel="alternate" hreflang="el" href="https://sallysbar.gr/el/" />
+    <link rel="alternate" hreflang="x-default" href="https://sallysbar.gr/" />
 
     <link rel="icon" type="image/png" href="/favicon/favicon-96x96.png" sizes="96x96" />
     <link rel="icon" type="image/svg+xml" href="/favicon/favicon.svg" />
@@ -42,23 +46,122 @@ const desc = copy.description;
     <meta property="og:title" content={title} />
     <meta property="og:description" content={desc} />
     <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://sallysbar.gr/" />
+    <meta property="og:image" content="https://sallysbar.gr/photos/1.sallys-bar-cocktails-skala.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="en_GB" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={desc} />
+    <meta name="twitter:image" content="https://sallysbar.gr/photos/1.sallys-bar-cocktails-skala.jpg" />
 
     <script
       type="application/ld+json"
       set:html={JSON.stringify({
         "@context": "https://schema.org",
         "@type": "BarOrPub",
-        name: site.name,
+        name: "Sally's Bar",
+        alternateName: ["Sally's Bar Skala", "Sally's Bar Kefalonia", "Sallys Bar Skala Kefalonia"],
+        description: "The best cocktail bar and nightlife venue in Skala, Kefalonia. Premium cocktails from €5, friendly atmosphere, open daily in summer.",
+        url: "https://sallysbar.gr",
+        telephone: site.phoneE164,
+        priceRange: "€5–€10",
+        servesCuisine: ["Cocktails", "Beer", "Wine", "Spirits"],
+        image: [
+          "https://sallysbar.gr/photos/1.sallys-bar-cocktails-skala.jpg",
+          "https://sallysbar.gr/photos/3.sallys-bar-lounge.jpg",
+          "https://sallysbar.gr/photos/5.premium-drinks.jpg",
+        ],
         address: {
           "@type": "PostalAddress",
-          streetAddress: site.addressShort,
+          streetAddress: "Skala Beach Road",
           addressLocality: "Skala",
           addressRegion: "Kefalonia",
           postalCode: "28086",
           addressCountry: "GR",
         },
-        telephone: site.phoneE164,
-        url: "https://sallysbar.gr",
+        geo: {
+          "@type": "GeoCoordinates",
+          latitude: 38.0748829,
+          longitude: 20.7969726,
+        },
+        openingHoursSpecification: [
+          {
+            "@type": "OpeningHoursSpecification",
+            dayOfWeek: ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],
+            opens: "18:00",
+            closes: "02:00",
+          },
+        ],
+        aggregateRating: {
+          "@type": "AggregateRating",
+          ratingValue: site.ratings.google.rating,
+          reviewCount: site.ratings.google.count,
+          bestRating: 5,
+          worstRating: 1,
+        },
+        sameAs: [
+          site.socials.instagram,
+          site.socials.facebook,
+          site.socials.tripadvisor,
+        ],
+        hasMap: site.mapsShareUrl,
+        currenciesAccepted: "EUR",
+        paymentAccepted: "Cash, Credit Card",
+        amenityFeature: [
+          { "@type": "LocationFeatureSpecification", name: "Outdoor Seating", value: true },
+          { "@type": "LocationFeatureSpecification", name: "Bar Service", value: true },
+        ],
+      })}
+    />
+    <script
+      type="application/ld+json"
+      set:html={JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        mainEntity: [
+          {
+            "@type": "Question",
+            name: "What is the best bar in Skala Kefalonia?",
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: "Sally's Bar is widely considered the best bar in Skala, Kefalonia. Rated 4.4/5 on Google with 174+ reviews, it offers premium cocktails from €5, a relaxed lounge early evening, and lively nightlife atmosphere late night.",
+            },
+          },
+          {
+            "@type": "Question",
+            name: "What time does Sally's Bar open in Skala Kefalonia?",
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: "Sally's Bar in Skala is open daily from 6PM to 2AM during the summer season (typically May to October). No reservation is needed — just walk in.",
+            },
+          },
+          {
+            "@type": "Question",
+            name: "How much are cocktails at Sally's Bar Kefalonia?",
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: "Cocktails at Sally's Bar in Skala, Kefalonia are priced between €5 and €10. Beers, wines, and spirits are also available at competitive prices.",
+            },
+          },
+          {
+            "@type": "Question",
+            name: "Where is Sally's Bar in Skala Kefalonia?",
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: "Sally's Bar is located in the heart of Skala, Kefalonia (28086), Greece. It is an easy walk from the beach and most hotels and apartments in Skala village.",
+            },
+          },
+          {
+            "@type": "Question",
+            name: "What is the nightlife like in Skala Kefalonia?",
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: "Skala in Kefalonia has a relaxed but fun nightlife scene. Sally's Bar is the go-to spot — starting as a sophisticated cocktail lounge after dinner, it becomes livelier as the night progresses. It's the perfect place to end your evening in Skala.",
+            },
+          },
+        ],
       })}
     />
   </head>
@@ -243,6 +346,62 @@ const desc = copy.description;
       <div class="rounded-2xl border border-white/10 p-6 bg-white/5">
         <h2 class="text-xl font-semibold">{t.home.why3Title}</h2>
         <p class="mt-3 text-white/70">{t.home.why3Text}</p>
+      </div>
+    </section>
+
+    <!-- FAQ / SEO CONTENT -->
+    <section class="mx-auto max-w-6xl px-6 py-14">
+      <h2 class="text-3xl font-semibold mb-2">Skala Kefalonia Nightlife — Your Questions Answered</h2>
+      <p class="text-white/60 mb-8 text-sm">Everything you need to know about visiting Sally's Bar in Skala, Kefalonia.</p>
+      <div class="space-y-4">
+        {[
+          {
+            q: "What is the best bar in Skala, Kefalonia?",
+            a: "Sally's Bar is the top-rated cocktail bar and nightlife venue in Skala. With a 4.4 ⭐ Google rating and 174+ reviews, it's consistently recommended by travellers for premium drinks, a welcoming atmosphere, and great music.",
+          },
+          {
+            q: "What time does Sally's Bar open?",
+            a: "We open daily at 6PM and stay open until 2AM throughout the summer season. Early evening is perfect for a sophisticated cocktail after dinner — the energy builds as the night goes on. No reservation needed.",
+          },
+          {
+            q: "How much are cocktails in Skala, Kefalonia?",
+            a: "Sally's Bar keeps prices fair: cocktails range from €5 to €10. Beer, wine, and spirits are also available. You won't find better value for quality drinks in Kefalonia nightlife.",
+          },
+          {
+            q: "Where is Sally's Bar in Skala?",
+            a: "We're in the heart of Skala village, Kefalonia — a short walk from the beach and most local hotels and apartments. Follow the signs or search 'Sally's Bar Skala Kefalonia' on Google Maps.",
+          },
+          {
+            q: "Do I need to book a table at Sally's Bar?",
+            a: "No booking required! Sally's Bar is walk-in friendly. Just turn up, grab a seat, and let us take care of the rest. Groups are always welcome.",
+          },
+        ].map(({ q, a }) => (
+          <details class="rounded-2xl border border-white/10 bg-white/5 group" open={false}>
+            <summary class="px-5 py-4 cursor-pointer text-sm font-semibold text-white list-none flex justify-between items-center">
+              {q}
+              <span class="text-white/40 group-open:rotate-180 transition-transform text-lg">▾</span>
+            </summary>
+            <p class="px-5 pb-5 text-sm text-white/70 leading-relaxed">{a}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+
+    <!-- LOCAL SEO TEXT BLOCK -->
+    <section class="mx-auto max-w-6xl px-6 pb-14">
+      <div class="rounded-2xl border border-white/10 bg-white/5 p-8">
+        <h2 class="text-2xl font-semibold mb-4">The Heart of Kefalonia Nightlife in Skala</h2>
+        <div class="text-white/65 text-sm leading-relaxed space-y-3">
+          <p>
+            If you're looking for the best nightlife in Skala, Kefalonia, Sally's Bar has been the village's favourite meeting point for years. Located steps from the main strip, we welcome locals, expats, and tourists — especially visitors from the UK and Ireland who make Skala their summer home.
+          </p>
+          <p>
+            We serve over 30 cocktails crafted with premium spirits, alongside a full selection of beers, wines, and soft drinks. Whether you're after a quiet drink after dinner or you want to stay out until 2AM, Sally's Bar adapts to your night. Come early for the lounge vibe, stay late for the energy.
+          </p>
+          <p>
+            Kefalonia is one of Greece's most beautiful islands, and Skala is its most social village. When the sun goes down, the bars fill up — and Sally's is where everyone ends up. Rated one of the top bars in Kefalonia on TripAdvisor and Google, we'd love to see you this season.
+          </p>
+        </div>
       </div>
     </section>
 

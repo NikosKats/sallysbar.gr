@@ -32,16 +32,40 @@ for (const c of categories) {
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>{t.staff.newOrder} — Sally's Bar</title>
     <meta name="robots" content="noindex" />
+    <!-- Telegram Mini App SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+      /* When running inside Telegram Mini App, hide the site header */
+      .tg-app #site-header-wrap { display: none !important; }
+      .tg-app .staff-subnav     { top: 0 !important; }
+      .tg-app #native-submit-bar { display: none !important; }
+      .tg-app body              { padding-bottom: 1rem !important; }
+    </style>
   </head>
 
   <body class="min-h-screen bg-[#0b0b10] text-white font-body pb-32">
-    <Header />
 
-    <!-- Spacer for fixed header -->
-    <div class="h-20"></div>
+    <!-- Detect Telegram Mini App early to avoid layout flash -->
+    <script is:inline>
+      if (window.Telegram?.WebApp?.initData) {
+        document.documentElement.classList.add('tg-app');
+        Telegram.WebApp.ready();
+        Telegram.WebApp.expand();
+        Telegram.WebApp.setBackgroundColor('#0b0b10');
+        Telegram.WebApp.setHeaderColor('#0b0b10');
+        Telegram.WebApp.BackButton.show();
+        Telegram.WebApp.BackButton.onClick(function() { window.history.back(); });
+      }
+    </script>
+
+    <!-- Site header — hidden in Telegram Mini App -->
+    <div id="site-header-wrap">
+      <Header />
+      <div class="h-20"></div>
+    </div>
 
     <!-- Staff sub-nav -->
-    <div class="sticky top-20 z-40 border-b border-sky-400/20 bg-[#0b0b10]/95 backdrop-blur">
+    <div class="staff-subnav sticky top-20 z-40 border-b border-sky-400/20 bg-[#0b0b10]/95 backdrop-blur">
       <div class="mx-auto max-w-2xl px-6 flex items-center gap-2 py-2 text-sm">
         <a href={withLangPrefix(lang, "/staff")} class="px-3 py-1.5 rounded-lg text-white/50 hover:text-sky-400 hover:bg-sky-400/5 transition">{t.staff.back}</a>
         <span class="px-3 py-1.5 rounded-lg bg-sky-400/15 border border-sky-400/20 text-sky-400 font-medium">{t.staff.newOrder}</span>
@@ -87,15 +111,8 @@ for (const c of categories) {
                           data-action="dec"
                           data-id={item.id}
                           class="qty-btn w-8 h-8 rounded-full border border-white/15 bg-white/5 text-white/80 hover:bg-white/10 flex items-center justify-center text-lg leading-none transition"
-                        >
-                          −
-                        </button>
-                        <span
-                          id={`qty-${item.id}`}
-                          class="w-5 text-center text-sm font-semibold"
-                        >
-                          0
-                        </span>
+                        >−</button>
+                        <span id={`qty-${item.id}`} class="w-5 text-center text-sm font-semibold">0</span>
                         <button
                           type="button"
                           data-action="inc"
@@ -103,9 +120,7 @@ for (const c of categories) {
                           data-name={item.name}
                           data-price={item.price_cents}
                           class="qty-btn w-8 h-8 rounded-full border border-white/15 bg-white/5 text-white/80 hover:bg-white/10 flex items-center justify-center text-lg leading-none transition"
-                        >
-                          +
-                        </button>
+                        >+</button>
                       </div>
                     </div>
                   ))}
@@ -146,8 +161,8 @@ for (const c of categories) {
       </div>
     </main>
 
-    <!-- Submit bar -->
-    <div class="fixed bottom-0 inset-x-0 border-t border-white/10 bg-[#0b0b10]/95 backdrop-blur px-6 py-4">
+    <!-- Native submit bar (shown in browser, hidden in Telegram) -->
+    <div id="native-submit-bar" class="fixed bottom-0 inset-x-0 border-t border-white/10 bg-[#0b0b10]/95 backdrop-blur px-6 py-4">
       <button
         id="submitBtn"
         disabled
@@ -158,26 +173,39 @@ for (const c of categories) {
     </div>
 
     <script define:vars={{ tSendToBarman: t.staff.sendToBarman, tSending: t.staff.sending }}>
+      const isTg   = !!(window.Telegram?.WebApp?.initData);
+      const tgBtn  = isTg ? window.Telegram.WebApp.MainButton : null;
+
+      const submitBtn   = document.getElementById("submitBtn");
+      const summaryBlock = document.getElementById("summaryBlock");
+      const summaryList  = document.getElementById("summaryList");
+      const summaryTotal = document.getElementById("summaryTotal");
+      const successMsg   = document.getElementById("successMsg");
+      const errorMsg     = document.getElementById("errorMsg");
+
       const quantities = {};
 
-      const submitBtn = document.getElementById("submitBtn");
-      const summaryBlock = document.getElementById("summaryBlock");
-      const summaryList = document.getElementById("summaryList");
-      const summaryTotal = document.getElementById("summaryTotal");
-      const successMsg = document.getElementById("successMsg");
-      const errorMsg = document.getElementById("errorMsg");
+      if (isTg) {
+        tgBtn.setText(tSendToBarman);
+        tgBtn.color = '#2481cc';
+      }
 
       function updateSummary() {
-        const items = Object.values(quantities).filter((i) => i.qty > 0);
+        const items    = Object.values(quantities).filter(i => i.qty > 0);
         const hasItems = items.length > 0;
-        const table = document.getElementById("tableInput").value;
+        const table    = document.getElementById("tableInput").value;
+        const canSubmit = hasItems && !!table;
 
-        submitBtn.disabled = !hasItems || !table;
+        if (!isTg) {
+          submitBtn.disabled = !canSubmit;
+        } else {
+          canSubmit ? tgBtn.show() : tgBtn.hide();
+        }
 
         if (hasItems) {
           summaryBlock.classList.remove("hidden");
           summaryList.innerHTML = items
-            .map((i) => `<div class="flex justify-between"><span>${i.qty}× ${i.name}</span><span class="text-white/60">€${((i.qty * i.price_cents) / 100).toFixed(0)}</span></div>`)
+            .map(i => `<div class="flex justify-between"><span>${i.qty}× ${i.name}</span><span class="text-white/60">€${((i.qty * i.price_cents) / 100).toFixed(0)}</span></div>`)
             .join("");
           const total = items.reduce((s, i) => s + i.qty * i.price_cents, 0);
           summaryTotal.textContent = `€${(total / 100).toFixed(0)}`;
@@ -186,12 +214,67 @@ for (const c of categories) {
         }
       }
 
-      document.querySelectorAll(".qty-btn").forEach((btn) => {
+      async function doSubmit() {
+        const table = Number(document.getElementById("tableInput").value);
+        const note  = document.getElementById("noteInput").value.trim();
+        const items = Object.values(quantities).filter(i => i.qty > 0);
+
+        successMsg.classList.add("hidden");
+        errorMsg.classList.add("hidden");
+
+        if (!isTg) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = tSending;
+        } else {
+          tgBtn.showProgress(false);
+          tgBtn.disable();
+        }
+
+        try {
+          const res = await fetch("/api/order", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ table, items, note: note || undefined }),
+          });
+
+          if (res.ok) {
+            if (isTg) {
+              // Close mini app — waiter sees the order notification in Telegram
+              window.Telegram.WebApp.close();
+            } else {
+              successMsg.classList.remove("hidden");
+              Object.keys(quantities).forEach(k => {
+                quantities[k].qty = 0;
+                const el = document.getElementById(`qty-${k}`);
+                if (el) el.textContent = "0";
+              });
+              document.getElementById("tableInput").value = "";
+              document.getElementById("noteInput").value = "";
+              summaryBlock.classList.add("hidden");
+            }
+          } else {
+            errorMsg.classList.remove("hidden");
+          }
+        } catch {
+          errorMsg.classList.remove("hidden");
+        }
+
+        if (!isTg) {
+          submitBtn.textContent = tSendToBarman;
+          updateSummary();
+        } else {
+          tgBtn.hideProgress();
+          tgBtn.enable();
+        }
+      }
+
+      // Qty buttons
+      document.querySelectorAll(".qty-btn").forEach(btn => {
         btn.addEventListener("click", () => {
-          const id = btn.dataset.id;
+          const id     = btn.dataset.id;
           const action = btn.dataset.action;
-          const name = btn.dataset.name ?? id;
-          const price = Number(btn.dataset.price ?? 0);
+          const name   = btn.dataset.name ?? id;
+          const price  = Number(btn.dataset.price ?? 0);
 
           if (!quantities[id]) quantities[id] = { name, qty: 0, price_cents: price };
 
@@ -207,43 +290,12 @@ for (const c of categories) {
 
       document.getElementById("tableInput").addEventListener("input", updateSummary);
 
-      submitBtn.addEventListener("click", async () => {
-        const table = Number(document.getElementById("tableInput").value);
-        const note = document.getElementById("noteInput").value.trim();
-        const items = Object.values(quantities).filter((i) => i.qty > 0);
-
-        successMsg.classList.add("hidden");
-        errorMsg.classList.add("hidden");
-        submitBtn.disabled = true;
-        submitBtn.textContent = tSending;
-
-        try {
-          const res = await fetch("/api/order", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ table, items, note: note || undefined }),
-          });
-
-          if (res.ok) {
-            successMsg.classList.remove("hidden");
-            Object.keys(quantities).forEach((k) => {
-              quantities[k].qty = 0;
-              const el = document.getElementById(`qty-${k}`);
-              if (el) el.textContent = "0";
-            });
-            document.getElementById("tableInput").value = "";
-            document.getElementById("noteInput").value = "";
-            summaryBlock.classList.add("hidden");
-          } else {
-            errorMsg.classList.remove("hidden");
-          }
-        } catch {
-          errorMsg.classList.remove("hidden");
-        }
-
-        submitBtn.textContent = tSendToBarman;
-        updateSummary();
-      });
+      // Wire submit to the right surface
+      if (isTg) {
+        tgBtn.onClick(doSubmit);
+      } else {
+        submitBtn.addEventListener("click", doSubmit);
+      }
     </script>
   </body>
 </html>

@@ -38,14 +38,22 @@ const { data: profiles } = await supabaseAdmin.from("profiles").select("id,role,
 
 const profileMap = Object.fromEntries((profiles ?? []).map(p => [p.id, p]));
 
-const users = (authUsers ?? []).map(u => ({
-  id:       u.id,
-  email:    u.email ?? "—",
-  name:     profileMap[u.id]?.full_name ?? u.user_metadata?.full_name ?? "",
-  role:     profileMap[u.id]?.role ?? "customer",
-  joined:   profileMap[u.id]?.created_at ?? u.created_at,
-  provider: u.app_metadata?.provider ?? "email",
-})).sort((a, b) => new Date(b.joined).getTime() - new Date(a.joined).getTime());
+const users = (authUsers ?? []).map(u => {
+  const wasInvited  = !!u.invited_at;
+  const isConfirmed = !!(u.email_confirmed_at ?? u.confirmed_at);
+  const status = wasInvited && !isConfirmed ? "invite_pending"
+               : isConfirmed               ? "active"
+               :                             "unconfirmed";
+  return {
+    id:       u.id,
+    email:    u.email ?? "—",
+    name:     profileMap[u.id]?.full_name ?? u.user_metadata?.full_name ?? "",
+    role:     profileMap[u.id]?.role ?? "customer",
+    joined:   profileMap[u.id]?.created_at ?? u.created_at,
+    provider: u.app_metadata?.provider ?? "email",
+    status,
+  };
+}).sort((a, b) => new Date(b.joined).getTime() - new Date(a.joined).getTime());
 
 function roleBadge(role: string) {
   const map: Record<string, string> = {
@@ -100,9 +108,12 @@ function fmtDate(d: string) {
       <div class="mx-auto max-w-7xl px-4">
         <nav class="flex items-center gap-1 py-2 overflow-x-auto text-sm">
           <a href={withLangPrefix(lang, "/admin")} class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.overview}</a>
+          <a href={withLangPrefix(lang, "/admin/analytics")} class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.analytics}</a>
+          <a href={withLangPrefix(lang, "/admin/calendar")} class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.calendar}</a>
+          <a href={withLangPrefix(lang, "/admin/orders")} class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.orders}</a>
+          <a href={withLangPrefix(lang, "/admin/tips")}  class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.tips}</a>
           <span class="px-3 py-1.5 rounded-lg bg-amber-400/15 border border-amber-400/20 text-amber-400 font-medium whitespace-nowrap">{t.admin.nav.users}</span>
           <a href={withLangPrefix(lang, "/admin/menu")} class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.editMenu}</a>
-          <a href={withLangPrefix(lang, "/staff/order")} class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.newOrder}</a>
         </nav>
       </div>
     </div>
@@ -164,6 +175,7 @@ function fmtDate(d: string) {
                   <th class="text-left px-4 py-3 text-white/40 font-medium">{t.admin.email}</th>
                   <th class="text-left px-4 py-3 text-white/40 font-medium">{t.admin.role}</th>
                   <th class="text-left px-4 py-3 text-white/40 font-medium">{t.admin.provider}</th>
+                  <th class="text-left px-4 py-3 text-white/40 font-medium">Status</th>
                   <th class="text-left px-4 py-3 text-white/40 font-medium">{t.admin.joined}</th>
                   <th class="text-left px-4 py-3 text-white/40 font-medium">{t.admin.actions}</th>
                 </tr>
@@ -183,6 +195,24 @@ function fmtDate(d: string) {
                       </span>
                     </td>
                     <td class="px-4 py-3 text-white/40 text-xs">{u.provider}</td>
+                    <td class="px-4 py-3">
+                      {u.status === "invite_pending" ? (
+                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-400/10 text-amber-400 border border-amber-400/20">
+                          <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                          Invite Pending
+                        </span>
+                      ) : u.status === "active" ? (
+                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-400/10 text-green-400 border border-green-400/20">
+                          <span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>
+                          Active
+                        </span>
+                      ) : (
+                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-white/5 text-white/30 border border-white/10">
+                          <span class="w-1.5 h-1.5 rounded-full bg-white/30"></span>
+                          Unconfirmed
+                        </span>
+                      )}
+                    </td>
                     <td class="px-4 py-3 text-white/40 whitespace-nowrap">{fmtDate(u.joined)}</td>
                     <td class="px-4 py-3">
                       <div class="flex items-center gap-2">

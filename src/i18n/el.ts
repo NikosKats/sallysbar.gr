@@ -60,6 +60,10 @@ season: {
     dashboard: "Πίνακας Ελέγχου",
     users: "Χρήστες",
     editMenu: "Επεξεργασία Μενού",
+    analytics: "Αναλυτικά",
+    orders: "Παραγγελίες",
+    calendar: "Ημερολόγιο",
+    tips: "Φιλοδωρήματα",
     activeOrders: "Ενεργές Παραγγελίες",
     newOrder: "Νέα Παραγγελία",
     adminSection: "Διαχείριση",
@@ -126,7 +130,7 @@ sticky: {
 },
 
   admin: {
-    nav: { overview: "Επισκόπηση", users: "Χρήστες", editMenu: "Επεξεργασία Μενού", newOrder: "Νέα Παραγγελία" },
+    nav: { overview: "Επισκόπηση", users: "Χρήστες", editMenu: "Επεξεργασία Μενού", newOrder: "Νέα Παραγγελία", analytics: "Αναλυτικά", calendar: "Ημερολόγιο", orders: "Παραγγελίες", tips: "Φιλοδωρήματα" },
     menu: {
       categories: "Κατηγορίες", newCat: "+ Νέα", sortLabel: "σειρά",
       visible: "ορατό", hidden: "κρυφό", edit: "Επεξ.", del: "Διαγρ.",

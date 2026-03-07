@@ -70,6 +70,8 @@ const registerHref = withLangPrefix(lang, "/register");
       .forgot-link:hover { color: rgba(255,255,255,.7); }
       .alert { border-radius: .75rem; padding: .75rem 1rem; font-size: .875rem; margin-bottom: 1rem; background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.2); color: #f87171; }
       .cf-turnstile { margin-top: .25rem; }
+      .captcha-hint { font-size: .75rem; color: rgba(255,255,255,.4); text-align: center; margin-top: .5rem; display: none; }
+      .captcha-hint.visible { display: block; }
     </style>
   </head>
   <body>
@@ -95,14 +97,18 @@ const registerHref = withLangPrefix(lang, "/register");
             <input id="password" name="password" type="password" required autocomplete="current-password" placeholder="••••••••" />
           </div>
           <input type="hidden" name="captchaToken" id="captchaTokenInput" />
-          <div
-            class="cf-turnstile"
-            data-sitekey={turnstileSitekey}
-            data-theme="dark"
-            data-callback="onTurnstileSuccess"
-            data-expired-callback="onTurnstileExpired"
-          ></div>
-          <button type="submit" id="loginSubmitBtn" class="btn-primary" disabled>{t.submit}</button>
+          {turnstileSitekey && (
+            <div
+              id="turnstileWidget"
+              class="cf-turnstile"
+              data-sitekey={turnstileSitekey}
+              data-theme="dark"
+              data-callback="onTurnstileSuccess"
+              data-expired-callback="onTurnstileExpired"
+            ></div>
+          )}
+          <p id="captchaHint" class="captcha-hint" style="display:none">{isEl ? "Ολοκλήρωσε την επαλήθευση ασφαλείας παραπάνω." : "Complete the security check above to sign in."}</p>
+          <button type="submit" id="loginSubmitBtn" class="btn-primary" disabled={turnstileSitekey ? true : undefined}>{t.submit}</button>
           <a href={withLangPrefix(lang, "/forgot-password")} class="forgot-link">
             {isEl ? "Ξέχασες τον κωδικό;" : "Forgot password?"}
           </a>
@@ -139,15 +145,45 @@ const registerHref = withLangPrefix(lang, "/register");
 
       const loginSubmitBtn = document.getElementById("loginSubmitBtn") as HTMLButtonElement;
       const captchaInput   = document.getElementById("captchaTokenInput") as HTMLInputElement;
+      const captchaHint    = document.getElementById("captchaHint") as HTMLElement;
+      const form           = document.querySelector("form.form") as HTMLFormElement;
+      const widgetEl       = document.getElementById("turnstileWidget");
+      const isLocalhost    = ["localhost", "127.0.0.1"].includes(window.location.hostname);
 
-      (window as any).onTurnstileSuccess = (token: string) => {
-        captchaInput.value = token;
+      if (widgetEl) {
+        captchaHint.style.display = "block";
+
+        (window as any).onTurnstileSuccess = (token: string) => {
+          captchaInput.value = token;
+          loginSubmitBtn.disabled = false;
+          captchaHint.style.display = "none";
+        };
+        (window as any).onTurnstileExpired = () => {
+          captchaInput.value = "";
+          loginSubmitBtn.disabled = isLocalhost ? false : true;
+          captchaHint.style.display = isLocalhost ? "none" : "block";
+        };
+
+        // On localhost Turnstile won't complete — enable after 1.5s
+        if (isLocalhost) {
+          setTimeout(() => {
+            loginSubmitBtn.disabled = false;
+            captchaHint.style.display = "none";
+          }, 1500);
+        }
+      } else {
         loginSubmitBtn.disabled = false;
-      };
-      (window as any).onTurnstileExpired = () => {
-        captchaInput.value = "";
+      }
+
+      // Show loading state when form submits
+      form?.addEventListener("submit", () => {
         loginSubmitBtn.disabled = true;
-      };
+        loginSubmitBtn.textContent = "Signing in…";
+      });
+
+      // Scroll error into view if present
+      const alertEl = document.querySelector(".alert");
+      if (alertEl) alertEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
 
       document.getElementById("googleBtn")?.addEventListener("click", async () => {
         const next = new URLSearchParams(window.location.search).get("next") ?? "/dashboard";

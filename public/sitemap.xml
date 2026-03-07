@@ -1,6 +1,89 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset
+  xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+  xmlns:xhtml="http://www.w3.org/1999/xhtml"
+>
+  <!-- English pages -->
   <url>
     <loc>https://sallysbar.gr/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://sallysbar.gr/" />
+    <xhtml:link rel="alternate" hreflang="el" href="https://sallysbar.gr/el/" />
+    <lastmod>2026-03-07</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://sallysbar.gr/menu</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://sallysbar.gr/menu" />
+    <xhtml:link rel="alternate" hreflang="el" href="https://sallysbar.gr/el/menu" />
+    <lastmod>2026-03-07</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://sallysbar.gr/events</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://sallysbar.gr/events" />
+    <xhtml:link rel="alternate" hreflang="el" href="https://sallysbar.gr/el/events" />
+    <lastmod>2026-03-07</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://sallysbar.gr/book</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://sallysbar.gr/book" />
+    <xhtml:link rel="alternate" hreflang="el" href="https://sallysbar.gr/el/book" />
+    <lastmod>2026-03-07</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://sallysbar.gr/careers</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://sallysbar.gr/careers" />
+    <xhtml:link rel="alternate" hreflang="el" href="https://sallysbar.gr/el/careers" />
+    <lastmod>2026-03-07</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+
+  <!-- Greek pages -->
+  <url>
+    <loc>https://sallysbar.gr/el/</loc>
+    <xhtml:link rel="alternate" hreflang="el" href="https://sallysbar.gr/el/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://sallysbar.gr/" />
+    <lastmod>2026-03-07</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://sallysbar.gr/el/menu</loc>
+    <xhtml:link rel="alternate" hreflang="el" href="https://sallysbar.gr/el/menu" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://sallysbar.gr/menu" />
+    <lastmod>2026-03-07</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>https://sallysbar.gr/el/events</loc>
+    <xhtml:link rel="alternate" hreflang="el" href="https://sallysbar.gr/el/events" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://sallysbar.gr/events" />
+    <lastmod>2026-03-07</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://sallysbar.gr/el/book</loc>
+    <xhtml:link rel="alternate" hreflang="el" href="https://sallysbar.gr/el/book" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://sallysbar.gr/book" />
+    <lastmod>2026-03-07</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://sallysbar.gr/el/careers</loc>
+    <xhtml:link rel="alternate" hreflang="el" href="https://sallysbar.gr/el/careers" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://sallysbar.gr/careers" />
+    <lastmod>2026-03-07</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
   </url>
 </urlset>

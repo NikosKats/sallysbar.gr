@@ -61,6 +61,10 @@ season: {
     dashboard: "Dashboard",
     users: "Users",
     editMenu: "Edit Menu",
+    analytics: "Analytics",
+    orders: "Orders",
+    calendar: "Calendar",
+    tips: "Tips",
     activeOrders: "Active Orders",
     newOrder: "New Order",
     adminSection: "Admin",
@@ -128,7 +132,7 @@ season: {
 },
 
   admin: {
-    nav: { overview: "Overview", users: "Users", editMenu: "Edit Menu", newOrder: "New Order" },
+    nav: { overview: "Overview", users: "Users", editMenu: "Edit Menu", newOrder: "New Order", analytics: "Analytics", calendar: "Calendar", orders: "Orders", tips: "Tips" },
     menu: {
       categories: "Categories", newCat: "+ New", sortLabel: "sort",
       visible: "visible", hidden: "hidden", edit: "Edit", del: "Del",

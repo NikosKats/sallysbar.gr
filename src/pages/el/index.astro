@@ -11,8 +11,8 @@ import el from "../../i18n/el";
 const t = el;
 const copy = getSiteCopy("el");
 
-const title = `${site.name} – ${copy.tagline}`;
-const desc = copy.description;
+const title = "Sally's Bar Skala Κεφαλονιά | Κοκτέιλ & Νυχτερινή Ζωή";
+const desc = "Το Sally's Bar είναι το κορυφαίο μπαρ κοκτέιλ στη Σκάλα Κεφαλονιάς. Premium κοκτέιλ από €5, φιλικό προσωπικό, ανοιχτό καθημερινά 6ΜΜ–2ΠΜ το καλοκαίρι. Χωρίς κράτηση.";
 ---
 
 <html lang="el">
@@ -31,7 +31,11 @@ const desc = copy.description;
 
     <title>{title}</title>
     <meta name="description" content={desc} />
-    <link rel="canonical" href="https://sallysbar.gr/el" />
+    <meta name="keywords" content="σκάλα κεφαλονιά νυχτερινή ζωή, μπαρ σκάλα κεφαλονιά, κοκτέιλ μπαρ κεφαλονιά, κεφαλονιά μπαρ, skala kefalonia nightlife, bar skala kefalonia, cocktail bar kefalonia, sally's bar kefalonia" />
+    <link rel="canonical" href="https://sallysbar.gr/el/" />
+    <link rel="alternate" hreflang="el" href="https://sallysbar.gr/el/" />
+    <link rel="alternate" hreflang="en" href="https://sallysbar.gr/" />
+    <link rel="alternate" hreflang="x-default" href="https://sallysbar.gr/" />
 
     <link rel="icon" type="image/png" href="/favicon/favicon-96x96.png" sizes="96x96" />
     <link rel="icon" type="image/svg+xml" href="/favicon/favicon.svg" />
@@ -42,23 +46,122 @@ const desc = copy.description;
     <meta property="og:title" content={title} />
     <meta property="og:description" content={desc} />
     <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://sallysbar.gr/el/" />
+    <meta property="og:image" content="https://sallysbar.gr/photos/1.sallys-bar-cocktails-skala.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="el_GR" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={desc} />
+    <meta name="twitter:image" content="https://sallysbar.gr/photos/1.sallys-bar-cocktails-skala.jpg" />
 
     <script
       type="application/ld+json"
       set:html={JSON.stringify({
         "@context": "https://schema.org",
         "@type": "BarOrPub",
-        name: site.name,
+        name: "Sally's Bar",
+        alternateName: ["Sally's Bar Σκάλα", "Sally's Bar Κεφαλονιά", "Sallys Bar Skala Kefalonia"],
+        description: "Το κορυφαίο μπαρ κοκτέιλ στη Σκάλα Κεφαλονιάς. Premium κοκτέιλ από €5, φιλικό κλίμα, ανοιχτό καθημερινά το καλοκαίρι.",
+        url: "https://sallysbar.gr",
+        telephone: site.phoneE164,
+        priceRange: "€5–€10",
+        servesCuisine: ["Cocktails", "Beer", "Wine", "Spirits"],
+        image: [
+          "https://sallysbar.gr/photos/1.sallys-bar-cocktails-skala.jpg",
+          "https://sallysbar.gr/photos/3.sallys-bar-lounge.jpg",
+          "https://sallysbar.gr/photos/5.premium-drinks.jpg",
+        ],
         address: {
           "@type": "PostalAddress",
-          streetAddress: site.addressShort,
+          streetAddress: "Skala Beach Road",
           addressLocality: "Skala",
           addressRegion: "Kefalonia",
           postalCode: "28086",
           addressCountry: "GR",
         },
-        telephone: site.phoneE164,
-        url: "https://sallysbar.gr",
+        geo: {
+          "@type": "GeoCoordinates",
+          latitude: 38.0748829,
+          longitude: 20.7969726,
+        },
+        openingHoursSpecification: [
+          {
+            "@type": "OpeningHoursSpecification",
+            dayOfWeek: ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],
+            opens: "18:00",
+            closes: "02:00",
+          },
+        ],
+        aggregateRating: {
+          "@type": "AggregateRating",
+          ratingValue: site.ratings.google.rating,
+          reviewCount: site.ratings.google.count,
+          bestRating: 5,
+          worstRating: 1,
+        },
+        sameAs: [
+          site.socials.instagram,
+          site.socials.facebook,
+          site.socials.tripadvisor,
+        ],
+        hasMap: site.mapsShareUrl,
+        currenciesAccepted: "EUR",
+        paymentAccepted: "Cash, Credit Card",
+        amenityFeature: [
+          { "@type": "LocationFeatureSpecification", name: "Outdoor Seating", value: true },
+          { "@type": "LocationFeatureSpecification", name: "Bar Service", value: true },
+        ],
+      })}
+    />
+    <script
+      type="application/ld+json"
+      set:html={JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        mainEntity: [
+          {
+            "@type": "Question",
+            name: "Ποιο είναι το καλύτερο μπαρ στη Σκάλα Κεφαλονιάς;",
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: "Το Sally's Bar θεωρείται το κορυφαίο μπαρ κοκτέιλ στη Σκάλα Κεφαλονιάς. Με βαθμολογία 4.4/5 στο Google και 174+ κριτικές, προσφέρει premium κοκτέιλ από €5, χαλαρή ατμόσφαιρα νωρίς το βράδυ και ζωντανή νυχτερινή ζωή αργότερα.",
+            },
+          },
+          {
+            "@type": "Question",
+            name: "Τι ώρα ανοίγει το Sally's Bar στη Σκάλα;",
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: "Το Sally's Bar στη Σκάλα Κεφαλονιάς είναι ανοιχτό καθημερινά από 6ΜΜ έως 2ΠΜ κατά την καλοκαιρινή περίοδο (Μάιος–Οκτώβριος). Δεν χρειάζεται κράτηση — απλώς ελάτε!",
+            },
+          },
+          {
+            "@type": "Question",
+            name: "Πόσο κοστίζουν τα κοκτέιλ στο Sally's Bar;",
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: "Τα κοκτέιλ στο Sally's Bar κοστίζουν από €5 έως €10. Διαθέτουμε επίσης μπύρες, κρασιά και ποτά σε ανταγωνιστικές τιμές.",
+            },
+          },
+          {
+            "@type": "Question",
+            name: "Πού βρίσκεται το Sally's Bar στη Σκάλα Κεφαλονιάς;",
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: "Το Sally's Bar βρίσκεται στο κέντρο της Σκάλας Κεφαλονιάς (28086), λίγα βήματα από την παραλία και τα περισσότερα ξενοδοχεία της περιοχής.",
+            },
+          },
+          {
+            "@type": "Question",
+            name: "Χρειάζεται κράτηση στο Sally's Bar;",
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: "Όχι! Το Sally's Bar δέχεται επισκέπτες χωρίς κράτηση. Απλώς ελάτε, βρείτε θέση και εμείς αναλαμβάνουμε τα υπόλοιπα. Παρέες πάντα ευπρόσδεκτες.",
+            },
+          },
+        ],
       })}
     />
   </head>
@@ -243,6 +346,62 @@ const desc = copy.description;
       <div class="rounded-2xl border border-white/10 p-6 bg-white/5">
         <h2 class="text-xl font-semibold">{t.home.why3Title}</h2>
         <p class="mt-3 text-white/70">{t.home.why3Text}</p>
+      </div>
+    </section>
+
+    <!-- FAQ / SEO CONTENT -->
+    <section class="mx-auto max-w-6xl px-6 py-14">
+      <h2 class="text-3xl font-semibold mb-2">Νυχτερινή Ζωή Σκάλα Κεφαλονιά — Συχνές Ερωτήσεις</h2>
+      <p class="text-white/60 mb-8 text-sm">Όλα όσα πρέπει να ξέρετε για το Sally's Bar στη Σκάλα Κεφαλονιάς.</p>
+      <div class="space-y-4">
+        {[
+          {
+            q: "Ποιο είναι το καλύτερο μπαρ στη Σκάλα Κεφαλονιάς;",
+            a: "Το Sally's Bar είναι το κορυφαίο μπαρ κοκτέιλ στη Σκάλα. Με βαθμολογία 4.4 ⭐ στο Google και 174+ κριτικές, συστήνεται ανελλιπώς από επισκέπτες για τα premium ποτά, τη ζεστή ατμόσφαιρα και τη μουσική.",
+          },
+          {
+            q: "Τι ώρα ανοίγει το Sally's Bar;",
+            a: "Ανοίγουμε καθημερινά στις 6ΜΜ και κλείνουμε στις 2ΠΜ κατά τη θερινή περίοδο. Νωρίς το βράδυ η ατμόσφαιρα είναι χαλαρή — αργότερα γίνεται πιο ζωντανή. Δεν χρειάζεται κράτηση.",
+          },
+          {
+            q: "Πόσο κοστίζουν τα κοκτέιλ στη Σκάλα;",
+            a: "Στο Sally's Bar τα κοκτέιλ κυμαίνονται από €5 έως €10. Έχουμε επίσης μπύρες, κρασιά και ποτά. Δεν θα βρείτε καλύτερη ποιότητα για την τιμή στην Κεφαλονιά.",
+          },
+          {
+            q: "Πού βρίσκεται το Sally's Bar;",
+            a: "Βρισκόμαστε στο κέντρο της Σκάλας Κεφαλονιάς — λίγα λεπτά με τα πόδια από την παραλία και τα περισσότερα ξενοδοχεία. Αναζητήστε 'Sally's Bar Skala Kefalonia' στο Google Maps.",
+          },
+          {
+            q: "Χρειάζεται κράτηση;",
+            a: "Καθόλου! Το Sally's Bar είναι ανοιχτό χωρίς κράτηση. Ελάτε, πάρτε μια θέση και αφήστε μας να φροντίσουμε εσάς. Παρέες πάντα ευπρόσδεκτες!",
+          },
+        ].map(({ q, a }) => (
+          <details class="rounded-2xl border border-white/10 bg-white/5 group" open={false}>
+            <summary class="px-5 py-4 cursor-pointer text-sm font-semibold text-white list-none flex justify-between items-center">
+              {q}
+              <span class="text-white/40 group-open:rotate-180 transition-transform text-lg">▾</span>
+            </summary>
+            <p class="px-5 pb-5 text-sm text-white/70 leading-relaxed">{a}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+
+    <!-- LOCAL SEO TEXT BLOCK -->
+    <section class="mx-auto max-w-6xl px-6 pb-14">
+      <div class="rounded-2xl border border-white/10 bg-white/5 p-8">
+        <h2 class="text-2xl font-semibold mb-4">Η Καρδιά της Νυχτερινής Ζωής στη Σκάλα Κεφαλονιάς</h2>
+        <div class="text-white/65 text-sm leading-relaxed space-y-3">
+          <p>
+            Αν ψάχνετε για τη καλύτερη νυχτερινή ζωή στη Σκάλα Κεφαλονιάς, το Sally's Bar αποτελεί το αγαπημένο σημείο συνάντησης του χωριού εδώ και χρόνια. Βρισκόμαστε στη καρδιά της Σκάλας και υποδεχόμαστε ντόπιους, μόνιμους κατοίκους και τουρίστες από όλο τον κόσμο.
+          </p>
+          <p>
+            Σερβίρουμε πάνω από 30 κοκτέιλ φτιαγμένα με premium υλικά, καθώς και μπύρες, κρασιά και αναψυκτικά. Είτε θέλετε ένα ήσυχο ποτό μετά το δείπνο είτε να μείνετε έως τις 2ΠΜ, το Sally's Bar προσαρμόζεται στη βραδιά σας.
+          </p>
+          <p>
+            Η Κεφαλονιά είναι ένα από τα πιο όμορφα νησιά της Ελλάδας, και η Σκάλα είναι το πιο κοινωνικό της χωριό. Όταν δύει ο ήλιος, τα μπαρ γεμίζουν — και το Sally's είναι ο προορισμός όλων. Ανάμεσα στα κορυφαία μπαρ της Κεφαλονιάς στο TripAdvisor και το Google, θα χαρούμε να σας υποδεχτούμε φέτος το καλοκαίρι.
+          </p>
+        </div>
       </div>
     </section>
 

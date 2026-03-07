@@ -1,0 +1,498 @@
+---
+import "../../styles/global.css";
+import Header from "../../components/Header.astro";
+import { supabaseAdmin } from "../../lib/supabase";
+import { dict, withLangPrefix } from "../../i18n";
+
+const lang = Astro.locals.lang ?? "en";
+const t    = dict[lang];
+const isEl = lang === "el";
+
+// --- Parse month ---
+const url    = new URL(Astro.request.url);
+const mParam = url.searchParams.get("m");
+const now    = new Date();
+let year  = now.getFullYear();
+let month = now.getMonth(); // 0-indexed
+
+if (mParam && /^\d{4}-\d{2}$/.test(mParam)) {
+  const parts = mParam.split("-").map(Number);
+  year  = parts[0];
+  month = parts[1] - 1;
+}
+
+// Clamp to current month
+const maxYear  = now.getFullYear();
+const maxMonth = now.getMonth();
+if (year > maxYear || (year === maxYear && month > maxMonth)) {
+  year = maxYear; month = maxMonth;
+}
+
+const monthStart = new Date(year, month, 1);
+const monthEnd   = new Date(year, month + 1, 1);
+
+// --- Fetch orders for this month ---
+const { data: rawOrders } = await supabaseAdmin
+  .from("orders")
+  .select("id,table_number,items,note,status,total_cents,created_at")
+  .gte("created_at", monthStart.toISOString())
+  .lt("created_at",  monthEnd.toISOString())
+  .order("created_at", { ascending: false })
+  .limit(2000);
+
+const orders = rawOrders ?? [];
+
+// --- Group by local date ISO string ---
+const dayMap = new Map<string, typeof orders>();
+for (const o of orders) {
+  const d   = new Date(o.created_at);
+  const iso = d.getFullYear() + "-" +
+    String(d.getMonth() + 1).padStart(2, "0") + "-" +
+    String(d.getDate()).padStart(2, "0");
+  if (!dayMap.has(iso)) dayMap.set(iso, []);
+  dayMap.get(iso)!.push(o);
+}
+
+// --- Helpers ---
+function fmtEur(cents: number) { return "€" + (cents / 100).toFixed(2); }
+function fmtTime(s: string) {
+  return new Date(s).toLocaleString(isEl ? "el-GR" : "en-GB", {
+    hour: "2-digit", minute: "2-digit",
+  });
+}
+function shortId(id: string) { return id.slice(0, 8).toUpperCase(); }
+function itemsSummary(items: any[]) {
+  if (!items?.length) return "—";
+  return items.map((i: any) => (i.qty ?? i.quantity ?? 1) + "× " + i.name).join(", ");
+}
+
+// --- Today ISO ---
+const todayIso = now.getFullYear() + "-" +
+  String(now.getMonth() + 1).padStart(2, "0") + "-" +
+  String(now.getDate()).padStart(2, "0");
+
+// --- Build per-day stats ---
+const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+type DayStat = {
+  iso: string; dayNum: number;
+  revenue: number; orderCount: number; cancelled: number;
+  isToday: boolean; isFuture: boolean; intensity: number;
+  revenueLabel: string; countLabel: string;
+  bgStyle: string; borderStyle: string; opacityStyle: string;
+  revStyle: string; dayNumStyle: string;
+};
+
+const dayStats: DayStat[] = [];
+for (let d = 1; d <= daysInMonth; d++) {
+  const iso       = year + "-" + String(month + 1).padStart(2, "0") + "-" + String(d).padStart(2, "0");
+  const dayOrders = dayMap.get(iso) ?? [];
+  const completed = dayOrders.filter(o => o.status !== "cancelled");
+  const revenue   = completed.reduce((s, o) => s + (o.total_cents ?? 0), 0);
+  const cancelled = dayOrders.filter(o => o.status === "cancelled").length;
+  dayStats.push({
+    iso, dayNum: d, revenue,
+    orderCount: dayOrders.length, cancelled,
+    isToday:  iso === todayIso,
+    isFuture: iso > todayIso,
+    intensity: 0,
+    revenueLabel: fmtEur(revenue),
+    countLabel: String(dayOrders.length) + (isEl ? " παρ." : " ord."),
+    bgStyle: "", borderStyle: "", opacityStyle: "", revStyle: "", dayNumStyle: "",
+  });
+}
+
+// Intensity: normalise to max revenue day
+const maxRevenue = Math.max(...dayStats.map(d => d.revenue), 1);
+for (const d of dayStats) {
+  d.intensity = d.revenue > 0 ? Math.round((d.revenue / maxRevenue) * 100) : 0;
+  const bgA = d.revenue > 0 ? (0.04 + d.intensity * 0.0025).toFixed(3) : "0.02";
+  const bC  = d.isToday
+    ? "rgba(251,191,36,0.7)"
+    : d.revenue > 0
+      ? "rgba(251,191,36," + (0.1 + d.intensity * 0.003).toFixed(3) + ")"
+      : "rgba(255,255,255,0.06)";
+  const bW = d.isToday ? "2px" : "1px";
+  d.bgStyle      = "background:rgba(251,191,36," + bgA + ")";
+  d.borderStyle  = "border:" + bW + " solid " + bC;
+  d.opacityStyle = d.isFuture ? "opacity:0.35" : "";
+  d.revStyle     = d.revenue > 0 ? "color:#fbbf24" : "color:rgba(255,255,255,0.15)";
+  d.dayNumStyle  = d.isToday
+    ? "color:#fbbf24;font-weight:700"
+    : d.isFuture ? "color:rgba(255,255,255,0.2)" : "color:rgba(255,255,255,0.75)";
+}
+
+// --- Build calendar weeks ---
+const firstDow  = new Date(year, month, 1).getDay(); // 0=Sun
+const flatDays: (DayStat | null)[] = [...Array(firstDow).fill(null), ...dayStats];
+while (flatDays.length % 7 !== 0) flatDays.push(null);
+
+type Week = {
+  weekNum: number; revenue: number; activeDays: number; orderCount: number;
+  label: string; revLabel: string; dayLabel: string;
+  days: (DayStat | null)[];
+};
+const weeks: Week[] = [];
+for (let wi = 0; wi < flatDays.length / 7; wi++) {
+  const wDays = flatDays.slice(wi * 7, wi * 7 + 7);
+  const wRev  = wDays.reduce((s, d) => s + (d?.revenue ?? 0), 0);
+  const wAct  = wDays.filter(d => d && d.orderCount > 0).length;
+  const wOrd  = wDays.reduce((s, d) => s + (d?.orderCount ?? 0), 0);
+  weeks.push({
+    weekNum: wi + 1, revenue: wRev, activeDays: wAct, orderCount: wOrd,
+    label:    (isEl ? "Εβδ. " : "Week ") + (wi + 1),
+    revLabel: fmtEur(wRev),
+    dayLabel: wAct + (isEl ? " ημ." : " days"),
+    days: wDays,
+  });
+}
+
+// --- Month KPIs ---
+const monthRevenue  = dayStats.reduce((s, d) => s + d.revenue, 0);
+const monthOrders   = dayStats.reduce((s, d) => s + d.orderCount, 0);
+const activeDaysCnt = dayStats.filter(d => d.orderCount > 0).length;
+
+const monthRevenueLabel = fmtEur(monthRevenue);
+const monthOrdersLabel  = monthOrders + (isEl ? " παρ." : " orders");
+const activeDaysLabel   = activeDaysCnt + (isEl ? " ημέρες" : " days");
+
+// --- Month label ---
+const monthNamesArr = isEl
+  ? ["Ιανουάριος","Φεβρουάριος","Μάρτιος","Απρίλιος","Μάιος","Ιούνιος",
+     "Ιούλιος","Αύγουστος","Σεπτέμβριος","Οκτώβριος","Νοέμβριος","Δεκέμβριος"]
+  : ["January","February","March","April","May","June",
+     "July","August","September","October","November","December"];
+const monthLabel = monthNamesArr[month] + " " + year;
+
+// --- Prev / next params ---
+let prevY = year, prevM = month - 1;
+if (prevM < 0) { prevM = 11; prevY--; }
+let nextY = year, nextM = month + 1;
+if (nextM > 11) { nextM = 0; nextY++; }
+
+const prevParam = prevY + "-" + String(prevM + 1).padStart(2, "0");
+const nextParam = nextY + "-" + String(nextM + 1).padStart(2, "0");
+const isNextFuture    = nextY > maxYear || (nextY === maxYear && nextM > maxMonth);
+const isCurrentMonth  = year === maxYear && month === maxMonth;
+
+const baseUrl       = withLangPrefix(lang, "/admin/calendar");
+const prevLink      = baseUrl + "?m=" + prevParam;
+const nextLink      = baseUrl + "?m=" + nextParam;
+const thisMonthLink = baseUrl;
+
+// --- Day headers ---
+const dayHeaders = isEl
+  ? ["Κυρ","Δευ","Τρί","Τετ","Πέμ","Παρ","Σαβ"]
+  : ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+// --- Detail data for JS panel ---
+type DetailRecord = {
+  revenue: number; orderCount: number; cancelled: number; avgValue: number;
+  revenueLabel: string; avgLabel: string;
+  topItems: { name: string; qty: number }[];
+  orders: { shortId: string; table: string | number; status: string; total: string; time: string; items: string }[];
+};
+const detailData: Record<string, DetailRecord> = {};
+
+for (const [iso, dayOrders] of dayMap.entries()) {
+  const completed = dayOrders.filter(o => o.status !== "cancelled");
+  const revenue   = completed.reduce((s, o) => s + (o.total_cents ?? 0), 0);
+  const cancelled = dayOrders.filter(o => o.status === "cancelled").length;
+  const avgValue  = completed.length ? Math.round(revenue / completed.length) : 0;
+
+  const itemQtyMap = new Map<string, number>();
+  for (const o of completed) {
+    for (const it of (o.items ?? [])) {
+      const n = it.name ?? "?";
+      const q = it.qty ?? it.quantity ?? 1;
+      itemQtyMap.set(n, (itemQtyMap.get(n) ?? 0) + q);
+    }
+  }
+  const topItems = [...itemQtyMap.entries()]
+    .sort((a, b) => b[1] - a[1]).slice(0, 5)
+    .map(([name, qty]) => ({ name, qty }));
+
+  detailData[iso] = {
+    revenue, orderCount: dayOrders.length, cancelled, avgValue,
+    revenueLabel: fmtEur(revenue),
+    avgLabel: fmtEur(avgValue),
+    topItems,
+    orders: dayOrders.map(o => ({
+      shortId: shortId(o.id),
+      table: o.table_number ?? "—",
+      status: o.status,
+      total: fmtEur(o.total_cents ?? 0),
+      time: fmtTime(o.created_at),
+      items: itemsSummary(o.items ?? []),
+    })),
+  };
+}
+
+const detailDataJson = JSON.stringify(detailData);
+---
+
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{isEl ? "Ημερολόγιο Εσόδων" : "Revenue Calendar"} — Sally's Bar</title>
+    <meta name="robots" content="noindex,nofollow" />
+    <style>
+      .day-cell {
+        cursor: pointer;
+        border-radius: .75rem;
+        padding: .625rem;
+        min-height: 5.5rem;
+        display: flex;
+        flex-direction: column;
+        transition: transform .1s, filter .1s;
+      }
+      .day-cell:hover  { filter: brightness(1.25); transform: translateY(-1px); }
+      .day-cell.active { outline: 2px solid rgba(251,191,36,.9); outline-offset: 1px; }
+      .week-card {
+        border-radius: .75rem;
+        padding: .625rem .75rem;
+        background: rgba(255,255,255,.025);
+        border: 1px solid rgba(255,255,255,.06);
+        display: flex; flex-direction: column; justify-content: center; gap: .2rem;
+      }
+      /* Detail panel */
+      #panel {
+        position: fixed; top: 0; right: 0;
+        height: 100dvh; width: min(420px, 100vw);
+        background: #16161f;
+        border-left: 1px solid rgba(255,255,255,.1);
+        transform: translateX(100%);
+        transition: transform .25s cubic-bezier(.4,0,.2,1);
+        z-index: 200;
+        display: flex; flex-direction: column;
+        overflow: hidden;
+      }
+      #panel.open { transform: translateX(0); }
+      #panelBody  { overflow-y: auto; flex: 1; }
+      #overlay {
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,.55);
+        z-index: 199; display: none; cursor: pointer;
+      }
+      #overlay.open { display: block; }
+    </style>
+  </head>
+  <body class="min-h-screen bg-[#0b0b10] text-white">
+    <Header />
+    <div class="h-20"></div>
+
+    <!-- Subnav -->
+    <div class="sticky top-20 z-40 border-b border-amber-400/20 bg-[#0b0b10]/95 backdrop-blur">
+      <div class="mx-auto max-w-7xl px-4">
+        <nav class="flex items-center gap-1 py-2 overflow-x-auto text-sm">
+          <a href={withLangPrefix(lang, "/admin")} class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.overview}</a>
+          <a href={withLangPrefix(lang, "/admin/analytics")} class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.analytics}</a>
+          <span class="px-3 py-1.5 rounded-lg bg-amber-400/15 border border-amber-400/20 text-amber-400 font-medium whitespace-nowrap">{t.admin.nav.calendar}</span>
+          <a href={withLangPrefix(lang, "/admin/orders")} class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.orders}</a>
+          <a href={withLangPrefix(lang, "/admin/tips")}  class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.tips}</a>
+          <a href={withLangPrefix(lang, "/admin/users")} class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.users}</a>
+          <a href={withLangPrefix(lang, "/admin/menu")} class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.editMenu}</a>
+        </nav>
+      </div>
+    </div>
+
+    <main class="mx-auto max-w-7xl px-4 py-6 space-y-6">
+
+      <!-- Month nav + KPIs -->
+      <div class="flex items-center justify-between flex-wrap gap-4">
+        <div class="flex items-center gap-2">
+          <a href={prevLink} class="flex items-center justify-center w-9 h-9 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition text-white/60 hover:text-white text-xl leading-none">‹</a>
+          <h1 class="text-xl font-bold text-white min-w-[11rem] text-center">{monthLabel}</h1>
+          {!isNextFuture
+            ? <a href={nextLink} class="flex items-center justify-center w-9 h-9 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition text-white/60 hover:text-white text-xl leading-none">›</a>
+            : <div class="w-9 h-9"></div>
+          }
+          {!isCurrentMonth && (
+            <a href={thisMonthLink} class="ml-1 px-3 py-1.5 rounded-xl border border-white/10 text-xs text-white/40 hover:text-white hover:border-white/20 transition">
+              {isEl ? "Τρέχων μήνας" : "This month"}
+            </a>
+          )}
+        </div>
+        <div class="flex items-center gap-5 text-sm flex-wrap">
+          <span class="text-white/35">{isEl ? "Μηνιαία στατιστικά" : "Monthly stats"}:</span>
+          <span class="text-amber-400 font-bold text-base">{monthRevenueLabel}</span>
+          <span class="text-white/40">{monthOrdersLabel}</span>
+          <span class="text-white/25">{activeDaysLabel}</span>
+        </div>
+      </div>
+
+      <!-- Calendar: 7 day columns + 1 weekly summary column -->
+      <div class="grid gap-1.5" style="grid-template-columns: repeat(7, 1fr) 148px;">
+
+        <!-- Day name headers -->
+        {dayHeaders.map(h => (
+          <div class="text-center text-xs font-semibold text-white/25 pb-1">{h}</div>
+        ))}
+        <div class="text-center text-xs font-semibold text-white/20 pb-1">{isEl ? "Εβδ." : "Week"}</div>
+
+        <!-- Week rows -->
+        {weeks.map(week => (
+          <>
+            {week.days.map(card => card === null ? (
+              <div class="rounded-xl" style="min-height:5.5rem;border:1px solid rgba(255,255,255,0.03)"></div>
+            ) : (
+              <div
+                class="day-cell"
+                style={card.bgStyle + ";" + card.borderStyle + ";" + card.opacityStyle}
+                data-iso={card.iso}
+              >
+                <div class="text-sm mb-auto" style={card.dayNumStyle}>{card.dayNum}</div>
+                {card.revenue > 0 && (
+                  <div class="text-xs font-bold mt-1 leading-none" style={card.revStyle}>{card.revenueLabel}</div>
+                )}
+                {card.orderCount > 0 && (
+                  <div class="text-xs mt-1 leading-none" style="color:rgba(255,255,255,0.28)">{card.countLabel}</div>
+                )}
+              </div>
+            ))}
+            <!-- Weekly summary card -->
+            <div class="week-card">
+              <div class="text-xs font-semibold" style="color:rgba(255,255,255,0.22)">{week.label}</div>
+              {week.revenue > 0
+                ? <div class="text-sm font-bold text-amber-400">{week.revLabel}</div>
+                : <div class="text-sm" style="color:rgba(255,255,255,0.15)">€0</div>
+              }
+              <div class="text-xs" style="color:rgba(255,255,255,0.22)">{week.dayLabel}</div>
+            </div>
+          </>
+        ))}
+      </div>
+
+    </main>
+
+    <!-- Overlay -->
+    <div id="overlay"></div>
+
+    <!-- Detail panel -->
+    <div id="panel">
+      <div class="flex items-center justify-between px-5 py-4 border-b flex-shrink-0" style="border-color:rgba(255,255,255,0.08)">
+        <h2 id="panelDate" class="text-sm font-bold text-white leading-tight"></h2>
+        <button id="panelClose" class="w-8 h-8 flex items-center justify-center rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition text-2xl leading-none">×</button>
+      </div>
+      <div id="panelBody" class="p-5 space-y-5"></div>
+    </div>
+
+    <script define:vars={{ detailDataJson, isEl }}>
+      const detailData = JSON.parse(detailDataJson);
+
+      // Status helpers
+      function statusColor(s) {
+        return { pending:'#fbbf24', preparing:'#60a5fa', ready:'#4ade80', delivered:'rgba(255,255,255,0.3)', cancelled:'#f87171' }[s] || 'rgba(255,255,255,0.3)';
+      }
+      function statusLabel(s) {
+        if (!isEl) return s.charAt(0).toUpperCase() + s.slice(1);
+        return { pending:'Εκκρεμής', preparing:'Ετοιμασία', ready:'Έτοιμη', delivered:'Παραδόθηκε', cancelled:'Ακυρώθηκε' }[s] || s;
+      }
+      function esc(str) {
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+      }
+      function kpiCard(value, label, color) {
+        return '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:.75rem;padding:.875rem">' +
+          '<p style="font-size:1.375rem;font-weight:700;color:' + color + '">' + esc(value) + '</p>' +
+          '<p style="font-size:.72rem;color:rgba(255,255,255,0.33);margin-top:.2rem">' + label + '</p></div>';
+      }
+
+      const panel      = document.getElementById('panel');
+      const overlay    = document.getElementById('overlay');
+      const panelClose = document.getElementById('panelClose');
+      const panelDate  = document.getElementById('panelDate');
+      const panelBody  = document.getElementById('panelBody');
+
+      function openPanel(iso) {
+        // Formatted date header
+        const [y, m, d] = iso.split('-').map(Number);
+        panelDate.textContent = new Date(y, m - 1, d).toLocaleDateString(
+          isEl ? 'el-GR' : 'en-GB',
+          { weekday:'long', day:'numeric', month:'long', year:'numeric' }
+        );
+
+        const data = detailData[iso];
+        if (!data || data.orderCount === 0) {
+          panelBody.innerHTML =
+            '<p style="color:rgba(255,255,255,0.28);font-size:.875rem;text-align:center;padding:2.5rem 0">' +
+            (isEl ? 'Δεν υπάρχουν παραγγελίες αυτή τη μέρα.' : 'No orders on this day.') + '</p>';
+        } else {
+          let html = '';
+
+          // KPI grid
+          html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:.625rem">';
+          html += kpiCard(data.revenueLabel, isEl ? 'Έσοδα' : 'Revenue', '#fbbf24');
+          html += kpiCard(String(data.orderCount), isEl ? 'Παραγγελίες' : 'Orders', '#e2e8f0');
+          html += kpiCard(data.avgLabel, isEl ? 'Μέσος όρος' : 'Avg order', '#818cf8');
+          html += kpiCard(String(data.cancelled), isEl ? 'Ακυρώθηκαν' : 'Cancelled', '#f87171');
+          html += '</div>';
+
+          // Top items
+          if (data.topItems.length > 0) {
+            html += '<div><p style="font-size:.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,0.25);margin-bottom:.5rem">' +
+              (isEl ? 'Κορυφαία Είδη' : 'Top Items') + '</p>';
+            html += '<div style="display:flex;flex-direction:column;gap:.3rem">';
+            for (const item of data.topItems) {
+              html += '<div style="display:flex;justify-content:space-between;align-items:center;' +
+                'background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:.5rem;padding:.5rem .75rem">' +
+                '<span style="font-size:.85rem;color:rgba(255,255,255,0.7)">' + esc(item.name) + '</span>' +
+                '<span style="font-size:.85rem;font-weight:700;color:#fbbf24">' + item.qty + '×</span></div>';
+            }
+            html += '</div></div>';
+          }
+
+          // Orders list
+          html += '<div><p style="font-size:.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,0.25);margin-bottom:.5rem">' +
+            (isEl ? 'Παραγγελίες' : 'Orders') + '</p>';
+          html += '<div style="display:flex;flex-direction:column;gap:.35rem">';
+          for (const o of data.orders) {
+            const sc = statusColor(o.status);
+            const sl = statusLabel(o.status);
+            html += '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:.625rem;padding:.625rem .75rem">';
+            html += '<div style="display:flex;justify-content:space-between;align-items:center;gap:.5rem;margin-bottom:.25rem">';
+            html += '<div style="display:flex;align-items:center;gap:.5rem">';
+            html += '<span style="font-family:monospace;font-size:.72rem;color:rgba(255,255,255,0.3)">' + o.shortId + '</span>';
+            html += '<span style="font-size:.8rem;font-weight:600;color:rgba(255,255,255,0.8)">T.' + esc(String(o.table)) + '</span>';
+            html += '</div>';
+            html += '<div style="display:flex;align-items:center;gap:.5rem">';
+            html += '<span style="font-size:.72rem;color:rgba(255,255,255,0.3)">' + o.time + '</span>';
+            html += '<span style="font-size:.68rem;font-weight:600;padding:.15rem .4rem;border-radius:.25rem;background:' + sc + '22;color:' + sc + '">' + esc(sl) + '</span>';
+            html += '<span style="font-size:.9rem;font-weight:700;color:#fff">' + o.total + '</span>';
+            html += '</div></div>';
+            html += '<div style="font-size:.75rem;color:rgba(255,255,255,0.35);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(o.items) + '</div>';
+            html += '</div>';
+          }
+          html += '</div></div>';
+
+          panelBody.innerHTML = html;
+        }
+
+        panel.classList.add('open');
+        overlay.classList.add('open');
+        document.body.style.overflow = 'hidden';
+        panelBody.scrollTop = 0;
+      }
+
+      function closePanel() {
+        panel.classList.remove('open');
+        overlay.classList.remove('open');
+        document.body.style.overflow = '';
+        document.querySelectorAll('.day-cell.active').forEach(el => el.classList.remove('active'));
+      }
+
+      // Wire day cells
+      document.querySelectorAll('[data-iso]').forEach(el => {
+        el.addEventListener('click', () => {
+          document.querySelectorAll('.day-cell.active').forEach(e => e.classList.remove('active'));
+          el.classList.add('active');
+          openPanel(el.dataset.iso);
+        });
+      });
+
+      overlay.addEventListener('click', closePanel);
+      panelClose.addEventListener('click', closePanel);
+      document.addEventListener('keydown', e => { if (e.key === 'Escape') closePanel(); });
+    </script>
+  </body>
+</html>

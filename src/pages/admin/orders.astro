@@ -1,0 +1,475 @@
+---
+import "../../styles/global.css";
+import Header from "../../components/Header.astro";
+import { supabaseAdmin } from "../../lib/supabase";
+import { dict, withLangPrefix } from "../../i18n";
+
+const lang = Astro.locals.lang ?? "en";
+const t = dict[lang];
+const isEl = lang === "el";
+
+// --- Read filter params ---
+const url    = new URL(Astro.request.url);
+const period = url.searchParams.get("period") ?? "this_month";
+const status = url.searchParams.get("status") ?? "all";
+const table  = url.searchParams.get("table")  ?? "";
+
+// Compute date range from period preset
+const now = new Date();
+function startOf(period: string): Date {
+  const d = new Date(now);
+  if (period === "today")      { d.setHours(0,0,0,0); return d; }
+  if (period === "yesterday")  { d.setDate(d.getDate()-1); d.setHours(0,0,0,0); return d; }
+  if (period === "this_week")  { d.setDate(d.getDate()-d.getDay()); d.setHours(0,0,0,0); return d; }
+  if (period === "this_month") { return new Date(d.getFullYear(), d.getMonth(), 1); }
+  if (period === "last_30")    { d.setDate(d.getDate()-29); d.setHours(0,0,0,0); return d; }
+  if (period === "this_year")  { return new Date(d.getFullYear(), 0, 1); }
+  // "all" — last 90 days
+  d.setDate(d.getDate()-89); d.setHours(0,0,0,0); return d;
+}
+function endOf(period: string): Date | null {
+  if (period === "yesterday") {
+    const d = new Date(now); d.setHours(0,0,0,0); return d;
+  }
+  return null; // up to now
+}
+
+const fromDate = startOf(period);
+const toDate   = endOf(period);
+
+// Build Supabase query
+let query = supabaseAdmin
+  .from("orders")
+  .select("id,table_number,items,note,status,total_cents,created_at")
+  .gte("created_at", fromDate.toISOString())
+  .order("created_at", { ascending: false })
+  .limit(1000);
+
+if (toDate)          query = query.lt("created_at", toDate.toISOString());
+if (status !== "all") query = query.eq("status", status);
+if (table)           query = query.eq("table_number", Number(table));
+
+const { data: rawOrders } = await query;
+const orders = rawOrders ?? [];
+
+// --- Helpers ---
+function fmtEur(cents: number) { return "€" + (cents / 100).toFixed(2); }
+function fmtTime(s: string) {
+  return new Date(s).toLocaleString(isEl ? "el-GR" : "en-GB", {
+    day: "2-digit", month: "short", year: "numeric",
+    hour: "2-digit", minute: "2-digit",
+  });
+}
+function shortId(id: string) { return id.slice(0, 8).toUpperCase(); }
+function itemsSummary(items: any[]) {
+  if (!items?.length) return "—";
+  return items.map((i: any) => (i.qty ?? i.quantity ?? 1) + "× " + i.name).join(", ");
+}
+
+// --- Summary stats ---
+const completed   = orders.filter(o => o.status !== "cancelled");
+const cancelled   = orders.filter(o => o.status === "cancelled");
+const totalRev    = completed.reduce((s, o) => s + (o.total_cents ?? 0), 0);
+const avgVal      = completed.length ? Math.round(totalRev / completed.length) : 0;
+
+// --- Table insights (top 5 by revenue) ---
+const tableMap = new Map<number, { orders: number; revenue: number }>();
+for (const o of completed) {
+  const tn = o.table_number ?? 0;
+  const ex = tableMap.get(tn) ?? { orders: 0, revenue: 0 };
+  ex.orders++;
+  ex.revenue += o.total_cents ?? 0;
+  tableMap.set(tn, ex);
+}
+const topTables = [...tableMap.entries()]
+  .sort((a, b) => b[1].revenue - a[1].revenue)
+  .slice(0, 5)
+  .map(([tn, d]) => ({ tn, ...d, revLabel: fmtEur(d.revenue) }));
+
+// --- Status badge classes ---
+function statusCls(s: string) {
+  const m: Record<string, string> = {
+    pending:   "bg-yellow-400/10 text-yellow-400 border-yellow-400/20",
+    preparing: "bg-blue-400/10 text-blue-400 border-blue-400/20",
+    ready:     "bg-green-400/10 text-green-400 border-green-400/20",
+    delivered: "bg-white/5 text-white/40 border-white/10",
+    cancelled: "bg-red-400/10 text-red-400 border-red-400/20",
+  };
+  return m[s] ?? "bg-white/5 text-white/40 border-white/10";
+}
+function statusLabel(s: string) {
+  if (!isEl) return s.charAt(0).toUpperCase() + s.slice(1);
+  const m: Record<string, string> = {
+    pending: "Εκκρεμής", preparing: "Ετοιμασία",
+    ready: "Έτοιμη", delivered: "Παραδόθηκε", cancelled: "Ακυρώθηκε",
+  };
+  return m[s] ?? s;
+}
+
+// Precompute display rows (avoid template literals with colons in JSX)
+const rows = orders.map(o => ({
+  id:        o.id,
+  shortId:   shortId(o.id),
+  table:     o.table_number ?? "—",
+  summary:   itemsSummary(o.items ?? []),
+  note:      o.note ?? "",
+  status:    o.status,
+  statusLbl: statusLabel(o.status),
+  statusCls: statusCls(o.status),
+  total:     fmtEur(o.total_cents ?? 0),
+  time:      fmtTime(o.created_at),
+  cancelled: o.status === "cancelled",
+}));
+
+// Serialize for CSV export
+const csvData = JSON.stringify(orders.map(o => ({
+  id: shortId(o.id),
+  table: o.table_number,
+  items: itemsSummary(o.items ?? []),
+  status: o.status,
+  total_eur: ((o.total_cents ?? 0) / 100).toFixed(2),
+  note: o.note ?? "",
+  created_at: o.created_at,
+})));
+
+const periodOptions = [
+  { value: "today",      label: isEl ? "Σήμερα"        : "Today" },
+  { value: "yesterday",  label: isEl ? "Χθες"          : "Yesterday" },
+  { value: "this_week",  label: isEl ? "Αυτή η εβδ."   : "This week" },
+  { value: "this_month", label: isEl ? "Αυτός ο μήνας" : "This month" },
+  { value: "last_30",    label: isEl ? "Τελ. 30 ημέρες": "Last 30 days" },
+  { value: "this_year",  label: isEl ? "Φέτος"         : "This year" },
+  { value: "all",        label: isEl ? "Τελ. 90 ημέρες": "Last 90 days" },
+];
+
+const statusOptions = [
+  { value: "all",       label: isEl ? "Όλες"           : "All statuses" },
+  { value: "pending",   label: isEl ? "Εκκρεμείς"      : "Pending" },
+  { value: "preparing", label: isEl ? "Ετοιμασία"      : "Preparing" },
+  { value: "ready",     label: isEl ? "Έτοιμες"        : "Ready" },
+  { value: "delivered", label: isEl ? "Παραδόθηκαν"    : "Delivered" },
+  { value: "cancelled", label: isEl ? "Ακυρωμένες"     : "Cancelled" },
+];
+---
+
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{isEl ? "Παραγγελίες" : "Orders"} — Sally's Bar</title>
+    <meta name="robots" content="noindex,nofollow" />
+    <style>
+      select, input[type=number] {
+        background: rgba(255,255,255,.05);
+        border: 1px solid rgba(255,255,255,.1);
+        border-radius: .625rem;
+        padding: .5rem .75rem;
+        font-size: .875rem;
+        color: #fff;
+        outline: none;
+      }
+      select:focus, input[type=number]:focus { border-color: rgba(255,255,255,.3); }
+      select option { background: #16161f; }
+      input[type=number]::placeholder { color: rgba(255,255,255,.3); }
+    </style>
+  </head>
+  <body class="min-h-screen bg-[#0b0b10] text-white">
+    <Header />
+    <div class="h-20"></div>
+
+    <div class="sticky top-20 z-40 border-b border-amber-400/20 bg-[#0b0b10]/95 backdrop-blur">
+      <div class="mx-auto max-w-7xl px-4">
+        <nav class="flex items-center gap-1 py-2 overflow-x-auto text-sm">
+          <a href={withLangPrefix(lang, "/admin")} class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.overview}</a>
+          <a href={withLangPrefix(lang, "/admin/analytics")} class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.analytics}</a>
+          <a href={withLangPrefix(lang, "/admin/calendar")} class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.calendar}</a>
+          <span class="px-3 py-1.5 rounded-lg bg-amber-400/15 border border-amber-400/20 text-amber-400 font-medium whitespace-nowrap">{isEl ? "Παραγγελίες" : "Orders"}</span>
+          <a href={withLangPrefix(lang, "/admin/tips")}  class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.tips}</a>
+          <a href={withLangPrefix(lang, "/admin/users")} class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.users}</a>
+          <a href={withLangPrefix(lang, "/admin/menu")} class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.editMenu}</a>
+        </nav>
+      </div>
+    </div>
+
+    <main class="mx-auto max-w-7xl px-4 py-8 space-y-8">
+
+      <!-- Filters -->
+      <form method="GET" class="flex flex-wrap gap-3 items-end">
+        <div class="flex flex-col gap-1">
+          <label class="text-xs text-white/40">{isEl ? "Περίοδος" : "Period"}</label>
+          <select name="period">
+            {periodOptions.map(o => (
+              <option value={o.value} selected={o.value === period}>{o.label}</option>
+            ))}
+          </select>
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-xs text-white/40">{isEl ? "Κατάσταση" : "Status"}</label>
+          <select name="status">
+            {statusOptions.map(o => (
+              <option value={o.value} selected={o.value === status}>{o.label}</option>
+            ))}
+          </select>
+        </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-xs text-white/40">{isEl ? "Τραπέζι #" : "Table #"}</label>
+          <input type="number" name="table" min="1" max="99" placeholder="–" value={table} class="w-20" />
+        </div>
+        <button type="submit" class="rounded-xl bg-white px-5 py-2 text-sm font-semibold text-black hover:bg-white/90 transition">
+          {isEl ? "Φίλτρο" : "Filter"}
+        </button>
+        {(period !== "this_month" || status !== "all" || table) && (
+          <a href={withLangPrefix(lang, "/admin/orders")} class="rounded-xl border border-white/10 px-4 py-2 text-sm text-white/50 hover:text-white hover:border-white/20 transition">
+            {isEl ? "Καθαρισμός" : "Clear"}
+          </a>
+        )}
+      </form>
+
+      <!-- KPI row -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+          <p class="text-2xl font-bold text-white">{orders.length}</p>
+          <p class="mt-1 text-xs text-white/40">{isEl ? "Παραγγελίες" : "Orders"}</p>
+        </div>
+        <div class="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4">
+          <p class="text-2xl font-bold text-amber-400">{fmtEur(totalRev)}</p>
+          <p class="mt-1 text-xs text-amber-400/60">{isEl ? "Έσοδα (μη ακυρωμένες)" : "Revenue (non-cancelled)"}</p>
+        </div>
+        <div class="rounded-2xl border border-sky-400/20 bg-sky-400/5 p-4">
+          <p class="text-2xl font-bold text-sky-400">{fmtEur(avgVal)}</p>
+          <p class="mt-1 text-xs text-sky-400/60">{isEl ? "Μέση αξία παρ/λής" : "Avg order value"}</p>
+        </div>
+        <div class="rounded-2xl border border-red-400/20 bg-red-400/5 p-4">
+          <p class="text-2xl font-bold text-red-400">{cancelled.length}</p>
+          <p class="mt-1 text-xs text-red-400/60">{isEl ? "Ακυρώθηκαν" : "Cancelled"}</p>
+        </div>
+      </div>
+
+      <!-- Top tables -->
+      {topTables.length > 0 && (
+        <section>
+          <h2 class="text-xs font-semibold uppercase tracking-widest text-white/30 mb-3">
+            {isEl ? "Κορυφαία τραπέζια (έσοδα)" : "Top tables by revenue"}
+          </h2>
+          <div class="flex flex-wrap gap-2">
+            {topTables.map((tb, i) => (
+              <div class="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                <span class="text-xs text-white/30">#{i + 1}</span>
+                <div>
+                  <p class="text-sm font-semibold text-white">
+                    {isEl ? "Τρ." : "T."}{tb.tn}
+                  </p>
+                  <p class="text-xs text-white/40">{tb.orders} {isEl ? "παρ." : "orders"}</p>
+                </div>
+                <p class="text-sm font-bold text-amber-400 ml-2">{tb.revLabel}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <!-- Orders table -->
+      <section>
+        <div class="flex items-center justify-between mb-3 flex-wrap gap-3">
+          <h2 class="text-xs font-semibold uppercase tracking-widest text-white/30">
+            {isEl ? "Παραγγελίες" : "Orders"}
+            <span class="ml-2 text-white/20">({orders.length})</span>
+          </h2>
+          <div class="flex items-center gap-2">
+            <span id="pageInfo" class="text-xs text-white/30"></span>
+            <button id="prevBtn" class="rounded-lg border border-white/10 px-3 py-1 text-xs text-white/50 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition">
+              ‹ {isEl ? "Προηγ." : "Prev"}
+            </button>
+            <button id="nextBtn" class="rounded-lg border border-white/10 px-3 py-1 text-xs text-white/50 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition">
+              {isEl ? "Επόμ." : "Next"} ›
+            </button>
+            <button id="csvBtn" class="rounded-lg bg-white/8 hover:bg-white/15 border border-white/10 px-3 py-1.5 text-xs text-white/70 transition">
+              ↓ CSV
+            </button>
+          </div>
+        </div>
+
+        {rows.length === 0 ? (
+          <div class="rounded-2xl border border-white/10 bg-white/5 py-16 text-center text-sm text-white/30">
+            {isEl ? "Δεν βρέθηκαν παραγγελίες." : "No orders found."}
+          </div>
+        ) : (
+          <div class="rounded-2xl border border-white/10 overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm" id="ordersTable">
+                <thead>
+                  <tr class="border-b border-white/10 bg-white/5">
+                    <th class="text-left px-4 py-3 text-white/40 font-medium">{isEl ? "ID" : "ID"}</th>
+                    <th class="text-left px-4 py-3 text-white/40 font-medium">{isEl ? "Τρ." : "Table"}</th>
+                    <th class="text-left px-4 py-3 text-white/40 font-medium">{isEl ? "Είδη" : "Items"}</th>
+                    <th class="text-left px-4 py-3 text-white/40 font-medium">{isEl ? "Κατάσταση" : "Status"}</th>
+                    <th class="text-left px-4 py-3 text-white/40 font-medium">{isEl ? "Σύνολο" : "Total"}</th>
+                    <th class="text-left px-4 py-3 text-white/40 font-medium">{isEl ? "Ώρα" : "Time"}</th>
+                  </tr>
+                </thead>
+                <tbody id="ordersBody">
+                  {rows.map(r => (
+                    <tr class:list={["border-b border-white/5 last:border-0 transition", r.cancelled ? "opacity-40" : "hover:bg-white/[0.02]"]}
+                      data-order>
+                      <td class="px-4 py-3 font-mono text-xs text-white/50">{r.shortId}</td>
+                      <td class="px-4 py-3 font-semibold text-white">{r.table}</td>
+                      <td class="px-4 py-3 text-white/60 max-w-xs">
+                        <span class="line-clamp-1">{r.summary}</span>
+                        {r.note && <span class="block text-xs text-white/30 mt-0.5">📝 {r.note}</span>}
+                      </td>
+                      <td class="px-4 py-3">
+                        <span class:list={["inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold border", r.statusCls]}>
+                          {r.statusLbl}
+                        </span>
+                      </td>
+                      <td class="px-4 py-3 font-semibold text-white">{r.total}</td>
+                      <td class="px-4 py-3 text-white/40 text-xs whitespace-nowrap">{r.time}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </section>
+
+      <!-- Danger zone -->
+      <section class="rounded-2xl border border-red-400/20 bg-red-400/5 p-6">
+        <h2 class="text-xs font-semibold uppercase tracking-widest text-red-400/60 mb-1">
+          {isEl ? "Ζώνη Κινδύνου" : "Danger Zone"}
+        </h2>
+        <p class="text-sm text-white/40 mb-4">
+          {isEl
+            ? "Διαγράφει μόνιμα ΟΛΑ τα δεδομένα παραγγελιών. Αυτή η ενέργεια δεν μπορεί να αναιρεθεί."
+            : "Permanently deletes ALL order data. This action cannot be undone."}
+        </p>
+        <button id="deleteAllBtn" class="rounded-xl bg-red-500/15 hover:bg-red-500/25 border border-red-400/30 px-5 py-2.5 text-sm font-semibold text-red-400 transition">
+          {isEl ? "Διαγραφή όλων των παραγγελιών" : "Delete all orders"}
+        </button>
+      </section>
+
+    </main>
+
+    <!-- Delete all modal -->
+    <dialog id="deleteAllModal" style="background:#16161f;border:1px solid rgba(239,68,68,.2);border-radius:1rem;padding:1.5rem;width:min(26rem,95vw);color:#fff;">
+      <p style="font-size:1rem;font-weight:600;margin-bottom:.75rem;color:#f87171;">
+        {isEl ? "Διαγραφή όλων των παραγγελιών" : "Delete all orders"}
+      </p>
+      <p style="font-size:.875rem;color:rgba(255,255,255,.5);margin-bottom:1.25rem;">
+        {isEl
+          ? "Αυτό θα διαγράψει μόνιμα κάθε παραγγελία. Πληκτρολόγησε DELETE για επιβεβαίωση."
+          : "This will permanently erase every order record. Type DELETE to confirm."}
+      </p>
+      <input
+        id="deleteConfirmInput"
+        type="text"
+        placeholder="DELETE"
+        style="background:rgba(255,255,255,.05);border:1px solid rgba(239,68,68,.3);border-radius:.625rem;padding:.625rem .875rem;font-size:.875rem;color:#fff;outline:none;width:100%;margin-bottom:1rem;font-family:monospace;"
+      />
+      <div style="display:flex;justify-content:flex-end;gap:.5rem;">
+        <button id="deleteAllCancel" style="background:rgba(255,255,255,.08);border:none;border-radius:.625rem;padding:.5rem 1rem;font-size:.875rem;color:rgba(255,255,255,.7);cursor:pointer;">
+          {isEl ? "Ακύρωση" : "Cancel"}
+        </button>
+        <button id="deleteAllConfirm" disabled style="background:rgba(239,68,68,.2);border:1px solid rgba(239,68,68,.3);border-radius:.625rem;padding:.5rem 1rem;font-size:.875rem;font-weight:600;color:#f87171;cursor:pointer;opacity:.4;">
+          {isEl ? "Διαγραφή όλων" : "Delete all"}
+        </button>
+      </div>
+    </dialog>
+
+    <script define:vars={{ csvData, isEl, pageSize: 50 }}>
+      // --- Pagination ---
+      const allRows   = Array.from(document.querySelectorAll("[data-order]"));
+      const pageInfo  = document.getElementById("pageInfo");
+      const prevBtn   = document.getElementById("prevBtn");
+      const nextBtn   = document.getElementById("nextBtn");
+      let page = 0;
+      const total = allRows.length;
+      const pages = Math.ceil(total / pageSize);
+
+      function render() {
+        const start = page * pageSize;
+        const end   = Math.min(start + pageSize, total);
+        allRows.forEach((r, i) => {
+          r.style.display = (i >= start && i < end) ? "" : "none";
+        });
+        pageInfo.textContent = total > pageSize
+          ? (isEl ? `${start + 1}–${end} από ${total}` : `${start + 1}–${end} of ${total}`)
+          : "";
+        prevBtn.disabled = page === 0;
+        nextBtn.disabled = page >= pages - 1;
+      }
+
+      prevBtn.addEventListener("click", () => { if (page > 0) { page--; render(); } });
+      nextBtn.addEventListener("click", () => { if (page < pages - 1) { page++; render(); } });
+      render();
+
+      // --- CSV Export ---
+      document.getElementById("csvBtn").addEventListener("click", () => {
+        const data = JSON.parse(csvData);
+        const headers = ["ID","Table","Items","Status","Total (€)","Note","Created At"];
+        const rows = data.map(r => [
+          r.id, r.table, '"' + r.items.replace(/"/g, '""') + '"',
+          r.status, r.total_eur,
+          '"' + (r.note || "").replace(/"/g, '""') + '"',
+          r.created_at,
+        ]);
+        const csv = [headers, ...rows].map(r => r.join(",")).join("\n");
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        const now = new Date().toISOString().slice(0, 10);
+        a.download = "orders-" + now + ".csv";
+        a.click();
+        URL.revokeObjectURL(a.href);
+      });
+
+      // --- Delete all modal ---
+      const deleteAllBtn     = document.getElementById("deleteAllBtn");
+      const deleteAllModal   = document.getElementById("deleteAllModal");
+      const deleteConfirmInput = document.getElementById("deleteConfirmInput");
+      const deleteAllCancel  = document.getElementById("deleteAllCancel");
+      const deleteAllConfirm = document.getElementById("deleteAllConfirm");
+
+      deleteAllBtn.addEventListener("click", () => {
+        deleteConfirmInput.value = "";
+        deleteAllConfirm.disabled = true;
+        deleteAllConfirm.style.opacity = ".4";
+        deleteAllModal.showModal();
+        deleteConfirmInput.focus();
+      });
+
+      deleteConfirmInput.addEventListener("input", () => {
+        const ok = deleteConfirmInput.value === "DELETE";
+        deleteAllConfirm.disabled = !ok;
+        deleteAllConfirm.style.opacity = ok ? "1" : ".4";
+      });
+
+      deleteAllCancel.addEventListener("click", () => {
+        deleteAllModal.close();
+      });
+
+      deleteAllConfirm.addEventListener("click", async () => {
+        deleteAllConfirm.disabled = true;
+        deleteAllConfirm.textContent = isEl ? "Διαγραφή…" : "Deleting…";
+        try {
+          const res = await fetch("/api/admin/orders", { method: "DELETE" });
+          if (res.ok) {
+            deleteAllModal.close();
+            window.location.reload();
+          } else {
+            const json = await res.json().catch(() => ({}));
+            alert((isEl ? "Σφάλμα: " : "Error: ") + (json.error ?? res.statusText));
+            deleteAllConfirm.disabled = false;
+            deleteAllConfirm.style.opacity = "1";
+            deleteAllConfirm.textContent = isEl ? "Διαγραφή όλων" : "Delete all";
+          }
+        } catch (err) {
+          alert(isEl ? "Σφάλμα δικτύου." : "Network error.");
+          deleteAllConfirm.disabled = false;
+          deleteAllConfirm.style.opacity = "1";
+          deleteAllConfirm.textContent = isEl ? "Διαγραφή όλων" : "Delete all";
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -43,11 +43,15 @@ const brandHref  = withLangPrefix(lang, "/");
 const loginHref  = withLangPrefix(lang, "/login");
 const logoutHref = withLangPrefix(lang, "/logout");
 const accountHref   = withLangPrefix(lang, "/account");
-const adminHref     = withLangPrefix(lang, "/admin");
-const adminUsersHref = withLangPrefix(lang, "/admin/users");
-const adminMenuHref = withLangPrefix(lang, "/admin/menu");
-const staffHref     = withLangPrefix(lang, "/staff");
-const staffOrderHref = withLangPrefix(lang, "/staff/order");
+const adminHref          = withLangPrefix(lang, "/admin");
+const adminUsersHref     = withLangPrefix(lang, "/admin/users");
+const adminMenuHref      = withLangPrefix(lang, "/admin/menu");
+const adminAnalyticsHref = withLangPrefix(lang, "/admin/analytics");
+const adminOrdersHref    = withLangPrefix(lang, "/admin/orders");
+const adminCalendarHref  = withLangPrefix(lang, "/admin/calendar");
+const adminTipsHref      = withLangPrefix(lang, "/admin/tips");
+const staffHref          = withLangPrefix(lang, "/staff");
+const staffOrderHref     = withLangPrefix(lang, "/staff/order");
 
 // language button label
 const switchLabel = t.switchTo;
@@ -131,6 +135,22 @@ const displayName = user?.user_metadata?.full_name?.split(" ")[0]
                       <a href={adminHref} class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-70"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/></svg>
                         {t.user.dashboard}
+                      </a>
+                      <a href={adminAnalyticsHref} class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-70"><path d="M3 17l4-8 4 4 4-6 4 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        {t.user.analytics}
+                      </a>
+                      <a href={adminCalendarHref} class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-70"><rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 9h18M8 2v4M16 2v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                        {t.user.calendar}
+                      </a>
+                      <a href={adminOrdersHref} class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-70"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><rect x="9" y="3" width="6" height="4" rx="1" stroke="currentColor" stroke-width="1.5"/><path d="M9 12h6M9 16h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                        {t.user.orders}
+                      </a>
+                      <a href={adminTipsHref} class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-70"><path d="M12 2v2M12 20v2M6.22 6.22l-1.42-1.42M19.2 19.2l-1.42-1.42M2 12h2M20 12h2M6.22 17.78l-1.42 1.42M19.2 4.8l-1.42 1.42" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.5"/></svg>
+                        {t.user.tips}
                       </a>
                       <a href={adminUsersHref} class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-70"><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="1.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M19 8v6M16 11h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
@@ -229,6 +249,10 @@ const displayName = user?.user_metadata?.full_name?.split(" ")[0]
                     <div class="border-t border-white/10"></div>
                     <p class="px-4 pt-2.5 pb-1 text-xs font-semibold uppercase tracking-widest text-amber-400/50">{t.user.adminSection}</p>
                     <a href={adminHref} class="flex items-center px-4 py-2.5 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">{t.user.dashboard}</a>
+                    <a href={adminAnalyticsHref} class="flex items-center px-4 py-2.5 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">{t.user.analytics}</a>
+                    <a href={adminCalendarHref} class="flex items-center px-4 py-2.5 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">{t.user.calendar}</a>
+                    <a href={adminOrdersHref} class="flex items-center px-4 py-2.5 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">{t.user.orders}</a>
+                    <a href={adminTipsHref} class="flex items-center px-4 py-2.5 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">{t.user.tips}</a>
                     <a href={adminUsersHref} class="flex items-center px-4 py-2.5 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">{t.user.users}</a>
                     <a href={adminMenuHref} class="flex items-center px-4 py-2.5 pb-2 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">{t.user.editMenu}</a>
                   </>

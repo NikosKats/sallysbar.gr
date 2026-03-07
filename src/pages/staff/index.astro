@@ -53,21 +53,41 @@ function timeAgo(dateStr: string) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{t.staff.operations} — Sally's Bar</title>
     <meta name="robots" content="noindex,nofollow" />
+    <!-- Telegram Mini App SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+      .tg-app #site-header-wrap { display: none !important; }
+      .tg-app .staff-subnav     { top: 0 !important; }
+    </style>
   </head>
   <body class="min-h-screen bg-[#0b0b10] text-white">
-    <Header />
 
-    <!-- Spacer for fixed header -->
-    <div class="h-20"></div>
+    <!-- Detect Telegram Mini App early to avoid layout flash -->
+    <script is:inline>
+      if (window.Telegram?.WebApp?.initData) {
+        document.documentElement.classList.add('tg-app');
+        Telegram.WebApp.ready();
+        Telegram.WebApp.expand();
+        Telegram.WebApp.setBackgroundColor('#0b0b10');
+        Telegram.WebApp.setHeaderColor('#0b0b10');
+        // No BackButton on the main operations page — swipe down closes the mini app
+      }
+    </script>
+
+    <!-- Site header — hidden in Telegram Mini App -->
+    <div id="site-header-wrap">
+      <Header />
+      <div class="h-20"></div>
+    </div>
 
     <!-- Staff sub-nav -->
-    <div class="sticky top-20 z-40 border-b border-sky-400/20 bg-[#0b0b10]/95 backdrop-blur">
+    <div class="staff-subnav sticky top-20 z-40 border-b border-sky-400/20 bg-[#0b0b10]/95 backdrop-blur">
       <div class="mx-auto max-w-4xl px-4 flex items-center justify-between">
         <nav class="flex items-center gap-1 py-2 text-sm">
           <span class="px-3 py-1.5 rounded-lg bg-sky-400/15 border border-sky-400/20 text-sky-400 font-medium">{t.staff.operations}</span>
           <a href={withLangPrefix(lang, "/staff/order")} class="px-3 py-1.5 rounded-lg text-white/50 hover:text-sky-400 hover:bg-sky-400/5 transition whitespace-nowrap">{t.staff.newOrder}</a>
         </nav>
-        <button onclick="window.location.reload()" class="text-xs text-white/30 hover:text-white/60 transition py-2">
+        <button id="refreshBtn" class="text-xs text-white/30 hover:text-white/60 transition py-2">
           {t.staff.refresh}
         </button>
       </div>
@@ -154,9 +174,16 @@ function timeAgo(dateStr: string) {
 
     </main>
 
-    <!-- Auto-refresh every 30s -->
     <script is:inline>
-      setTimeout(() => window.location.reload(), 30000);
+      const isTg = !!(window.Telegram?.WebApp?.initData);
+
+      // Refresh button — always works
+      document.getElementById('refreshBtn').addEventListener('click', () => window.location.reload());
+
+      // Auto-refresh: only in browser (Telegram keeps the connection open)
+      if (!isTg) {
+        setTimeout(() => window.location.reload(), 30000);
+      }
     </script>
   </body>
 </html>

@@ -1,0 +1,397 @@
+---
+import "../../styles/global.css";
+import Header from "../../components/Header.astro";
+import { supabaseAdmin } from "../../lib/supabase";
+import { dict, withLangPrefix } from "../../i18n";
+
+const lang = Astro.locals.lang ?? "en";
+const t = dict[lang];
+
+const now = new Date();
+const today      = new Date(now); today.setHours(0,0,0,0);
+const weekStart  = new Date(now); weekStart.setDate(now.getDate() - now.getDay()); weekStart.setHours(0,0,0,0);
+const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+const yearStart  = new Date(now.getFullYear(), 0, 1);
+const last30Start = new Date(now); last30Start.setDate(now.getDate() - 29); last30Start.setHours(0,0,0,0);
+
+const [
+  { data: todayOrders },
+  { data: weekOrders },
+  { data: monthOrders },
+  { data: yearOrders },
+  { data: last30Orders },
+] = await Promise.all([
+  supabaseAdmin.from("orders").select("id,status,total_cents,items,created_at").gte("created_at", today.toISOString()),
+  supabaseAdmin.from("orders").select("id,status,total_cents,created_at").gte("created_at", weekStart.toISOString()),
+  supabaseAdmin.from("orders").select("id,status,total_cents,items,created_at").gte("created_at", monthStart.toISOString()),
+  supabaseAdmin.from("orders").select("id,status,total_cents,items,created_at").gte("created_at", yearStart.toISOString()),
+  supabaseAdmin.from("orders").select("id,status,total_cents,created_at").gte("created_at", last30Start.toISOString()),
+]);
+
+function revenue(orders: any[] | null) {
+  return (orders ?? []).filter(o => o.status !== "cancelled").reduce((s: number, o: any) => s + (o.total_cents ?? 0), 0);
+}
+function fmtEur(cents: number) {
+  return "€" + (cents / 100).toFixed(2);
+}
+function pct(n: number, total: number) {
+  return total ? Math.round((n / total) * 100) : 0;
+}
+
+// KPIs
+const revToday = revenue(todayOrders);
+const revWeek  = revenue(weekOrders);
+const revMonth = revenue(monthOrders);
+const revYear  = revenue(yearOrders);
+
+const completedMonth = (monthOrders ?? []).filter(o => o.status !== "cancelled");
+const cancelledMonth = (monthOrders ?? []).filter(o => o.status === "cancelled");
+const avgOrderValue  = completedMonth.length ? Math.round(revenue(monthOrders) / completedMonth.length) : 0;
+const cancelRate     = monthOrders?.length ? pct(cancelledMonth.length, monthOrders.length) : 0;
+
+// Status breakdown (month)
+const statusCounts = { pending: 0, preparing: 0, ready: 0, delivered: 0, cancelled: 0 };
+for (const o of (monthOrders ?? [])) {
+  if (o.status in statusCounts) statusCounts[o.status as keyof typeof statusCounts]++;
+}
+const totalMonth = monthOrders?.length ?? 0;
+
+const statusCards = [
+  { key: "pending",   label: lang === "el" ? "Εκκρεμείς"   : "Pending",   cls: "text-yellow-400 border-yellow-400/20 bg-yellow-400/5" },
+  { key: "preparing", label: lang === "el" ? "Ετοιμασία"   : "Preparing", cls: "text-blue-400 border-blue-400/20 bg-blue-400/5" },
+  { key: "ready",     label: lang === "el" ? "Έτοιμες"     : "Ready",     cls: "text-green-400 border-green-400/20 bg-green-400/5" },
+  { key: "delivered", label: lang === "el" ? "Παραδόθηκαν" : "Delivered", cls: "text-white/70 border-white/10 bg-white/5" },
+  { key: "cancelled", label: lang === "el" ? "Ακυρωμένες"  : "Cancelled", cls: "text-red-400 border-red-400/20 bg-red-400/5" },
+].map(c => ({
+  ...c,
+  count: statusCounts[c.key as keyof typeof statusCounts],
+  share: pct(statusCounts[c.key as keyof typeof statusCounts], totalMonth),
+}));
+
+// --- Last 30 days daily chart ---
+const dailyMap = new Map<string, number>();
+for (const o of (last30Orders ?? [])) {
+  if (o.status === "cancelled") continue;
+  const day = o.created_at.slice(0, 10);
+  dailyMap.set(day, (dailyMap.get(day) ?? 0) + (o.total_cents ?? 0));
+}
+const todayLabel = `${now.getDate()}/${now.getMonth() + 1}`;
+const dailyBars = Array.from({ length: 30 }, (_, idx) => {
+  const d = new Date(now);
+  d.setDate(now.getDate() - (29 - idx));
+  const key   = d.toISOString().slice(0, 10);
+  const label = `${d.getDate()}/${d.getMonth() + 1}`;
+  const cents = dailyMap.get(key) ?? 0;
+  return { label, cents, isToday: label === todayLabel, showLabel: idx % 5 === 0 };
+});
+const maxDaily = Math.max(...dailyBars.map(d => d.cents), 1);
+const dailyBarsWithH = dailyBars.map(d => ({
+  ...d,
+  barH: Math.max(4, Math.round((d.cents / maxDaily) * 100)),
+  title: d.label + ": " + fmtEur(d.cents),
+}));
+
+// --- Monthly trend (current year) ---
+const monthNames = lang === "el"
+  ? ["Ιαν","Φεβ","Μαρ","Απρ","Μαΐ","Ιουν","Ιουλ","Αυγ","Σεπ","Οκτ","Νοε","Δεκ"]
+  : ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const monthlyMap = new Map<string, number>();
+for (const o of (yearOrders ?? [])) {
+  if (o.status === "cancelled") continue;
+  const key = o.created_at.slice(0, 7);
+  monthlyMap.set(key, (monthlyMap.get(key) ?? 0) + (o.total_cents ?? 0));
+}
+const monthlyBarsRaw = monthNames.map((name, i) => {
+  const key   = `${now.getFullYear()}-${String(i + 1).padStart(2, "0")}`;
+  const cents = monthlyMap.get(key) ?? 0;
+  return { name, cents, isCurrent: i === now.getMonth() };
+});
+const maxMonthly = Math.max(...monthlyBarsRaw.map(m => m.cents), 1);
+const monthlyBarsWithH = monthlyBarsRaw.map(m => ({
+  ...m,
+  barH: Math.max(4, Math.round((m.cents / maxMonthly) * 100)),
+  title: m.name + ": " + fmtEur(m.cents),
+}));
+
+// --- Peak hours (last 30 days) ---
+const hourCounts = new Array(24).fill(0) as number[];
+for (const o of (last30Orders ?? [])) {
+  if (o.status === "cancelled") continue;
+  hourCounts[new Date(o.created_at).getHours()]++;
+}
+const maxHour = Math.max(...hourCounts, 1);
+const hourBars = hourCounts.map((count, h) => ({
+  h,
+  count,
+  isEvening: h >= 20 || h <= 2,
+  showLabel: h % 4 === 0,
+  barH: Math.max(2, Math.round((count / maxHour) * 100)),
+  title: String(h).padStart(2, "0") + ":00 — " + count + (lang === "el" ? " παραγγελίες" : " orders"),
+}));
+
+// --- Day of week (last 30 days) ---
+const dayNames = lang === "el"
+  ? ["Κυρ","Δευ","Τρι","Τετ","Πεμ","Παρ","Σαβ"]
+  : ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const dowCounts = new Array(7).fill(0) as number[];
+for (const o of (last30Orders ?? [])) {
+  if (o.status === "cancelled") continue;
+  dowCounts[new Date(o.created_at).getDay()]++;
+}
+const maxDow = Math.max(...dowCounts, 1);
+const dowBars = dowCounts.map((count, i) => ({
+  name: dayNames[i],
+  count,
+  isWeekend: i === 0 || i === 5 || i === 6,
+  barH: Math.max(4, Math.round((count / maxDow) * 100)),
+  title: dayNames[i] + ": " + count + (lang === "el" ? " παραγγελίες" : " orders"),
+}));
+
+// --- Top selling items (year) ---
+const salesMap = new Map<string, { name: string; qty: number; cents: number }>();
+for (const o of (yearOrders ?? [])) {
+  if (o.status === "cancelled") continue;
+  for (const item of (o.items ?? [])) {
+    const key = item.name as string;
+    const ex  = salesMap.get(key) ?? { name: item.name, qty: 0, cents: 0 };
+    const q   = item.qty ?? item.quantity ?? 1;
+    ex.qty   += q;
+    ex.cents += q * (item.price_cents ?? 0);
+    salesMap.set(key, ex);
+  }
+}
+const topItems = [...salesMap.values()].sort((a, b) => b.qty - a.qty).slice(0, 10);
+const maxItemQty = Math.max(...topItems.map(i => i.qty), 1);
+const topItemsWithBar = topItems.map((item, rank) => ({
+  ...item,
+  rank: rank + 1,
+  barW: Math.round((item.qty / maxItemQty) * 100),
+  revenueLabel: fmtEur(item.cents),
+}));
+---
+
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{t.admin.nav.analytics} — Sally's Bar</title>
+    <meta name="robots" content="noindex,nofollow" />
+  </head>
+  <body class="min-h-screen bg-[#0b0b10] text-white">
+    <Header />
+    <div class="h-20"></div>
+
+    <div class="sticky top-20 z-40 border-b border-amber-400/20 bg-[#0b0b10]/95 backdrop-blur">
+      <div class="mx-auto max-w-7xl px-4">
+        <nav class="flex items-center gap-1 py-2 overflow-x-auto text-sm">
+          <a href={withLangPrefix(lang, "/admin")} class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.overview}</a>
+          <span class="px-3 py-1.5 rounded-lg bg-amber-400/15 border border-amber-400/20 text-amber-400 font-medium whitespace-nowrap">{t.admin.nav.analytics}</span>
+          <a href={withLangPrefix(lang, "/admin/calendar")} class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.calendar}</a>
+          <a href={withLangPrefix(lang, "/admin/orders")} class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.orders}</a>
+          <a href={withLangPrefix(lang, "/admin/tips")}  class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.tips}</a>
+          <a href={withLangPrefix(lang, "/admin/users")} class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.users}</a>
+          <a href={withLangPrefix(lang, "/admin/menu")} class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.editMenu}</a>
+        </nav>
+      </div>
+    </div>
+
+    <main class="mx-auto max-w-7xl px-4 py-8 space-y-10">
+
+      <!-- KPI Cards -->
+      <section>
+        <h2 class="text-xs font-semibold uppercase tracking-widest text-white/30 mb-4">
+          {lang === "el" ? "Βασικοί δείκτες" : "Key metrics"}
+        </h2>
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <p class="text-2xl font-bold text-white">{fmtEur(revToday)}</p>
+            <p class="mt-1 text-xs text-white/40">{lang === "el" ? "Έσοδα σήμερα" : "Revenue today"}</p>
+          </div>
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <p class="text-2xl font-bold text-white">{fmtEur(revWeek)}</p>
+            <p class="mt-1 text-xs text-white/40">{lang === "el" ? "Έσοδα εβδ." : "Revenue this week"}</p>
+          </div>
+          <div class="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4">
+            <p class="text-2xl font-bold text-amber-400">{fmtEur(revMonth)}</p>
+            <p class="mt-1 text-xs text-amber-400/60">{lang === "el" ? "Έσοδα μήνα" : "Revenue this month"}</p>
+          </div>
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <p class="text-2xl font-bold text-white">{fmtEur(revYear)}</p>
+            <p class="mt-1 text-xs text-white/40">{lang === "el" ? "Έσοδα έτους" : "Revenue YTD"}</p>
+          </div>
+          <div class="rounded-2xl border border-sky-400/20 bg-sky-400/5 p-4">
+            <p class="text-2xl font-bold text-sky-400">{fmtEur(avgOrderValue)}</p>
+            <p class="mt-1 text-xs text-sky-400/60">{lang === "el" ? "Μέση παρ/λή (μήνας)" : "Avg order (month)"}</p>
+          </div>
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <p class:list={["text-2xl font-bold", cancelRate > 10 ? "text-red-400" : "text-white"]}>{cancelRate}%</p>
+            <p class="mt-1 text-xs text-white/40">{lang === "el" ? "Ακυρώσεις (μήνας)" : "Cancellation rate"}</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Order status breakdown (month) -->
+      <section>
+        <h2 class="text-xs font-semibold uppercase tracking-widest text-white/30 mb-4">
+          {lang === "el" ? "Κατάσταση παραγγελιών — τρέχων μήνας" : "Order status breakdown — this month"}
+        </h2>
+        <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          {statusCards.map(c => (
+            <div class={`rounded-2xl border p-4 ${c.cls}`}>
+              <p class="text-2xl font-bold">{c.count}</p>
+              <p class="mt-1 text-xs opacity-60">{c.label}</p>
+              <div class="mt-2 h-1.5 rounded-full bg-white/10 overflow-hidden">
+                <div class="h-full rounded-full bg-current opacity-50" style={`width:${c.share}%`}></div>
+              </div>
+              <p class="mt-1 text-xs opacity-40">{c.share}%</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <!-- Daily revenue — last 30 days -->
+      <section>
+        <h2 class="text-xs font-semibold uppercase tracking-widest text-white/30 mb-4">
+          {lang === "el" ? "Ημερήσια έσοδα — τελευταίες 30 ημέρες" : "Daily revenue — last 30 days"}
+        </h2>
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-6">
+          <div class="flex items-end gap-[3px] h-40">
+            {dailyBarsWithH.map(d => (
+              <div class="flex flex-col items-center gap-1 flex-1 min-w-[18px] group" title={d.title}>
+                <div
+                  class:list={["w-full rounded-t transition-all", d.isToday ? "bg-amber-400" : "bg-white/20 group-hover:bg-white/40"]}
+                  style={`height:${d.barH}%`}
+                ></div>
+                {(d.showLabel || d.isToday) && (
+                  <span class:list={["text-[9px] whitespace-nowrap", d.isToday ? "text-amber-400" : "text-white/30"]}>{d.label}</span>
+                )}
+              </div>
+            ))}
+          </div>
+          <p class="mt-4 text-xs text-white/30 text-right">
+            {lang === "el" ? "Hover για ποσό · Πορτοκαλί = σήμερα" : "Hover for amount · Amber = today"}
+          </p>
+        </div>
+      </section>
+
+      <!-- Monthly trend -->
+      <section>
+        <h2 class="text-xs font-semibold uppercase tracking-widest text-white/30 mb-4">
+          {lang === "el" ? `Μηνιαία τάση — ${now.getFullYear()}` : `Monthly trend — ${now.getFullYear()}`}
+        </h2>
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-6">
+          <div class="flex items-end gap-2 h-36">
+            {monthlyBarsWithH.map(m => (
+              <div class="flex flex-col items-center gap-1 flex-1 group" title={m.title}>
+                <div
+                  class:list={[
+                    "w-full rounded-t transition-all",
+                    m.isCurrent ? "bg-amber-400" : m.cents > 0 ? "bg-white/25 group-hover:bg-white/40" : "bg-white/5",
+                  ]}
+                  style={`height:${m.barH}%`}
+                ></div>
+                <span class:list={["text-[10px]", m.isCurrent ? "text-amber-400" : "text-white/30"]}>{m.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <!-- Two column: Peak hours + Day of week -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        <!-- Peak hours -->
+        <section>
+          <h2 class="text-xs font-semibold uppercase tracking-widest text-white/30 mb-4">
+            {lang === "el" ? "Ώρες αιχμής — τελ. 30 ημέρες" : "Peak hours — last 30 days"}
+          </h2>
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-6">
+            <div class="flex items-end gap-[3px] h-32">
+              {hourBars.map(bar => (
+                <div class="flex flex-col items-center gap-1 flex-1 group" title={bar.title}>
+                  <div
+                    class:list={[
+                      "w-full rounded-t transition-all",
+                      bar.isEvening ? "bg-amber-400/60 group-hover:bg-amber-400" : "bg-white/15 group-hover:bg-white/35",
+                    ]}
+                    style={`height:${bar.barH}%`}
+                  ></div>
+                  {bar.showLabel && <span class="text-[9px] text-white/30">{bar.h}h</span>}
+                </div>
+              ))}
+            </div>
+            <p class="mt-3 text-xs text-white/30">
+              {lang === "el" ? "Πορτοκαλί = βραδινές ώρες (20:00–02:00)" : "Amber = evening hours (20:00–02:00)"}
+            </p>
+          </div>
+        </section>
+
+        <!-- Day of week -->
+        <section>
+          <h2 class="text-xs font-semibold uppercase tracking-widest text-white/30 mb-4">
+            {lang === "el" ? "Ημέρα εβδομάδας — τελ. 30 ημέρες" : "Day of week — last 30 days"}
+          </h2>
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-6">
+            <div class="flex items-end gap-3 h-32">
+              {dowBars.map(bar => (
+                <div class="flex flex-col items-center gap-2 flex-1 group" title={bar.title}>
+                  <div
+                    class:list={[
+                      "w-full rounded-t transition-all",
+                      bar.isWeekend ? "bg-amber-400/70 group-hover:bg-amber-400" : "bg-white/20 group-hover:bg-white/40",
+                    ]}
+                    style={`height:${bar.barH}%`}
+                  ></div>
+                  <span class:list={["text-[11px]", bar.isWeekend ? "text-amber-400/70" : "text-white/30"]}>{bar.name}</span>
+                </div>
+              ))}
+            </div>
+            <p class="mt-3 text-xs text-white/30">
+              {lang === "el" ? "Πορτοκαλί = Παρ/Σαβ/Κυρ" : "Amber = Fri/Sat/Sun"}
+            </p>
+          </div>
+        </section>
+      </div>
+
+      <!-- Top selling items -->
+      <section>
+        <h2 class="text-xs font-semibold uppercase tracking-widest text-white/30 mb-4">
+          {lang === "el" ? `Κορυφαία προϊόντα — ${now.getFullYear()}` : `Top selling items — ${now.getFullYear()}`}
+        </h2>
+        {topItemsWithBar.length === 0 ? (
+          <p class="text-sm text-white/30">{lang === "el" ? "Δεν υπάρχουν δεδομένα ακόμα." : "No data yet."}</p>
+        ) : (
+          <div class="rounded-2xl border border-white/10 overflow-hidden">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-white/10 bg-white/5">
+                  <th class="text-left px-4 py-3 text-white/40 font-medium w-8">#</th>
+                  <th class="text-left px-4 py-3 text-white/40 font-medium">{lang === "el" ? "Προϊόν" : "Item"}</th>
+                  <th class="text-left px-4 py-3 text-white/40 font-medium">{lang === "el" ? "Τεμάχια" : "Units"}</th>
+                  <th class="text-left px-4 py-3 text-white/40 font-medium">{lang === "el" ? "Έσοδα" : "Revenue"}</th>
+                  <th class="px-4 py-3 w-32"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {topItemsWithBar.map(item => (
+                  <tr class="border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition">
+                    <td class="px-4 py-3 text-white/30 text-xs">{item.rank}</td>
+                    <td class="px-4 py-3 font-medium text-white">{item.name}</td>
+                    <td class="px-4 py-3 text-white/70">{item.qty}</td>
+                    <td class="px-4 py-3 text-amber-400 font-medium">{item.revenueLabel}</td>
+                    <td class="px-4 py-3">
+                      <div class="h-1.5 rounded-full bg-white/10 overflow-hidden">
+                        <div class="h-full rounded-full bg-amber-400/60" style={`width:${item.barW}%`}></div>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+    </main>
+  </body>
+</html>

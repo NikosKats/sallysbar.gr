@@ -1,4 +1,22 @@
 User-agent: *
 Allow: /
+Disallow: /admin/
+Disallow: /el/admin/
+Disallow: /staff/
+Disallow: /el/staff/
+Disallow: /dashboard
+Disallow: /el/dashboard
+Disallow: /account
+Disallow: /el/account
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /el/forgot-password
+Disallow: /el/register
+Disallow: /logout
+Disallow: /el/logout
+Disallow: /auth/
+Disallow: /table/
+Disallow: /api/
 
 Sitemap: https://sallysbar.gr/sitemap.xml

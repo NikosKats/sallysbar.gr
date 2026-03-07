@@ -38,3 +38,10 @@ export async function answerCallbackQuery(
 ) {
   return post("answerCallbackQuery", { callback_query_id, text });
 }
+
+export async function deleteMessage(
+  chat_id: string | number,
+  message_id: number
+) {
+  return post("deleteMessage", { chat_id, message_id });
+}

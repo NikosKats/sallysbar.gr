@@ -1,0 +1,256 @@
+---
+import "../../styles/global.css";
+import Header from "../../components/Header.astro";
+import { supabaseAdmin } from "../../lib/supabase";
+import { dict, withLangPrefix } from "../../i18n";
+
+const lang = Astro.locals.lang ?? "en";
+const t = dict[lang];
+
+// Period filter
+const url = new URL(Astro.request.url);
+const period = url.searchParams.get("period") ?? "today";
+
+const now = new Date();
+const today     = new Date(now); today.setHours(0, 0, 0, 0);
+const weekStart = new Date(now); weekStart.setDate(now.getDate() - now.getDay()); weekStart.setHours(0, 0, 0, 0);
+const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+const since = period === "week" ? weekStart : period === "month" ? monthStart : today;
+
+// Fetch tips with order data
+const { data: tips } = await supabaseAdmin
+  .from("tips")
+  .select("id, order_id, waiter_id, amount_cents, type, created_at, orders(table_number, total_cents)")
+  .gte("created_at", since.toISOString())
+  .order("created_at", { ascending: false });
+
+// Fetch all staff profiles
+const { data: staffProfiles } = await supabaseAdmin
+  .from("profiles")
+  .select("id, role")
+  .in("role", ["employee", "admin"]);
+
+// Fetch auth users to get names/emails
+const staffIds = (staffProfiles ?? []).map(p => p.id);
+const staffUsers: Record<string, { name: string; email: string }> = {};
+await Promise.all(
+  staffIds.map(async (id) => {
+    const { data } = await supabaseAdmin.auth.admin.getUserById(id);
+    if (data.user) {
+      staffUsers[id] = {
+        name: data.user.user_metadata?.full_name ?? data.user.email?.split("@")[0] ?? "Unknown",
+        email: data.user.email ?? "",
+      };
+    }
+  })
+);
+
+// Aggregate tips per waiter
+const byWaiter = new Map<string, {
+  name: string;
+  email: string;
+  cashCents: number;
+  cardCents: number;
+  cashCount: number;
+  cardCount: number;
+  tipsTotal: number;
+}>();
+
+for (const tip of tips ?? []) {
+  if (!tip.waiter_id) continue;
+  if (!byWaiter.has(tip.waiter_id)) {
+    const info = staffUsers[tip.waiter_id];
+    byWaiter.set(tip.waiter_id, {
+      name: info?.name ?? "Unknown",
+      email: info?.email ?? "",
+      cashCents: 0, cardCents: 0,
+      cashCount: 0, cardCount: 0,
+      tipsTotal: 0,
+    });
+  }
+  const w = byWaiter.get(tip.waiter_id)!;
+  if (tip.type === "cash") { w.cashCents += tip.amount_cents; w.cashCount++; }
+  else                      { w.cardCents += tip.amount_cents; w.cardCount++; }
+  w.tipsTotal += tip.amount_cents;
+}
+
+const waiterRows = [...byWaiter.entries()]
+  .map(([id, d]) => ({ id, ...d }))
+  .sort((a, b) => b.tipsTotal - a.tipsTotal);
+
+// Overall totals
+const totalTips  = (tips ?? []).reduce((s, t) => s + t.amount_cents, 0);
+const cashTotal  = (tips ?? []).filter(t => t.type === "cash").reduce((s, t) => s + t.amount_cents, 0);
+const cardTotal  = (tips ?? []).filter(t => t.type === "card").reduce((s, t) => s + t.amount_cents, 0);
+const tipCount   = (tips ?? []).length;
+
+function eur(cents: number) { return `€${(cents / 100).toFixed(2)}`; }
+function timeAgo(d: string) {
+  const m = Math.floor((Date.now() - new Date(d).getTime()) / 60000);
+  if (m < 1)  return "just now";
+  if (m < 60) return `${m}m ago`;
+  return `${Math.floor(m / 60)}h ${m % 60}m ago`;
+}
+
+const periodLabel = period === "week" ? "This Week" : period === "month" ? "This Month" : "Today";
+---
+
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tips — Sally's Bar</title>
+    <meta name="robots" content="noindex,nofollow" />
+  </head>
+  <body class="min-h-screen bg-[#0b0b10] text-white">
+    <Header />
+    <div class="h-20"></div>
+
+    <!-- Admin sub-nav -->
+    <div class="sticky top-20 z-40 border-b border-amber-400/20 bg-[#0b0b10]/95 backdrop-blur">
+      <div class="mx-auto max-w-7xl px-4">
+        <nav class="flex items-center gap-1 py-2 overflow-x-auto text-sm">
+          <a href={withLangPrefix(lang, "/admin")}           class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.overview}</a>
+          <a href={withLangPrefix(lang, "/admin/analytics")} class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.analytics}</a>
+          <a href={withLangPrefix(lang, "/admin/calendar")}  class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.calendar}</a>
+          <a href={withLangPrefix(lang, "/admin/orders")}    class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.orders}</a>
+          <span                                              class="px-3 py-1.5 rounded-lg bg-amber-400/15 border border-amber-400/20 text-amber-400 font-medium whitespace-nowrap">{t.admin.nav.tips}</span>
+          <a href={withLangPrefix(lang, "/admin/users")}     class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.users}</a>
+          <a href={withLangPrefix(lang, "/admin/menu")}      class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.editMenu}</a>
+        </nav>
+      </div>
+    </div>
+
+    <main class="mx-auto max-w-7xl px-4 py-8 space-y-8">
+
+      <!-- Period filter -->
+      <div class="flex items-center justify-between flex-wrap gap-3">
+        <h1 class="text-xl font-bold text-white">Tips — {periodLabel}</h1>
+        <div class="flex gap-2 text-sm">
+          {["today", "week", "month"].map((p) => (
+            <a
+              href={`?period=${p}`}
+              class={`px-4 py-2 rounded-xl border transition ${
+                period === p
+                  ? "bg-amber-400/15 border-amber-400/30 text-amber-400 font-medium"
+                  : "border-white/10 bg-white/5 text-white/50 hover:text-white hover:bg-white/10"
+              }`}
+            >
+              {p === "today" ? "Today" : p === "week" ? "This Week" : "This Month"}
+            </a>
+          ))}
+        </div>
+      </div>
+
+      <!-- KPI row -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: "Total Tips", value: eur(totalTips), sub: `${tipCount} tip${tipCount !== 1 ? "s" : ""}`, color: "text-emerald-400" },
+          { label: "💵 Cash",   value: eur(cashTotal), sub: `${(tips ?? []).filter(t => t.type === "cash").length} tips`, color: "text-white" },
+          { label: "💳 Card",   value: eur(cardTotal), sub: `${(tips ?? []).filter(t => t.type === "card").length} tips`, color: "text-white" },
+          { label: "Avg Tip",   value: tipCount > 0 ? eur(Math.round(totalTips / tipCount)) : "—", sub: "per transaction", color: "text-white" },
+        ].map((k) => (
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+            <p class="text-xs text-white/40 uppercase tracking-widest mb-1">{k.label}</p>
+            <p class={`text-2xl font-bold ${k.color}`}>{k.value}</p>
+            <p class="text-xs text-white/30 mt-1">{k.sub}</p>
+          </div>
+        ))}
+      </div>
+
+      <!-- Per-staff leaderboard -->
+      <div>
+        <h2 class="text-xs font-semibold uppercase tracking-widest text-white/30 mb-4">Staff Leaderboard</h2>
+        {waiterRows.length === 0 ? (
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-10 text-center text-white/40 text-sm">
+            No tips recorded for this period.
+          </div>
+        ) : (
+          <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {waiterRows.map((w, i) => (
+              <div class={`rounded-2xl border p-5 space-y-4 ${i === 0 ? "border-amber-400/30 bg-amber-400/5" : "border-white/10 bg-white/5"}`}>
+                <div class="flex items-center justify-between">
+                  <div>
+                    <div class="flex items-center gap-2">
+                      {i === 0 && <span class="text-lg">🏆</span>}
+                      <span class="font-semibold text-white">{w.name}</span>
+                    </div>
+                    <p class="text-xs text-white/30 mt-0.5">{w.email}</p>
+                  </div>
+                  <div class="text-right">
+                    <p class="text-xl font-bold text-emerald-400">{eur(w.tipsTotal)}</p>
+                    <p class="text-xs text-white/30">{w.cashCount + w.cardCount} tips</p>
+                  </div>
+                </div>
+                <div class="flex gap-2">
+                  <div class="flex-1 rounded-xl bg-white/5 border border-white/10 p-3 text-center">
+                    <p class="text-xs text-white/40 mb-1">💵 Cash</p>
+                    <p class="font-semibold text-white">{eur(w.cashCents)}</p>
+                    <p class="text-xs text-white/30">{w.cashCount}×</p>
+                  </div>
+                  <div class="flex-1 rounded-xl bg-white/5 border border-white/10 p-3 text-center">
+                    <p class="text-xs text-white/40 mb-1">💳 Card</p>
+                    <p class="font-semibold text-white">{eur(w.cardCents)}</p>
+                    <p class="text-xs text-white/30">{w.cardCount}×</p>
+                  </div>
+                </div>
+                <!-- Mini bar: share of total -->
+                {totalTips > 0 && (
+                  <div class="h-1.5 rounded-full bg-white/10 overflow-hidden">
+                    <div
+                      class="h-full rounded-full bg-emerald-400"
+                      style={`width:${Math.round((w.tipsTotal / totalTips) * 100)}%`}
+                    ></div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <!-- Recent tips log -->
+      {(tips ?? []).length > 0 && (
+        <div>
+          <h2 class="text-xs font-semibold uppercase tracking-widest text-white/30 mb-4">Recent Tips</h2>
+          <div class="rounded-2xl border border-white/10 overflow-hidden">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-white/10 text-xs text-white/30 uppercase tracking-widest">
+                  <th class="px-4 py-3 text-left">Staff</th>
+                  <th class="px-4 py-3 text-left">Table</th>
+                  <th class="px-4 py-3 text-left">Type</th>
+                  <th class="px-4 py-3 text-right">Amount</th>
+                  <th class="px-4 py-3 text-right">When</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(tips ?? []).map((tip) => {
+                  const waiter = tip.waiter_id ? staffUsers[tip.waiter_id] : null;
+                  const order  = tip.orders as any;
+                  const typeBadge = tip.type === "cash"
+                    ? "bg-emerald-400/10 text-emerald-400 border border-emerald-400/20"
+                    : "bg-blue-400/10 text-blue-400 border border-blue-400/20";
+                  const typeLabel = tip.type === "cash" ? "💵 Cash" : "💳 Card";
+                  return (
+                    <tr class="border-b border-white/5 last:border-0 hover:bg-white/5 transition">
+                      <td class="px-4 py-3 text-white/70">{waiter?.name ?? "—"}</td>
+                      <td class="px-4 py-3 text-white/50">Table {order?.table_number ?? "?"}</td>
+                      <td class="px-4 py-3">
+                        <span class={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${typeBadge}`}>{typeLabel}</span>
+                      </td>
+                      <td class="px-4 py-3 text-right font-semibold text-emerald-400">{eur(tip.amount_cents)}</td>
+                      <td class="px-4 py-3 text-right text-white/30 text-xs">{timeAgo(tip.created_at)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+    </main>
+  </body>
+</html>

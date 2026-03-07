@@ -109,14 +109,20 @@ const loginHref = withLangPrefix(lang, "/login");
             <input id="password" type="password" required minlength="6" autocomplete="new-password" placeholder="••••••••" />
             <p class="hint">{t.passwordHint}</p>
           </div>
-          <div
-            class="cf-turnstile"
-            data-sitekey={turnstileSitekey}
-            data-theme="dark"
-            data-callback="onTurnstileSuccess"
-            data-expired-callback="onTurnstileExpired"
-          ></div>
-          <button type="submit" id="submitBtn" class="btn-primary" disabled>{t.submit}</button>
+          {turnstileSitekey && (
+            <div
+              id="turnstileWidget"
+              class="cf-turnstile"
+              data-sitekey={turnstileSitekey}
+              data-theme="dark"
+              data-callback="onTurnstileSuccess"
+              data-expired-callback="onTurnstileExpired"
+            ></div>
+          )}
+          <p id="captchaHint" style="display:none;font-size:.75rem;color:rgba(255,255,255,.4);text-align:center;margin-top:.25rem;">
+            {isEl ? "Ολοκλήρωσε την επαλήθευση ασφαλείας παραπάνω." : "Complete the security check above to continue."}
+          </p>
+          <button type="submit" id="submitBtn" class="btn-primary" disabled={turnstileSitekey ? true : undefined}>{t.submit}</button>
         </form>
 
         <div class="divider">
@@ -163,22 +169,44 @@ const loginHref = withLangPrefix(lang, "/login");
       const errorEl    = document.getElementById("errorMsg")     as HTMLElement;
       const successEl  = document.getElementById("successMsg")   as HTMLElement;
 
+      const captchaHint  = document.getElementById("captchaHint") as HTMLElement;
+      const widgetEl     = document.getElementById("turnstileWidget");
+
       // Turnstile token — set by Cloudflare widget callbacks
       let captchaToken = "";
 
-      (window as any).onTurnstileSuccess = (token: string) => {
-        captchaToken = token;
+      const isLocalhost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+
+      if (widgetEl) {
+        captchaHint.style.display = "block";
+
+        (window as any).onTurnstileSuccess = (token: string) => {
+          captchaToken = token;
+          submitBtn.disabled = false;
+          captchaHint.style.display = "none";
+        };
+        (window as any).onTurnstileExpired = () => {
+          captchaToken = "";
+          captchaHint.style.display = isLocalhost ? "none" : "block";
+          submitBtn.disabled = isLocalhost ? false : true;
+        };
+
+        // On localhost Turnstile may not complete — enable after 1.5s
+        if (isLocalhost) {
+          setTimeout(() => {
+            submitBtn.disabled = false;
+            captchaHint.style.display = "none";
+          }, 1500);
+        }
+      } else {
         submitBtn.disabled = false;
-      };
-      (window as any).onTurnstileExpired = () => {
-        captchaToken = "";
-        submitBtn.disabled = true;
-      };
+      }
 
       function showError(msg: string) {
         errorEl.textContent = msg;
         errorEl.classList.add("visible");
         successEl.classList.remove("visible");
+        errorEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
       }
 
       function showSuccess(msg: string) {
@@ -208,7 +236,7 @@ const loginHref = withLangPrefix(lang, "/login");
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
-          options: { data: { full_name: name }, captchaToken },
+          options: { data: { full_name: name }, ...(captchaToken ? { captchaToken } : {}) },
         });
 
         if (error) {
