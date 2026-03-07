@@ -4,7 +4,6 @@ import {
   sendMessage,
   editMessageText,
   answerCallbackQuery,
-  deleteMessage,
 } from "../../lib/telegram";
 
 type OrderItem = { name: string; qty: number; price_cents: number };
@@ -36,63 +35,6 @@ export const POST: APIRoute = async ({ request }) => {
 };
 
 async function handleUpdate(body: Record<string, unknown>): Promise<Response> {
-  // ── Handle plain messages (custom tip amount replies) ──────────────────────
-  // State is encoded in the reply_to_message text — no DB table needed.
-  // Format: "...#tip_cash_UUID" or "...#tip_card_UUID"
-  if (body.message && !body.callback_query) {
-    const msg = body.message as {
-      message_id: number;
-      chat: { id: number };
-      text?: string;
-      reply_to_message?: { text?: string };
-    };
-
-    // DEBUG — remove once working
-    await sendMessage(
-      msg.chat.id,
-      `🔍 <b>Debug:</b> got msg <code>${(msg.text ?? "").slice(0, 80)}</code>\nreply_to: <code>${(msg.reply_to_message?.text ?? "none").slice(0, 120)}</code>`
-    ).catch(() => {});
-
-    const replyText = msg.reply_to_message?.text ?? "";
-    const marker    = replyText.match(/#tip_(cash|card)_([0-9a-f-]{36})/);
-    if (!marker) return new Response("ok");
-
-    const tipType  = marker[1] as "cash" | "card";
-    const targetId = marker[2];
-    const chatId   = msg.chat.id;
-    const raw      = (msg.text ?? "").trim().replace(",", ".");
-    const amount   = parseFloat(raw.replace(/[^0-9.]/g, ""));
-
-    if (isNaN(amount) || amount <= 0) {
-      await sendMessage(chatId, "⚠️ Invalid amount. Send a number e.g. <b>7.50</b>");
-      return new Response("ok");
-    }
-
-    const amount_cents = Math.round(amount * 100);
-    const typeLabel    = tipType === "cash" ? "💵 Cash" : "💳 Card";
-    const euros        = amount.toFixed(2);
-
-    const { data: order } = await supabaseAdmin
-      .from("orders")
-      .select("waiter_id, table_number")
-      .eq("id", targetId)
-      .single();
-
-    if (order?.waiter_id) {
-      await supabaseAdmin.from("tips").insert({
-        order_id: targetId, waiter_id: order.waiter_id, amount_cents, type: tipType,
-      });
-    }
-
-    await deleteMessage(chatId, msg.message_id);
-    await sendMessage(
-      chatId,
-      `✅ <b>€${euros} ${typeLabel} tip</b> saved for Table ${order?.table_number ?? "?"} 💚`
-    );
-
-    return new Response("ok");
-  }
-
   if (!body.callback_query) return new Response("ok");
 
   const cb = body.callback_query as {
@@ -219,11 +161,10 @@ async function handleUpdate(body: Record<string, unknown>): Promise<Response> {
     await answerCallbackQuery(cb.id, "Order delivered! ✅");
   }
 
-  // Tip type chosen → show amount buttons + Custom option
+  // Tip type chosen → show amount buttons
   if (action === "tc" || action === "tk") {
     const typeLabel = action === "tc" ? "💵 Cash" : "💳 Card";
     const prefix    = action === "tc" ? "ta" : "tb";
-    const custom    = action === "tc" ? "tc_custom" : "tk_custom";
 
     await editMessageText(
       cb.message.chat.id,
@@ -236,11 +177,17 @@ async function handleUpdate(body: Record<string, unknown>): Promise<Response> {
               { text: "€1",  callback_data: `${prefix}_100:${orderId}`  },
               { text: "€2",  callback_data: `${prefix}_200:${orderId}`  },
               { text: "€3",  callback_data: `${prefix}_300:${orderId}`  },
-              { text: "€5",  callback_data: `${prefix}_500:${orderId}`  },
+              { text: "€4",  callback_data: `${prefix}_400:${orderId}`  },
             ],
             [
+              { text: "€5",  callback_data: `${prefix}_500:${orderId}`  },
+              { text: "€6",  callback_data: `${prefix}_600:${orderId}`  },
               { text: "€7",  callback_data: `${prefix}_700:${orderId}`  },
+              { text: "€8",  callback_data: `${prefix}_800:${orderId}`  },
+            ],
+            [
               { text: "€10", callback_data: `${prefix}_1000:${orderId}` },
+              { text: "€12", callback_data: `${prefix}_1200:${orderId}` },
               { text: "€15", callback_data: `${prefix}_1500:${orderId}` },
               { text: "€20", callback_data: `${prefix}_2000:${orderId}` },
             ],
@@ -250,36 +197,10 @@ async function handleUpdate(body: Record<string, unknown>): Promise<Response> {
               { text: "€50", callback_data: `${prefix}_5000:${orderId}` },
               { text: "€100",callback_data: `${prefix}_10000:${orderId}`},
             ],
-            [
-              { text: "✏️ Other amount", callback_data: `${custom}:${orderId}` },
-            ],
           ],
         },
       }
     );
-    await answerCallbackQuery(cb.id);
-  }
-
-  // Custom amount chosen → send force_reply prompt with order info embedded in text
-  if (action === "tc_custom" || action === "tk_custom") {
-    const tipType   = action === "tc_custom" ? "cash" : "card";
-    const typeLabel = tipType === "cash" ? "💵 Cash" : "💳 Card";
-    const chatId    = cb.message.chat.id;
-
-    // Remove buttons from the type-selection message
-    await editMessageText(
-      chatId,
-      cb.message.message_id,
-      `${typeLabel} tip — <b>Table ${order.table_number}</b>\n⌨️ Reply to the next message with the amount (e.g. 7.50)`
-    );
-
-    // Embed order state in the message text so we can parse it from reply_to_message
-    await sendMessage(
-      chatId,
-      `${typeLabel} tip — Table ${order.table_number}\nHow much? Reply to this message with the amount:\n#tip_${tipType}_${orderId}`,
-      { reply_markup: { force_reply: true, selective: false } }
-    );
-
     await answerCallbackQuery(cb.id);
   }
 
