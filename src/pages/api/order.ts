@@ -10,12 +10,13 @@ export const POST: APIRoute = async ({ request, locals }) => {
     return json({ error: "Unauthorized" }, 401);
   }
 
-  let table: number, items: OrderItem[], note: string | undefined;
+  let table: number, items: OrderItem[], note: string | undefined, session_id: string | undefined;
   try {
     const body = await request.json();
     table = Number(body.table);
     items = body.items;
     note = body.note?.trim() || undefined;
+    session_id = body.session_id || undefined;
   } catch {
     return json({ error: "Invalid JSON" }, 400);
   }
@@ -27,10 +28,43 @@ export const POST: APIRoute = async ({ request, locals }) => {
   // Compute order total
   const total_cents = items.reduce((sum, i) => sum + i.qty * i.price_cents, 0);
 
+  // Session handling: join existing session or create a new one
+  let finalSessionId: string;
+  let roundNumber = 1;
+
+  if (session_id) {
+    // Adding a round to an existing session — find the next round number
+    const { data: existingRounds } = await supabaseAdmin
+      .from("orders")
+      .select("round_number")
+      .eq("session_id", session_id)
+      .order("round_number", { ascending: false })
+      .limit(1);
+    roundNumber = (existingRounds?.[0]?.round_number ?? 0) + 1;
+    finalSessionId = session_id;
+  } else {
+    // New session
+    const { data: session, error: sessionErr } = await supabaseAdmin
+      .from("table_sessions")
+      .insert({ table_number: table })
+      .select("id")
+      .single();
+    if (sessionErr || !session) {
+      console.error(sessionErr);
+      return json({ error: "Could not create session" }, 500);
+    }
+    finalSessionId = session.id;
+  }
+
   // Save to Supabase
   const { data: order, error } = await supabaseAdmin
     .from("orders")
-    .insert({ table_number: table, items, note, status: "pending", total_cents, waiter_id: locals.user?.id ?? null })
+    .insert({
+      table_number: table, items, note, status: "pending", total_cents,
+      waiter_id: locals.user?.id ?? null,
+      session_id: finalSessionId,
+      round_number: roundNumber,
+    })
     .select()
     .single();
 
@@ -45,9 +79,10 @@ export const POST: APIRoute = async ({ request, locals }) => {
     .join("\n");
 
   const totalFormatted = `€${(total_cents / 100).toFixed(2)}`;
+  const roundLabel = roundNumber > 1 ? ` — Round ${roundNumber}` : "";
 
   const text =
-    `🍹 <b>New Order — Table ${table}</b>\n\n` +
+    `🍹 <b>New Order${roundLabel} — Table ${table}</b>\n\n` +
     `${itemLines}\n\n` +
     `💶 <b>Total: ${totalFormatted}</b>` +
     (note ? `\n\n📝 <i>${note}</i>` : "") +
@@ -89,7 +124,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
     await supabaseAdmin.from("orders").update(updates).eq("id", order.id);
   }
 
-  return json({ ok: true, order_id: order.id });
+  return json({ ok: true, order_id: order.id, session_id: finalSessionId });
 };
 
 function json(data: unknown, status = 200) {

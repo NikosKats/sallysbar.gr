@@ -3,9 +3,12 @@ import "../../styles/global.css";
 import Header from "../../components/Header.astro";
 import { getMenu, formatPriceEUR } from "../../lib/menuService";
 import { dict, withLangPrefix } from "../../i18n";
+import { supabaseAdmin } from "../../lib/supabase";
 
 const lang = Astro.locals.lang ?? "en";
 const t = dict[lang];
+const isEl = lang === "el";
+
 // Protected by middleware — only employee/admin can access /staff/*
 // Always fetch menu in English so item names + numbers match the customer table page
 const { categories, items } = await getMenu("en");
@@ -23,6 +26,29 @@ for (const c of categories) {
   for (const it of byCategory.get(c.id) ?? []) {
     itemNumbers.set(it.id, itemCounter++);
   }
+}
+
+// Fetch open sessions for "add round" functionality
+const sessionParam = Astro.url.searchParams.get("session");
+const today = new Date();
+today.setHours(0, 0, 0, 0);
+
+const { data: openSessions } = await supabaseAdmin
+  .from("table_sessions")
+  .select("id, table_number, created_at")
+  .eq("status", "open")
+  .gte("created_at", today.toISOString())
+  .order("created_at", { ascending: true });
+
+// Pre-selected session (when coming from "Add Round" button)
+const preselectedSession = openSessions?.find(s => s.id === sessionParam) ?? null;
+
+function timeAgo(dateStr: string) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return isEl ? "μόλις τώρα" : "just now";
+  if (m < 60) return isEl ? `${m}λ πριν` : `${m}m ago`;
+  return isEl ? `${Math.floor(m / 60)}ω ${m % 60}λ πριν` : `${Math.floor(m / 60)}h ${m % 60}m ago`;
 }
 ---
 
@@ -73,18 +99,60 @@ for (const c of categories) {
     </div>
 
     <main class="mx-auto max-w-2xl px-6 py-6 space-y-6">
-      <!-- Table number -->
-      <div>
+
+      <!-- Session picker: add round to existing table OR start new table -->
+      {openSessions && openSessions.length > 0 && (
+        <div>
+          <p class="text-sm text-white/50 mb-2">{isEl ? "Προσθήκη γύρου σε ενεργό τραπέζι;" : "Add round to active table?"}</p>
+          <div class="space-y-1.5">
+            {openSessions.map(s => (
+              <button
+                type="button"
+                class="session-pick-btn w-full text-left rounded-xl border px-4 py-2.5 text-sm transition"
+                class:list={[
+                  preselectedSession?.id === s.id
+                    ? "border-sky-400/50 bg-sky-400/10 text-sky-400"
+                    : "border-white/10 bg-white/5 text-white/60 hover:border-white/20 hover:text-white/80"
+                ]}
+                data-session-id={s.id}
+                data-table={s.table_number}
+              >
+                <span class="font-semibold">{t.staff.tableLabel} {s.table_number}</span>
+                <span class="ml-2 text-xs opacity-60">— {timeAgo(s.created_at)}</span>
+              </button>
+            ))}
+          </div>
+          <button
+            id="newTableBtn"
+            type="button"
+            class="mt-2 text-xs text-white/30 hover:text-white/50 transition underline underline-offset-2"
+            class:list={[preselectedSession ? "" : "hidden"]}
+          >
+            {isEl ? "↩ Νέο τραπέζι αντ' αυτού" : "↩ New table instead"}
+          </button>
+        </div>
+      )}
+
+      <!-- Table number (hidden when a session is selected) -->
+      <div id="tableNumberBlock" class:list={[preselectedSession ? "hidden" : ""]}>
         <label class="block text-sm text-white/60 mb-2" for="tableInput">{t.staff.tableNumber}</label>
         <input
           id="tableInput"
           type="number"
           min="1"
           max="99"
+          value={preselectedSession?.table_number ?? ""}
           placeholder={t.staff.tablePlaceholder}
           class="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white text-lg font-semibold placeholder:text-white/30 outline-none focus:border-white/30"
         />
       </div>
+
+      <!-- Adding-to-session banner -->
+      {preselectedSession && (
+        <div id="sessionBanner" class="rounded-xl border border-sky-400/20 bg-sky-400/5 px-4 py-2.5 text-sm text-sky-400">
+          {isEl ? `${t.staff.addingRoundTo} ${t.staff.tableLabel} ${preselectedSession.table_number}` : `${t.staff.addingRoundTo} ${t.staff.tableLabel} ${preselectedSession.table_number}`}
+        </div>
+      )}
 
       <!-- Menu items -->
       <div>
@@ -172,29 +240,78 @@ for (const c of categories) {
       </button>
     </div>
 
-    <script define:vars={{ tSendToBarman: t.staff.sendToBarman, tSending: t.staff.sending }}>
+    <script define:vars={{ tSendToBarman: t.staff.sendToBarman, tSending: t.staff.sending, preselectedSessionId: preselectedSession?.id ?? null, preselectedTableNumber: preselectedSession?.table_number ?? null }}>
       const isTg   = !!(window.Telegram?.WebApp?.initData);
       const tgBtn  = isTg ? window.Telegram.WebApp.MainButton : null;
 
-      const submitBtn   = document.getElementById("submitBtn");
+      const submitBtn    = document.getElementById("submitBtn");
       const summaryBlock = document.getElementById("summaryBlock");
       const summaryList  = document.getElementById("summaryList");
       const summaryTotal = document.getElementById("summaryTotal");
       const successMsg   = document.getElementById("successMsg");
       const errorMsg     = document.getElementById("errorMsg");
+      const tableInput   = document.getElementById("tableInput");
+      const tableBlock   = document.getElementById("tableNumberBlock");
+      const newTableBtn  = document.getElementById("newTableBtn");
 
       const quantities = {};
+      // Track the currently selected session (null = new table)
+      let activeSessionId = preselectedSessionId;
+      let activeTableNumber = preselectedTableNumber;
 
       if (isTg) {
         tgBtn.setText(tSendToBarman);
         tgBtn.color = '#2481cc';
       }
 
+      // Session picker buttons
+      document.querySelectorAll(".session-pick-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          // Toggle: clicking same session deselects it
+          if (activeSessionId === btn.dataset.sessionId) {
+            // Deselect
+            activeSessionId = null;
+            activeTableNumber = null;
+            btn.classList.remove("border-sky-400/50", "bg-sky-400/10", "text-sky-400");
+            btn.classList.add("border-white/10", "bg-white/5", "text-white/60");
+            if (tableBlock) tableBlock.classList.remove("hidden");
+            if (newTableBtn) newTableBtn.classList.add("hidden");
+          } else {
+            // Select this session
+            document.querySelectorAll(".session-pick-btn").forEach(b => {
+              b.classList.remove("border-sky-400/50", "bg-sky-400/10", "text-sky-400");
+              b.classList.add("border-white/10", "bg-white/5", "text-white/60");
+            });
+            btn.classList.add("border-sky-400/50", "bg-sky-400/10", "text-sky-400");
+            btn.classList.remove("border-white/10", "bg-white/5", "text-white/60");
+            activeSessionId = btn.dataset.sessionId;
+            activeTableNumber = Number(btn.dataset.table);
+            if (tableBlock) tableBlock.classList.add("hidden");
+            if (newTableBtn) newTableBtn.classList.remove("hidden");
+          }
+          updateSummary();
+        });
+      });
+
+      if (newTableBtn) {
+        newTableBtn.addEventListener("click", () => {
+          activeSessionId = null;
+          activeTableNumber = null;
+          document.querySelectorAll(".session-pick-btn").forEach(b => {
+            b.classList.remove("border-sky-400/50", "bg-sky-400/10", "text-sky-400");
+            b.classList.add("border-white/10", "bg-white/5", "text-white/60");
+          });
+          if (tableBlock) tableBlock.classList.remove("hidden");
+          newTableBtn.classList.add("hidden");
+          updateSummary();
+        });
+      }
+
       function updateSummary() {
         const items    = Object.values(quantities).filter(i => i.qty > 0);
         const hasItems = items.length > 0;
-        const table    = document.getElementById("tableInput").value;
-        const canSubmit = hasItems && !!table;
+        const tableVal = activeTableNumber ?? Number(tableInput?.value);
+        const canSubmit = hasItems && !!tableVal;
 
         if (!isTg) {
           submitBtn.disabled = !canSubmit;
@@ -215,7 +332,7 @@ for (const c of categories) {
       }
 
       async function doSubmit() {
-        const table = Number(document.getElementById("tableInput").value);
+        const table = activeTableNumber ?? Number(tableInput?.value);
         const note  = document.getElementById("noteInput").value.trim();
         const items = Object.values(quantities).filter(i => i.qty > 0);
 
@@ -231,15 +348,17 @@ for (const c of categories) {
         }
 
         try {
+          const payload = { table, items, note: note || undefined };
+          if (activeSessionId) payload.session_id = activeSessionId;
+
           const res = await fetch("/api/order", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ table, items, note: note || undefined }),
+            body: JSON.stringify(payload),
           });
 
           if (res.ok) {
             if (isTg) {
-              // Close mini app — waiter sees the order notification in Telegram
               window.Telegram.WebApp.close();
             } else {
               successMsg.classList.remove("hidden");
@@ -248,7 +367,8 @@ for (const c of categories) {
                 const el = document.getElementById(`qty-${k}`);
                 if (el) el.textContent = "0";
               });
-              document.getElementById("tableInput").value = "";
+              // If not in a session context, clear table input
+              if (!activeSessionId && tableInput) tableInput.value = "";
               document.getElementById("noteInput").value = "";
               summaryBlock.classList.add("hidden");
             }
@@ -288,7 +408,7 @@ for (const c of categories) {
         });
       });
 
-      document.getElementById("tableInput").addEventListener("input", updateSummary);
+      if (tableInput) tableInput.addEventListener("input", updateSummary);
 
       // Wire submit to the right surface
       if (isTg) {

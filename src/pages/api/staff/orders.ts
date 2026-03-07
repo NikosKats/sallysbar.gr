@@ -19,14 +19,87 @@ export const PATCH: APIRoute = async ({ request, cookies }) => {
   if (!user) return json({ error: "Unauthorized" }, 401);
 
   const body = await request.json().catch(() => null);
-  if (!body?.id || !body?.action) return json({ error: "id and action required" }, 400);
+  if (!body?.action) return json({ error: "action required" }, 400);
 
-  const { id, action, tip_amount_cents, tip_type } = body;
+  const { id, action, tip_amount_cents, tip_type, session_id, amount_cents, items_snapshot } = body;
 
-  // Fetch current order to verify allowed transition
+  // ── Pay entire session (all delivered rounds) ──────────────────────────────
+  if (action === "pay_session") {
+    if (!session_id) return json({ error: "session_id required" }, 400);
+
+    const { data: deliveredOrders } = await supabaseAdmin
+      .from("orders")
+      .select("id, waiter_id")
+      .eq("session_id", session_id)
+      .eq("status", "delivered");
+
+    if (!deliveredOrders?.length) return json({ error: "No delivered rounds to pay" }, 400);
+
+    await supabaseAdmin
+      .from("orders")
+      .update({ status: "paid" })
+      .eq("session_id", session_id)
+      .eq("status", "delivered");
+
+    await supabaseAdmin
+      .from("table_sessions")
+      .update({ status: "closed", closed_at: new Date().toISOString() })
+      .eq("id", session_id);
+
+    const cents = Number(tip_amount_cents);
+    if (cents > 0 && (tip_type === "cash" || tip_type === "card")) {
+      await supabaseAdmin.from("tips").insert({
+        order_id: deliveredOrders[0].id,
+        waiter_id: deliveredOrders[0].waiter_id ?? user.id,
+        amount_cents: cents,
+        type: tip_type,
+      });
+    }
+
+    return json({ ok: true });
+  }
+
+  // ── Partial payment (collect some items without closing session) ────────────
+  if (action === "partial_pay") {
+    if (!session_id || !amount_cents) return json({ error: "session_id and amount_cents required" }, 400);
+
+    await supabaseAdmin.from("partial_payments").insert({
+      session_id,
+      amount_cents: Number(amount_cents),
+      tip_amount_cents: Number(tip_amount_cents ?? 0),
+      tip_type: (tip_type === "cash" || tip_type === "card") ? tip_type : null,
+      items_snapshot: items_snapshot ?? null,
+    });
+
+    const cents = Number(tip_amount_cents);
+    if (cents > 0 && (tip_type === "cash" || tip_type === "card")) {
+      const { data: latestOrder } = await supabaseAdmin
+        .from("orders")
+        .select("id, waiter_id")
+        .eq("session_id", session_id)
+        .eq("status", "delivered")
+        .order("round_number", { ascending: false })
+        .limit(1)
+        .single();
+      if (latestOrder) {
+        await supabaseAdmin.from("tips").insert({
+          order_id: latestOrder.id,
+          waiter_id: latestOrder.waiter_id ?? user.id,
+          amount_cents: cents,
+          type: tip_type,
+        });
+      }
+    }
+
+    return json({ ok: true });
+  }
+
+  // For single-order actions we need the order id
+  if (!id) return json({ error: "id required" }, 400);
+
   const { data: order } = await supabaseAdmin
     .from("orders")
-    .select("id,status,waiter_id,barman_message_id,waiter_message_id,table_number,items,note")
+    .select("id,status,waiter_id,session_id,table_number,items,note")
     .eq("id", id)
     .single();
 
@@ -41,14 +114,13 @@ export const PATCH: APIRoute = async ({ request, cookies }) => {
     return json({ ok: true });
   }
 
-  // ── Mark as paid (delivered only) ─────────────────────────────────────────
+  // ── Mark individual round as paid (delivered only) ─────────────────────────
   if (action === "paid") {
     if (order.status !== "delivered") {
       return json({ error: "Only delivered orders can be marked as paid" }, 400);
     }
     await supabaseAdmin.from("orders").update({ status: "paid" }).eq("id", id);
 
-    // Record tip if provided
     const cents = Number(tip_amount_cents);
     if (cents > 0 && (tip_type === "cash" || tip_type === "card")) {
       await supabaseAdmin.from("tips").insert({
@@ -57,6 +129,22 @@ export const PATCH: APIRoute = async ({ request, cookies }) => {
         amount_cents: cents,
         type: tip_type,
       });
+    }
+
+    // Auto-close session if all non-cancelled orders are now paid
+    if (order.session_id) {
+      const { data: remaining } = await supabaseAdmin
+        .from("orders")
+        .select("id")
+        .eq("session_id", order.session_id)
+        .not("status", "in", '("paid","cancelled")')
+        .limit(1);
+      if (!remaining?.length) {
+        await supabaseAdmin
+          .from("table_sessions")
+          .update({ status: "closed", closed_at: new Date().toISOString() })
+          .eq("id", order.session_id);
+      }
     }
 
     return json({ ok: true });

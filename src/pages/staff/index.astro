@@ -6,33 +6,143 @@ import { dict, withLangPrefix } from "../../i18n";
 
 const lang = Astro.locals.lang ?? "en";
 const t = dict[lang];
+const isEl = lang === "el";
 const user = Astro.locals.user;
-const displayName = user?.user_metadata?.full_name?.split(" ")[0] ?? user?.email?.split("@")[0] ?? "Staff";
 
 const today = new Date();
 today.setHours(0, 0, 0, 0);
 
-// Active = anything not yet fully closed (pending/preparing/ready/delivered-awaiting-payment)
-const { data: activeOrders } = await supabaseAdmin
-  .from("orders")
-  .select("id,table_number,items,status,note,total_cents,created_at")
-  .not("status", "in", '("paid","cancelled")')
+// ── Fetch open sessions ────────────────────────────────────────────────────────
+const { data: rawSessions } = await supabaseAdmin
+  .from("table_sessions")
+  .select("id, table_number, status, created_at")
+  .eq("status", "open")
   .gte("created_at", today.toISOString())
   .order("created_at", { ascending: true });
 
-// Completed today = paid + cancelled
-const { data: recentDone } = await supabaseAdmin
+// ── Fetch all active orders today (pending/preparing/ready/delivered) ──────────
+const { data: activeOrders } = await supabaseAdmin
   .from("orders")
-  .select("id,table_number,items,status,created_at")
+  .select("id, session_id, round_number, table_number, items, status, note, total_cents, created_at")
+  .not("status", "in", '("paid","cancelled")')
+  .gte("created_at", today.toISOString())
+  .order("round_number", { ascending: true });
+
+// ── Fetch closed sessions today ────────────────────────────────────────────────
+const { data: closedSessions } = await supabaseAdmin
+  .from("table_sessions")
+  .select("id, table_number, closed_at, created_at")
+  .eq("status", "closed")
+  .gte("created_at", today.toISOString())
+  .order("closed_at", { ascending: false })
+  .limit(15);
+
+// Totals for closed sessions (paid orders)
+const closedIds = (closedSessions ?? []).map(s => s.id);
+const { data: closedOrderTotals } = closedIds.length
+  ? await supabaseAdmin
+      .from("orders")
+      .select("session_id, total_cents, status")
+      .in("session_id", closedIds)
+  : { data: [] };
+
+// ── Partial payments for open sessions ────────────────────────────────────────
+const openIds = (rawSessions ?? []).map(s => s.id);
+const { data: partialPayments } = openIds.length
+  ? await supabaseAdmin
+      .from("partial_payments")
+      .select("session_id, amount_cents, items_snapshot")
+      .in("session_id", openIds)
+  : { data: [] };
+
+const partialPaidMap = new Map<string, number>();
+const partialPaidItemsMap = new Map<string, Map<string, number>>();
+for (const pp of (partialPayments ?? [])) {
+  partialPaidMap.set(pp.session_id, (partialPaidMap.get(pp.session_id) ?? 0) + pp.amount_cents);
+  if (pp.items_snapshot) {
+    const itemMap = partialPaidItemsMap.get(pp.session_id) ?? new Map<string, number>();
+    for (const item of (pp.items_snapshot as any[])) {
+      const qty = item.qty ?? item.quantity ?? 1;
+      itemMap.set(item.name, (itemMap.get(item.name) ?? 0) + qty);
+    }
+    partialPaidItemsMap.set(pp.session_id, itemMap);
+  }
+}
+
+// ── Legacy orders without session_id ──────────────────────────────────────────
+const legacyActive = (activeOrders ?? []).filter((o: any) => !o.session_id);
+const { data: legacyDone } = await supabaseAdmin
+  .from("orders")
+  .select("id, table_number, items, status, total_cents, created_at")
   .in("status", ["paid", "cancelled"])
+  .is("session_id", null)
   .gte("created_at", today.toISOString())
   .order("created_at", { ascending: false })
   .limit(10);
 
-// Split active into "in progress" vs "delivered but unpaid"
-const inProgress    = (activeOrders ?? []).filter(o => o.status !== "delivered");
-const awaitingPayment = (activeOrders ?? []).filter(o => o.status === "delivered");
+// ── Build enriched sessions ────────────────────────────────────────────────────
+const ordersBySession = new Map<string, any[]>();
+for (const order of (activeOrders ?? [])) {
+  if ((order as any).session_id) {
+    const list = ordersBySession.get((order as any).session_id) ?? [];
+    list.push(order);
+    ordersBySession.set((order as any).session_id, list);
+  }
+}
 
+type SessionData = {
+  id: string; table_number: number; created_at: string;
+  rounds: any[]; deliveredRounds: any[]; inProgressRounds: any[];
+  awaitingCents: number; totalCents: number; alreadyCollected: number;
+  availableItems: any[];
+};
+
+const sessions: SessionData[] = (rawSessions ?? []).map(session => {
+  const rounds = (ordersBySession.get(session.id) ?? [])
+    .sort((a: any, b: any) => a.round_number - b.round_number);
+  const deliveredRounds = rounds.filter((r: any) => r.status === "delivered");
+  const inProgressRounds = rounds.filter((r: any) => !["delivered", "paid", "cancelled"].includes(r.status));
+  const awaitingCents = deliveredRounds.reduce((s: number, r: any) => s + (r.total_cents ?? 0), 0);
+  const totalCents = rounds
+    .filter((r: any) => r.status !== "cancelled")
+    .reduce((s: number, r: any) => s + (r.total_cents ?? 0), 0);
+  const alreadyCollected = partialPaidMap.get(session.id) ?? 0;
+
+  // Compute remaining (unpaid) items by subtracting partial payment quantities
+  const paidQtyTracker = new Map(partialPaidItemsMap.get(session.id) ?? new Map<string, number>());
+  const availableItems: any[] = [];
+  for (const round of deliveredRounds) {
+    for (const item of (round.items as any[])) {
+      const qty = item.qty ?? item.quantity ?? 1;
+      const paidQty = paidQtyTracker.get(item.name) ?? 0;
+      const remaining = Math.max(0, qty - paidQty);
+      paidQtyTracker.set(item.name, Math.max(0, paidQty - qty));
+      if (remaining > 0) {
+        availableItems.push({ ...item, qty: remaining, roundNum: round.round_number });
+      }
+    }
+  }
+
+  return { ...session, rounds, deliveredRounds, inProgressRounds, awaitingCents, totalCents, alreadyCollected, availableItems };
+});
+
+// Closed sessions totals
+const closedTotalsMap = new Map<string, number>();
+for (const o of (closedOrderTotals ?? [])) {
+  if ((o as any).session_id && o.status === "paid") {
+    const sid = (o as any).session_id;
+    closedTotalsMap.set(sid, (closedTotalsMap.get(sid) ?? 0) + (o.total_cents ?? 0));
+  }
+}
+
+// ── KPIs ──────────────────────────────────────────────────────────────────────
+const activeTables    = sessions.length + legacyActive.filter((o: any) => o.status !== "delivered").length;
+const awaitingCount   = sessions.filter(s => s.deliveredRounds.length > 0).length
+                      + legacyActive.filter((o: any) => o.status === "delivered").length;
+const paidTodayCount  = (closedSessions ?? []).length
+                      + (legacyDone ?? []).filter((o: any) => o.status === "paid").length;
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 function statusBadge(status: string) {
   const map: Record<string, string> = {
     pending:   "bg-yellow-400/10 text-yellow-400 border border-yellow-400/20",
@@ -45,7 +155,7 @@ function statusBadge(status: string) {
   return map[status] ?? "bg-white/5 text-white/40";
 }
 
-function statusLabel(status: string, isEl: boolean) {
+function statusLabel(status: string) {
   if (isEl) {
     const m: Record<string, string> = {
       pending: "Εκκρεμής", preparing: "Ετοιμασία", ready: "Έτοιμη",
@@ -60,14 +170,16 @@ function statusLabel(status: string, isEl: boolean) {
   return m[status] ?? status;
 }
 
-const isEl = lang === "el";
-
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();
   const m = Math.floor(diff / 60000);
   if (m < 1) return t.staff.justNow;
   if (m < 60) return `${m}${t.staff.minAgo}`;
   return `${Math.floor(m / 60)}${t.staff.hmAgo} ${m % 60}${t.staff.hmMinAgo}`;
+}
+
+function fmtEur(cents: number) {
+  return `€${(cents / 100).toFixed(2)}`;
 }
 ---
 
@@ -117,7 +229,7 @@ function timeAgo(dateStr: string) {
       </div>
     </div>
 
-    <!-- Live update banner (shown when order changes while tip modal is open) -->
+    <!-- Live update banner (shown when order changes while payment modal is open) -->
     <div id="liveUpdateBanner" hidden class="sticky top-[4.5rem] z-50 mx-4 mt-2">
       <button onclick="window.location.reload()" class="w-full flex items-center justify-center gap-2 rounded-xl border border-sky-400/30 bg-sky-400/10 py-2.5 text-sm font-semibold text-sky-400 hover:bg-sky-400/20 transition">
         <span class="inline-block animate-spin">↻</span>
@@ -130,73 +242,189 @@ function timeAgo(dateStr: string) {
       <!-- KPI strip -->
       <div class="grid grid-cols-3 gap-3">
         <div class="rounded-2xl border border-white/10 bg-white/5 p-4 text-center">
-          <p class="text-2xl font-bold text-white">{inProgress.length}</p>
-          <p class="mt-1 text-xs text-white/40">{isEl ? "Σε εξέλιξη" : "In progress"}</p>
+          <p class="text-2xl font-bold text-white">{activeTables}</p>
+          <p class="mt-1 text-xs text-white/40">{t.staff.activeTables}</p>
         </div>
         <div class="rounded-2xl border border-orange-400/20 bg-orange-400/5 p-4 text-center">
-          <p class="text-2xl font-bold text-orange-400">{awaitingPayment.length}</p>
-          <p class="mt-1 text-xs text-orange-400/60">{isEl ? "Αναμ. πληρωμή" : "Awaiting payment"}</p>
+          <p class="text-2xl font-bold text-orange-400">{awaitingCount}</p>
+          <p class="mt-1 text-xs text-orange-400/60">{t.staff.awaitingPayment}</p>
         </div>
         <div class="rounded-2xl border border-emerald-400/20 bg-emerald-400/5 p-4 text-center">
-          <p class="text-2xl font-bold text-emerald-400">{(recentDone ?? []).filter(o => o.status === "paid").length}</p>
-          <p class="mt-1 text-xs text-emerald-400/60">{isEl ? "Πληρωμένες σήμερα" : "Paid today"}</p>
+          <p class="text-2xl font-bold text-emerald-400">{paidTodayCount}</p>
+          <p class="mt-1 text-xs text-emerald-400/60">{isEl ? "Πληρωμένα σήμερα" : "Paid today"}</p>
         </div>
       </div>
 
-      <!-- In-progress orders -->
+      <!-- ── Active table sessions ──────────────────────────────────────────── -->
       <div>
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-xs font-semibold uppercase tracking-widest text-white/30">
-            {isEl ? "Σε εξέλιξη" : "In progress"}
-            {inProgress.length ? (
-              <span class="ml-2 inline-flex items-center justify-center w-5 h-5 rounded-full bg-white/10 text-white text-xs">
-                {inProgress.length}
-              </span>
+            {isEl ? "Ενεργά τραπέζια" : "Active tables"}
+            {sessions.length ? (
+              <span class="ml-2 inline-flex items-center justify-center w-5 h-5 rounded-full bg-white/10 text-white text-xs">{sessions.length}</span>
             ) : null}
           </h2>
         </div>
 
-        {!inProgress.length ? (
+        {!sessions.length && !legacyActive.length ? (
           <div class="rounded-2xl border border-white/10 bg-white/5 p-8 text-center">
-            <p class="text-white/40 text-sm">{t.staff.noActiveOrders}</p>
+            <p class="text-white/40 text-sm">{t.staff.noActiveTables}</p>
             <a href={withLangPrefix(lang, "/staff/order")} class="mt-4 inline-block text-sm text-white/60 hover:text-white transition underline underline-offset-2">
               {t.staff.takeNewOrder}
             </a>
           </div>
         ) : (
-          <div class="grid sm:grid-cols-2 gap-3">
-            {inProgress.map((order) => (
-              <div class="rounded-2xl border border-white/10 bg-white/5 p-5 space-y-3">
+          <div class="space-y-4">
+            {sessions.map((session) => {
+              const roundWord = session.rounds.length === 1
+                ? t.staff.roundSingular
+                : t.staff.rounds;
+              const remainingCents = session.awaitingCents - session.alreadyCollected;
+              return (
+                <div class="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
+                  {/* Session header */}
+                  <div class="flex items-start justify-between px-4 pt-4 pb-2">
+                    <div>
+                      <div class="flex items-center gap-2">
+                        <span class="text-xl font-bold text-white">{t.staff.tableLabel} {session.table_number}</span>
+                        <span class="text-xs text-white/40 bg-white/8 rounded-full px-2 py-0.5">
+                          {session.rounds.length} {roundWord}
+                        </span>
+                        {session.inProgressRounds.length > 0 && (
+                          <span class="text-xs text-blue-400 bg-blue-400/10 rounded-full px-2 py-0.5">
+                            {session.inProgressRounds.length} {isEl ? "σε εξέλιξη" : "in progress"}
+                          </span>
+                        )}
+                      </div>
+                      <p class="text-xs text-white/30 mt-0.5">{timeAgo(session.created_at)}</p>
+                    </div>
+                    {session.awaitingCents > 0 && (
+                      <div class="text-right">
+                        <div class="text-lg font-bold text-orange-400">{fmtEur(remainingCents > 0 ? remainingCents : session.awaitingCents)}</div>
+                        <div class="text-xs text-orange-400/50">{isEl ? "αναμ. πληρωμή" : "to collect"}</div>
+                        {session.alreadyCollected > 0 && (
+                          <div class="text-xs text-emerald-400/60 mt-0.5">{isEl ? "ήδη" : "collected"} {fmtEur(session.alreadyCollected)}</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Rounds list */}
+                  <div class="px-4 pb-2 space-y-2">
+                    {session.rounds.map((round: any) => (
+                      <div class={`rounded-xl p-3 ${round.status === "delivered" ? "bg-orange-400/5 border border-orange-400/15" : "bg-white/3 border border-white/8"}`}>
+                        <div class="flex items-center justify-between mb-1.5">
+                          <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold text-white/30 w-5">{t.staff.roundShort}{round.round_number}</span>
+                            <span class={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${statusBadge(round.status)}`}>
+                              {statusLabel(round.status)}
+                            </span>
+                          </div>
+                          <span class="text-sm font-semibold text-white/70">{fmtEur(round.total_cents ?? 0)}</span>
+                        </div>
+                        <div class="text-xs text-white/50 leading-relaxed">
+                          {(round.items as any[]).map((i: any) => `${i.qty ?? i.quantity ?? 1}× ${i.name}`).join(" · ")}
+                        </div>
+                        {round.note && (
+                          <div class="mt-1 text-xs text-amber-400/70">📝 {round.note}</div>
+                        )}
+                        {/* Per-round actions */}
+                        <div class="flex items-center justify-between mt-2 pt-1.5 border-t border-white/5">
+                          <span class="text-xs text-white/20">{timeAgo(round.created_at)}</span>
+                          <div class="flex gap-1.5">
+                            {round.status === "pending" && (
+                              <button
+                                class="cancel-btn text-xs text-red-400 border border-red-400/20 rounded-lg px-2.5 py-1 hover:bg-red-400/10 transition"
+                                data-id={round.id}
+                                data-table={session.table_number}
+                              >
+                                {t.staff.cancelRound}
+                              </button>
+                            )}
+                            {round.status === "delivered" && (
+                              <button
+                                class="pay-round-btn text-xs text-emerald-400 border border-emerald-400/25 rounded-lg px-2.5 py-1 hover:bg-emerald-400/10 transition"
+                                data-id={round.id}
+                                data-table={session.table_number}
+                                data-total={round.total_cents ?? 0}
+                                data-session-id={session.id}
+                                data-items={JSON.stringify(round.items)}
+                              >
+                                {t.staff.payThisRound}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Session actions */}
+                  <div class="flex gap-2 px-4 pb-4 pt-3 border-t border-white/8">
+                    <a
+                      href={withLangPrefix(lang, `/staff/order?session=${session.id}`)}
+                      class="flex-1 rounded-xl bg-sky-400/10 hover:bg-sky-400/20 border border-sky-400/20 py-2.5 text-center text-sm font-semibold text-sky-400 transition"
+                    >
+                      {t.staff.addRound}
+                    </a>
+                    {session.deliveredRounds.length > 0 && (
+                      <>
+                        {session.availableItems.length > 0 && (
+                          <button
+                            class="pay-items-btn flex-1 rounded-xl bg-white/5 hover:bg-white/10 border border-white/15 py-2.5 text-sm font-semibold text-white/60 transition"
+                            data-session-id={session.id}
+                            data-table={session.table_number}
+                            data-all-items={JSON.stringify(session.availableItems)}
+                          >
+                            {t.staff.payItems}
+                          </button>
+                        )}
+                        <button
+                          class="pay-session-btn flex-1 rounded-xl bg-emerald-400/15 hover:bg-emerald-400/25 border border-emerald-400/30 py-2.5 text-sm font-bold text-emerald-400 transition"
+                          data-session-id={session.id}
+                          data-table={session.table_number}
+                          data-total={session.awaitingCents}
+                          data-already={session.alreadyCollected}
+                        >
+                          💰 {t.staff.payAll}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Legacy active orders (no session) */}
+            {legacyActive.map((order: any) => (
+              <div class="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-3">
                 <div class="flex items-center justify-between">
-                  <span class="text-lg font-bold text-white">{t.staff.tableLabel} {order.table_number}</span>
+                  <span class="text-base font-bold text-white">{t.staff.tableLabel} {order.table_number}</span>
                   <span class={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold ${statusBadge(order.status)}`}>
-                    {statusLabel(order.status, isEl)}
+                    {statusLabel(order.status)}
                   </span>
                 </div>
-                <ul class="space-y-1">
-                  {(order.items as any[]).map((item: any) => (
-                    <li class="flex items-center gap-2 text-sm text-white/70">
-                      <span class="w-6 h-6 flex items-center justify-center rounded-md bg-white/10 text-white text-xs font-semibold">{item.qty ?? item.quantity ?? 1}</span>
-                      {item.name}
-                    </li>
-                  ))}
-                </ul>
-                {order.note && (
-                  <p class="text-xs text-amber-400/70 bg-amber-400/5 border border-amber-400/10 rounded-lg px-3 py-2">
-                    📝 {order.note}
-                  </p>
-                )}
+                <div class="text-xs text-white/50">
+                  {(order.items as any[]).map((i: any) => `${i.qty ?? i.quantity ?? 1}× ${i.name}`).join(" · ")}
+                </div>
                 <div class="flex items-center justify-between">
                   <p class="text-xs text-white/30">{timeAgo(order.created_at)}</p>
-                  {order.status === "pending" && (
-                    <button
-                      class="cancel-btn rounded-lg bg-red-400/10 hover:bg-red-400/20 border border-red-400/20 px-3 py-1.5 text-xs font-semibold text-red-400 transition"
-                      data-id={order.id}
-                      data-table={order.table_number}
-                    >
-                      {isEl ? "Ακύρωση" : "Cancel order"}
-                    </button>
-                  )}
+                  <div class="flex gap-2">
+                    {order.status === "pending" && (
+                      <button class="cancel-btn text-xs text-red-400 border border-red-400/20 rounded-lg px-2.5 py-1 hover:bg-red-400/10 transition"
+                        data-id={order.id} data-table={order.table_number}>
+                        {t.staff.cancelRound}
+                      </button>
+                    )}
+                    {order.status === "delivered" && (
+                      <button class="pay-round-btn text-xs text-emerald-400 border border-emerald-400/25 rounded-lg px-2.5 py-1 hover:bg-emerald-400/10 transition"
+                        data-id={order.id} data-table={order.table_number}
+                        data-total={order.total_cents ?? 0}
+                        data-items={JSON.stringify(order.items)}>
+                        💰 {isEl ? "Πλήρωσε" : "Mark Paid"}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
@@ -204,73 +432,36 @@ function timeAgo(dateStr: string) {
         )}
       </div>
 
-      <!-- Awaiting payment -->
-      {awaitingPayment.length > 0 && (
-        <div>
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="text-xs font-semibold uppercase tracking-widest text-orange-400/60">
-              💰 {isEl ? "Παραδόθηκαν — αναμένουν πληρωμή" : "Delivered — awaiting payment"}
-            </h2>
-            <span class="text-sm font-bold text-orange-400">
-              {isEl ? "Σύνολο: " : "Total to collect: "}
-              €{(awaitingPayment.reduce((s, o) => s + ((o as any).total_cents ?? 0), 0) / 100).toFixed(2)}
-            </span>
-          </div>
-          <div class="grid sm:grid-cols-2 gap-3">
-            {awaitingPayment.map((order) => (
-              <div class="rounded-2xl border border-orange-400/25 bg-orange-400/5 p-5 space-y-3">
-                <div class="flex items-center justify-between">
-                  <span class="text-lg font-bold text-white">{t.staff.tableLabel} {order.table_number}</span>
-                  <span class="text-xl font-bold text-orange-400">
-                    €{(((order as any).total_cents ?? 0) / 100).toFixed(2)}
-                  </span>
-                </div>
-                <ul class="space-y-1">
-                  {(order.items as any[]).map((item: any) => (
-                    <li class="flex items-center gap-2 text-sm text-white/70">
-                      <span class="w-6 h-6 flex items-center justify-center rounded-md bg-white/10 text-white text-xs font-semibold">{item.qty ?? item.quantity ?? 1}</span>
-                      {item.name}
-                      {item.price_cents && (
-                        <span class="ml-auto text-xs text-white/30">€{((item.price_cents * (item.qty ?? item.quantity ?? 1)) / 100).toFixed(2)}</span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-                <div class="flex items-center justify-between pt-1 border-t border-white/10">
-                  <p class="text-xs text-white/30">{timeAgo(order.created_at)}</p>
-                </div>
-                <button
-                  class="pay-btn w-full rounded-xl bg-emerald-400/15 hover:bg-emerald-400/25 border border-emerald-400/30 py-2.5 text-sm font-bold text-emerald-400 transition"
-                  data-id={order.id}
-                  data-table={order.table_number}
-                  data-total={(order as any).total_cents ?? 0}
-                >
-                  💰 {isEl ? "Πληρώθηκε — Καταχώρηση" : "Mark as Paid"}
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <!-- Completed today (paid + cancelled) -->
-      {recentDone?.length ? (
+      <!-- ── Closed today ─────────────────────────────────────────────────────── -->
+      {((closedSessions ?? []).length > 0 || (legacyDone ?? []).length > 0) && (
         <div>
           <h2 class="text-xs font-semibold uppercase tracking-widest text-white/30 mb-4">
-            {isEl ? "Ολοκληρώθηκαν σήμερα" : "Completed today"}
+            {t.staff.closedToday}
           </h2>
           <div class="rounded-2xl border border-white/10 overflow-hidden">
             <table class="w-full text-sm">
               <tbody>
-                {recentDone.map((order) => (
+                {(closedSessions ?? []).map(session => (
+                  <tr class="border-b border-white/5 last:border-0">
+                    <td class="px-4 py-3 font-semibold text-white/60">{t.staff.tableLabel} {session.table_number}</td>
+                    <td class="px-4 py-3 text-white/30 text-xs">{fmtEur(closedTotalsMap.get(session.id) ?? 0)}</td>
+                    <td class="px-4 py-3">
+                      <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-400/10 text-emerald-400 border border-emerald-400/20">
+                        {isEl ? "Πληρώθηκε" : "Paid"}
+                      </span>
+                    </td>
+                    <td class="px-4 py-3 text-white/30 text-xs text-right whitespace-nowrap">
+                      {session.closed_at ? timeAgo(session.closed_at) : ""}
+                    </td>
+                  </tr>
+                ))}
+                {(legacyDone ?? []).map((order: any) => (
                   <tr class="border-b border-white/5 last:border-0">
                     <td class="px-4 py-3 font-semibold text-white/60">{t.staff.tableLabel} {order.table_number}</td>
-                    <td class="px-4 py-3 text-white/30 text-xs">
-                      {(order.items as any[]).map((i: any) => `${i.qty ?? i.quantity ?? 1}× ${i.name}`).join(", ")}
-                    </td>
+                    <td class="px-4 py-3 text-white/30 text-xs">{fmtEur(order.total_cents ?? 0)}</td>
                     <td class="px-4 py-3">
                       <span class={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${statusBadge(order.status)}`}>
-                        {statusLabel(order.status, isEl)}
+                        {statusLabel(order.status)}
                       </span>
                     </td>
                     <td class="px-4 py-3 text-white/30 text-xs text-right whitespace-nowrap">{timeAgo(order.created_at)}</td>
@@ -280,19 +471,33 @@ function timeAgo(dateStr: string) {
             </table>
           </div>
         </div>
-      ) : null}
+      )}
 
     </main>
 
-    <!-- Tip modal -->
-    <dialog id="tipModal" style="background:#16161f;border:1px solid rgba(52,211,153,.2);border-radius:1.25rem;padding:0;width:min(22rem,95vw);color:#fff;max-height:95vh;overflow-y:auto;">
+    <!-- Payment modal (handles pay-round, pay-session, pay-items) -->
+    <dialog id="payModal" style="background:#16161f;border:1px solid rgba(52,211,153,.2);border-radius:1.25rem;padding:0;width:min(24rem,95vw);color:#fff;max-height:95vh;overflow-y:auto;">
       <div style="padding:1.5rem;display:flex;flex-direction:column;gap:1rem;">
         <div style="display:flex;align-items:center;justify-content:space-between;">
-          <p id="tipModalTitle" style="font-size:1rem;font-weight:700;"></p>
-          <button id="tipModalClose" style="background:none;border:none;color:rgba(255,255,255,.4);font-size:1.25rem;cursor:pointer;padding:.25rem;">✕</button>
+          <p id="payModalTitle" style="font-size:1rem;font-weight:700;"></p>
+          <button id="payModalClose" style="background:none;border:none;color:rgba(255,255,255,.4);font-size:1.25rem;cursor:pointer;padding:.25rem;">✕</button>
         </div>
 
-        <!-- Step 1: tip type -->
+        <!-- Item checklist step (for pay-items mode) -->
+        <div id="itemCheckStep" hidden>
+          <p style="font-size:.875rem;color:rgba(255,255,255,.5);margin-bottom:.75rem;">{isEl ? t.staff.selectItemsToPay : t.staff.selectItemsToPay}</p>
+          <div id="itemCheckList" style="display:flex;flex-direction:column;gap:.5rem;max-height:14rem;overflow-y:auto;"></div>
+          <div style="margin-top:.75rem;padding:.75rem;background:rgba(255,255,255,.04);border-radius:.75rem;display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:.875rem;color:rgba(255,255,255,.5);">{isEl ? "Επιλεγμένο σύνολο" : "Selected total"}</span>
+            <span id="itemCheckTotal" style="font-size:1.25rem;font-weight:700;color:#f97316;">€0.00</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-top:.75rem;">
+            <button id="itemCheckCancelBtn" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:.75rem;padding:.625rem;font-size:.875rem;color:rgba(255,255,255,.5);cursor:pointer;">{isEl ? "Πίσω" : "Back"}</button>
+            <button id="itemCheckConfirmBtn" style="background:rgba(249,115,22,.15);border:1px solid rgba(249,115,22,.3);border-radius:.75rem;padding:.625rem;font-size:.875rem;font-weight:700;color:#f97316;cursor:pointer;">{isEl ? "Συνέχεια" : "Continue"}</button>
+          </div>
+        </div>
+
+        <!-- Tip type step -->
         <div id="tipTypeStep">
           <p style="font-size:.875rem;color:rgba(255,255,255,.5);margin-bottom:.75rem;">{isEl ? "Λάβατε φιλοδώρημα;" : "Did you receive a tip?"}</p>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;">
@@ -302,7 +507,7 @@ function timeAgo(dateStr: string) {
           <button id="tipNoTipBtn" style="margin-top:.5rem;width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:.75rem;padding:.625rem;font-size:.875rem;color:rgba(255,255,255,.4);cursor:pointer;">❌ {isEl ? "Χωρίς φιλοδώρημα" : "No tip"}</button>
         </div>
 
-        <!-- Step 2: amount -->
+        <!-- Tip amount step -->
         <div id="tipAmountStep" hidden>
           <div style="text-align:center;margin-bottom:1rem;">
             <p style="font-size:.75rem;color:rgba(255,255,255,.4);margin-bottom:.25rem;">{isEl ? "Ποσό φιλοδωρήματος" : "Tip amount"}</p>
@@ -329,165 +534,258 @@ function timeAgo(dateStr: string) {
     </dialog>
 
     <script is:inline define:vars={{ isEl }}>
-      const isTg = !!(window.Telegram?.WebApp?.initData);
-
-      // Refresh button — always works
+      // Refresh button
       document.getElementById('refreshBtn').addEventListener('click', () => window.location.reload());
 
-      // Auto-refresh fallback: only in browser if realtime fails (Telegram keeps connection open)
-      // Primary live-reload is handled via Supabase Realtime in the bundled script below.
-
-      // ── Cancel order ──────────────────────────────────────────────────────
+      // ── Cancel round ───────────────────────────────────────────────────────
       document.querySelectorAll('.cancel-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
           const table = btn.dataset.table;
-          const msg = isEl
-            ? `Ακύρωση παραγγελίας για Τραπέζι ${table};`
-            : `Cancel order for Table ${table}?`;
-          if (!confirm(msg)) return;
-
+          if (!confirm(isEl ? `Ακύρωση γύρου για Τραπέζι ${table};` : `Cancel round for Table ${table}?`)) return;
           btn.disabled = true;
           btn.textContent = isEl ? "Ακύρωση…" : "Cancelling…";
-
           try {
             const res = await fetch('/api/staff/orders', {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ id: btn.dataset.id, action: 'cancel' }),
             });
-            if (res.ok) {
-              window.location.reload();
-            } else {
-              const j = await res.json().catch(() => ({}));
-              alert((isEl ? 'Σφάλμα: ' : 'Error: ') + (j.error ?? 'Unknown error'));
-              btn.disabled = false;
-              btn.textContent = isEl ? 'Ακύρωση' : 'Cancel order';
-            }
-          } catch {
-            alert(isEl ? 'Σφάλμα δικτύου.' : 'Network error.');
-            btn.disabled = false;
-            btn.textContent = isEl ? 'Ακύρωση' : 'Cancel order';
-          }
+            if (res.ok) { window.location.reload(); return; }
+            const j = await res.json().catch(() => ({}));
+            alert((isEl ? 'Σφάλμα: ' : 'Error: ') + (j.error ?? 'Unknown'));
+          } catch { alert(isEl ? 'Σφάλμα δικτύου.' : 'Network error.'); }
+          btn.disabled = false;
+          btn.textContent = isEl ? 'Ακύρωση' : 'Cancel';
         });
       });
 
-      // ── Tip modal ─────────────────────────────────────────────────────────
-      const tipModal    = document.getElementById('tipModal');
-      const tipTypeStep = document.getElementById('tipTypeStep');
-      const tipAmtStep  = document.getElementById('tipAmountStep');
-      const tipDisplay  = document.getElementById('tipDisplay');
-      const tipConfirm  = document.getElementById('tipConfirmBtn');
-      const tipManual   = document.getElementById('tipManualInput');
+      // ── Payment modal state ────────────────────────────────────────────────
+      const payModal       = document.getElementById('payModal');
+      const tipTypeStep    = document.getElementById('tipTypeStep');
+      const tipAmtStep     = document.getElementById('tipAmountStep');
+      const itemCheckStep  = document.getElementById('itemCheckStep');
+      const tipDisplay     = document.getElementById('tipDisplay');
+      const tipConfirm     = document.getElementById('tipConfirmBtn');
+      const tipManual      = document.getElementById('tipManualInput');
+      const itemCheckList  = document.getElementById('itemCheckList');
+      const itemCheckTotal = document.getElementById('itemCheckTotal');
 
-      let currentOrderId = null;
+      // mode: "round" | "session" | "items"
+      let payMode        = 'round';
+      let currentOrderId = null;   // for "round" mode
+      let currentSessionId = null; // for "session" / "items" mode
+      let currentPayAmount = 0;    // cents — what's being paid (calculated)
       let currentTipType = null;
       let tipCents = 0;
+      let allSessionItems = [];    // for items mode
 
-      function updateDisplay() {
+      function showStep(step) {
+        itemCheckStep.hidden  = step !== 'items';
+        tipTypeStep.hidden    = step !== 'tip-type';
+        tipAmtStep.hidden     = step !== 'tip-amount';
+      }
+
+      function updateTipDisplay() {
         tipDisplay.textContent = (tipCents / 100).toFixed(2);
         tipConfirm.textContent = tipCents > 0
           ? (isEl ? `Επιβεβαίωση €${(tipCents/100).toFixed(2)}` : `Confirm €${(tipCents/100).toFixed(2)}`)
-          : (isEl ? 'Επιβεβαίωση (χωρίς ποσό)' : 'Confirm (no amount)');
+          : (isEl ? 'Επιβεβαίωση (χωρίς)' : 'Confirm (no tip)');
       }
 
       function resetModal() {
         currentTipType = null;
         tipCents = 0;
         tipManual.value = '';
-        tipTypeStep.hidden = false;
-        tipAmtStep.hidden = true;
-        updateDisplay();
+        updateTipDisplay();
       }
 
-      document.querySelectorAll('.pay-btn').forEach(btn => {
+      function openPayModal(title, mode, orderId, sessionId, amountCents, items) {
+        document.getElementById('payModalTitle').textContent = title;
+        payMode = mode;
+        currentOrderId = orderId;
+        currentSessionId = sessionId;
+        currentPayAmount = amountCents;
+        allSessionItems = items ?? [];
+        resetModal();
+
+        if (mode === 'items') {
+          buildItemChecklist();
+          showStep('items');
+        } else {
+          showStep('tip-type');
+        }
+        payModal.showModal();
+      }
+
+      // Build item checklist for "pay items" mode
+      function buildItemChecklist() {
+        itemCheckList.innerHTML = '';
+        allSessionItems.forEach((item, idx) => {
+          const price = (item.price_cents ?? 0) * (item.qty ?? item.quantity ?? 1);
+          const row = document.createElement('label');
+          row.style = 'display:flex;align-items:center;gap:.625rem;padding:.5rem .75rem;background:rgba(255,255,255,.04);border-radius:.625rem;cursor:pointer;';
+          row.innerHTML = `
+            <input type="checkbox" data-idx="${idx}" data-price="${price}" class="item-check"
+              style="width:1rem;height:1rem;accent-color:#f97316;cursor:pointer;" />
+            <span style="flex:1;font-size:.8125rem;color:rgba(255,255,255,.8);">
+              <span style="background:rgba(255,255,255,.1);border-radius:.25rem;padding:.1rem .35rem;font-size:.7rem;margin-right:.375rem;">
+                ${isEl ? 'Γ' : 'R'}${item.roundNum ?? ''}
+              </span>
+              ${item.qty ?? item.quantity ?? 1}× ${item.name}
+            </span>
+            <span style="font-size:.8125rem;color:rgba(255,255,255,.4);">€${(price/100).toFixed(2)}</span>
+          `;
+          itemCheckList.appendChild(row);
+        });
+        updateItemCheckTotal();
+        // Wire checkboxes
+        itemCheckList.querySelectorAll('.item-check').forEach(cb => {
+          cb.addEventListener('change', updateItemCheckTotal);
+        });
+      }
+
+      function updateItemCheckTotal() {
+        let total = 0;
+        itemCheckList.querySelectorAll('.item-check:checked').forEach(cb => {
+          total += parseInt(cb.dataset.price ?? '0');
+        });
+        itemCheckTotal.textContent = `€${(total/100).toFixed(2)}`;
+        document.getElementById('itemCheckConfirmBtn').dataset.total = total;
+        const selectedItems = [];
+        itemCheckList.querySelectorAll('.item-check:checked').forEach(cb => {
+          const idx = parseInt(cb.dataset.idx);
+          selectedItems.push(allSessionItems[idx]);
+        });
+        document.getElementById('itemCheckConfirmBtn').dataset.items = JSON.stringify(selectedItems);
+      }
+
+      // ── Wire pay-round buttons ─────────────────────────────────────────────
+      document.querySelectorAll('.pay-round-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-          currentOrderId = btn.dataset.id;
           const table = btn.dataset.table;
-          const total = parseInt(btn.dataset.total || '0');
-          document.getElementById('tipModalTitle').textContent =
-            `${isEl ? 'Τραπέζι' : 'Table'} ${table} — €${(total/100).toFixed(2)}`;
-          resetModal();
-          tipModal.showModal();
+          const total = parseInt(btn.dataset.total ?? '0');
+          const title = `${isEl ? 'Τραπέζι' : 'Table'} ${table} — ${isEl ? 'Γύρος' : 'Round'} — €${(total/100).toFixed(2)}`;
+          openPayModal(title, 'round', btn.dataset.id, btn.dataset.sessionId ?? null, total, null);
         });
       });
 
-      document.getElementById('tipModalClose').addEventListener('click', () => tipModal.close());
+      // ── Wire pay-session buttons ───────────────────────────────────────────
+      document.querySelectorAll('.pay-session-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const table  = btn.dataset.table;
+          const total  = parseInt(btn.dataset.total ?? '0');
+          const already = parseInt(btn.dataset.already ?? '0');
+          const remaining = total - already;
+          const displayAmt = remaining > 0 ? remaining : total;
+          const title  = `${isEl ? 'Τραπέζι' : 'Table'} ${table} — €${(displayAmt/100).toFixed(2)}`;
+          openPayModal(title, 'session', null, btn.dataset.sessionId, displayAmt, null);
+        });
+      });
 
-      // Type selection
+      // ── Wire pay-items buttons ─────────────────────────────────────────────
+      document.querySelectorAll('.pay-items-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const table = btn.dataset.table;
+          let items = [];
+          try { items = JSON.parse(btn.dataset.allItems ?? '[]'); } catch {}
+          const title = `${isEl ? 'Τραπέζι' : 'Table'} ${table} — ${isEl ? 'Επιλογή ειδών' : 'Select items'}`;
+          openPayModal(title, 'items', null, btn.dataset.sessionId, 0, items);
+        });
+      });
+
+      // ── Modal close ────────────────────────────────────────────────────────
+      document.getElementById('payModalClose').addEventListener('click', () => payModal.close());
+
+      // ── Item checklist: continue → tip type ───────────────────────────────
+      document.getElementById('itemCheckConfirmBtn').addEventListener('click', (e) => {
+        const total = parseInt(e.target.dataset.total ?? '0');
+        if (total <= 0) {
+          alert(isEl ? 'Επιλέξτε τουλάχιστον ένα είδος.' : 'Select at least one item.');
+          return;
+        }
+        currentPayAmount = total;
+        try { allSessionItems = JSON.parse(e.target.dataset.items ?? '[]'); } catch {}
+        showStep('tip-type');
+      });
+      document.getElementById('itemCheckCancelBtn').addEventListener('click', () => payModal.close());
+
+      // ── Tip type selection ─────────────────────────────────────────────────
       document.getElementById('tipCashBtn').addEventListener('click', () => {
         currentTipType = 'cash';
-        tipTypeStep.hidden = true;
-        tipAmtStep.hidden = false;
+        showStep('tip-amount');
       });
       document.getElementById('tipCardBtn').addEventListener('click', () => {
         currentTipType = 'card';
-        tipTypeStep.hidden = true;
-        tipAmtStep.hidden = false;
+        showStep('tip-amount');
       });
       document.getElementById('tipNoTipBtn').addEventListener('click', () => {
-        submitPaid(currentOrderId, 0, null);
+        doSubmitPayment(0, null);
       });
 
-      // Back
       document.getElementById('tipBackBtn').addEventListener('click', () => {
-        tipTypeStep.hidden = false;
-        tipAmtStep.hidden = true;
         tipCents = 0;
         tipManual.value = '';
-        updateDisplay();
+        updateTipDisplay();
+        showStep(payMode === 'items' ? 'items' : 'tip-type');
       });
 
-      // Amount buttons
       document.querySelectorAll('.tip-add').forEach(btn => {
         btn.addEventListener('click', () => {
           tipCents = Math.min(tipCents + parseInt(btn.dataset.add), 99999);
           tipManual.value = '';
-          updateDisplay();
+          updateTipDisplay();
         });
       });
-
-      // Manual input
       tipManual.addEventListener('input', () => {
         const v = parseFloat(tipManual.value);
         tipCents = isNaN(v) || v < 0 ? 0 : Math.min(Math.round(v * 100), 99999);
-        updateDisplay();
+        updateTipDisplay();
       });
-
-      // Reset
       document.getElementById('tipResetBtn').addEventListener('click', () => {
         tipCents = 0;
         tipManual.value = '';
-        updateDisplay();
+        updateTipDisplay();
       });
-
-      // Confirm
       tipConfirm.addEventListener('click', () => {
-        submitPaid(currentOrderId, tipCents, tipCents > 0 ? currentTipType : null);
+        doSubmitPayment(tipCents, tipCents > 0 ? currentTipType : null);
       });
 
-      async function submitPaid(id, amount, type) {
+      // ── Submit payment ─────────────────────────────────────────────────────
+      async function doSubmitPayment(tipAmt, tipType) {
         tipConfirm.disabled = true;
         document.getElementById('tipNoTipBtn').disabled = true;
+
+        let body;
+        if (payMode === 'round') {
+          body = { id: currentOrderId, action: 'paid', tip_amount_cents: tipAmt, tip_type: tipType };
+        } else if (payMode === 'session') {
+          body = { action: 'pay_session', session_id: currentSessionId, tip_amount_cents: tipAmt, tip_type: tipType };
+        } else {
+          // pay-items: partial payment
+          body = {
+            action: 'partial_pay',
+            session_id: currentSessionId,
+            amount_cents: currentPayAmount,
+            tip_amount_cents: tipAmt,
+            tip_type: tipType,
+            items_snapshot: allSessionItems,
+          };
+        }
+
         try {
           const res = await fetch('/api/staff/orders', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id, action: 'paid', tip_amount_cents: amount, tip_type: type }),
+            body: JSON.stringify(body),
           });
-          if (res.ok) {
-            tipModal.close();
-            window.location.reload();
-          } else {
-            const j = await res.json().catch(() => ({}));
-            alert((isEl ? 'Σφάλμα: ' : 'Error: ') + (j.error ?? 'Unknown error'));
-            tipConfirm.disabled = false;
-            document.getElementById('tipNoTipBtn').disabled = false;
-          }
+          if (res.ok) { payModal.close(); window.location.reload(); return; }
+          const j = await res.json().catch(() => ({}));
+          alert((isEl ? 'Σφάλμα: ' : 'Error: ') + (j.error ?? 'Unknown'));
         } catch {
           alert(isEl ? 'Σφάλμα δικτύου.' : 'Network error.');
-          tipConfirm.disabled = false;
-          document.getElementById('tipNoTipBtn').disabled = false;
         }
+        tipConfirm.disabled = false;
+        document.getElementById('tipNoTipBtn').disabled = false;
       }
     </script>
     <!-- Supabase Realtime: live-reload when any order changes -->
@@ -500,7 +798,7 @@ function timeAgo(dateStr: string) {
         { realtime: { params: { eventsPerSecond: 10 } } }
       );
 
-      const tipModal = document.getElementById('tipModal') as HTMLDialogElement | null;
+      const tipModal = document.getElementById('payModal') as HTMLDialogElement | null;
       const banner   = document.getElementById('liveUpdateBanner') as HTMLElement | null;
 
       let reloadScheduled = false;
@@ -525,16 +823,11 @@ function timeAgo(dateStr: string) {
       });
 
       supabase
-        .channel('staff-orders-live')
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'orders' },
-          handleOrderChange
-        )
+        .channel('staff-live')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, handleOrderChange)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'table_sessions' }, handleOrderChange)
         .subscribe((status) => {
-          if (status === 'SUBSCRIBED') {
-            console.debug('[realtime] orders channel subscribed');
-          }
+          console.debug('[realtime] status:', status);
         });
     </script>
   </body>
