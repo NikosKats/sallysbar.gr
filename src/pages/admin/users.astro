@@ -163,16 +163,16 @@ function fmtDate(d: string) {
       {(["admin", "employee", "customer"] as const).map(roleGroup => {
         const group = users.filter(u => u.role === roleGroup);
         if (!group.length) return null;
-        const sectionColors: Record<string, string> = {
+        const sectionColors = {
           admin:    "text-amber-400 border-amber-400/20",
           employee: "text-sky-400 border-sky-400/20",
           customer: "text-white/40 border-white/10",
-        };
-        const sectionLabel: Record<string, string> = {
+        } as const;
+        const sectionLabel = {
           admin:    lang === "el" ? "Διαχειριστές" : "Admins",
           employee: lang === "el" ? "Προσωπικό" : "Employees",
           customer: lang === "el" ? "Πελάτες" : "Customers",
-        };
+        } as const;
         return (
           <div>
             <div class="flex items-center gap-3 mb-3">
