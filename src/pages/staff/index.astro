@@ -94,7 +94,7 @@ type SessionData = {
   id: string; table_number: number; created_at: string;
   rounds: any[]; deliveredRounds: any[]; inProgressRounds: any[];
   awaitingCents: number; totalCents: number; alreadyCollected: number;
-  availableItems: any[];
+  availableItems: any[]; fullyPaidViaItems: boolean;
 };
 
 const sessions: SessionData[] = (rawSessions ?? []).map(session => {
@@ -123,7 +123,10 @@ const sessions: SessionData[] = (rawSessions ?? []).map(session => {
     }
   }
 
-  return { ...session, rounds, deliveredRounds, inProgressRounds, awaitingCents, totalCents, alreadyCollected, availableItems };
+  const itemsFullyCovered = deliveredRounds.length > 0 && availableItems.length === 0;
+  const amountFullyCovered = awaitingCents > 0 && alreadyCollected >= awaitingCents;
+  const fullyPaidViaItems = itemsFullyCovered || amountFullyCovered;
+  return { ...session, rounds, deliveredRounds, inProgressRounds, awaitingCents, totalCents, alreadyCollected, availableItems, fullyPaidViaItems };
 });
 
 // Closed sessions totals
@@ -341,7 +344,7 @@ function fmtEur(cents: number) {
                                 {t.staff.cancelRound}
                               </button>
                             )}
-                            {round.status === "delivered" && (
+                            {round.status === "delivered" && !session.fullyPaidViaItems && (
                               <button
                                 class="pay-round-btn text-xs text-emerald-400 border border-emerald-400/25 rounded-lg px-2.5 py-1 hover:bg-emerald-400/10 transition"
                                 data-id={round.id}
@@ -367,7 +370,7 @@ function fmtEur(cents: number) {
                     >
                       {t.staff.addRound}
                     </a>
-                    {session.deliveredRounds.length > 0 && (
+                    {!session.fullyPaidViaItems && session.deliveredRounds.length > 0 && (
                       <>
                         {session.availableItems.length > 0 && (
                           <button

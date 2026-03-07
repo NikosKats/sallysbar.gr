@@ -91,6 +91,43 @@ export const PATCH: APIRoute = async ({ request, cookies }) => {
       }
     }
 
+    // ── Auto-close if all delivered items are now covered by partial payments ──
+    const [{ data: deliveredOrders }, { data: allPartials }] = await Promise.all([
+      supabaseAdmin.from("orders").select("id, waiter_id, items, total_cents").eq("session_id", session_id).eq("status", "delivered"),
+      supabaseAdmin.from("partial_payments").select("items_snapshot, amount_cents").eq("session_id", session_id),
+    ]);
+
+    if (deliveredOrders?.length) {
+      const totalDeliveredCents = deliveredOrders.reduce((s, o) => s + (o.total_cents ?? 0), 0);
+      const totalPaidCents = (allPartials ?? []).reduce((s, p) => s + (p.amount_cents ?? 0), 0);
+
+      // Primary check: item qty matching by name
+      const orderedQty = new Map<string, number>();
+      for (const order of deliveredOrders) {
+        for (const item of (order.items as any[])) {
+          const qty = item.qty ?? item.quantity ?? 1;
+          orderedQty.set(item.name, (orderedQty.get(item.name) ?? 0) + qty);
+        }
+      }
+      const paidQty = new Map<string, number>();
+      for (const pp of (allPartials ?? [])) {
+        for (const item of ((pp.items_snapshot ?? []) as any[])) {
+          const qty = item.qty ?? item.quantity ?? 1;
+          paidQty.set(item.name, (paidQty.get(item.name) ?? 0) + qty);
+        }
+      }
+      const itemsFullyCovered = orderedQty.size > 0 && [...orderedQty.entries()].every(
+        ([name, qty]) => (paidQty.get(name) ?? 0) >= qty
+      );
+      // Fallback: total amount paid covers total delivered
+      const amountFullyCovered = totalDeliveredCents > 0 && totalPaidCents >= totalDeliveredCents;
+
+      if (itemsFullyCovered || amountFullyCovered) {
+        await supabaseAdmin.from("orders").update({ status: "paid" }).eq("session_id", session_id).eq("status", "delivered");
+        await supabaseAdmin.from("table_sessions").update({ status: "closed", closed_at: new Date().toISOString() }).eq("id", session_id);
+      }
+    }
+
     return json({ ok: true });
   }
 

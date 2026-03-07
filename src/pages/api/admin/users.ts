@@ -53,6 +53,12 @@ export const DELETE: APIRoute = async ({ request, cookies }) => {
   const body = await request.json().catch(() => null);
   if (!body?.id) return json({ error: "id required" }, 400);
 
+  // Nullify FK references before deleting so constraints don't block
+  await Promise.all([
+    supabaseAdmin.from("orders").update({ waiter_id: null }).eq("waiter_id", body.id),
+    supabaseAdmin.from("tips").update({ waiter_id: null }).eq("waiter_id", body.id),
+  ]);
+
   const { error } = await supabaseAdmin.auth.admin.deleteUser(body.id);
   if (error) return json({ error: error.message }, 500);
 
