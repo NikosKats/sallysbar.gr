@@ -287,11 +287,6 @@ function fmtDate(d: string) {
     <div id="toast"></div>
 
     <script define:vars={{ tSave: t.admin.saveChanges, tSaving: t.admin.saving, tDelete: t.admin.delete, tDeleting: t.admin.deleting }}>
-      const ROLE_COLORS = {
-        admin:    "bg-amber-400/10 text-amber-400 border border-amber-400/20",
-        employee: "bg-sky-400/10 text-sky-400 border border-sky-400/20",
-        customer: "bg-white/5 text-white/40 border border-white/10",
-      };
 
       const editModal   = document.getElementById("editModal");
       const deleteModal = document.getElementById("deleteModal");
@@ -351,15 +346,9 @@ function fmtDate(d: string) {
         });
 
         if (res.ok) {
-          activeRow.dataset.name  = name;
-          activeRow.dataset.email = email;
-          activeRow.dataset.role  = role;
-          activeRow.querySelector("[data-col=name]").textContent  = name || "—";
-          activeRow.querySelector("[data-col=email]").textContent = email;
-          const roleCell = activeRow.querySelector("[data-col=role]");
-          roleCell.innerHTML = `<span class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold ${ROLE_COLORS[role] ?? ""}">${role}</span>`;
           editModal.close();
           showToast("User updated.", "ok");
+          setTimeout(() => location.reload(), 800);
         } else {
           const err = await res.json().catch(() => ({}));
           showToast(err.error ?? "Failed to update user.", "err");
