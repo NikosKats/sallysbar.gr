@@ -1,13 +1,17 @@
 ---
 import "../../styles/global.css";
 import Header from "../../components/Header.astro";
-import { supabaseAdmin } from "../../lib/supabase";
+import { supabaseAdmin, createSupabaseServerClient } from "../../lib/supabase";
 import { dict, withLangPrefix } from "../../i18n";
 
 const lang = Astro.locals.lang ?? "en";
 const t = dict[lang];
 const isEl = lang === "el";
 const user = Astro.locals.user;
+
+// Get access token for authenticated realtime subscription
+const { data: { session } } = await createSupabaseServerClient(Astro.request, Astro.cookies).auth.getSession();
+const realtimeToken = session?.access_token ?? "";
 
 const today = new Date();
 today.setHours(0, 0, 0, 0);
@@ -225,7 +229,7 @@ function fmtEur(cents: number) {
           <a href={withLangPrefix(lang, "/staff/order")} class="px-3 py-1.5 rounded-lg text-white/50 hover:text-sky-400 hover:bg-sky-400/5 transition whitespace-nowrap">{t.staff.newOrder}</a>
         </nav>
         <div class="flex items-center gap-2 py-2">
-          <span id="realtimeDot" class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" title="Connecting…"></span>
+          <span id="realtimeDot" class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" title="Connecting…" data-token={realtimeToken}></span>
           <button id="refreshBtn" class="text-xs text-white/30 hover:text-white/60 transition">
             {t.staff.refresh}
           </button>
@@ -796,15 +800,19 @@ function fmtEur(cents: number) {
     <script>
       import { createClient } from '@supabase/supabase-js';
 
+      const tipModal = document.getElementById('payModal') as HTMLDialogElement | null;
+      const banner   = document.getElementById('liveUpdateBanner') as HTMLElement | null;
+      const dot      = document.getElementById('realtimeDot') as HTMLElement | null;
+
+      const token = dot?.dataset.token ?? '';
       const supabase = createClient(
         import.meta.env.PUBLIC_SUPABASE_URL,
         import.meta.env.PUBLIC_SUPABASE_ANON_KEY,
         { realtime: { params: { eventsPerSecond: 10 } } }
       );
-
-      const tipModal = document.getElementById('payModal') as HTMLDialogElement | null;
-      const banner   = document.getElementById('liveUpdateBanner') as HTMLElement | null;
-      const dot      = document.getElementById('realtimeDot') as HTMLElement | null;
+      // Authenticate the realtime connection with the user's session token
+      // so RLS policies let events through
+      if (token) supabase.realtime.setAuth(token);
 
       let reloadScheduled = false;
 
