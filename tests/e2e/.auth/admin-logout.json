@@ -1,0 +1,15 @@
+{
+  "cookies": [
+    {
+      "name": "sb-nbhzodginrdblczjccuk-auth-token",
+      "value": "{\"access_token\":\"eyJhbGciOiJFUzI1NiIsImtpZCI6IjhmNmNhMDNlLTAzZmQtNDlkOC1iYmM0LTZmMTI3YjJmOTg4NCIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL25iaHpvZGdpbnJkYmxjempjY3VrLnN1cGFiYXNlLmNvL2F1dGgvdjEiLCJzdWIiOiI2YTQwYWQ0Zi00MDBmLTQ3MzgtYWYyMS01ZjAwMmM2NTUzMDYiLCJhdWQiOiJhdXRoZW50aWNhdGVkIiwiZXhwIjoxNzcyOTMwNTY4LCJpYXQiOjE3NzI5MjY5NjgsImVtYWlsIjoibmlrb2xhb3Mua2F0c2lsaWRpc0BnbWFpbC5jb20iLCJwaG9uZSI6IiIsImFwcF9tZXRhZGF0YSI6eyJwcm92aWRlciI6ImVtYWlsIiwicHJvdmlkZXJzIjpbImVtYWlsIl19LCJ1c2VyX21ldGFkYXRhIjp7ImVtYWlsIjoibmlrb2xhb3Mua2F0c2lsaWRpc0BnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiZnVsbF9uYW1lIjoiTmlrb2xhb3MgS2F0c2lsaWRpcyIsInBob25lX3ZlcmlmaWVkIjpmYWxzZSwic3ViIjoiNmE0MGFkNGYtNDAwZi00NzM4LWFmMjEtNWYwMDJjNjU1MzA2In0sInJvbGUiOiJhdXRoZW50aWNhdGVkIiwiYWFsIjoiYWFsMSIsImFtciI6W3sibWV0aG9kIjoicGFzc3dvcmQiLCJ0aW1lc3RhbXAiOjE3NzI5MjY5Njh9XSwic2Vzc2lvbl9pZCI6ImRlN2YyNmFhLTYxOWYtNDQwZS1iYzU2LTg5NTM3ODYwMTc1OSIsImlzX2Fub255bW91cyI6ZmFsc2V9.ZV9pOfZsB5Cps8KY8BlurI2_QpiJTReT1fHhZ0iPJFur-A_tudVGerBgv9He-d-FMeRdMDcSKwjWln18v-j5UQ\",\"token_type\":\"bearer\",\"expires_in\":3600,\"expires_at\":1772930568,\"refresh_token\":\"gpgzlkevbjmh\",\"user\":{\"id\":\"6a40ad4f-400f-4738-af21-5f002c655306\",\"aud\":\"authenticated\",\"role\":\"authenticated\",\"email\":\"nikolaos.katsilidis@gmail.com\",\"email_confirmed_at\":\"2026-03-05T21:32:57.65508Z\",\"phone\":\"\",\"confirmed_at\":\"2026-03-05T21:32:57.65508Z\",\"last_sign_in_at\":\"2026-03-07T23:42:48.743764521Z\",\"app_metadata\":{\"provider\":\"email\",\"providers\":[\"email\"]},\"user_metadata\":{\"email\":\"nikolaos.katsilidis@gmail.com\",\"email_verified\":true,\"full_name\":\"Nikolaos Katsilidis\",\"phone_verified\":false,\"sub\":\"6a40ad4f-400f-4738-af21-5f002c655306\"},\"identities\":[{\"identity_id\":\"d949d049-15c9-4222-867a-2843c4c8bc4a\",\"id\":\"6a40ad4f-400f-4738-af21-5f002c655306\",\"user_id\":\"6a40ad4f-400f-4738-af21-5f002c655306\",\"identity_data\":{\"email\":\"nikolaos.katsilidis@gmail.com\",\"email_verified\":false,\"full_name\":\"Nikolaos Katsilidis\",\"phone_verified\":false,\"sub\":\"6a40ad4f-400f-4738-af21-5f002c655306\"},\"provider\":\"email\",\"last_sign_in_at\":\"2026-03-05T21:32:57.650776Z\",\"created_at\":\"2026-03-05T21:32:57.65082Z\",\"updated_at\":\"2026-03-05T21:32:57.65082Z\",\"email\":\"nikolaos.katsilidis@gmail.com\"}],\"created_at\":\"2026-03-05T21:32:57.637777Z\",\"updated_at\":\"2026-03-07T23:42:48.747284Z\",\"is_anonymous\":false},\"weak_password\":null}",
+      "domain": "sallysbar.gr",
+      "path": "/",
+      "expires": 1772930568,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": []
+}

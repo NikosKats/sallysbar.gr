@@ -23,8 +23,8 @@ test.describe("Admin — Tips page", () => {
     expect(joined).toContain("amount");
     expect(joined).toContain("type");
     // Edit and Delete are in action cells, not headers — check for buttons
-    const editBtns = page.locator("[data-action='edit']");
-    const delBtns  = page.locator("[data-action='delete']");
+    const editBtns = page.locator(".tip-edit-btn");
+    const delBtns  = page.locator(".tip-delete-btn");
     // rowCount already checked above (test skips if 0)
     await expect(editBtns.first()).toBeVisible();
     await expect(delBtns.first()).toBeVisible();
@@ -32,7 +32,7 @@ test.describe("Admin — Tips page", () => {
 
   // ── Edit tip ────────────────────────────────────────────────────────────────
   test("edit button opens edit modal pre-filled with tip data", async ({ page }) => {
-    const editBtns = page.locator("[data-action='edit']");
+    const editBtns = page.locator(".tip-edit-btn");
     const count = await editBtns.count();
     if (count === 0) test.skip();
 
@@ -51,7 +51,7 @@ test.describe("Admin — Tips page", () => {
   });
 
   test("closing edit modal without saving does not change tip", async ({ page }) => {
-    const editBtns = page.locator("[data-action='edit']");
+    const editBtns = page.locator(".tip-edit-btn");
     const count = await editBtns.count();
     if (count === 0) test.skip();
 
@@ -74,7 +74,7 @@ test.describe("Admin — Tips page", () => {
 
   // ── Delete tip ──────────────────────────────────────────────────────────────
   test("delete button opens confirm modal", async ({ page }) => {
-    const delBtns = page.locator("[data-action='delete']");
+    const delBtns = page.locator(".tip-delete-btn");
     const count = await delBtns.count();
     if (count === 0) test.skip();
 
@@ -88,14 +88,14 @@ test.describe("Admin — Tips page", () => {
     const countBefore = await tipRows.count();
     if (countBefore === 0) test.skip();
 
-    const delBtns = page.locator("[data-action='delete']");
+    const delBtns = page.locator(".tip-delete-btn");
     await delBtns.first().click();
 
     const deleteModal = page.locator("#deleteTipModal");
     await expect(deleteModal).toBeVisible();
 
     // Confirm delete
-    const confirmBtn = deleteModal.locator("button[data-confirm], button.btn-danger").first();
+    const confirmBtn = deleteModal.locator("#deleteTipConfirm");
     await confirmBtn.click();
 
     await expect(deleteModal).not.toBeVisible();
@@ -107,14 +107,14 @@ test.describe("Admin — Tips page", () => {
     const countBefore = await tipRows.count();
     if (countBefore === 0) test.skip();
 
-    const delBtns = page.locator("[data-action='delete']");
+    const delBtns = page.locator(".tip-delete-btn");
     await delBtns.first().click();
 
     const deleteModal = page.locator("#deleteTipModal");
     await expect(deleteModal).toBeVisible();
 
     // Cancel
-    const cancelBtn = deleteModal.locator("button[data-close], button.btn-ghost").first();
+    const cancelBtn = deleteModal.locator("#deleteTipCancel");
     await cancelBtn.click();
 
     await expect(deleteModal).not.toBeVisible();

@@ -88,8 +88,10 @@ test.describe("Admin access control", () => {
 });
 
 // ── Logout flow ───────────────────────────────────────────────────────────────
+// Uses a dedicated session so the logout does not invalidate the shared admin.json
+// session used by admin-menu and admin-tips tests.
 test.describe("Logout flow", () => {
-  test.use({ storageState: "tests/e2e/.auth/admin.json" });
+  test.use({ storageState: "tests/e2e/.auth/admin-logout.json" });
 
   test("logout clears session and redirects away from protected pages", async ({ page }) => {
     // Confirm admin session works

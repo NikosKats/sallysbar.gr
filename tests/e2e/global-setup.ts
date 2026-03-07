@@ -117,8 +117,9 @@ async function globalSetup(_config: FullConfig) {
   const credsMissing = !serviceRoleKey || !adminEmail || !adminPassword || !staffEmail || !staffPassword;
   if (credsMissing) {
     const adminJson = path.join(authDir, "admin.json");
+    const adminLogoutJson = path.join(authDir, "admin-logout.json");
     const staffJson = path.join(authDir, "staff.json");
-    if (fs.existsSync(adminJson) && fs.existsSync(staffJson)) {
+    if (fs.existsSync(adminJson) && fs.existsSync(adminLogoutJson) && fs.existsSync(staffJson)) {
       console.log("\n[global-setup] E2E credentials not set — reusing cached session files.\n");
       return;
     }
@@ -142,6 +143,35 @@ async function globalSetup(_config: FullConfig) {
     JSON.stringify(buildStorageState(adminSession, domain, secure), null, 2)
   );
   console.log(`  ✓ admin.json saved  (expires_at: ${adminSession.expires_at})`);
+
+  // Dedicated session for auth.spec.ts admin access control tests.
+  // Each page load rotates the refresh token via @supabase/ssr's setAll() callback,
+  // which would invalidate admin.json if shared. This keeps them isolated.
+  console.log("[global-setup] Obtaining admin-auth session via service role key…");
+  const adminAuthSession = await getSessionWithServiceRole(
+    adminEmail,
+    adminPassword,
+    serviceRoleKey
+  );
+  fs.writeFileSync(
+    path.join(authDir, "admin-auth.json"),
+    JSON.stringify(buildStorageState(adminAuthSession, domain, secure), null, 2)
+  );
+  console.log(`  ✓ admin-auth.json saved  (expires_at: ${adminAuthSession.expires_at})`);
+
+  // Dedicated session for the logout test — this session will be signed out during tests
+  // and must not be shared with admin.json (which is reused by admin-menu/admin-tips).
+  console.log("[global-setup] Obtaining admin-logout session via service role key…");
+  const adminLogoutSession = await getSessionWithServiceRole(
+    adminEmail,
+    adminPassword,
+    serviceRoleKey
+  );
+  fs.writeFileSync(
+    path.join(authDir, "admin-logout.json"),
+    JSON.stringify(buildStorageState(adminLogoutSession, domain, secure), null, 2)
+  );
+  console.log(`  ✓ admin-logout.json saved  (expires_at: ${adminLogoutSession.expires_at})`);
 
   console.log("[global-setup] Obtaining staff session via service role key…");
   const staffSession = await getSessionWithServiceRole(

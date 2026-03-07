@@ -3,8 +3,6 @@ import { test, expect } from "@playwright/test";
 // storageState (admin session) is injected by playwright.config.ts "admin" project
 
 test.describe("Admin — Menu edit page", () => {
-  test.use({ storageState: "tests/e2e/.auth/admin.json" });
-
   test.beforeEach(async ({ page }) => {
     await page.goto("/admin/menu");
   });
@@ -35,7 +33,7 @@ test.describe("Admin — Menu edit page", () => {
     if (count > 0) {
       // At least verify the cell content matches 13% or 24%
       const first = await vatCells.first().textContent();
-      expect(first).toMatch(/^(13|24)%$/);
+      expect(first?.trim()).toMatch(/^(13|24)%$/);
     }
   });
 
@@ -100,7 +98,7 @@ test.describe("Admin — Menu edit page", () => {
     await expect(page.locator(".toast-item.success")).toBeVisible();
 
     // Item should appear in the table
-    await expect(page.locator(`#itemsBody >> text=${uniqueName}`)).toBeVisible();
+    await expect(page.locator(`#itemsBody tr:has-text("${uniqueName}")`).first()).toBeVisible();
   });
 
   // ── Edit item ───────────────────────────────────────────────────────────────
