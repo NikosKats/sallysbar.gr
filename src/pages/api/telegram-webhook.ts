@@ -172,12 +172,34 @@ async function handleUpdate(body: Record<string, unknown>): Promise<Response> {
     await editMessageText(
       import.meta.env.TELEGRAM_WAITER_CHAT_ID,
       cb.message.message_id,
-      `📦 <b>Delivered — Table ${order.table_number}</b>\n\n${itemLines}${idTag}`,
+      `📦 <b>Delivered — Table ${order.table_number}</b>\n\n${itemLines}${idTag}\n\n<i>Tap when the table pays.</i>`,
+      {
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: "💰 Mark as Paid", callback_data: `paid:${orderId}` }],
+          ],
+        },
+      }
+    );
+
+    await answerCallbackQuery(cb.id, "Order delivered! ✅");
+  }
+
+  if (action === "paid") {
+    await supabaseAdmin
+      .from("orders")
+      .update({ status: "paid" })
+      .eq("id", orderId);
+
+    await editMessageText(
+      cb.message.chat.id,
+      cb.message.message_id,
+      `💰 <b>Paid — Table ${order.table_number}</b>\n\n${itemLines}${idTag}`,
       { reply_markup: { inline_keyboard: [] } }
     );
 
     await sendMessage(
-      import.meta.env.TELEGRAM_WAITER_CHAT_ID,
+      cb.message.chat.id,
       `💰 <b>Table ${order.table_number}</b> — Did you receive a tip?`,
       {
         reply_markup: {
@@ -192,7 +214,7 @@ async function handleUpdate(body: Record<string, unknown>): Promise<Response> {
       }
     );
 
-    await answerCallbackQuery(cb.id, "Order delivered! ✅");
+    await answerCallbackQuery(cb.id, "Marked as paid! 💰");
   }
 
   // Tip type chosen → open accumulator at €0.00

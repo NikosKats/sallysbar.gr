@@ -92,16 +92,23 @@ function statusCls(s: string) {
     pending:   "bg-yellow-400/10 text-yellow-400 border-yellow-400/20",
     preparing: "bg-blue-400/10 text-blue-400 border-blue-400/20",
     ready:     "bg-green-400/10 text-green-400 border-green-400/20",
-    delivered: "bg-white/5 text-white/40 border-white/10",
+    delivered: "bg-orange-400/10 text-orange-400 border-orange-400/20",
+    paid:      "bg-emerald-400/10 text-emerald-400 border-emerald-400/20",
     cancelled: "bg-red-400/10 text-red-400 border-red-400/20",
   };
   return m[s] ?? "bg-white/5 text-white/40 border-white/10";
 }
 function statusLabel(s: string) {
-  if (!isEl) return s.charAt(0).toUpperCase() + s.slice(1);
+  if (!isEl) {
+    const m: Record<string, string> = {
+      pending: "Pending", preparing: "Preparing", ready: "Ready",
+      delivered: "Delivered", paid: "Paid", cancelled: "Cancelled",
+    };
+    return m[s] ?? s.charAt(0).toUpperCase() + s.slice(1);
+  }
   const m: Record<string, string> = {
-    pending: "Εκκρεμής", preparing: "Ετοιμασία",
-    ready: "Έτοιμη", delivered: "Παραδόθηκε", cancelled: "Ακυρώθηκε",
+    pending: "Εκκρεμής", preparing: "Ετοιμασία", ready: "Έτοιμη",
+    delivered: "Παραδόθηκε", paid: "Πληρώθηκε", cancelled: "Ακυρώθηκε",
   };
   return m[s] ?? s;
 }
@@ -147,7 +154,8 @@ const statusOptions = [
   { value: "pending",   label: isEl ? "Εκκρεμείς"      : "Pending" },
   { value: "preparing", label: isEl ? "Ετοιμασία"      : "Preparing" },
   { value: "ready",     label: isEl ? "Έτοιμες"        : "Ready" },
-  { value: "delivered", label: isEl ? "Παραδόθηκαν"    : "Delivered" },
+  { value: "delivered", label: isEl ? "Παραδόθηκαν"    : "Delivered (unpaid)" },
+  { value: "paid",      label: isEl ? "Πληρωμένες"     : "Paid" },
   { value: "cancelled", label: isEl ? "Ακυρωμένες"     : "Cancelled" },
 ];
 ---

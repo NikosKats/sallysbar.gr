@@ -83,7 +83,7 @@ const avgOrderValue  = completedMonth.length ? Math.round(revenue(monthOrders) /
 const cancelRate     = monthOrders?.length ? pct(cancelledMonth.length, monthOrders.length) : 0;
 
 // Status breakdown (month)
-const statusCounts = { pending: 0, preparing: 0, ready: 0, delivered: 0, cancelled: 0 };
+const statusCounts = { pending: 0, preparing: 0, ready: 0, delivered: 0, paid: 0, cancelled: 0 };
 for (const o of (monthOrders ?? [])) {
   if (o.status in statusCounts) statusCounts[o.status as keyof typeof statusCounts]++;
 }
@@ -94,6 +94,7 @@ const statusCards = [
   { key: "preparing", label: lang === "el" ? "Ετοιμασία"   : "Preparing", cls: "text-blue-400 border-blue-400/20 bg-blue-400/5" },
   { key: "ready",     label: lang === "el" ? "Έτοιμες"     : "Ready",     cls: "text-green-400 border-green-400/20 bg-green-400/5" },
   { key: "delivered", label: lang === "el" ? "Παραδόθηκαν" : "Delivered", cls: "text-white/70 border-white/10 bg-white/5" },
+  { key: "paid",      label: lang === "el" ? "Πληρωμένες"  : "Paid",      cls: "text-emerald-400 border-emerald-400/20 bg-emerald-400/5" },
   { key: "cancelled", label: lang === "el" ? "Ακυρωμένες"  : "Cancelled", cls: "text-red-400 border-red-400/20 bg-red-400/5" },
 ].map(c => ({
   ...c,
@@ -438,7 +439,7 @@ const topItemsWithBar = topItems.map((item, rank) => ({
         <h2 class="text-xs font-semibold uppercase tracking-widest text-white/30 mb-4">
           {lang === "el" ? "Κατάσταση παραγγελιών — τρέχων μήνας" : "Order status breakdown — this month"}
         </h2>
-        <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           {statusCards.map(c => (
             <div class={`rounded-2xl border p-4 ${c.cls}`}>
               <p class="text-2xl font-bold">{c.count}</p>
