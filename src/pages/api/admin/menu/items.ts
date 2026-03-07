@@ -39,6 +39,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       sort: body.sort ?? 0,
       is_visible: body.is_visible ?? true,
       tags: body.tags ?? [],
+      vat_category: body.vat_category ?? "non_alcoholic",
     })
     .select()
     .single();
@@ -57,7 +58,7 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
   const allowed = [
     "category_id", "slug", "name_en", "name_el",
     "description_en", "description_el", "price_cents",
-    "sort", "is_visible", "tags",
+    "sort", "is_visible", "tags", "vat_category",
   ];
   const update = Object.fromEntries(Object.entries(fields).filter(([k]) => allowed.includes(k)));
   if (update.price_cents !== undefined) update.price_cents = Math.round(Number(update.price_cents));

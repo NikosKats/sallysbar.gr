@@ -248,6 +248,13 @@ const { categories, items } = await getMenuAdmin();
           </div>
         </div>
         <div class="field">
+          <label>VAT Category</label>
+          <select id="itemVatCat">
+            <option value="non_alcoholic">13% — Non-alcoholic / Soft drinks / Coffee</option>
+            <option value="alcoholic">24% — Alcoholic beverages</option>
+          </select>
+        </div>
+        <div class="field">
           <label>Tags (comma-separated)</label>
           <input id="itemTags" placeholder="signature, alcohol-free" />
         </div>
@@ -488,7 +495,8 @@ const { categories, items } = await getMenuAdmin();
         (document.getElementById("itemDescEl") as HTMLTextAreaElement).value = it?.description_el ?? "";
         (document.getElementById("itemPrice")  as HTMLInputElement).value    = it ? (it.price_cents / 100).toFixed(0) : "";
         (document.getElementById("itemSort")   as HTMLInputElement).value    = it?.sort ?? "";
-        (document.getElementById("itemTags")   as HTMLInputElement).value    = (it?.tags ?? []).join(", ");
+        (document.getElementById("itemTags")    as HTMLInputElement).value    = (it?.tags ?? []).join(", ");
+        (document.getElementById("itemVatCat") as HTMLSelectElement).value   = it?.vat_category ?? "non_alcoholic";
         (document.getElementById("itemVisible") as HTMLInputElement).checked = it ? !!it.is_visible : true;
         openModal("itemModal");
       }
@@ -517,14 +525,15 @@ const { categories, items } = await getMenuAdmin();
           return;
         }
 
-        const tags = tagsRaw.split(",").map(t => t.trim()).filter(Boolean);
+        const tags       = tagsRaw.split(",").map(t => t.trim()).filter(Boolean);
+        const vat_category = (document.getElementById("itemVatCat") as HTMLSelectElement).value;
         const body: any = {
           category_id: Number(category_id),
           name_en, name_el: name_el || name_en,
           slug,
           description_en: desc_en, description_el: desc_el,
           price_cents: Math.round(priceEuros * 100),
-          sort, is_visible: visible, tags,
+          sort, is_visible: visible, tags, vat_category,
         };
         if (id) body.id = id;
 

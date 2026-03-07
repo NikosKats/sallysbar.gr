@@ -20,13 +20,46 @@ const [
   { data: monthOrders },
   { data: yearOrders },
   { data: last30Orders },
+  { data: menuItems },
 ] = await Promise.all([
   supabaseAdmin.from("orders").select("id,status,total_cents,items,created_at").gte("created_at", today.toISOString()),
-  supabaseAdmin.from("orders").select("id,status,total_cents,created_at").gte("created_at", weekStart.toISOString()),
+  supabaseAdmin.from("orders").select("id,status,total_cents,items,created_at").gte("created_at", weekStart.toISOString()),
   supabaseAdmin.from("orders").select("id,status,total_cents,items,created_at").gte("created_at", monthStart.toISOString()),
   supabaseAdmin.from("orders").select("id,status,total_cents,items,created_at").gte("created_at", yearStart.toISOString()),
   supabaseAdmin.from("orders").select("id,status,total_cents,created_at").gte("created_at", last30Start.toISOString()),
+  supabaseAdmin.from("menu_items").select("name_en,name_el,vat_category"),
 ]);
+
+// Build item-name → VAT category lookup (fallback: non_alcoholic = 13%)
+const vatMap = new Map<string, "alcoholic" | "non_alcoholic">();
+for (const mi of menuItems ?? []) {
+  const cat: "alcoholic" | "non_alcoholic" = mi.vat_category === "alcoholic" ? "alcoholic" : "non_alcoholic";
+  if (mi.name_en) vatMap.set(mi.name_en, cat);
+  if (mi.name_el) vatMap.set(mi.name_el, cat);
+}
+
+// VAT breakdown helper — returns gross, vat, net (all in cents)
+function vatBreakdown(orders: any[] | null) {
+  let alcGross = 0, stdGross = 0;
+  for (const o of (orders ?? []).filter((o: any) => o.status !== "cancelled")) {
+    for (const item of (o.items ?? [])) {
+      const q = item.qty ?? item.quantity ?? 1;
+      const g = q * (item.price_cents ?? 0);
+      if ((vatMap.get(item.name) ?? "non_alcoholic") === "alcoholic") alcGross += g;
+      else stdGross += g;
+    }
+  }
+  const alcVat = Math.round(alcGross * 0.24 / 1.24);
+  const stdVat = Math.round(stdGross * 0.13 / 1.13);
+  const gross  = alcGross + stdGross;
+  const vat    = alcVat + stdVat;
+  return { gross, vat, net: gross - vat, alcGross, alcVat, stdGross, stdVat };
+}
+
+const vatToday = vatBreakdown(todayOrders);
+const vatWeek  = vatBreakdown(weekOrders);
+const vatMonth = vatBreakdown(monthOrders);
+const vatYear  = vatBreakdown(yearOrders);
 
 function revenue(orders: any[] | null) {
   return (orders ?? []).filter(o => o.status !== "cancelled").reduce((s: number, o: any) => s + (o.total_cents ?? 0), 0);
@@ -148,15 +181,19 @@ const dowBars = dowCounts.map((count, i) => ({
 }));
 
 // --- Top selling items (year) ---
-const salesMap = new Map<string, { name: string; qty: number; cents: number }>();
+const salesMap = new Map<string, { name: string; qty: number; gross: number; net: number; vatCat: string }>();
 for (const o of (yearOrders ?? [])) {
   if (o.status === "cancelled") continue;
   for (const item of (o.items ?? [])) {
-    const key = item.name as string;
-    const ex  = salesMap.get(key) ?? { name: item.name, qty: 0, cents: 0 };
-    const q   = item.qty ?? item.quantity ?? 1;
+    const key    = item.name as string;
+    const vatCat = vatMap.get(item.name) ?? "non_alcoholic";
+    const ex     = salesMap.get(key) ?? { name: item.name, qty: 0, gross: 0, net: 0, vatCat };
+    const q      = item.qty ?? item.quantity ?? 1;
+    const g      = q * (item.price_cents ?? 0);
+    const rate   = vatCat === "alcoholic" ? 0.24 : 0.13;
     ex.qty   += q;
-    ex.cents += q * (item.price_cents ?? 0);
+    ex.gross += g;
+    ex.net   += g - Math.round(g * rate / (1 + rate));
     salesMap.set(key, ex);
   }
 }
@@ -165,8 +202,10 @@ const maxItemQty = Math.max(...topItems.map(i => i.qty), 1);
 const topItemsWithBar = topItems.map((item, rank) => ({
   ...item,
   rank: rank + 1,
-  barW: Math.round((item.qty / maxItemQty) * 100),
-  revenueLabel: fmtEur(item.cents),
+  barW:       Math.round((item.qty / maxItemQty) * 100),
+  grossLabel: fmtEur(item.gross),
+  netLabel:   fmtEur(item.net),
+  vatPct:     item.vatCat === "alcoholic" ? "24%" : "13%",
 }));
 ---
 
@@ -227,6 +266,170 @@ const topItemsWithBar = topItems.map((item, rank) => ({
             <p class:list={["text-2xl font-bold", cancelRate > 10 ? "text-red-400" : "text-white"]}>{cancelRate}%</p>
             <p class="mt-1 text-xs text-white/40">{lang === "el" ? "Ακυρώσεις (μήνας)" : "Cancellation rate"}</p>
           </div>
+        </div>
+      </section>
+
+      <!-- Gross / Net Revenue breakdown -->
+      <section>
+        <h2 class="text-xs font-semibold uppercase tracking-widest text-white/30 mb-4">
+          {lang === "el" ? "Έσοδα Μικτά / Καθαρά (ΦΠΑ)" : "Gross / Net revenue (VAT)"}
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+          {/* Today */}
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-5 space-y-3">
+            <p class="text-xs font-semibold uppercase tracking-widest text-white/30">{lang === "el" ? "Σήμερα" : "Today"}</p>
+            <div class="flex justify-between text-sm">
+              <span class="text-white/50">{lang === "el" ? "Μικτά (με ΦΠΑ)" : "Gross (incl. VAT)"}</span>
+              <span class="font-semibold text-white">{fmtEur(vatToday.gross)}</span>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span class="text-white/50">{lang === "el" ? "ΦΠΑ (24% + 13%)" : "VAT (24% + 13%)"}</span>
+              <span class="font-semibold text-red-400">−{fmtEur(vatToday.vat)}</span>
+            </div>
+            <div class="h-px bg-white/10"></div>
+            <div class="flex justify-between text-sm">
+              <span class="text-white/70 font-medium">{lang === "el" ? "Καθαρά" : "Net revenue"}</span>
+              <span class="font-bold text-emerald-400">{fmtEur(vatToday.net)}</span>
+            </div>
+            <div class="pt-1 space-y-1 text-xs text-white/30">
+              <div class="flex justify-between"><span>24% (alc.) {fmtEur(vatToday.alcGross)}</span><span>VAT {fmtEur(vatToday.alcVat)}</span></div>
+              <div class="flex justify-between"><span>13% (std.) {fmtEur(vatToday.stdGross)}</span><span>VAT {fmtEur(vatToday.stdVat)}</span></div>
+            </div>
+          </div>
+
+          {/* This month */}
+          <div class="rounded-2xl border border-amber-400/25 bg-amber-400/5 p-5 space-y-3">
+            <p class="text-xs font-semibold uppercase tracking-widest text-amber-400/60">{lang === "el" ? "Τρέχων μήνας" : "This month"}</p>
+            <div class="flex justify-between text-sm">
+              <span class="text-white/50">{lang === "el" ? "Μικτά (με ΦΠΑ)" : "Gross (incl. VAT)"}</span>
+              <span class="font-semibold text-white">{fmtEur(vatMonth.gross)}</span>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span class="text-white/50">{lang === "el" ? "ΦΠΑ (24% + 13%)" : "VAT (24% + 13%)"}</span>
+              <span class="font-semibold text-red-400">−{fmtEur(vatMonth.vat)}</span>
+            </div>
+            <div class="h-px bg-white/10"></div>
+            <div class="flex justify-between text-sm">
+              <span class="text-white/70 font-medium">{lang === "el" ? "Καθαρά" : "Net revenue"}</span>
+              <span class="font-bold text-emerald-400">{fmtEur(vatMonth.net)}</span>
+            </div>
+            <div class="pt-1 space-y-1 text-xs text-white/30">
+              <div class="flex justify-between"><span>24% (alc.) {fmtEur(vatMonth.alcGross)}</span><span>VAT {fmtEur(vatMonth.alcVat)}</span></div>
+              <div class="flex justify-between"><span>13% (std.) {fmtEur(vatMonth.stdGross)}</span><span>VAT {fmtEur(vatMonth.stdVat)}</span></div>
+            </div>
+          </div>
+
+          {/* This year */}
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-5 space-y-3">
+            <p class="text-xs font-semibold uppercase tracking-widest text-white/30">{lang === "el" ? "Τρέχον έτος" : `Year ${now.getFullYear()}`}</p>
+            <div class="flex justify-between text-sm">
+              <span class="text-white/50">{lang === "el" ? "Μικτά (με ΦΠΑ)" : "Gross (incl. VAT)"}</span>
+              <span class="font-semibold text-white">{fmtEur(vatYear.gross)}</span>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span class="text-white/50">{lang === "el" ? "ΦΠΑ (24% + 13%)" : "VAT (24% + 13%)"}</span>
+              <span class="font-semibold text-red-400">−{fmtEur(vatYear.vat)}</span>
+            </div>
+            <div class="h-px bg-white/10"></div>
+            <div class="flex justify-between text-sm">
+              <span class="text-white/70 font-medium">{lang === "el" ? "Καθαρά" : "Net revenue"}</span>
+              <span class="font-bold text-emerald-400">{fmtEur(vatYear.net)}</span>
+            </div>
+            <div class="pt-1 space-y-1 text-xs text-white/30">
+              <div class="flex justify-between"><span>24% (alc.) {fmtEur(vatYear.alcGross)}</span><span>VAT {fmtEur(vatYear.alcVat)}</span></div>
+              <div class="flex justify-between"><span>13% (std.) {fmtEur(vatYear.stdGross)}</span><span>VAT {fmtEur(vatYear.stdVat)}</span></div>
+            </div>
+          </div>
+
+        </div>
+        <p class="mt-3 text-xs text-white/20">
+          {lang === "el"
+            ? "Βασίζεται στην κατηγορία ΦΠΑ κάθε προϊόντος. Ορίστε κατηγορία ΦΠΑ από τη Διαχείριση Μενού."
+            : "Based on per-item VAT category set in Edit Menu. Items without a category default to 13%."}
+        </p>
+      </section>
+
+      <!-- VAT owed to tax authority -->
+      <section>
+        <h2 class="text-xs font-semibold uppercase tracking-widest text-white/30 mb-1">
+          {lang === "el" ? "ΦΠΑ προς απόδοση στην εφορία" : "VAT owed to tax authority"}
+        </h2>
+        <p class="text-xs text-white/20 mb-4">
+          {lang === "el"
+            ? "Ποσό ΦΠΑ που πρέπει να αποδοθεί (24% αλκοολούχα · 13% μη αλκοολούχα / καφές)"
+            : "VAT amount payable (24% alcoholic · 13% non-alcoholic / coffee / soft drinks)"}
+        </p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
+          {/* Today */}
+          <div class="rounded-2xl border border-red-400/20 bg-red-400/5 p-5 space-y-3">
+            <p class="text-xs font-semibold uppercase tracking-widest text-red-400/60">{lang === "el" ? "Σήμερα" : "Today"}</p>
+            <p class="text-3xl font-bold text-red-400">{fmtEur(vatToday.vat)}</p>
+            <div class="h-px bg-white/10"></div>
+            <div class="space-y-1 text-xs text-white/40">
+              <div class="flex justify-between">
+                <span>{lang === "el" ? "Αλκοολούχα 24%" : "Alcoholic 24%"}</span>
+                <span class="text-red-300">{fmtEur(vatToday.alcVat)}</span>
+              </div>
+              <div class="flex justify-between">
+                <span>{lang === "el" ? "Μη αλκοολούχα 13%" : "Non-alcoholic 13%"}</span>
+                <span class="text-red-300">{fmtEur(vatToday.stdVat)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* This week */}
+          <div class="rounded-2xl border border-orange-400/20 bg-orange-400/5 p-5 space-y-3">
+            <p class="text-xs font-semibold uppercase tracking-widest text-orange-400/60">{lang === "el" ? "Τρέχουσα εβδομάδα" : "This week"}</p>
+            <p class="text-3xl font-bold text-orange-400">{fmtEur(vatWeek.vat)}</p>
+            <div class="h-px bg-white/10"></div>
+            <div class="space-y-1 text-xs text-white/40">
+              <div class="flex justify-between">
+                <span>{lang === "el" ? "Αλκοολούχα 24%" : "Alcoholic 24%"}</span>
+                <span class="text-orange-300">{fmtEur(vatWeek.alcVat)}</span>
+              </div>
+              <div class="flex justify-between">
+                <span>{lang === "el" ? "Μη αλκοολούχα 13%" : "Non-alcoholic 13%"}</span>
+                <span class="text-orange-300">{fmtEur(vatWeek.stdVat)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* This month */}
+          <div class="rounded-2xl border border-amber-400/25 bg-amber-400/5 p-5 space-y-3">
+            <p class="text-xs font-semibold uppercase tracking-widest text-amber-400/60">{lang === "el" ? "Τρέχων μήνας" : "This month"}</p>
+            <p class="text-3xl font-bold text-amber-400">{fmtEur(vatMonth.vat)}</p>
+            <div class="h-px bg-white/10"></div>
+            <div class="space-y-1 text-xs text-white/40">
+              <div class="flex justify-between">
+                <span>{lang === "el" ? "Αλκοολούχα 24%" : "Alcoholic 24%"}</span>
+                <span class="text-amber-300">{fmtEur(vatMonth.alcVat)}</span>
+              </div>
+              <div class="flex justify-between">
+                <span>{lang === "el" ? "Μη αλκοολούχα 13%" : "Non-alcoholic 13%"}</span>
+                <span class="text-amber-300">{fmtEur(vatMonth.stdVat)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* This year */}
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-5 space-y-3">
+            <p class="text-xs font-semibold uppercase tracking-widest text-white/30">{lang === "el" ? "Τρέχον έτος" : `Year ${now.getFullYear()}`}</p>
+            <p class="text-3xl font-bold text-white">{fmtEur(vatYear.vat)}</p>
+            <div class="h-px bg-white/10"></div>
+            <div class="space-y-1 text-xs text-white/40">
+              <div class="flex justify-between">
+                <span>{lang === "el" ? "Αλκοολούχα 24%" : "Alcoholic 24%"}</span>
+                <span class="text-white/60">{fmtEur(vatYear.alcVat)}</span>
+              </div>
+              <div class="flex justify-between">
+                <span>{lang === "el" ? "Μη αλκοολούχα 13%" : "Non-alcoholic 13%"}</span>
+                <span class="text-white/60">{fmtEur(vatYear.stdVat)}</span>
+              </div>
+            </div>
+          </div>
+
         </div>
       </section>
 
@@ -368,8 +571,10 @@ const topItemsWithBar = topItems.map((item, rank) => ({
                   <th class="text-left px-4 py-3 text-white/40 font-medium w-8">#</th>
                   <th class="text-left px-4 py-3 text-white/40 font-medium">{lang === "el" ? "Προϊόν" : "Item"}</th>
                   <th class="text-left px-4 py-3 text-white/40 font-medium">{lang === "el" ? "Τεμάχια" : "Units"}</th>
-                  <th class="text-left px-4 py-3 text-white/40 font-medium">{lang === "el" ? "Έσοδα" : "Revenue"}</th>
-                  <th class="px-4 py-3 w-32"></th>
+                  <th class="text-left px-4 py-3 text-white/40 font-medium">ΦΠΑ</th>
+                  <th class="text-left px-4 py-3 text-white/40 font-medium">{lang === "el" ? "Μικτά" : "Gross"}</th>
+                  <th class="text-left px-4 py-3 text-white/40 font-medium">{lang === "el" ? "Καθαρά" : "Net"}</th>
+                  <th class="px-4 py-3 w-24"></th>
                 </tr>
               </thead>
               <tbody>
@@ -378,7 +583,11 @@ const topItemsWithBar = topItems.map((item, rank) => ({
                     <td class="px-4 py-3 text-white/30 text-xs">{item.rank}</td>
                     <td class="px-4 py-3 font-medium text-white">{item.name}</td>
                     <td class="px-4 py-3 text-white/70">{item.qty}</td>
-                    <td class="px-4 py-3 text-amber-400 font-medium">{item.revenueLabel}</td>
+                    <td class="px-4 py-3">
+                      <span class={`text-xs px-2 py-0.5 rounded-full font-medium ${item.vatCat === "alcoholic" ? "bg-orange-400/10 text-orange-400" : "bg-sky-400/10 text-sky-400"}`}>{item.vatPct}</span>
+                    </td>
+                    <td class="px-4 py-3 text-white/60 font-medium">{item.grossLabel}</td>
+                    <td class="px-4 py-3 text-emerald-400 font-medium">{item.netLabel}</td>
                     <td class="px-4 py-3">
                       <div class="h-1.5 rounded-full bg-white/10 overflow-hidden">
                         <div class="h-full rounded-full bg-amber-400/60" style={`width:${item.barW}%`}></div>
