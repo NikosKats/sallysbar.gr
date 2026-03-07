@@ -12,6 +12,40 @@ function formatItems(items: OrderItem[]) {
   return items.map((i) => `  • ${i.qty}× ${i.name}`).join("\n");
 }
 
+function fmtEur(cents: number): string {
+  return (cents / 100).toFixed(2);
+}
+
+function tipKeyboard(t: "c" | "k", current: number, orderId: string) {
+  const d = (add: number) => `tadd_${t}_${add}_${current}:${orderId}`;
+  return {
+    inline_keyboard: [
+      [
+        { text: "+€0.01", callback_data: d(1)     },
+        { text: "+€0.05", callback_data: d(5)     },
+        { text: "+€0.10", callback_data: d(10)    },
+        { text: "+€0.50", callback_data: d(50)    },
+      ],
+      [
+        { text: "+€1",    callback_data: d(100)   },
+        { text: "+€2",    callback_data: d(200)   },
+        { text: "+€5",    callback_data: d(500)   },
+        { text: "+€10",   callback_data: d(1000)  },
+      ],
+      [
+        { text: "+€20",   callback_data: d(2000)  },
+        { text: "+€50",   callback_data: d(5000)  },
+        { text: "+€100",  callback_data: d(10000) },
+        { text: "⟳ Reset", callback_data: `treset_${t}:${orderId}` },
+      ],
+      [
+        { text: current > 0 ? `✅ Save €${fmtEur(current)}` : "✅ Save",
+          callback_data: `tsave_${t}_${current}:${orderId}` },
+      ],
+    ],
+  };
+}
+
 export const POST: APIRoute = async ({ request }) => {
   let body: Record<string, unknown>;
   try {
@@ -161,47 +195,75 @@ async function handleUpdate(body: Record<string, unknown>): Promise<Response> {
     await answerCallbackQuery(cb.id, "Order delivered! ✅");
   }
 
-  // Tip type chosen → show amount buttons
+  // Tip type chosen → open accumulator at €0.00
   if (action === "tc" || action === "tk") {
-    const typeLabel = action === "tc" ? "💵 Cash" : "💳 Card";
-    const prefix    = action === "tc" ? "ta" : "tb";
+    const t = action === "tc" ? "c" : "k";
+    const typeLabel = t === "c" ? "💵 Cash" : "💳 Card";
+    await editMessageText(
+      cb.message.chat.id,
+      cb.message.message_id,
+      `${typeLabel} tip — <b>Table ${order.table_number}</b>\n\nTotal: <b>€0.00</b>`,
+      { reply_markup: tipKeyboard(t, 0, orderId) }
+    );
+    await answerCallbackQuery(cb.id);
+  }
+
+  // Increment current total  (tadd_c_10_150:orderId → add 10¢ to 150¢)
+  if (action.startsWith("tadd_")) {
+    const parts = action.split("_");           // ["tadd","c","10","150"]
+    const t       = parts[1] as "c" | "k";
+    const add     = parseInt(parts[2], 10);
+    const current = parseInt(parts[3], 10);
+    const total   = Math.min(current + add, 99999); // cap at €999.99
+    const typeLabel = t === "c" ? "💵 Cash" : "💳 Card";
+    const euros = fmtEur(total);
+    await editMessageText(
+      cb.message.chat.id,
+      cb.message.message_id,
+      `${typeLabel} tip — <b>Table ${order.table_number}</b>\n\nTotal: <b>€${euros}</b>`,
+      { reply_markup: tipKeyboard(t, total, orderId) }
+    );
+    await answerCallbackQuery(cb.id, `+€${fmtEur(add)}`);
+  }
+
+  // Reset to €0.00  (treset_c:orderId)
+  if (action.startsWith("treset_")) {
+    const t = action.split("_")[1] as "c" | "k";
+    const typeLabel = t === "c" ? "💵 Cash" : "💳 Card";
+    await editMessageText(
+      cb.message.chat.id,
+      cb.message.message_id,
+      `${typeLabel} tip — <b>Table ${order.table_number}</b>\n\nTotal: <b>€0.00</b>`,
+      { reply_markup: tipKeyboard(t, 0, orderId) }
+    );
+    await answerCallbackQuery(cb.id, "Reset ✓");
+  }
+
+  // Save tip  (tsave_c_150:orderId)
+  if (action.startsWith("tsave_")) {
+    const parts = action.split("_");           // ["tsave","c","150"]
+    const t           = parts[1] as "c" | "k";
+    const amount_cents = parseInt(parts[2], 10);
+    const tipType     = t === "c" ? "cash" : "card";
+    const typeLabel   = t === "c" ? "💵 Cash" : "💳 Card";
+
+    if (amount_cents <= 0) {
+      await answerCallbackQuery(cb.id, "Select an amount first!", true);
+      return new Response("ok");
+    }
+
+    if (order.waiter_id) {
+      await supabaseAdmin.from("tips").insert({
+        order_id: orderId, waiter_id: order.waiter_id, amount_cents, type: tipType,
+      });
+    }
 
     await editMessageText(
       cb.message.chat.id,
       cb.message.message_id,
-      `${typeLabel} tip — <b>Table ${order.table_number}</b>\nHow much?`,
-      {
-        reply_markup: {
-          inline_keyboard: [
-            [
-              { text: "€1",  callback_data: `${prefix}_100:${orderId}`  },
-              { text: "€2",  callback_data: `${prefix}_200:${orderId}`  },
-              { text: "€3",  callback_data: `${prefix}_300:${orderId}`  },
-              { text: "€4",  callback_data: `${prefix}_400:${orderId}`  },
-            ],
-            [
-              { text: "€5",  callback_data: `${prefix}_500:${orderId}`  },
-              { text: "€6",  callback_data: `${prefix}_600:${orderId}`  },
-              { text: "€7",  callback_data: `${prefix}_700:${orderId}`  },
-              { text: "€8",  callback_data: `${prefix}_800:${orderId}`  },
-            ],
-            [
-              { text: "€10", callback_data: `${prefix}_1000:${orderId}` },
-              { text: "€12", callback_data: `${prefix}_1200:${orderId}` },
-              { text: "€15", callback_data: `${prefix}_1500:${orderId}` },
-              { text: "€20", callback_data: `${prefix}_2000:${orderId}` },
-            ],
-            [
-              { text: "€25", callback_data: `${prefix}_2500:${orderId}` },
-              { text: "€30", callback_data: `${prefix}_3000:${orderId}` },
-              { text: "€50", callback_data: `${prefix}_5000:${orderId}` },
-              { text: "€100",callback_data: `${prefix}_10000:${orderId}`},
-            ],
-          ],
-        },
-      }
+      `✅ <b>€${fmtEur(amount_cents)} ${typeLabel} tip</b> saved for Table ${order.table_number} 💚`
     );
-    await answerCallbackQuery(cb.id);
+    await answerCallbackQuery(cb.id, `€${fmtEur(amount_cents)} recorded!`);
   }
 
   // No tip
@@ -212,31 +274,6 @@ async function handleUpdate(body: Record<string, unknown>): Promise<Response> {
       `👍 No tip recorded for Table ${order.table_number}.`
     );
     await answerCallbackQuery(cb.id, "Noted.");
-  }
-
-  // Preset amount chosen (callback_data format: ta_500:orderId)
-  if (action.startsWith("ta_") || action.startsWith("tb_")) {
-    const [prefix, amountStr] = action.split("_");
-    const amount_cents = parseInt(amountStr, 10);
-    const tipType  = prefix === "ta" ? "cash" : "card";
-    const typeLabel = prefix === "ta" ? "💵 Cash" : "💳 Card";
-    const euros    = (amount_cents / 100).toFixed(2);
-
-    if (!isNaN(amount_cents) && order.waiter_id) {
-      await supabaseAdmin.from("tips").insert({
-        order_id:     orderId,
-        waiter_id:    order.waiter_id,
-        amount_cents,
-        type:         tipType,
-      });
-    }
-
-    await editMessageText(
-      cb.message.chat.id,
-      cb.message.message_id,
-      `✅ <b>€${euros} ${typeLabel} tip</b> saved for Table ${order.table_number} 💚`
-    );
-    await answerCallbackQuery(cb.id, `€${euros} tip recorded!`);
   }
 
   if (action === "cancel") {

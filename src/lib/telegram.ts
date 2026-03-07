@@ -34,9 +34,10 @@ export async function editMessageText(
 
 export async function answerCallbackQuery(
   callback_query_id: string,
-  text?: string
+  text?: string,
+  show_alert?: boolean
 ) {
-  return post("answerCallbackQuery", { callback_query_id, text });
+  return post("answerCallbackQuery", { callback_query_id, text, show_alert });
 }
 
 export async function deleteMessage(
