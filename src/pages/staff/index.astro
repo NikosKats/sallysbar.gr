@@ -178,7 +178,18 @@ function timeAgo(dateStr: string) {
                     📝 {order.note}
                   </p>
                 )}
-                <p class="text-xs text-white/30">{timeAgo(order.created_at)}</p>
+                <div class="flex items-center justify-between">
+                  <p class="text-xs text-white/30">{timeAgo(order.created_at)}</p>
+                  {order.status === "pending" && (
+                    <button
+                      class="cancel-btn rounded-lg bg-red-400/10 hover:bg-red-400/20 border border-red-400/20 px-3 py-1.5 text-xs font-semibold text-red-400 transition"
+                      data-id={order.id}
+                      data-table={order.table_number}
+                    >
+                      {isEl ? "Ακύρωση" : "Cancel order"}
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -219,10 +230,15 @@ function timeAgo(dateStr: string) {
                 </ul>
                 <div class="flex items-center justify-between pt-1 border-t border-white/10">
                   <p class="text-xs text-white/30">{timeAgo(order.created_at)}</p>
-                  <span class="text-xs font-semibold text-orange-400/80">
-                    {isEl ? "Εισπράξτε: " : "Collect: "}€{(((order as any).total_cents ?? 0) / 100).toFixed(2)}
-                  </span>
                 </div>
+                <button
+                  class="pay-btn w-full rounded-xl bg-emerald-400/15 hover:bg-emerald-400/25 border border-emerald-400/30 py-2.5 text-sm font-bold text-emerald-400 transition"
+                  data-id={order.id}
+                  data-table={order.table_number}
+                  data-total={(order as any).total_cents ?? 0}
+                >
+                  💰 {isEl ? "Πληρώθηκε — Καταχώρηση" : "Mark as Paid"}
+                </button>
               </div>
             ))}
           </div>
@@ -260,7 +276,51 @@ function timeAgo(dateStr: string) {
 
     </main>
 
-    <script is:inline>
+    <!-- Tip modal -->
+    <dialog id="tipModal" style="background:#16161f;border:1px solid rgba(52,211,153,.2);border-radius:1.25rem;padding:0;width:min(22rem,95vw);color:#fff;max-height:95vh;overflow-y:auto;">
+      <div style="padding:1.5rem;display:flex;flex-direction:column;gap:1rem;">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <p id="tipModalTitle" style="font-size:1rem;font-weight:700;"></p>
+          <button id="tipModalClose" style="background:none;border:none;color:rgba(255,255,255,.4);font-size:1.25rem;cursor:pointer;padding:.25rem;">✕</button>
+        </div>
+
+        <!-- Step 1: tip type -->
+        <div id="tipTypeStep">
+          <p style="font-size:.875rem;color:rgba(255,255,255,.5);margin-bottom:.75rem;">{isEl ? "Λάβατε φιλοδώρημα;" : "Did you receive a tip?"}</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;">
+            <button id="tipCashBtn" style="background:rgba(250,204,21,.08);border:1px solid rgba(250,204,21,.2);border-radius:.75rem;padding:.75rem;font-size:.875rem;font-weight:600;color:#facc15;cursor:pointer;">💵 {isEl ? "Μετρητά" : "Cash"}</button>
+            <button id="tipCardBtn" style="background:rgba(99,179,237,.08);border:1px solid rgba(99,179,237,.2);border-radius:.75rem;padding:.75rem;font-size:.875rem;font-weight:600;color:#63b3ed;cursor:pointer;">💳 {isEl ? "Κάρτα" : "Card"}</button>
+          </div>
+          <button id="tipNoTipBtn" style="margin-top:.5rem;width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:.75rem;padding:.625rem;font-size:.875rem;color:rgba(255,255,255,.4);cursor:pointer;">❌ {isEl ? "Χωρίς φιλοδώρημα" : "No tip"}</button>
+        </div>
+
+        <!-- Step 2: amount -->
+        <div id="tipAmountStep" hidden>
+          <div style="text-align:center;margin-bottom:1rem;">
+            <p style="font-size:.75rem;color:rgba(255,255,255,.4);margin-bottom:.25rem;">{isEl ? "Ποσό φιλοδωρήματος" : "Tip amount"}</p>
+            <p style="font-size:2.5rem;font-weight:700;color:#34d399;">€<span id="tipDisplay">0.00</span></p>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.375rem;margin-bottom:.375rem;">
+            {[50,100,200,500,1000,2000,5000,10000].map(add => (
+              <button class="tip-add" data-add={add} style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:.625rem;padding:.5rem .25rem;font-size:.75rem;font-weight:600;color:#fff;cursor:pointer;">
+                +€{add >= 100 ? (add/100).toFixed(0) : "0."+(add/10).toString().padStart(2,"0")}
+              </button>
+            ))}
+          </div>
+          <div style="display:flex;gap:.5rem;margin-bottom:.75rem;">
+            <input id="tipManualInput" type="number" min="0" step="0.01" placeholder={isEl ? "Ή πληκτρολόγησε ποσό (€)" : "Or type amount (€)"}
+              style="flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:.625rem;padding:.5rem .75rem;font-size:.875rem;color:#fff;outline:none;" />
+            <button id="tipResetBtn" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:.625rem;padding:.5rem .75rem;font-size:.75rem;color:rgba(255,255,255,.5);cursor:pointer;">⟳</button>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;">
+            <button id="tipBackBtn" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:.75rem;padding:.625rem;font-size:.875rem;color:rgba(255,255,255,.5);cursor:pointer;">{isEl ? "Πίσω" : "Back"}</button>
+            <button id="tipConfirmBtn" style="background:rgba(52,211,153,.15);border:1px solid rgba(52,211,153,.3);border-radius:.75rem;padding:.625rem;font-size:.875rem;font-weight:700;color:#34d399;cursor:pointer;">{isEl ? "Επιβεβαίωση" : "Confirm"}</button>
+          </div>
+        </div>
+      </div>
+    </dialog>
+
+    <script is:inline define:vars={{ isEl }}>
       const isTg = !!(window.Telegram?.WebApp?.initData);
 
       // Refresh button — always works
@@ -269,6 +329,159 @@ function timeAgo(dateStr: string) {
       // Auto-refresh: only in browser (Telegram keeps the connection open)
       if (!isTg) {
         setTimeout(() => window.location.reload(), 30000);
+      }
+
+      // ── Cancel order ──────────────────────────────────────────────────────
+      document.querySelectorAll('.cancel-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const table = btn.dataset.table;
+          const msg = isEl
+            ? `Ακύρωση παραγγελίας για Τραπέζι ${table};`
+            : `Cancel order for Table ${table}?`;
+          if (!confirm(msg)) return;
+
+          btn.disabled = true;
+          btn.textContent = isEl ? "Ακύρωση…" : "Cancelling…";
+
+          try {
+            const res = await fetch('/api/staff/orders', {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id: btn.dataset.id, action: 'cancel' }),
+            });
+            if (res.ok) {
+              window.location.reload();
+            } else {
+              const j = await res.json().catch(() => ({}));
+              alert((isEl ? 'Σφάλμα: ' : 'Error: ') + (j.error ?? 'Unknown error'));
+              btn.disabled = false;
+              btn.textContent = isEl ? 'Ακύρωση' : 'Cancel order';
+            }
+          } catch {
+            alert(isEl ? 'Σφάλμα δικτύου.' : 'Network error.');
+            btn.disabled = false;
+            btn.textContent = isEl ? 'Ακύρωση' : 'Cancel order';
+          }
+        });
+      });
+
+      // ── Tip modal ─────────────────────────────────────────────────────────
+      const tipModal    = document.getElementById('tipModal');
+      const tipTypeStep = document.getElementById('tipTypeStep');
+      const tipAmtStep  = document.getElementById('tipAmountStep');
+      const tipDisplay  = document.getElementById('tipDisplay');
+      const tipConfirm  = document.getElementById('tipConfirmBtn');
+      const tipManual   = document.getElementById('tipManualInput');
+
+      let currentOrderId = null;
+      let currentTipType = null;
+      let tipCents = 0;
+
+      function updateDisplay() {
+        tipDisplay.textContent = (tipCents / 100).toFixed(2);
+        tipConfirm.textContent = tipCents > 0
+          ? (isEl ? `Επιβεβαίωση €${(tipCents/100).toFixed(2)}` : `Confirm €${(tipCents/100).toFixed(2)}`)
+          : (isEl ? 'Επιβεβαίωση (χωρίς ποσό)' : 'Confirm (no amount)');
+      }
+
+      function resetModal() {
+        currentTipType = null;
+        tipCents = 0;
+        tipManual.value = '';
+        tipTypeStep.hidden = false;
+        tipAmtStep.hidden = true;
+        updateDisplay();
+      }
+
+      document.querySelectorAll('.pay-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          currentOrderId = btn.dataset.id;
+          const table = btn.dataset.table;
+          const total = parseInt(btn.dataset.total || '0');
+          document.getElementById('tipModalTitle').textContent =
+            `${isEl ? 'Τραπέζι' : 'Table'} ${table} — €${(total/100).toFixed(2)}`;
+          resetModal();
+          tipModal.showModal();
+        });
+      });
+
+      document.getElementById('tipModalClose').addEventListener('click', () => tipModal.close());
+
+      // Type selection
+      document.getElementById('tipCashBtn').addEventListener('click', () => {
+        currentTipType = 'cash';
+        tipTypeStep.hidden = true;
+        tipAmtStep.hidden = false;
+      });
+      document.getElementById('tipCardBtn').addEventListener('click', () => {
+        currentTipType = 'card';
+        tipTypeStep.hidden = true;
+        tipAmtStep.hidden = false;
+      });
+      document.getElementById('tipNoTipBtn').addEventListener('click', () => {
+        submitPaid(currentOrderId, 0, null);
+      });
+
+      // Back
+      document.getElementById('tipBackBtn').addEventListener('click', () => {
+        tipTypeStep.hidden = false;
+        tipAmtStep.hidden = true;
+        tipCents = 0;
+        tipManual.value = '';
+        updateDisplay();
+      });
+
+      // Amount buttons
+      document.querySelectorAll('.tip-add').forEach(btn => {
+        btn.addEventListener('click', () => {
+          tipCents = Math.min(tipCents + parseInt(btn.dataset.add), 99999);
+          tipManual.value = '';
+          updateDisplay();
+        });
+      });
+
+      // Manual input
+      tipManual.addEventListener('input', () => {
+        const v = parseFloat(tipManual.value);
+        tipCents = isNaN(v) || v < 0 ? 0 : Math.min(Math.round(v * 100), 99999);
+        updateDisplay();
+      });
+
+      // Reset
+      document.getElementById('tipResetBtn').addEventListener('click', () => {
+        tipCents = 0;
+        tipManual.value = '';
+        updateDisplay();
+      });
+
+      // Confirm
+      tipConfirm.addEventListener('click', () => {
+        submitPaid(currentOrderId, tipCents, tipCents > 0 ? currentTipType : null);
+      });
+
+      async function submitPaid(id, amount, type) {
+        tipConfirm.disabled = true;
+        document.getElementById('tipNoTipBtn').disabled = true;
+        try {
+          const res = await fetch('/api/staff/orders', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, action: 'paid', tip_amount_cents: amount, tip_type: type }),
+          });
+          if (res.ok) {
+            tipModal.close();
+            window.location.reload();
+          } else {
+            const j = await res.json().catch(() => ({}));
+            alert((isEl ? 'Σφάλμα: ' : 'Error: ') + (j.error ?? 'Unknown error'));
+            tipConfirm.disabled = false;
+            document.getElementById('tipNoTipBtn').disabled = false;
+          }
+        } catch {
+          alert(isEl ? 'Σφάλμα δικτύου.' : 'Network error.');
+          tipConfirm.disabled = false;
+          document.getElementById('tipNoTipBtn').disabled = false;
+        }
       }
     </script>
   </body>
