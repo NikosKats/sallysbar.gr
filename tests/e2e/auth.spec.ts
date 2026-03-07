@@ -1,10 +1,7 @@
 import { test, expect } from "@playwright/test";
 
-// Credentials — set via environment variables or .env.test
-const ADMIN_EMAIL    = process.env.E2E_ADMIN_EMAIL    ?? "admin@sallysbar.gr";
-const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD ?? "changeme";
-const STAFF_EMAIL    = process.env.E2E_STAFF_EMAIL    ?? "staff@sallysbar.gr";
-const STAFF_PASSWORD = process.env.E2E_STAFF_PASSWORD ?? "changeme";
+// This spec runs without any storageState (unauthenticated / login-flow tests).
+// The "unauth" project in playwright.config.ts handles this file.
 
 // ── Unauthenticated access ────────────────────────────────────────────────────
 test.describe("Unauthenticated access", () => {
@@ -32,40 +29,41 @@ test.describe("Unauthenticated access", () => {
     await page.goto("/login");
     await expect(page.locator('input[type="email"]')).toBeVisible();
     await expect(page.locator('input[type="password"]')).toBeVisible();
-    await expect(page.locator('button[type="submit"]')).toBeVisible();
+    // Submit button exists (may be disabled until Turnstile passes)
+    await expect(page.locator("#loginSubmitBtn")).toBeVisible();
   });
 });
 
-// ── Login flow ────────────────────────────────────────────────────────────────
-test.describe("Login flow", () => {
-  test("shows error for wrong credentials", async ({ page }) => {
+// ── Login form — wrong credentials (bypass Turnstile, submit, expect error) ───
+test.describe("Login flow — wrong credentials", () => {
+  test("shows error URL param for wrong credentials", async ({ page }) => {
     await page.goto("/login");
-    await page.fill('input[type="email"]', "wrong@example.com");
-    await page.fill('input[type="password"]', "wrongpassword");
-    await page.click('button[type="submit"]');
-    // Should stay on login with an error indicator
-    await expect(page).toHaveURL(/\/login/);
-  });
+    await page.fill("#email", "wrong@example.com");
+    await page.fill("#password", "wrongpassword");
 
-  test("admin login lands on dashboard or admin", async ({ page }) => {
-    await page.goto("/login");
-    await page.fill('input[type="email"]', ADMIN_EMAIL);
-    await page.fill('input[type="password"]', ADMIN_PASSWORD);
-    await page.click('button[type="submit"]');
-    // After login, should NOT be on /login
-    await expect(page).not.toHaveURL(/\/login/);
+    // Bypass Turnstile disable guard
+    await page.evaluate(() => {
+      const btn = document.getElementById("loginSubmitBtn") as HTMLButtonElement;
+      if (btn) btn.disabled = false;
+    });
+
+    await Promise.all([
+      page.waitForURL((url) => url.searchParams.has("error") || url.pathname !== "/login", {
+        timeout: 15000,
+      }),
+      page.click("#loginSubmitBtn"),
+    ]);
+
+    // Should stay on /login with error param
+    await expect(page).toHaveURL(/\/login.*error=/);
   });
 });
 
-// ── Admin access control ──────────────────────────────────────────────────────
+// ── Admin access control (uses pre-saved admin storageState) ──────────────────
+// These run in the "admin" project which has storageState already set.
+// We add them here as a separate describe that can also be run standalone.
 test.describe("Admin access control", () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto("/login");
-    await page.fill('input[type="email"]', ADMIN_EMAIL);
-    await page.fill('input[type="password"]', ADMIN_PASSWORD);
-    await page.click('button[type="submit"]');
-    await page.waitForURL((url) => !url.pathname.includes("/login"));
-  });
+  test.use({ storageState: "tests/e2e/.auth/admin.json" });
 
   test("admin can access /admin", async ({ page }) => {
     await page.goto("/admin");
@@ -91,19 +89,18 @@ test.describe("Admin access control", () => {
 
 // ── Logout flow ───────────────────────────────────────────────────────────────
 test.describe("Logout flow", () => {
-  test("logout clears session and redirects to login", async ({ page }) => {
-    // Login first
-    await page.goto("/login");
-    await page.fill('input[type="email"]', ADMIN_EMAIL);
-    await page.fill('input[type="password"]', ADMIN_PASSWORD);
-    await page.click('button[type="submit"]');
-    await page.waitForURL((url) => !url.pathname.includes("/login"));
+  test.use({ storageState: "tests/e2e/.auth/admin.json" });
 
-    // Logout
+  test("logout clears session and redirects away from protected pages", async ({ page }) => {
+    // Confirm admin session works
+    await page.goto("/admin");
+    await expect(page).toHaveURL(/\/admin/);
+
+    // Logout — the app redirects to "/" (homepage)
     await page.goto("/logout");
-    await expect(page).toHaveURL(/\/login/);
+    await expect(page).not.toHaveURL(/\/admin/);
 
-    // Verify session is gone — /admin should redirect back to login
+    // Session gone — /admin should now redirect to login
     await page.goto("/admin");
     await expect(page).toHaveURL(/\/login/);
   });

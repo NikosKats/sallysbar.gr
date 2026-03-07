@@ -1,26 +1,22 @@
-import { test, expect, Page } from "@playwright/test";
+import { test, expect } from "@playwright/test";
 
-const ADMIN_EMAIL    = process.env.E2E_ADMIN_EMAIL    ?? "admin@sallysbar.gr";
-const ADMIN_PASSWORD = process.env.E2E_ADMIN_PASSWORD ?? "changeme";
-
-async function loginAsAdmin(page: Page) {
-  await page.goto("/login");
-  await page.fill('input[type="email"]', ADMIN_EMAIL);
-  await page.fill('input[type="password"]', ADMIN_PASSWORD);
-  await page.click('button[type="submit"]');
-  await page.waitForURL((url) => !url.pathname.includes("/login"));
-}
+// storageState (admin session) is injected by playwright.config.ts "admin" project
 
 test.describe("Admin — Menu edit page", () => {
+  test.use({ storageState: "tests/e2e/.auth/admin.json" });
+
   test.beforeEach(async ({ page }) => {
-    await loginAsAdmin(page);
     await page.goto("/admin/menu");
   });
 
   // ── Page structure ──────────────────────────────────────────────────────────
   test("shows categories sidebar and items table", async ({ page }) => {
-    await expect(page.locator("#catList")).toBeVisible();
-    await expect(page.locator("#itemsBody")).toBeVisible();
+    // #newCatBtn and #newItemBtn are always rendered regardless of data
+    await expect(page.locator("#newCatBtn")).toBeVisible();
+    await expect(page.locator("#newItemBtn")).toBeVisible();
+    // #catList and #itemsBody exist in DOM (may be empty when no data)
+    await expect(page.locator("#catList")).toBeAttached();
+    await expect(page.locator("#itemsBody")).toBeAttached();
   });
 
   test("shows correct table column headers including VAT", async ({ page }) => {
@@ -168,7 +164,6 @@ test.describe("Admin — Menu edit page", () => {
 
     // Rows not in this category should be hidden
     const visibleRows = page.locator(".item-row:visible");
-    const hiddenRows  = page.locator(".item-row[style*='display: none']");
 
     // Each visible row should have data-cat matching selected value
     const visibleCount = await visibleRows.count();
