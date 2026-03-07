@@ -120,6 +120,7 @@ const { categories, items } = await getMenuAdmin();
                 <th class="px-3 py-2.5 text-left text-xs font-semibold text-white/40 uppercase tracking-wider">{t.admin.menu.nameCol}</th>
                 <th class="px-3 py-2.5 text-left text-xs font-semibold text-white/40 uppercase tracking-wider">{t.admin.menu.catCol}</th>
                 <th class="px-3 py-2.5 text-left text-xs font-semibold text-white/40 uppercase tracking-wider">{t.admin.menu.priceCol}</th>
+                <th class="px-3 py-2.5 text-left text-xs font-semibold text-white/40 uppercase tracking-wider">VAT</th>
                 <th class="px-3 py-2.5 text-left text-xs font-semibold text-white/40 uppercase tracking-wider">{t.admin.menu.sortCol}</th>
                 <th class="px-3 py-2.5 text-left text-xs font-semibold text-white/40 uppercase tracking-wider">{t.admin.menu.visibleCol}</th>
                 <th class="px-3 py-2.5 text-right text-xs font-semibold text-white/40 uppercase tracking-wider">{t.admin.menu.actions ?? t.admin.actions}</th>
@@ -136,6 +137,12 @@ const { categories, items } = await getMenuAdmin();
                     </td>
                     <td class="px-3 py-2.5 text-white/50 text-xs">{cat?.title_en ?? "—"}</td>
                     <td class="px-3 py-2.5 font-mono text-xs">€{(it.price_cents / 100).toFixed(0)}</td>
+                    <td class="px-3 py-2.5 text-xs">
+                      {it.vat_category === "alcoholic"
+                        ? <span class="text-amber-400/80">24%</span>
+                        : <span class="text-white/40">13%</span>
+                      }
+                    </td>
                     <td class="px-3 py-2.5 text-white/40 text-xs">{it.sort}</td>
                     <td class="px-3 py-2.5">
                       {it.is_visible
@@ -367,6 +374,7 @@ const { categories, items } = await getMenuAdmin();
               <td class="px-3 py-2.5"><div class="font-medium">${esc(it.name_en)}</div><div class="text-xs text-white/40">${esc(it.name_el)}</div></td>
               <td class="px-3 py-2.5 text-white/50 text-xs">${esc(cat?.title_en ?? "—")}</td>
               <td class="px-3 py-2.5 font-mono text-xs">€${(it.price_cents / 100).toFixed(0)}</td>
+              <td class="px-3 py-2.5 text-xs">${it.vat_category === "alcoholic" ? '<span class="text-amber-400/80">24%</span>' : '<span class="text-white/40">13%</span>'}</td>
               <td class="px-3 py-2.5 text-white/40 text-xs">${it.sort}</td>
               <td class="px-3 py-2.5">${vis}</td>
               <td class="px-3 py-2.5 text-right">
