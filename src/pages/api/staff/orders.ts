@@ -159,6 +159,23 @@ export const PATCH: APIRoute = async ({ request, cookies }) => {
       return json({ error: "Only pending orders can be cancelled" }, 400);
     }
     await supabaseAdmin.from("orders").update({ status: "cancelled" }).eq("id", id);
+
+    // Auto-close session if all orders are now paid or cancelled
+    if (order.session_id) {
+      const { data: remaining } = await supabaseAdmin
+        .from("orders")
+        .select("id")
+        .eq("session_id", order.session_id)
+        .not("status", "in", '("paid","cancelled")')
+        .limit(1);
+      if (!remaining?.length) {
+        await supabaseAdmin
+          .from("table_sessions")
+          .update({ status: "closed", closed_at: new Date().toISOString() })
+          .eq("id", order.session_id);
+      }
+    }
+
     return json({ ok: true });
   }
 
