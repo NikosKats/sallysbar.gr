@@ -224,9 +224,12 @@ function fmtEur(cents: number) {
           <span class="px-3 py-1.5 rounded-lg bg-sky-400/15 border border-sky-400/20 text-sky-400 font-medium">{t.staff.operations}</span>
           <a href={withLangPrefix(lang, "/staff/order")} class="px-3 py-1.5 rounded-lg text-white/50 hover:text-sky-400 hover:bg-sky-400/5 transition whitespace-nowrap">{t.staff.newOrder}</a>
         </nav>
-        <button id="refreshBtn" class="text-xs text-white/30 hover:text-white/60 transition py-2">
-          {t.staff.refresh}
-        </button>
+        <div class="flex items-center gap-2 py-2">
+          <span id="realtimeDot" class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" title="Connecting…"></span>
+          <button id="refreshBtn" class="text-xs text-white/30 hover:text-white/60 transition">
+            {t.staff.refresh}
+          </button>
+        </div>
       </div>
     </div>
 
@@ -801,22 +804,30 @@ function fmtEur(cents: number) {
 
       const tipModal = document.getElementById('payModal') as HTMLDialogElement | null;
       const banner   = document.getElementById('liveUpdateBanner') as HTMLElement | null;
+      const dot      = document.getElementById('realtimeDot') as HTMLElement | null;
 
       let reloadScheduled = false;
 
+      function setDot(state: 'connecting' | 'live' | 'error') {
+        if (!dot) return;
+        dot.title = state === 'live' ? 'Live' : state === 'error' ? 'Disconnected' : 'Connecting…';
+        dot.className = state === 'live'
+          ? 'w-2 h-2 rounded-full bg-emerald-400'
+          : state === 'error'
+          ? 'w-2 h-2 rounded-full bg-red-400'
+          : 'w-2 h-2 rounded-full bg-yellow-400 animate-pulse';
+      }
+
       function handleOrderChange() {
         if (reloadScheduled) return;
-        // If the tip modal is open, don't reload — show banner instead
         if (tipModal?.open) {
           if (banner) banner.hidden = false;
           return;
         }
         reloadScheduled = true;
-        // Small delay so rapid successive updates collapse into one reload
         setTimeout(() => window.location.reload(), 600);
       }
 
-      // Also show banner if modal closes after a pending update
       tipModal?.addEventListener('close', () => {
         if (banner && !banner.hidden) {
           window.location.reload();
@@ -829,6 +840,9 @@ function fmtEur(cents: number) {
         .on('postgres_changes', { event: '*', schema: 'public', table: 'table_sessions' }, handleOrderChange)
         .subscribe((status) => {
           console.debug('[realtime] status:', status);
+          if (status === 'SUBSCRIBED') setDot('live');
+          else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') setDot('error');
+          else setDot('connecting');
         });
     </script>
   </body>
