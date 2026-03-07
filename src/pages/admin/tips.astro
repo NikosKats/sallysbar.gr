@@ -92,6 +92,12 @@ function timeAgo(d: string) {
   if (m < 60) return `${m}m ago`;
   return `${Math.floor(m / 60)}h ${m % 60}m ago`;
 }
+function fmtDate(d: string) {
+  return new Date(d).toLocaleDateString(lang === "el" ? "el-GR" : "en-GB", {
+    day: "numeric", month: "short", year: "numeric",
+    hour: "2-digit", minute: "2-digit",
+  });
+}
 
 const periodLabel = period === "week" ? "This Week" : period === "month" ? "This Month" : "Today";
 ---
@@ -213,44 +219,198 @@ const periodLabel = period === "week" ? "This Week" : period === "month" ? "This
       <!-- Recent tips log -->
       {(tips ?? []).length > 0 && (
         <div>
-          <h2 class="text-xs font-semibold uppercase tracking-widest text-white/30 mb-4">Recent Tips</h2>
+          <h2 class="text-xs font-semibold uppercase tracking-widest text-white/30 mb-4">Tip History</h2>
           <div class="rounded-2xl border border-white/10 overflow-hidden">
-            <table class="w-full text-sm">
-              <thead>
-                <tr class="border-b border-white/10 text-xs text-white/30 uppercase tracking-widest">
-                  <th class="px-4 py-3 text-left">Staff</th>
-                  <th class="px-4 py-3 text-left">Table</th>
-                  <th class="px-4 py-3 text-left">Type</th>
-                  <th class="px-4 py-3 text-right">Amount</th>
-                  <th class="px-4 py-3 text-right">When</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(tips ?? []).map((tip) => {
-                  const waiter = tip.waiter_id ? staffUsers[tip.waiter_id] : null;
-                  const order  = tip.orders as any;
-                  const typeBadge = tip.type === "cash"
-                    ? "bg-emerald-400/10 text-emerald-400 border border-emerald-400/20"
-                    : "bg-blue-400/10 text-blue-400 border border-blue-400/20";
-                  const typeLabel = tip.type === "cash" ? "💵 Cash" : "💳 Card";
-                  return (
-                    <tr class="border-b border-white/5 last:border-0 hover:bg-white/5 transition">
-                      <td class="px-4 py-3 text-white/70">{waiter?.name ?? "—"}</td>
-                      <td class="px-4 py-3 text-white/50">Table {order?.table_number ?? "?"}</td>
-                      <td class="px-4 py-3">
-                        <span class={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${typeBadge}`}>{typeLabel}</span>
-                      </td>
-                      <td class="px-4 py-3 text-right font-semibold text-emerald-400">{eur(tip.amount_cents)}</td>
-                      <td class="px-4 py-3 text-right text-white/30 text-xs">{timeAgo(tip.created_at)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead>
+                  <tr class="border-b border-white/10 text-xs text-white/30 uppercase tracking-widest">
+                    <th class="px-4 py-3 text-left">Staff</th>
+                    <th class="px-4 py-3 text-left">Table</th>
+                    <th class="px-4 py-3 text-left">Type</th>
+                    <th class="px-4 py-3 text-right">Amount</th>
+                    <th class="px-4 py-3 text-left whitespace-nowrap">Date</th>
+                    <th class="px-4 py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="tipsTableBody">
+                  {(tips ?? []).map((tip) => {
+                    const waiter = tip.waiter_id ? staffUsers[tip.waiter_id] : null;
+                    const order  = tip.orders as any;
+                    const typeBadge = tip.type === "cash"
+                      ? "bg-emerald-400/10 text-emerald-400 border border-emerald-400/20"
+                      : "bg-blue-400/10 text-blue-400 border border-blue-400/20";
+                    const typeLabel = tip.type === "cash" ? "💵 Cash" : "💳 Card";
+                    return (
+                      <tr class="tip-row border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition"
+                        data-id={tip.id}
+                        data-amount={tip.amount_cents}
+                        data-type={tip.type}>
+                        <td class="px-4 py-3 text-white/70">{waiter?.name ?? "—"}</td>
+                        <td class="px-4 py-3 text-white/50">Table {order?.table_number ?? "?"}</td>
+                        <td class="px-4 py-3">
+                          <span class={`tip-type-badge inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${typeBadge}`}>{typeLabel}</span>
+                        </td>
+                        <td class="px-4 py-3 text-right font-semibold text-emerald-400 tip-amount-cell">{eur(tip.amount_cents)}</td>
+                        <td class="px-4 py-3 text-white/40 text-xs whitespace-nowrap">{fmtDate(tip.created_at)}</td>
+                        <td class="px-4 py-3">
+                          <div class="flex items-center justify-end gap-2">
+                            <button class="tip-edit-btn text-xs text-white/50 border border-white/10 rounded-lg px-2.5 py-1 hover:bg-white/10 transition">
+                              Edit
+                            </button>
+                            <button class="tip-delete-btn text-xs text-red-400 border border-red-400/20 rounded-lg px-2.5 py-1 hover:bg-red-400/10 transition">
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
 
     </main>
+
+    <!-- Edit tip modal -->
+    <dialog id="editTipModal" style="background:#16161f;border:1px solid rgba(255,255,255,.12);border-radius:1rem;padding:1.5rem;width:min(22rem,95vw);color:#fff;">
+      <p style="font-size:1rem;font-weight:600;margin-bottom:1.25rem;">Edit Tip</p>
+      <div style="display:flex;flex-direction:column;gap:.375rem;margin-bottom:1rem;">
+        <label style="font-size:.75rem;color:rgba(255,255,255,.4);">Amount (€)</label>
+        <input id="editTipAmount" type="number" min="0" step="0.01"
+          style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:.625rem;padding:.625rem .875rem;font-size:.875rem;color:#fff;outline:none;width:100%;" />
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.375rem;margin-bottom:1.25rem;">
+        <label style="font-size:.75rem;color:rgba(255,255,255,.4);">Type</label>
+        <select id="editTipType" style="background:#16161f;border:1px solid rgba(255,255,255,.1);border-radius:.625rem;padding:.625rem .875rem;font-size:.875rem;color:#fff;outline:none;width:100%;">
+          <option value="cash">💵 Cash</option>
+          <option value="card">💳 Card</option>
+        </select>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:.5rem;">
+        <button id="editTipCancel" style="background:rgba(255,255,255,.08);border:none;border-radius:.625rem;padding:.5rem 1rem;font-size:.875rem;color:rgba(255,255,255,.7);cursor:pointer;">Cancel</button>
+        <button id="editTipSave" style="background:#fff;border:none;border-radius:.625rem;padding:.5rem 1rem;font-size:.875rem;font-weight:600;color:#000;cursor:pointer;">Save</button>
+      </div>
+    </dialog>
+
+    <!-- Delete tip confirmation modal -->
+    <dialog id="deleteTipModal" style="background:#16161f;border:1px solid rgba(255,255,255,.12);border-radius:1rem;padding:1.5rem;width:min(22rem,95vw);color:#fff;">
+      <p style="font-size:1rem;font-weight:600;margin-bottom:.75rem;">Delete Tip</p>
+      <p style="font-size:.875rem;color:rgba(255,255,255,.5);margin-bottom:1.25rem;">Are you sure you want to delete this tip? This cannot be undone.</p>
+      <div style="display:flex;justify-content:flex-end;gap:.5rem;">
+        <button id="deleteTipCancel" style="background:rgba(255,255,255,.08);border:none;border-radius:.625rem;padding:.5rem 1rem;font-size:.875rem;color:rgba(255,255,255,.7);cursor:pointer;">Cancel</button>
+        <button id="deleteTipConfirm" style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.2);border-radius:.625rem;padding:.5rem 1rem;font-size:.875rem;font-weight:600;color:#f87171;cursor:pointer;">Delete</button>
+      </div>
+    </dialog>
+
+    <div id="toast" style="position:fixed;bottom:1.5rem;right:1.5rem;padding:.75rem 1.25rem;border-radius:.75rem;font-size:.875rem;z-index:9999;opacity:0;transition:opacity .2s;pointer-events:none;"></div>
+
+    <script>
+      const editModal   = document.getElementById('editTipModal')   as HTMLDialogElement;
+      const deleteModal = document.getElementById('deleteTipModal') as HTMLDialogElement;
+      const toast       = document.getElementById('toast')          as HTMLElement;
+
+      let activeRow: HTMLElement | null = null;
+      let deleteTipId = '';
+
+      function showToast(msg: string, ok: boolean) {
+        toast.textContent = msg;
+        toast.style.cssText += ok
+          ? ';background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.25);color:#4ade80;opacity:1;'
+          : ';background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.25);color:#f87171;opacity:1;';
+        setTimeout(() => { toast.style.opacity = '0'; }, 3000);
+      }
+
+      function eur(cents: number) { return `€${(cents / 100).toFixed(2)}`; }
+
+      // Edit/delete button delegation
+      document.getElementById('tipsTableBody')?.addEventListener('click', (e) => {
+        const btn = (e.target as Element).closest('button');
+        if (!btn) return;
+        const row = btn.closest('tr') as HTMLElement;
+
+        if (btn.classList.contains('tip-edit-btn')) {
+          activeRow = row;
+          const amountCents = parseInt(row.dataset.amount ?? '0');
+          (document.getElementById('editTipAmount') as HTMLInputElement).value = (amountCents / 100).toFixed(2);
+          (document.getElementById('editTipType') as HTMLSelectElement).value = row.dataset.type ?? 'cash';
+          editModal.showModal();
+        }
+
+        if (btn.classList.contains('tip-delete-btn')) {
+          deleteTipId = row.dataset.id ?? '';
+          deleteModal.showModal();
+        }
+      });
+
+      document.getElementById('editTipCancel')?.addEventListener('click', () => editModal.close());
+      document.getElementById('deleteTipCancel')?.addEventListener('click', () => deleteModal.close());
+
+      // Save edit
+      document.getElementById('editTipSave')?.addEventListener('click', async () => {
+        if (!activeRow) return;
+        const saveBtn = document.getElementById('editTipSave') as HTMLButtonElement;
+        saveBtn.disabled = true; saveBtn.textContent = 'Saving…';
+
+        const amountEur = parseFloat((document.getElementById('editTipAmount') as HTMLInputElement).value);
+        const type = (document.getElementById('editTipType') as HTMLSelectElement).value;
+        const amountCents = Math.round(amountEur * 100);
+
+        const res = await fetch('/api/admin/tips', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: activeRow.dataset.id, amount_cents: amountCents, type }),
+        });
+
+        if (res.ok) {
+          // Update row in DOM
+          activeRow.dataset.amount = String(amountCents);
+          activeRow.dataset.type = type;
+          const amountCell = activeRow.querySelector('.tip-amount-cell');
+          if (amountCell) amountCell.textContent = eur(amountCents);
+          const badge = activeRow.querySelector('.tip-type-badge') as HTMLElement;
+          if (badge) {
+            badge.textContent = type === 'cash' ? '💵 Cash' : '💳 Card';
+            badge.className = `tip-type-badge inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
+              type === 'cash'
+                ? 'bg-emerald-400/10 text-emerald-400 border border-emerald-400/20'
+                : 'bg-blue-400/10 text-blue-400 border border-blue-400/20'
+            }`;
+          }
+          editModal.close();
+          showToast('Tip updated.', true);
+        } else {
+          const err = await res.json().catch(() => ({}));
+          showToast((err as any).error ?? 'Failed to update tip.', false);
+        }
+        saveBtn.disabled = false; saveBtn.textContent = 'Save';
+      });
+
+      // Confirm delete
+      document.getElementById('deleteTipConfirm')?.addEventListener('click', async () => {
+        const confirmBtn = document.getElementById('deleteTipConfirm') as HTMLButtonElement;
+        confirmBtn.disabled = true; confirmBtn.textContent = 'Deleting…';
+
+        const res = await fetch('/api/admin/tips', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: deleteTipId }),
+        });
+
+        if (res.ok) {
+          document.querySelector(`tr[data-id="${deleteTipId}"]`)?.remove();
+          deleteModal.close();
+          showToast('Tip deleted.', true);
+        } else {
+          const err = await res.json().catch(() => ({}));
+          showToast((err as any).error ?? 'Failed to delete tip.', false);
+          deleteModal.close();
+        }
+        confirmBtn.disabled = false; confirmBtn.textContent = 'Delete';
+      });
+    </script>
   </body>
 </html>
