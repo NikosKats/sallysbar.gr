@@ -512,7 +512,8 @@ function fmtEur(cents: number) {
             <button id="tipCashBtn" style="background:rgba(250,204,21,.08);border:1px solid rgba(250,204,21,.2);border-radius:.75rem;padding:.75rem;font-size:.875rem;font-weight:600;color:#facc15;cursor:pointer;">💵 {isEl ? "Μετρητά" : "Cash"}</button>
             <button id="tipCardBtn" style="background:rgba(99,179,237,.08);border:1px solid rgba(99,179,237,.2);border-radius:.75rem;padding:.75rem;font-size:.875rem;font-weight:600;color:#63b3ed;cursor:pointer;">💳 {isEl ? "Κάρτα" : "Card"}</button>
           </div>
-          <button id="tipNoTipBtn" style="margin-top:.5rem;width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:.75rem;padding:.625rem;font-size:.875rem;color:rgba(255,255,255,.4);cursor:pointer;">❌ {isEl ? "Χωρίς φιλοδώρημα" : "No tip"}</button>
+          <button id="tipNoTipBtn" style="margin-top:.5rem;width:100%;background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.25);border-radius:.75rem;padding:.625rem;font-size:.875rem;font-weight:600;color:#34d399;cursor:pointer;">💰 {isEl ? "Πληρωμή χωρίς φιλοδώρημα" : "Pay — no tip"}</button>
+          <button id="tipCancelBtn" style="margin-top:.375rem;width:100%;background:none;border:none;padding:.5rem;font-size:.8125rem;color:rgba(255,255,255,.25);cursor:pointer;">{isEl ? "Ακύρωση" : "Cancel"}</button>
         </div>
 
         <!-- Tip amount step -->
@@ -729,6 +730,7 @@ function fmtEur(cents: number) {
       document.getElementById('tipNoTipBtn').addEventListener('click', () => {
         doSubmitPayment(0, null);
       });
+      document.getElementById('tipCancelBtn').addEventListener('click', () => payModal.close());
 
       document.getElementById('tipBackBtn').addEventListener('click', () => {
         tipCents = 0;
