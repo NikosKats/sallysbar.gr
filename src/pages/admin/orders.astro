@@ -49,8 +49,29 @@ if (toDate)          query = query.lt("created_at", toDate.toISOString());
 if (status !== "all") query = query.eq("status", status);
 if (table)           query = query.eq("table_number", Number(table));
 
-const { data: rawOrders } = await query;
+const [{ data: rawOrders }, { data: menuItems }] = await Promise.all([
+  query,
+  supabaseAdmin.from("menu_items").select("name_en,name_el,vat_category"),
+]);
 const orders = rawOrders ?? [];
+
+// VAT category lookup (item name → alcoholic | non_alcoholic)
+const vatMap = new Map<string, "alcoholic" | "non_alcoholic">();
+for (const mi of menuItems ?? []) {
+  const cat: "alcoholic" | "non_alcoholic" = mi.vat_category === "alcoholic" ? "alcoholic" : "non_alcoholic";
+  if (mi.name_en) vatMap.set(mi.name_en, cat);
+  if (mi.name_el) vatMap.set(mi.name_el, cat);
+}
+function orderVat(items: any[]): number {
+  let alcGross = 0, stdGross = 0;
+  for (const item of (items ?? [])) {
+    const q = item.qty ?? item.quantity ?? 1;
+    const g = q * (item.price_cents ?? 0);
+    if ((vatMap.get(item.name) ?? "non_alcoholic") === "alcoholic") alcGross += g;
+    else stdGross += g;
+  }
+  return Math.round(alcGross * 0.24 / 1.24) + Math.round(stdGross * 0.13 / 1.13);
+}
 
 // --- Helpers ---
 function fmtEur(cents: number) { return "€" + (cents / 100).toFixed(2); }
@@ -113,31 +134,44 @@ function statusLabel(s: string) {
   return m[s] ?? s;
 }
 
-// Precompute display rows (avoid template literals with colons in JSX)
-const rows = orders.map(o => ({
-  id:        o.id,
-  shortId:   shortId(o.id),
-  table:     o.table_number ?? "—",
-  summary:   itemsSummary(o.items ?? []),
-  note:      o.note ?? "",
-  status:    o.status,
-  statusLbl: statusLabel(o.status),
-  statusCls: statusCls(o.status),
-  total:     fmtEur(o.total_cents ?? 0),
-  time:      fmtTime(o.created_at),
-  cancelled: o.status === "cancelled",
-}));
+// Precompute display rows
+const rows = orders.map(o => {
+  const gross  = o.total_cents ?? 0;
+  const vatAmt = o.status !== "cancelled" ? orderVat(o.items ?? []) : 0;
+  const net    = gross - vatAmt;
+  return {
+    id:        o.id,
+    shortId:   shortId(o.id),
+    table:     o.table_number ?? "—",
+    summary:   itemsSummary(o.items ?? []),
+    note:      o.note ?? "",
+    status:    o.status,
+    statusLbl: statusLabel(o.status),
+    statusCls: statusCls(o.status),
+    gross:     fmtEur(gross),
+    vatAmt:    fmtEur(vatAmt),
+    net:       fmtEur(net),
+    time:      fmtTime(o.created_at),
+    cancelled: o.status === "cancelled",
+  };
+});
 
 // Serialize for CSV export
-const csvData = JSON.stringify(orders.map(o => ({
-  id: shortId(o.id),
-  table: o.table_number,
-  items: itemsSummary(o.items ?? []),
-  status: o.status,
-  total_eur: ((o.total_cents ?? 0) / 100).toFixed(2),
-  note: o.note ?? "",
-  created_at: o.created_at,
-})));
+const csvData = JSON.stringify(orders.map(o => {
+  const gross  = o.total_cents ?? 0;
+  const vatAmt = o.status !== "cancelled" ? orderVat(o.items ?? []) : 0;
+  return {
+    id: shortId(o.id),
+    table: o.table_number,
+    items: itemsSummary(o.items ?? []),
+    status: o.status,
+    gross_eur: (gross / 100).toFixed(2),
+    vat_eur:   (vatAmt / 100).toFixed(2),
+    net_eur:   ((gross - vatAmt) / 100).toFixed(2),
+    note: o.note ?? "",
+    created_at: o.created_at,
+  };
+}));
 
 const periodOptions = [
   { value: "today",      label: isEl ? "Σήμερα"        : "Today" },
@@ -311,7 +345,9 @@ const statusOptions = [
                     <th class="text-left px-4 py-3 text-white/40 font-medium">{isEl ? "Τρ." : "Table"}</th>
                     <th class="text-left px-4 py-3 text-white/40 font-medium">{isEl ? "Είδη" : "Items"}</th>
                     <th class="text-left px-4 py-3 text-white/40 font-medium">{isEl ? "Κατάσταση" : "Status"}</th>
-                    <th class="text-left px-4 py-3 text-white/40 font-medium">{isEl ? "Σύνολο" : "Total"}</th>
+                    <th class="text-left px-4 py-3 text-white/40 font-medium">{isEl ? "Μικτά" : "Gross"}</th>
+                    <th class="text-left px-4 py-3 text-white/40 font-medium">ΦΠΑ / VAT</th>
+                    <th class="text-left px-4 py-3 text-white/40 font-medium">{isEl ? "Καθαρά" : "Net"}</th>
                     <th class="text-left px-4 py-3 text-white/40 font-medium">{isEl ? "Ώρα" : "Time"}</th>
                   </tr>
                 </thead>
@@ -330,7 +366,9 @@ const statusOptions = [
                           {r.statusLbl}
                         </span>
                       </td>
-                      <td class="px-4 py-3 font-semibold text-white">{r.total}</td>
+                      <td class="px-4 py-3 font-semibold text-white">{r.gross}</td>
+                      <td class="px-4 py-3 text-red-400/70 text-xs">{r.cancelled ? "—" : r.vatAmt}</td>
+                      <td class="px-4 py-3 font-medium text-emerald-400">{r.cancelled ? "—" : r.net}</td>
                       <td class="px-4 py-3 text-white/40 text-xs whitespace-nowrap">{r.time}</td>
                     </tr>
                   ))}
@@ -414,10 +452,10 @@ const statusOptions = [
       // --- CSV Export ---
       document.getElementById("csvBtn").addEventListener("click", () => {
         const data = JSON.parse(csvData);
-        const headers = ["ID","Table","Items","Status","Total (€)","Note","Created At"];
+        const headers = ["ID","Table","Items","Status","Gross (€)","VAT (€)","Net (€)","Note","Created At"];
         const rows = data.map(r => [
           r.id, r.table, '"' + r.items.replace(/"/g, '""') + '"',
-          r.status, r.total_eur,
+          r.status, r.gross_eur, r.vat_eur, r.net_eur,
           '"' + (r.note || "").replace(/"/g, '""') + '"',
           r.created_at,
         ]);
