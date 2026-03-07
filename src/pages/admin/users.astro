@@ -159,78 +159,91 @@ function fmtDate(d: string) {
         </div>
       </div>
 
-      <!-- User list -->
-      <div>
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-xs font-semibold uppercase tracking-widest text-white/30">
-            {t.admin.allUsers} <span class="ml-2 text-white/20">({users.length})</span>
-          </h2>
-        </div>
-        <div class="rounded-2xl border border-white/10 overflow-hidden">
-          <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-              <thead>
-                <tr class="border-b border-white/10 bg-white/5">
-                  <th class="text-left px-4 py-3 text-white/40 font-medium">{t.admin.name}</th>
-                  <th class="text-left px-4 py-3 text-white/40 font-medium">{t.admin.email}</th>
-                  <th class="text-left px-4 py-3 text-white/40 font-medium">{t.admin.role}</th>
-                  <th class="text-left px-4 py-3 text-white/40 font-medium">{t.admin.provider}</th>
-                  <th class="text-left px-4 py-3 text-white/40 font-medium">Status</th>
-                  <th class="text-left px-4 py-3 text-white/40 font-medium">{t.admin.joined}</th>
-                  <th class="text-left px-4 py-3 text-white/40 font-medium">{t.admin.actions}</th>
-                </tr>
-              </thead>
-              <tbody id="userTable">
-                {users.map((u) => (
-                  <tr class="border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition"
-                    data-id={u.id}
-                    data-name={u.name}
-                    data-email={u.email}
-                    data-role={u.role}>
-                    <td class="px-4 py-3 font-medium text-white" data-col="name">{u.name || "—"}</td>
-                    <td class="px-4 py-3 text-white/60" data-col="email">{u.email}</td>
-                    <td class="px-4 py-3" data-col="role">
-                      <span class={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold ${roleBadge(u.role)}`}>
-                        {u.role}
-                      </span>
-                    </td>
-                    <td class="px-4 py-3 text-white/40 text-xs">{u.provider}</td>
-                    <td class="px-4 py-3">
-                      {u.status === "invite_pending" ? (
-                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-400/10 text-amber-400 border border-amber-400/20">
-                          <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
-                          Invite Pending
-                        </span>
-                      ) : u.status === "active" ? (
-                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-400/10 text-green-400 border border-green-400/20">
-                          <span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>
-                          Active
-                        </span>
-                      ) : (
-                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-white/5 text-white/30 border border-white/10">
-                          <span class="w-1.5 h-1.5 rounded-full bg-white/30"></span>
-                          Unconfirmed
-                        </span>
-                      )}
-                    </td>
-                    <td class="px-4 py-3 text-white/40 whitespace-nowrap">{fmtDate(u.joined)}</td>
-                    <td class="px-4 py-3">
-                      <div class="flex items-center gap-2">
-                        <button class="edit-btn rounded-lg bg-white/8 hover:bg-white/15 border border-white/10 px-3 py-1 text-xs text-white/70 transition">
-                          {t.admin.editUser}
-                        </button>
-                        <button class="delete-btn rounded-lg bg-red-400/10 hover:bg-red-400/20 border border-red-400/20 px-3 py-1 text-xs text-red-400 transition">
-                          {t.admin.delete}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      <!-- User sections -->
+      {(["admin", "employee", "customer"] as const).map(roleGroup => {
+        const group = users.filter(u => u.role === roleGroup);
+        if (!group.length) return null;
+        const sectionColors: Record<string, string> = {
+          admin:    "text-amber-400 border-amber-400/20",
+          employee: "text-sky-400 border-sky-400/20",
+          customer: "text-white/40 border-white/10",
+        };
+        const sectionLabel: Record<string, string> = {
+          admin:    lang === "el" ? "Διαχειριστές" : "Admins",
+          employee: lang === "el" ? "Προσωπικό" : "Employees",
+          customer: lang === "el" ? "Πελάτες" : "Customers",
+        };
+        return (
+          <div>
+            <div class="flex items-center gap-3 mb-3">
+              <h2 class={`text-xs font-semibold uppercase tracking-widest ${sectionColors[roleGroup].split(" ")[0]}`}>
+                {sectionLabel[roleGroup]}
+              </h2>
+              <span class={`text-xs px-2 py-0.5 rounded-full border ${sectionColors[roleGroup]} opacity-60`}>
+                {group.length}
+              </span>
+            </div>
+            <div class="rounded-2xl border border-white/10 overflow-hidden mb-6">
+              <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                  <thead>
+                    <tr class="border-b border-white/10 bg-white/5">
+                      <th class="text-left px-4 py-3 text-white/40 font-medium">{t.admin.name}</th>
+                      <th class="text-left px-4 py-3 text-white/40 font-medium">{t.admin.email}</th>
+                      <th class="text-left px-4 py-3 text-white/40 font-medium">{t.admin.provider}</th>
+                      <th class="text-left px-4 py-3 text-white/40 font-medium">Status</th>
+                      <th class="text-left px-4 py-3 text-white/40 font-medium">{t.admin.joined}</th>
+                      <th class="text-left px-4 py-3 text-white/40 font-medium">{t.admin.actions}</th>
+                    </tr>
+                  </thead>
+                  <tbody class="user-table-body">
+                    {group.map((u) => (
+                      <tr class="border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition"
+                        data-id={u.id}
+                        data-name={u.name}
+                        data-email={u.email}
+                        data-role={u.role}>
+                        <td class="px-4 py-3 font-medium text-white" data-col="name">{u.name || "—"}</td>
+                        <td class="px-4 py-3 text-white/60" data-col="email">{u.email}</td>
+                        <td class="px-4 py-3 text-white/40 text-xs">{u.provider}</td>
+                        <td class="px-4 py-3">
+                          {u.status === "invite_pending" ? (
+                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-400/10 text-amber-400 border border-amber-400/20">
+                              <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                              Invite Pending
+                            </span>
+                          ) : u.status === "active" ? (
+                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-400/10 text-green-400 border border-green-400/20">
+                              <span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>
+                              Active
+                            </span>
+                          ) : (
+                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-white/5 text-white/30 border border-white/10">
+                              <span class="w-1.5 h-1.5 rounded-full bg-white/30"></span>
+                              Unconfirmed
+                            </span>
+                          )}
+                        </td>
+                        <td class="px-4 py-3 text-white/40 whitespace-nowrap">{fmtDate(u.joined)}</td>
+                        <td class="px-4 py-3">
+                          <div class="flex items-center gap-2">
+                            <button class="edit-btn rounded-lg bg-white/8 hover:bg-white/15 border border-white/10 px-3 py-1 text-xs text-white/70 transition">
+                              {t.admin.editUser}
+                            </button>
+                            <button class="delete-btn rounded-lg bg-red-400/10 hover:bg-red-400/20 border border-red-400/20 px-3 py-1 text-xs text-red-400 transition">
+                              {t.admin.delete}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+        );
+      })}
     </main>
 
     <!-- Edit modal -->
@@ -293,8 +306,9 @@ function fmtDate(d: string) {
         setTimeout(() => toast.classList.remove("show"), 3000);
       }
 
-      // Wire edit buttons
-      document.getElementById("userTable").addEventListener("click", (e) => {
+      // Wire edit/delete buttons across all role sections
+      document.addEventListener("click", (e) => {
+        if (!e.target.closest(".user-table-body")) return;
         const btn = e.target.closest("button");
         if (!btn) return;
         const row = btn.closest("tr");
@@ -368,7 +382,8 @@ function fmtDate(d: string) {
         });
 
         if (res.ok) {
-          document.querySelector(`tr[data-id="${deleteId}"]`)?.remove();
+          const deletedRow = document.querySelector(`tr[data-id="${deleteId}"]`);
+          deletedRow?.remove();
           deleteModal.close();
           showToast("User deleted.", "ok");
         } else {

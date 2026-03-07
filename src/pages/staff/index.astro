@@ -123,9 +123,7 @@ const sessions: SessionData[] = (rawSessions ?? []).map(session => {
     }
   }
 
-  const itemsFullyCovered = deliveredRounds.length > 0 && availableItems.length === 0;
-  const amountFullyCovered = awaitingCents > 0 && alreadyCollected >= awaitingCents;
-  const fullyPaidViaItems = itemsFullyCovered || amountFullyCovered;
+  const fullyPaidViaItems = deliveredRounds.length > 0 && availableItems.length === 0;
   return { ...session, rounds, deliveredRounds, inProgressRounds, awaitingCents, totalCents, alreadyCollected, availableItems, fullyPaidViaItems };
 });
 
@@ -519,7 +517,7 @@ function fmtEur(cents: number) {
           <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.375rem;margin-bottom:.375rem;">
             {[50,100,200,500,1000,2000,5000,10000].map(add => (
               <button class="tip-add" data-add={add} style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:.625rem;padding:.5rem .25rem;font-size:.75rem;font-weight:600;color:#fff;cursor:pointer;">
-                +€{add >= 100 ? (add/100).toFixed(0) : "0."+(add/10).toString().padStart(2,"0")}
+                +€{add >= 100 ? (add/100).toFixed(0) : (add/100).toFixed(2)}
               </button>
             ))}
           </div>
