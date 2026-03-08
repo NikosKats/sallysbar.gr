@@ -222,16 +222,18 @@ const statusOptions = [
     <div class="sticky top-20 z-40 border-b border-amber-400/20 bg-[#0b0b10]/95 backdrop-blur">
       <div class="mx-auto max-w-7xl px-4">
         <nav class="flex items-center gap-1 py-2 overflow-x-auto text-sm">
-          <a href={withLangPrefix(lang, "/admin")} class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.overview}</a>
-          <a href={withLangPrefix(lang, "/admin/analytics")} class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.analytics}</a>
-          <a href={withLangPrefix(lang, "/admin/calendar")} class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.calendar}</a>
+          <a href={withLangPrefix(lang, "/admin")}             class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.overview}</a>
+          <a href={withLangPrefix(lang, "/admin/analytics")}   class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.analytics}</a>
+          <a href={withLangPrefix(lang, "/admin/calendar")}    class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.calendar}</a>
+          <span class="shrink-0 h-4 w-px bg-white/15 mx-1.5"></span>
+          <a href={withLangPrefix(lang, "/admin/reservations")} class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.reservations}</a>
+          <a href={withLangPrefix(lang, "/admin/events")}       class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.events}</a>
+          <a href={withLangPrefix(lang, "/admin/loyalty")}      class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.loyalty}</a>
+          <a href={withLangPrefix(lang, "/admin/users")}        class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.users}</a>
+          <span class="shrink-0 h-4 w-px bg-white/15 mx-1.5"></span>
           <span class="px-3 py-1.5 rounded-lg bg-amber-400/15 border border-amber-400/20 text-amber-400 font-medium whitespace-nowrap">{isEl ? "Παραγγελίες" : "Orders"}</span>
           <a href={withLangPrefix(lang, "/admin/tips")}         class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.tips}</a>
-          <a href={withLangPrefix(lang, "/admin/reservations")} class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.reservations}</a>
-          <a href={withLangPrefix(lang, "/admin/loyalty")}      class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.loyalty}</a>
-          <a href={withLangPrefix(lang, "/admin/events")}       class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.events}</a>
-          <a href={withLangPrefix(lang, "/admin/users")}        class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.users}</a>
-          <a href={withLangPrefix(lang, "/admin/menu")} class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.editMenu}</a>
+          <a href={withLangPrefix(lang, "/admin/menu")}         class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.editMenu}</a>
         </nav>
       </div>
     </div>
