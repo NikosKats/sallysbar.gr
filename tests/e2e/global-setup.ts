@@ -117,9 +117,10 @@ async function globalSetup(_config: FullConfig) {
   const credsMissing = !serviceRoleKey || !adminEmail || !adminPassword || !staffEmail || !staffPassword;
   if (credsMissing) {
     const adminJson = path.join(authDir, "admin.json");
+    const adminAuthJson = path.join(authDir, "admin-auth.json");
     const adminLogoutJson = path.join(authDir, "admin-logout.json");
     const staffJson = path.join(authDir, "staff.json");
-    if (fs.existsSync(adminJson) && fs.existsSync(adminLogoutJson) && fs.existsSync(staffJson)) {
+    if (fs.existsSync(adminJson) && fs.existsSync(adminAuthJson) && fs.existsSync(adminLogoutJson) && fs.existsSync(staffJson)) {
       console.log("\n[global-setup] E2E credentials not set — reusing cached session files.\n");
       return;
     }

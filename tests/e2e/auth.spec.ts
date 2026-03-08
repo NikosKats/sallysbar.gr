@@ -63,7 +63,7 @@ test.describe("Login flow — wrong credentials", () => {
 // These run in the "admin" project which has storageState already set.
 // We add them here as a separate describe that can also be run standalone.
 test.describe("Admin access control", () => {
-  test.use({ storageState: "tests/e2e/.auth/admin.json" });
+  test.use({ storageState: "tests/e2e/.auth/admin-auth.json" });
 
   test("admin can access /admin", async ({ page }) => {
     await page.goto("/admin");
