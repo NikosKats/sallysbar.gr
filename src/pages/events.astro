@@ -4,43 +4,326 @@ import Header from "../components/Header.astro";
 import Footer from "../components/Footer.astro";
 import StickyCta from "../components/StickyCta.astro";
 import { site } from "../data/site";
+import { supabaseAdmin } from "../lib/supabase";
+import { getLangFromPath, dict, withLangPrefix } from "../i18n";
+
+const url  = new URL(Astro.request.url);
+const lang = getLangFromPath(url.pathname);
+const t    = dict[lang];
+const te   = t.events;
+const isEl = lang === "el";
+
+const todayIso = new Date().toISOString().slice(0, 10);
+const { data: events } = await supabaseAdmin
+  .from("events")
+  .select("id, title, title_el, description, description_el, event_date, event_time, capacity, price")
+  .eq("is_published", true)
+  .gte("event_date", todayIso)
+  .order("event_date", { ascending: true });
+
+const user         = Astro.locals.user;
+const prefillName  = user?.user_metadata?.full_name ?? "";
+const prefillEmail = user?.email ?? "";
+
+function fmtDate(d: string) {
+  return new Date(d + "T00:00:00").toLocaleDateString(isEl ? "el-GR" : "en-GB", {
+    weekday: "long", day: "numeric", month: "long",
+  });
+}
+function fmtDay(d: string) {
+  return new Date(d + "T00:00:00").toLocaleDateString(isEl ? "el-GR" : "en-GB", { day: "numeric" });
+}
+function fmtMon(d: string) {
+  return new Date(d + "T00:00:00").toLocaleDateString(isEl ? "el-GR" : "en-GB", { month: "short" });
+}
+function fmtTime(t: string | null) {
+  if (!t) return "";
+  const [h, m] = t.split(":");
+  return `${h}:${m}`;
+}
 ---
 
-<html lang="en">
+<html lang={lang}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Events — Sally's Bar</title>
-    <meta name="robots" content="noindex" />
+    <title>{te.pageTitle} — Sally's Bar</title>
+    <meta name="description" content={te.subtitle} />
     <link rel="icon" href="/favicon/favicon.ico" />
+    <style>
+      *, *::before, *::after { box-sizing: border-box; }
+
+      .events-hero {
+        padding: 7rem 1.25rem 3rem;
+        max-width: 720px;
+        margin: 0 auto;
+        text-align: center;
+      }
+      .events-label {
+        font-size: .7rem;
+        font-weight: 600;
+        letter-spacing: .14em;
+        text-transform: uppercase;
+        color: #f59e0b;
+        margin-bottom: .75rem;
+      }
+      .events-title {
+        font-size: clamp(1.8rem, 5vw, 2.8rem);
+        font-weight: 700;
+        color: #fff;
+        line-height: 1.15;
+        margin-bottom: .75rem;
+      }
+      .events-sub {
+        font-size: .9rem;
+        color: rgba(255,255,255,.45);
+        line-height: 1.7;
+      }
+
+      .events-grid {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 0 1.25rem 5rem;
+        display: grid;
+        gap: 1.5rem;
+        grid-template-columns: 1fr;
+      }
+      @media (min-width: 640px) {
+        .events-grid { grid-template-columns: repeat(2, 1fr); }
+      }
+
+      /* Event card */
+      .event-card {
+        background: rgba(255,255,255,.03);
+        border: 1px solid rgba(255,255,255,.08);
+        border-radius: 1.25rem;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        transition: border-color .2s;
+      }
+      .event-card:hover { border-color: rgba(245,158,11,.25); }
+      .card-top { height: 3px; background: linear-gradient(90deg, #d97706, #f59e0b, #d97706); }
+      .card-body { padding: 1.5rem; flex: 1; display: flex; flex-direction: column; gap: 1rem; }
+
+      .card-date-row { display: flex; align-items: center; gap: .75rem; }
+      .date-badge {
+        min-width: 52px;
+        text-align: center;
+        background: rgba(245,158,11,.1);
+        border: 1px solid rgba(245,158,11,.2);
+        border-radius: .65rem;
+        padding: .35rem .5rem;
+      }
+      .date-day   { display: block; font-size: 1.4rem; font-weight: 700; color: #f59e0b; line-height: 1; }
+      .date-mon   { display: block; font-size: .65rem; text-transform: uppercase; letter-spacing: .08em; color: rgba(245,158,11,.6); }
+      .card-time  { font-size: .8rem; color: rgba(255,255,255,.4); }
+
+      .card-title { font-size: 1.05rem; font-weight: 600; color: #fff; line-height: 1.3; }
+      .card-desc  { font-size: .85rem; color: rgba(255,255,255,.45); line-height: 1.6; }
+
+      .card-meta  { display: flex; gap: .5rem; flex-wrap: wrap; }
+      .meta-chip  { font-size: .7rem; font-weight: 600; letter-spacing: .06em; padding: .25rem .6rem; border-radius: 999px; }
+      .chip-price { background: rgba(74,222,128,.1); color: #4ade80; border: 1px solid rgba(74,222,128,.2); }
+      .chip-free  { background: rgba(74,222,128,.1); color: #4ade80; border: 1px solid rgba(74,222,128,.2); }
+      .chip-cap   { background: rgba(255,255,255,.06); color: rgba(255,255,255,.4); border: 1px solid rgba(255,255,255,.1); }
+
+      .rsvp-btn {
+        width: 100%;
+        padding: .75rem 1rem;
+        border-radius: .65rem;
+        background: #f59e0b;
+        color: #000;
+        font-size: .85rem;
+        font-weight: 700;
+        border: none;
+        cursor: pointer;
+        transition: background .15s;
+        margin-top: auto;
+      }
+      .rsvp-btn:hover { background: #fbbf24; }
+
+      /* RSVP form (hidden by default) */
+      .rsvp-form-wrap {
+        display: none;
+        border-top: 1px solid rgba(255,255,255,.07);
+        padding: 1.25rem 1.5rem 1.5rem;
+        background: rgba(245,158,11,.02);
+      }
+      .rsvp-form-wrap.open { display: block; }
+      .rsvp-form-title { font-size: .8rem; font-weight: 600; color: rgba(255,255,255,.5); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 1rem; }
+
+      .rsvp-field { display: flex; flex-direction: column; gap: .3rem; margin-bottom: .75rem; }
+      .rsvp-field label { font-size: .68rem; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: rgba(255,255,255,.3); }
+      .rsvp-field input, .rsvp-field select {
+        background: rgba(255,255,255,.05);
+        border: 1px solid rgba(255,255,255,.09);
+        border-radius: .55rem;
+        padding: .6rem .75rem;
+        font-size: .85rem;
+        color: #fff;
+        outline: none;
+        width: 100%;
+        font-family: inherit;
+        -webkit-appearance: none;
+        appearance: none;
+        transition: border-color .15s;
+      }
+      .rsvp-field input:focus, .rsvp-field select:focus { border-color: rgba(245,158,11,.5); }
+      .rsvp-field input::placeholder { color: rgba(255,255,255,.18); }
+      .rsvp-field select option { background: #13131c; }
+
+      .rsvp-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+
+      .rsvp-submit {
+        width: 100%;
+        padding: .65rem 1rem;
+        border-radius: .55rem;
+        background: #f59e0b;
+        color: #000;
+        font-size: .85rem;
+        font-weight: 700;
+        border: none;
+        cursor: pointer;
+        transition: background .15s;
+        margin-top: .25rem;
+      }
+      .rsvp-submit:hover:not(:disabled) { background: #fbbf24; }
+      .rsvp-submit:disabled { opacity: .4; cursor: not-allowed; }
+
+      .rsvp-alert {
+        display: none;
+        font-size: .8rem;
+        padding: .6rem .75rem;
+        border-radius: .55rem;
+        margin-bottom: .75rem;
+        line-height: 1.5;
+      }
+      .rsvp-alert.error { display: block; background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.2); color: #f87171; }
+      .rsvp-alert.success { display: block; background: rgba(74,222,128,.08); border: 1px solid rgba(74,222,128,.2); color: #4ade80; }
+
+      .empty-state {
+        max-width: 480px;
+        margin: 0 auto;
+        padding: 3rem 1.25rem 5rem;
+        text-align: center;
+      }
+      .empty-state p   { font-size: .9rem; color: rgba(255,255,255,.4); margin-bottom: 1.5rem; }
+      .social-btns     { display: flex; flex-direction: column; gap: .75rem; align-items: center; }
+      @media (min-width: 480px) { .social-btns { flex-direction: row; justify-content: center; } }
+      .social-btn {
+        padding: .65rem 1.25rem;
+        border-radius: .75rem;
+        font-size: .85rem;
+        font-weight: 600;
+        transition: opacity .15s;
+        text-decoration: none;
+      }
+      .social-btn:hover { opacity: .85; }
+      .social-btn-insta { background: #fff; color: #000; }
+      .social-btn-fb    { border: 1px solid rgba(255,255,255,.2); color: #fff; }
+    </style>
   </head>
-  <body class="min-h-screen bg-[#0b0b10] text-white font-body">
+  <body class="bg-[#0b0b10] text-white font-body">
     <Header />
 
-    <main class="mx-auto max-w-2xl px-6 py-32 text-center">
-      <div class="text-xs uppercase tracking-widest text-white/40 mb-4">Events</div>
-      <h1 class="text-4xl font-semibold mb-4">Events at Sally's</h1>
-      <p class="text-white/60 mb-8">
-        Events calendar coming soon. Follow us on Instagram for the latest updates.
-      </p>
+    <!-- Hero -->
+    <div class="events-hero">
+      <p class="events-label">{te.section}</p>
+      <h1 class="events-title">{te.pageTitle}</h1>
+      <p class="events-sub">{te.subtitle}</p>
+    </div>
 
-      <div class="flex flex-col sm:flex-row gap-3 justify-center">
-        <a
-          href={site.socials.instagram}
-          target="_blank"
-          class="rounded-2xl bg-white px-6 py-3 font-semibold text-black hover:bg-white/90 transition"
-        >
-          📸 Follow on Instagram
-        </a>
-        <a
-          href={site.socials.facebook}
-          target="_blank"
-          class="rounded-2xl border border-white/20 px-6 py-3 font-semibold hover:bg-white/10 transition"
-        >
-          👍 Follow on Facebook
-        </a>
+    {events && events.length > 0 ? (
+      <div class="events-grid">
+        {events.map((ev) => {
+          const title = (isEl && ev.title_el) ? ev.title_el : ev.title;
+          const desc  = (isEl && ev.description_el) ? ev.description_el : ev.description;
+          return (
+            <div class="event-card" data-id={ev.id}>
+              <div class="card-top"></div>
+              <div class="card-body">
+                <div class="card-date-row">
+                  <div class="date-badge">
+                    <span class="date-day">{fmtDay(ev.event_date)}</span>
+                    <span class="date-mon">{fmtMon(ev.event_date)}</span>
+                  </div>
+                  <div>
+                    <p class="text-xs text-white/60">{fmtDate(ev.event_date)}</p>
+                    {ev.event_time && <p class="card-time">{fmtTime(ev.event_time)}</p>}
+                  </div>
+                </div>
+
+                <h2 class="card-title">{title}</h2>
+                {desc && <p class="card-desc">{desc}</p>}
+
+                <div class="card-meta">
+                  {ev.price == null || ev.price === 0
+                    ? <span class="meta-chip chip-free">{te.free}</span>
+                    : <span class="meta-chip chip-price">€{Number(ev.price).toFixed(0)}</span>
+                  }
+                  {ev.capacity
+                    ? <span class="meta-chip chip-cap">{ev.capacity} {te.spotsLeft}</span>
+                    : <span class="meta-chip chip-cap">{te.unlimited}</span>
+                  }
+                </div>
+
+                <button class="rsvp-btn" data-event-id={ev.id} type="button">
+                  {te.rsvpBtn}
+                </button>
+              </div>
+
+              <!-- RSVP inline form -->
+              <div class="rsvp-form-wrap" id={`rsvp-${ev.id}`}>
+                <p class="rsvp-form-title">{te.rsvpTitle}</p>
+                <div class="rsvp-alert" id={`alert-${ev.id}`}></div>
+
+                <form class="rsvp-form" data-event-id={ev.id}>
+                  <div class="rsvp-row2">
+                    <div class="rsvp-field">
+                      <label>{te.rsvpName} *</label>
+                      <input type="text" name="name" required placeholder="Maria…" value={prefillName} />
+                    </div>
+                    <div class="rsvp-field">
+                      <label>{te.rsvpEmail} *</label>
+                      <input type="email" name="email" required placeholder="you@…" value={prefillEmail} />
+                    </div>
+                  </div>
+                  <div class="rsvp-field">
+                    <label>{te.rsvpGuests}</label>
+                    <select name="guests">
+                      {[1,2,3,4,5,6,7,8].map(n => <option value={n}>{n}</option>)}
+                    </select>
+                  </div>
+                  <button type="submit" class="rsvp-submit">{te.rsvpSubmit}</button>
+                </form>
+
+                {!user && (
+                  <p class="mt-3 text-center text-xs text-white/25">
+                    <a href={withLangPrefix(lang, "/login") + `?next=/events`} class="text-amber-400/60 hover:text-amber-400 underline underline-offset-2 transition">
+                      {te.signInPrompt}
+                    </a>
+                  </p>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
-    </main>
+    ) : (
+      <div class="empty-state">
+        <p>{te.noUpcoming}</p>
+        <p class="text-sm text-white/30 mb-6">{te.followUs}</p>
+        <div class="social-btns">
+          <a href={site.socials.instagram} target="_blank" rel="noopener" class="social-btn social-btn-insta">
+            📸 Instagram
+          </a>
+          <a href={site.socials.facebook} target="_blank" rel="noopener" class="social-btn social-btn-fb">
+            👍 Facebook
+          </a>
+        </div>
+      </div>
+    )}
 
     <Footer />
     <StickyCta
@@ -52,5 +335,69 @@ import { site } from "../data/site";
       googleUrl={site.socials.google}
       isOpenNow={site.season.isOpenNow}
     />
+
+    <script define:vars={{
+      tSubmit: te.rsvpSubmit,
+      tSubmitting: te.rsvpSubmitting,
+      tSuccess: te.rsvpSuccess,
+      tSuccessMsg: te.rsvpSuccessMsg,
+      tError: te.rsvpError,
+      tAlready: te.rsvpAlready,
+    }}>
+      // Toggle RSVP form
+      document.querySelectorAll(".rsvp-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const id   = btn.dataset.eventId;
+          const wrap = document.getElementById(`rsvp-${id}`);
+          wrap.classList.toggle("open");
+          if (wrap.classList.contains("open")) {
+            wrap.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          }
+        });
+      });
+
+      // RSVP form submit
+      document.querySelectorAll(".rsvp-form").forEach(form => {
+        form.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const eventId = form.dataset.eventId;
+          const alertEl = document.getElementById(`alert-${eventId}`);
+          const submitBtn = form.querySelector("button[type=submit]");
+
+          const name   = form.querySelector("[name=name]").value.trim();
+          const email  = form.querySelector("[name=email]").value.trim();
+          const guests = form.querySelector("[name=guests]").value;
+
+          alertEl.className = "rsvp-alert";
+          submitBtn.disabled = true;
+          submitBtn.textContent = tSubmitting;
+
+          try {
+            const res = await fetch("/api/events/rsvp", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ event_id: eventId, name, email, guests: Number(guests) }),
+            });
+
+            if (res.ok) {
+              form.style.display = "none";
+              alertEl.textContent = `${tSuccess} ${tSuccessMsg}`;
+              alertEl.className = "rsvp-alert success";
+            } else {
+              const { error } = await res.json().catch(() => ({}));
+              alertEl.textContent = error === "already_registered" ? tAlready : tError;
+              alertEl.className = "rsvp-alert error";
+              submitBtn.disabled = false;
+              submitBtn.textContent = tSubmit;
+            }
+          } catch {
+            alertEl.textContent = tError;
+            alertEl.className = "rsvp-alert error";
+            submitBtn.disabled = false;
+            submitBtn.textContent = tSubmit;
+          }
+        });
+      });
+    </script>
   </body>
 </html>

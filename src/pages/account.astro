@@ -1,14 +1,16 @@
 ---
 import "../styles/global.css";
 import Header from "../components/Header.astro";
-import { createSupabaseServerClient } from "../lib/supabase";
+import { createSupabaseServerClient, supabaseAdmin } from "../lib/supabase";
 import { withLangPrefix, dict } from "../i18n";
 
 const user = Astro.locals.user;
 const lang = Astro.locals.lang ?? "en";
 if (!user) return Astro.redirect(withLangPrefix(lang, "/login") + "?next=/account");
 
-const t = dict[lang];
+const t    = dict[lang];
+const ta   = t.account;
+const isEl = lang === "el";
 
 const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
 const { data: profile } = await supabase
@@ -19,15 +21,80 @@ const { data: profile } = await supabase
 
 const displayName = profile?.full_name ?? user.user_metadata?.full_name ?? user.email?.split("@")[0] ?? "Guest";
 const memberSince = profile?.created_at
-  ? new Date(profile.created_at).toLocaleDateString(lang === "el" ? "el-GR" : "en-GB", { day: "numeric", month: "long", year: "numeric" })
+  ? new Date(profile.created_at).toLocaleDateString(isEl ? "el-GR" : "en-GB", { day: "numeric", month: "long", year: "numeric" })
   : "—";
+
+// Fetch upcoming reservations (today and future)
+const todayIso = new Date().toISOString().slice(0, 10);
+const { data: reservations } = await supabaseAdmin
+  .from("reservations")
+  .select("id, date, time, party_size, status, notes")
+  .eq("user_id", user.id)
+  .gte("date", todayIso)
+  .order("date", { ascending: true })
+  .order("time", { ascending: true })
+  .limit(10);
+
+// Fetch upcoming event RSVPs
+const { data: eventRsvps } = await supabaseAdmin
+  .from("event_rsvps")
+  .select("id, guests, events(id, title, title_el, event_date, event_time)")
+  .eq("user_id", user.id)
+  .eq("status", "confirmed")
+  .order("created_at", { ascending: false })
+  .limit(10);
+
+const upcomingRsvps = (eventRsvps ?? []).filter(r => {
+  const ev = r.events as any;
+  return ev && ev.event_date >= todayIso;
+}).sort((a, b) => {
+  const da = (a.events as any)?.event_date ?? "";
+  const db = (b.events as any)?.event_date ?? "";
+  return da < db ? -1 : 1;
+});
+
+// Fetch loyalty points balance and recent history
+const { data: loyaltyEvents } = await supabaseAdmin
+  .from("loyalty_events")
+  .select("id, points, reason, created_at")
+  .eq("user_id", user.id)
+  .order("created_at", { ascending: false })
+  .limit(20);
+
+const loyaltyBalance = (loyaltyEvents ?? []).reduce((s, e) => s + e.points, 0);
+
+// Tier logic
+const TIERS = [
+  { key: "Bronze", label: ta.tierBronze, min: 0,   nextAt: 100,  color: "#cd7f32", bg: "rgba(205,127,50,.12)", border: "rgba(205,127,50,.3)" },
+  { key: "Silver", label: ta.tierSilver, min: 100,  nextAt: 250,  color: "#94a3b8", bg: "rgba(148,163,184,.12)", border: "rgba(148,163,184,.3)" },
+  { key: "Gold",   label: ta.tierGold,   min: 250,  nextAt: null, color: "#f59e0b", bg: "rgba(245,158,11,.12)", border: "rgba(245,158,11,.3)" },
+];
+const tier = [...TIERS].reverse().find(t => loyaltyBalance >= t.min) ?? TIERS[0];
+const tierProgress = tier.nextAt
+  ? Math.min(100, Math.round(((loyaltyBalance - tier.min) / (tier.nextAt - tier.min)) * 100))
+  : 100;
+const ptsToNext = tier.nextAt ? tier.nextAt - loyaltyBalance : 0;
+
+function fmtDate(d: string) {
+  return new Date(d + "T00:00:00").toLocaleDateString(isEl ? "el-GR" : "en-GB", {
+    weekday: "short", day: "numeric", month: "short",
+  });
+}
+
+function statusColor(s: string) {
+  return s === "confirmed" ? "#4ade80" : s === "cancelled" ? "#f87171" : "#fbbf24";
+}
+
+function statusLabel(s: string) {
+  return (ta as any)["status" + s.charAt(0).toUpperCase() + s.slice(1)] ?? s;
+}
 ---
 
 <html lang={lang}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{t.account.title} — Sally's Bar</title>
+    <title>{ta.title} — Sally's Bar</title>
     <meta name="robots" content="noindex,nofollow" />
   </head>
   <body class="min-h-screen bg-[#0b0b10] text-white">
@@ -38,61 +105,231 @@ const memberSince = profile?.created_at
       <!-- Welcome -->
       <div>
         <h1 class="text-2xl font-bold text-white">Hi, {displayName}</h1>
-        <p class="mt-1 text-sm text-white/40">{t.account.subtitle}</p>
+        <p class="mt-1 text-sm text-white/40">{ta.subtitle}</p>
       </div>
 
       <!-- Profile card -->
       <div class="rounded-2xl border border-white/10 bg-white/5 p-6 space-y-4">
-        <h2 class="text-sm font-semibold text-white/50 uppercase tracking-widest">{t.account.profileSection}</h2>
+        <h2 class="text-sm font-semibold text-white/50 uppercase tracking-widest">{ta.profileSection}</h2>
         <div class="grid sm:grid-cols-2 gap-4">
           <div>
-            <p class="text-xs text-white/30 mb-1">{t.account.name}</p>
+            <p class="text-xs text-white/30 mb-1">{ta.name}</p>
             <p class="text-sm text-white font-medium">{displayName}</p>
           </div>
           <div>
-            <p class="text-xs text-white/30 mb-1">{t.account.email}</p>
+            <p class="text-xs text-white/30 mb-1">{ta.email}</p>
             <p class="text-sm text-white font-medium">{user.email}</p>
           </div>
           <div>
-            <p class="text-xs text-white/30 mb-1">{t.account.memberSince}</p>
+            <p class="text-xs text-white/30 mb-1">{ta.memberSince}</p>
             <p class="text-sm text-white font-medium">{memberSince}</p>
           </div>
           <div>
-            <p class="text-xs text-white/30 mb-1">{t.account.accountType}</p>
+            <p class="text-xs text-white/30 mb-1">{ta.accountType}</p>
             <p class="text-sm text-white font-medium capitalize">{profile?.role ?? "customer"}</p>
           </div>
         </div>
         <div class="pt-2 border-t border-white/10">
           <a href="/forgot-password" class="text-sm text-white/50 hover:text-white transition underline underline-offset-2">
-            {t.account.changePassword}
+            {ta.changePassword}
           </a>
         </div>
       </div>
 
-      <!-- Reservations placeholder -->
-      <div class="rounded-2xl border border-white/10 bg-white/5 p-6">
-        <div class="flex items-start justify-between">
-          <div>
-            <h2 class="text-sm font-semibold text-white/50 uppercase tracking-widest">{t.account.reservationsSection}</h2>
-            <p class="mt-3 text-sm text-white/40">{t.account.reservationsSoon}</p>
-            <p class="mt-1 text-sm text-white/30">{t.account.reservationsCall} <a href="tel:+302671069000" class="text-white/60 hover:text-white underline underline-offset-2">+30 26710 69000</a></p>
+      <!-- Loyalty Points -->
+      <div class="rounded-2xl border bg-white/5 p-6 space-y-4" style={`border-color:${tier.border}`}>
+        <!-- Header row: section label + balance -->
+        <div class="flex items-center justify-between gap-3">
+          <h2 class="text-sm font-semibold text-white/50 uppercase tracking-widest">{ta.loyaltySection}</h2>
+          <div class="flex items-baseline gap-1.5">
+            <span class="text-2xl font-bold" style={`color:${tier.color}`}>{loyaltyBalance}</span>
+            <span class="text-xs text-white/40">{ta.loyaltyPoints}</span>
           </div>
-          <span class="text-xs bg-white/10 text-white/40 px-2.5 py-1 rounded-full">{t.account.soon}</span>
         </div>
+
+        <!-- Tier badge + progress -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between">
+            <span
+              class="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full"
+              style={`background:${tier.bg};color:${tier.color};border:1px solid ${tier.border}`}
+            >
+              {tier.key === "Bronze" && "🥉"}
+              {tier.key === "Silver" && "🥈"}
+              {tier.key === "Gold"   && "🥇"}
+              {tier.label}
+            </span>
+            <span class="text-xs text-white/30">
+              {tier.nextAt
+                ? `${ptsToNext} ${ta.tierProgressLabel} ${
+                    TIERS.find(t => t.min === tier.nextAt)?.label ?? ""
+                  }`
+                : ta.tierMaxLabel
+              }
+            </span>
+          </div>
+          <!-- Progress bar -->
+          <div class="h-1.5 rounded-full bg-white/10 overflow-hidden">
+            <div
+              class="h-full rounded-full transition-all"
+              style={`width:${tierProgress}%;background:${tier.color}`}
+            ></div>
+          </div>
+          <p class="text-xs text-white/25">{ta.loyaltyEarnHint}</p>
+        </div>
+
+        <!-- History -->
+        {loyaltyEvents && loyaltyEvents.length > 0 ? (
+          <div class="space-y-1 pt-1 border-t border-white/8">
+            {loyaltyEvents.map(ev => (
+              <div class="flex items-center justify-between py-1.5 border-b border-white/5 last:border-0">
+                <div>
+                  <p class="text-sm text-white/70">{ev.reason}</p>
+                  <p class="text-xs text-white/30">
+                    {new Date(ev.created_at).toLocaleDateString(isEl ? "el-GR" : "en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                  </p>
+                </div>
+                <span class={`text-sm font-bold ${ev.points >= 0 ? "text-green-400" : "text-red-400"}`}>
+                  {ev.points >= 0 ? "+" : ""}{ev.points}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div class="space-y-1 pt-1 border-t border-white/8">
+            <p class="text-sm text-white/40">{ta.loyaltyNoHistory}</p>
+            <p class="text-xs text-white/25">{ta.loyaltyEarn}</p>
+          </div>
+        )}
       </div>
 
-      <!-- Events placeholder -->
-      <div class="rounded-2xl border border-white/10 bg-white/5 p-6">
-        <div class="flex items-start justify-between">
-          <div>
-            <h2 class="text-sm font-semibold text-white/50 uppercase tracking-widest">{t.account.eventsSection}</h2>
-            <p class="mt-3 text-sm text-white/40">{t.account.eventsSoon}</p>
-            <p class="mt-1 text-sm text-white/30">{t.account.eventsFollow} <a href="https://instagram.com/sallysbar_kefalonia" class="text-white/60 hover:text-white underline underline-offset-2">@sallysbar_kefalonia</a></p>
-          </div>
-          <span class="text-xs bg-white/10 text-white/40 px-2.5 py-1 rounded-full">{t.account.soon}</span>
+      <!-- Reservations -->
+      <div class="rounded-2xl border border-white/10 bg-white/5 p-6 space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-semibold text-white/50 uppercase tracking-widest">{ta.reservationsSection}</h2>
+          <a href={withLangPrefix(lang, "/book")} class="text-xs text-amber-400 hover:text-amber-300 transition">
+            {ta.bookNow}
+          </a>
         </div>
+
+        {reservations && reservations.length > 0 ? (
+          <div class="space-y-2" id="resList">
+            {reservations.map(r => (
+              <div class="flex items-center justify-between gap-3 rounded-xl border border-white/8 bg-white/[0.03] px-4 py-3" data-res-id={r.id}>
+                <div class="min-w-0">
+                  <p class="text-sm font-medium text-white">{fmtDate(r.date)}</p>
+                  <p class="text-xs text-white/40">{r.time} &bull; {r.party_size} {isEl ? "άτομα" : "guests"}</p>
+                  {r.notes && <p class="text-xs text-white/25 mt-0.5 truncate max-w-xs">{r.notes}</p>}
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                  <span class="res-badge text-xs font-semibold px-2 py-0.5 rounded-full"
+                    style={`background:${statusColor(r.status)}22;color:${statusColor(r.status)}`}>
+                    {statusLabel(r.status)}
+                  </span>
+                  {r.status !== "cancelled" && (
+                    <button
+                      class="cancel-res-btn text-xs text-white/25 hover:text-red-400 transition px-2 py-0.5 rounded-lg border border-transparent hover:border-red-400/20"
+                      data-id={r.id}
+                    >
+                      {isEl ? "Ακύρωση" : "Cancel"}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div class="space-y-2">
+            <p class="text-sm text-white/40">{ta.noReservations}</p>
+            <a href={withLangPrefix(lang, "/book")} class="inline-block text-sm text-amber-400 hover:text-amber-300 transition underline underline-offset-2">
+              {ta.bookNow}
+            </a>
+          </div>
+        )}
+      </div>
+
+      <!-- Events RSVPs -->
+      <div class="rounded-2xl border border-white/10 bg-white/5 p-6 space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-sm font-semibold text-white/50 uppercase tracking-widest">{ta.eventsSection}</h2>
+          <a href={withLangPrefix(lang, "/events")} class="text-xs text-amber-400 hover:text-amber-300 transition">
+            {isEl ? "Όλα τα events →" : "All events →"}
+          </a>
+        </div>
+
+        {upcomingRsvps.length > 0 ? (
+          <div class="space-y-2">
+            {upcomingRsvps.map(r => {
+              const ev = r.events as any;
+              const title = isEl && ev.title_el ? ev.title_el : ev.title;
+              const dateStr = new Date(ev.event_date + "T00:00:00").toLocaleDateString(isEl ? "el-GR" : "en-GB", { weekday: "short", day: "numeric", month: "short" });
+              return (
+                <div class="flex items-center justify-between gap-3 rounded-xl border border-white/8 bg-white/[0.03] px-4 py-3">
+                  <div class="min-w-0">
+                    <p class="text-sm font-medium text-white truncate">{title}</p>
+                    <p class="text-xs text-white/40">
+                      {dateStr}{ev.event_time ? ` · ${ev.event_time.slice(0, 5)}` : ""}
+                      {" · "}{r.guests} {isEl ? (r.guests === 1 ? "άτομο" : "άτομα") : (r.guests === 1 ? "guest" : "guests")}
+                    </p>
+                  </div>
+                  <span class="shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full bg-green-400/10 text-green-400 border border-green-400/20">
+                    {isEl ? "Επιβεβαιωμένο" : "Confirmed"}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div class="space-y-1">
+            <p class="text-sm text-white/40">{ta.noReservations.replace("reservations", "event RSVPs") || (isEl ? "Δεν έχεις κρατήσεις για events." : "No upcoming event RSVPs.")}</p>
+            <a href={withLangPrefix(lang, "/events")} class="inline-block text-sm text-amber-400 hover:text-amber-300 transition underline underline-offset-2">
+              {isEl ? "Δες τα upcoming events →" : "Browse upcoming events →"}
+            </a>
+          </div>
+        )}
       </div>
 
     </main>
+
+  <script>
+    const isEl = document.documentElement.lang === "el";
+
+    document.getElementById("resList")?.addEventListener("click", async (e) => {
+      const btn = (e.target as Element).closest(".cancel-res-btn") as HTMLElement | null;
+      if (!btn) return;
+
+      const confirmMsg = isEl ? "Ακύρωση κράτησης;" : "Cancel this reservation?";
+      if (!confirm(confirmMsg)) return;
+
+      const id  = btn.dataset.id!;
+      const row = btn.closest("[data-res-id]") as HTMLElement | null;
+
+      btn.disabled = true;
+      btn.textContent = "…";
+
+      const res = await fetch("/api/reservations/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+
+      if (!res.ok) {
+        alert(isEl ? "Σφάλμα. Δοκιμάστε ξανά." : "Error. Please try again.");
+        btn.disabled = false;
+        btn.textContent = isEl ? "Ακύρωση" : "Cancel";
+        return;
+      }
+
+      // Update badge colour + label, remove cancel button
+      const badge = row?.querySelector(".res-badge") as HTMLElement | null;
+      if (badge) {
+        badge.textContent = isEl ? "Ακυρωμένη" : "Cancelled";
+        badge.style.background = "#f8717122";
+        badge.style.color = "#f87171";
+      }
+      btn.remove();
+    });
+  </script>
+
   </body>
 </html>

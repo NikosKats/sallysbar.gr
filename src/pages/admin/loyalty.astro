@@ -1,0 +1,293 @@
+---
+import "../../styles/global.css";
+import Header from "../../components/Header.astro";
+import { supabaseAdmin } from "../../lib/supabase";
+import { dict, withLangPrefix } from "../../i18n";
+
+const lang = Astro.locals.lang ?? "en";
+const t    = dict[lang];
+const isEl = lang === "el";
+
+if (Astro.locals.role !== "admin") {
+  return Astro.redirect(withLangPrefix(lang, "/admin"));
+}
+
+// Fetch all loyalty events
+const { data: allEvents } = await supabaseAdmin
+  .from("loyalty_events")
+  .select("id, user_id, points, reason, created_at")
+  .order("created_at", { ascending: false });
+
+// Aggregate per user_id
+const balanceMap = new Map<string, { total: number; lastActivity: string; count: number }>();
+for (const ev of allEvents ?? []) {
+  const existing = balanceMap.get(ev.user_id);
+  if (existing) {
+    existing.total += ev.points;
+    existing.count += 1;
+    if (ev.created_at > existing.lastActivity) existing.lastActivity = ev.created_at;
+  } else {
+    balanceMap.set(ev.user_id, { total: ev.points, lastActivity: ev.created_at, count: 1 });
+  }
+}
+
+// Fetch profiles for those user_ids
+const userIds = [...balanceMap.keys()];
+const { data: profiles } = userIds.length > 0
+  ? await supabaseAdmin.from("profiles").select("id, full_name").in("id", userIds)
+  : { data: [] };
+
+// Fetch auth emails
+let emailMap = new Map<string, string>();
+if (userIds.length > 0) {
+  const { data: { users } } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+  for (const u of users ?? []) {
+    if (userIds.includes(u.id)) emailMap.set(u.id, u.email ?? "");
+  }
+}
+
+// Build final list
+const customers = userIds.map(uid => {
+  const bal = balanceMap.get(uid)!;
+  const prof = (profiles ?? []).find(p => p.id === uid);
+  return {
+    id: uid,
+    name: prof?.full_name ?? emailMap.get(uid)?.split("@")[0] ?? "—",
+    email: emailMap.get(uid) ?? "—",
+    total: bal.total,
+    count: bal.count,
+    lastActivity: bal.lastActivity,
+  };
+}).sort((a, b) => b.total - a.total);
+
+// Tier helper
+function getTier(pts: number) {
+  if (pts >= 250) return { label: isEl ? "Χρυσό" : "Gold",   color: "#f59e0b", icon: "🥇" };
+  if (pts >= 100) return { label: isEl ? "Ασημένιο" : "Silver", color: "#94a3b8", icon: "🥈" };
+  return             { label: isEl ? "Χάλκινο" : "Bronze", color: "#cd7f32", icon: "🥉" };
+}
+
+// Summary stats
+const totalPoints = customers.reduce((s, c) => s + c.total, 0);
+const goldCount   = customers.filter(c => c.total >= 250).length;
+const silverCount = customers.filter(c => c.total >= 100 && c.total < 250).length;
+---
+
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{isEl ? "Πιστότητα" : "Loyalty"} — Sally's Bar</title>
+    <meta name="robots" content="noindex,nofollow" />
+  </head>
+  <body class="min-h-screen bg-[#0b0b10] text-white">
+    <Header />
+    <div class="h-20"></div>
+
+    <!-- Subnav -->
+    <div class="sticky top-20 z-40 border-b border-amber-400/20 bg-[#0b0b10]/95 backdrop-blur">
+      <div class="mx-auto max-w-7xl px-4">
+        <nav class="flex items-center gap-1 py-2 overflow-x-auto text-sm">
+          <a href={withLangPrefix(lang, "/admin")}             class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.overview}</a>
+          <a href={withLangPrefix(lang, "/admin/analytics")}   class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.analytics}</a>
+          <a href={withLangPrefix(lang, "/admin/calendar")}    class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.calendar}</a>
+          <span class="shrink-0 h-4 w-px bg-white/15 mx-1.5"></span>
+          <a href={withLangPrefix(lang, "/admin/reservations")} class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.reservations}</a>
+          <a href={withLangPrefix(lang, "/admin/events")}       class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.events}</a>
+          <span                                                  class="px-3 py-1.5 rounded-lg bg-amber-400/15 border border-amber-400/20 text-amber-400 font-medium whitespace-nowrap">{t.admin.nav.loyalty}</span>
+          <a href={withLangPrefix(lang, "/admin/users")}        class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.users}</a>
+          <span class="shrink-0 h-4 w-px bg-white/15 mx-1.5"></span>
+          <a href={withLangPrefix(lang, "/admin/orders")}       class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.orders}</a>
+          <a href={withLangPrefix(lang, "/admin/tips")}         class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.tips}</a>
+          <a href={withLangPrefix(lang, "/admin/menu")}         class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.editMenu}</a>
+        </nav>
+      </div>
+    </div>
+
+    <main class="mx-auto max-w-7xl px-4 py-6 space-y-6">
+
+      <div class="flex items-center justify-between flex-wrap gap-4">
+        <h1 class="text-xl font-bold">{isEl ? "Πιστότητα Πελατών" : "Customer Loyalty"}</h1>
+      </div>
+
+      <!-- Stats row -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+          <p class="text-xs text-white/40 uppercase tracking-wider mb-1">{isEl ? "Μέλη" : "Members"}</p>
+          <p class="text-2xl font-bold text-white">{customers.length}</p>
+        </div>
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+          <p class="text-xs text-white/40 uppercase tracking-wider mb-1">{isEl ? "Σύνολο Πόντων" : "Total Points"}</p>
+          <p class="text-2xl font-bold text-amber-400">{totalPoints}</p>
+        </div>
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+          <p class="text-xs text-white/40 uppercase tracking-wider mb-1">🥇 {isEl ? "Χρυσό" : "Gold"}</p>
+          <p class="text-2xl font-bold text-yellow-400">{goldCount}</p>
+        </div>
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+          <p class="text-xs text-white/40 uppercase tracking-wider mb-1">🥈 {isEl ? "Ασημένιο" : "Silver"}</p>
+          <p class="text-2xl font-bold text-slate-400">{silverCount}</p>
+        </div>
+      </div>
+
+      <!-- Award points form -->
+      <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+        <h2 class="text-sm font-semibold text-white/50 uppercase tracking-widest mb-4">
+          {isEl ? "Χειροκίνητη Απονομή Πόντων" : "Manual Point Award"}
+        </h2>
+        <form id="awardForm" class="flex flex-wrap items-end gap-3">
+          <div class="flex flex-col gap-1 flex-1 min-w-[180px]">
+            <label class="text-xs text-white/40 uppercase tracking-wider">{isEl ? "Χρήστης (ID)" : "User ID"}</label>
+            <input
+              id="awardUserId"
+              type="text"
+              placeholder={isEl ? "UUID χρήστη…" : "User UUID…"}
+              class="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-amber-400/50"
+              required
+            />
+          </div>
+          <div class="flex flex-col gap-1 w-24">
+            <label class="text-xs text-white/40 uppercase tracking-wider">{isEl ? "Πόντοι" : "Points"}</label>
+            <input
+              id="awardPoints"
+              type="number"
+              placeholder="10"
+              class="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-amber-400/50"
+              required
+            />
+          </div>
+          <div class="flex flex-col gap-1 flex-1 min-w-[180px]">
+            <label class="text-xs text-white/40 uppercase tracking-wider">{isEl ? "Αιτία" : "Reason"}</label>
+            <input
+              id="awardReason"
+              type="text"
+              placeholder={isEl ? "π.χ. Bonus επίσκεψης" : "e.g. Visit bonus"}
+              class="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-amber-400/50"
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            class="px-4 py-2 rounded-xl bg-amber-400 text-black text-sm font-semibold hover:bg-amber-300 transition disabled:opacity-40"
+          >
+            {isEl ? "Απονομή" : "Award"}
+          </button>
+          <p id="awardMsg" class="w-full text-xs hidden"></p>
+        </form>
+      </div>
+
+      <!-- Customer table -->
+      {customers.length === 0 ? (
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-10 text-center text-white/40 text-sm">
+          {isEl ? "Δεν υπάρχουν δεδομένα πιστότητας ακόμα." : "No loyalty data yet."}
+        </div>
+      ) : (
+        <div class="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-white/10 text-white/40 text-xs uppercase tracking-wider">
+                  <th class="text-left px-4 py-3">{isEl ? "Πελάτης" : "Customer"}</th>
+                  <th class="text-left px-4 py-3">{isEl ? "Επίπεδο" : "Tier"}</th>
+                  <th class="text-left px-4 py-3">{isEl ? "Πόντοι" : "Points"}</th>
+                  <th class="text-left px-4 py-3">{isEl ? "Συναλλαγές" : "Events"}</th>
+                  <th class="text-left px-4 py-3">{isEl ? "Τελευταία Δραστ." : "Last Activity"}</th>
+                  <th class="text-right px-4 py-3">{isEl ? "Ενέργεια" : "Action"}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {customers.map(c => {
+                  const tier = getTier(c.total);
+                  return (
+                    <tr class="border-b border-white/5 hover:bg-white/[0.02] transition">
+                      <td class="px-4 py-3">
+                        <p class="font-medium text-white">{c.name}</p>
+                        <p class="text-xs text-white/35">{c.email}</p>
+                      </td>
+                      <td class="px-4 py-3">
+                        <span class="text-sm">{tier.icon}</span>
+                        <span class="ml-1 text-xs font-medium" style={`color:${tier.color}`}>{tier.label}</span>
+                      </td>
+                      <td class="px-4 py-3">
+                        <span class="font-bold" style={`color:${tier.color}`}>{c.total}</span>
+                      </td>
+                      <td class="px-4 py-3 text-white/50">{c.count}</td>
+                      <td class="px-4 py-3 text-white/40 text-xs whitespace-nowrap">
+                        {new Date(c.lastActivity).toLocaleDateString(isEl ? "el-GR" : "en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                      </td>
+                      <td class="px-4 py-3 text-right">
+                        <button
+                          class="quick-award-btn text-xs px-2.5 py-1 rounded-lg border border-amber-400/30 text-amber-400 hover:bg-amber-400/10 transition"
+                          data-uid={c.id}
+                          data-name={c.name}
+                        >
+                          {isEl ? "+ Πόντοι" : "+ Points"}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+    </main>
+
+    <script define:vars={{ isEl }}>
+      // Quick-award: click button fills the award form above
+      document.querySelectorAll(".quick-award-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const uid  = btn.dataset.uid;
+          const name = btn.dataset.name;
+          document.getElementById("awardUserId").value = uid;
+          document.getElementById("awardReason").value = isEl ? `Bonus για ${name}` : `Bonus for ${name}`;
+          document.getElementById("awardPoints").focus();
+          document.getElementById("awardForm").scrollIntoView({ behavior: "smooth", block: "center" });
+        });
+      });
+
+      // Award form submit
+      document.getElementById("awardForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const btn    = e.currentTarget.querySelector("button[type=submit]");
+        const msg    = document.getElementById("awardMsg");
+        const userId = document.getElementById("awardUserId").value.trim();
+        const points = Number(document.getElementById("awardPoints").value);
+        const reason = document.getElementById("awardReason").value.trim();
+
+        if (!userId || !points || !reason) return;
+
+        btn.disabled = true;
+        btn.textContent = isEl ? "…" : "…";
+        msg.className = "w-full text-xs hidden";
+
+        try {
+          const res = await fetch("/api/admin/loyalty", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ user_id: userId, points, reason }),
+          });
+
+          if (res.ok) {
+            msg.textContent = isEl ? `✓ ${points > 0 ? "+" : ""}${points} πόντοι απονεμήθηκαν.` : `✓ ${points > 0 ? "+" : ""}${points} pts awarded.`;
+            msg.className = "w-full text-xs text-green-400 block";
+            e.currentTarget.reset();
+            setTimeout(() => location.reload(), 1500);
+          } else {
+            const { error } = await res.json().catch(() => ({}));
+            msg.textContent = error ?? (isEl ? "Σφάλμα." : "Error.");
+            msg.className = "w-full text-xs text-red-400 block";
+          }
+        } catch {
+          msg.textContent = isEl ? "Σφάλμα δικτύου." : "Network error.";
+          msg.className = "w-full text-xs text-red-400 block";
+        } finally {
+          btn.disabled = false;
+          btn.textContent = isEl ? "Απονομή" : "Award";
+        }
+      });
+    </script>
+  </body>
+</html>

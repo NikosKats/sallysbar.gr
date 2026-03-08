@@ -38,6 +38,14 @@ const nav = [
   { label: t.nav.careers, href: withLangPrefix(lang, "/careers") },
 ];
 
+function isActive(href: string) {
+  // Strip lang prefix for comparison
+  const cleanHref = href.replace(/^\/el/, "") || "/";
+  const cleanPath = pathNoLang || "/";
+  if (cleanHref === "/") return cleanPath === "/";
+  return cleanPath.startsWith(cleanHref);
+}
+
 const ctaHref    = withLangPrefix(lang, "/menu");
 const brandHref  = withLangPrefix(lang, "/");
 const loginHref  = withLangPrefix(lang, "/login");
@@ -49,8 +57,11 @@ const adminMenuHref      = withLangPrefix(lang, "/admin/menu");
 const adminAnalyticsHref = withLangPrefix(lang, "/admin/analytics");
 const adminOrdersHref    = withLangPrefix(lang, "/admin/orders");
 const adminCalendarHref  = withLangPrefix(lang, "/admin/calendar");
-const adminTipsHref      = withLangPrefix(lang, "/admin/tips");
-const staffHref          = withLangPrefix(lang, "/staff");
+const adminTipsHref          = withLangPrefix(lang, "/admin/tips");
+const adminReservationsHref  = withLangPrefix(lang, "/admin/reservations");
+const adminLoyaltyHref       = withLangPrefix(lang, "/admin/loyalty");
+const adminEventsHref        = withLangPrefix(lang, "/admin/events");
+const staffHref              = withLangPrefix(lang, "/staff");
 const staffOrderHref     = withLangPrefix(lang, "/staff/order");
 
 // language button label
@@ -84,9 +95,14 @@ const displayName = user?.user_metadata?.full_name?.split(" ")[0]
         </a>
 
         <!-- Desktop nav -->
-        <nav class="hidden md:flex items-center gap-6 text-sm text-white/75">
+        <nav class="hidden md:flex items-center gap-6 text-sm">
           {nav.map((i) => (
-            <a href={i.href} class="hover:text-white transition">
+            <a
+              href={i.href}
+              class={isActive(i.href)
+                ? "text-white font-medium relative after:absolute after:bottom-[-2px] after:left-0 after:right-0 after:h-[2px] after:rounded-full after:bg-amber-400"
+                : "text-white/55 hover:text-white transition"}
+            >
               {i.label}
             </a>
           ))}
@@ -127,36 +143,65 @@ const displayName = user?.user_metadata?.full_name?.split(" ")[0]
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-60"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.5"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
                     {t.user.myAccount}
                   </a>
+                  {role === "customer" && (
+                    <a href={accountHref} class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/5 transition">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-60"><rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 9h18M8 2v4M16 2v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                      {t.user.myReservations}
+                    </a>
+                  )}
 
                   {role === "admin" && (
                     <>
                       <div class="mx-3 my-1.5 border-t border-white/10"></div>
                       <p class="px-4 py-1 text-xs font-semibold uppercase tracking-widest text-amber-400/50">{t.user.adminSection}</p>
-                      <a href={adminHref} class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">
+
+                      <!-- Business -->
+                      <p class="px-4 pt-1.5 pb-0.5 text-[10px] font-semibold uppercase tracking-widest text-white/20">{isEl ? "Επιχείρηση" : "Business"}</p>
+                      <a href={adminHref} class="flex items-center gap-2.5 px-4 py-2 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-70"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/></svg>
                         {t.user.dashboard}
                       </a>
-                      <a href={adminAnalyticsHref} class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">
+                      <a href={adminAnalyticsHref} class="flex items-center gap-2.5 px-4 py-2 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-70"><path d="M3 17l4-8 4 4 4-6 4 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
                         {t.user.analytics}
                       </a>
-                      <a href={adminCalendarHref} class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">
+                      <a href={adminCalendarHref} class="flex items-center gap-2.5 px-4 py-2 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-70"><rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 9h18M8 2v4M16 2v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
                         {t.user.calendar}
                       </a>
-                      <a href={adminOrdersHref} class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-70"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><rect x="9" y="3" width="6" height="4" rx="1" stroke="currentColor" stroke-width="1.5"/><path d="M9 12h6M9 16h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-                        {t.user.orders}
+
+                      <!-- Customers -->
+                      <div class="mx-3 my-1 border-t border-white/8"></div>
+                      <p class="px-4 pt-0.5 pb-0.5 text-[10px] font-semibold uppercase tracking-widest text-white/20">{isEl ? "Πελάτες" : "Customers"}</p>
+                      <a href={adminReservationsHref} class="flex items-center gap-2.5 px-4 py-2 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-70"><rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 9h18M8 2v4M16 2v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                        {t.user.adminReservations}
                       </a>
-                      <a href={adminTipsHref} class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-70"><path d="M12 2v2M12 20v2M6.22 6.22l-1.42-1.42M19.2 19.2l-1.42-1.42M2 12h2M20 12h2M6.22 17.78l-1.42 1.42M19.2 4.8l-1.42 1.42" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.5"/></svg>
-                        {t.user.tips}
+                      <a href={adminEventsHref} class="flex items-center gap-2.5 px-4 py-2 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-70"><rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 9h18M8 2v4M16 2v4M8 14h4M8 17h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                        {t.admin.nav.events}
                       </a>
-                      <a href={adminUsersHref} class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">
+                      <a href={adminLoyaltyHref} class="flex items-center gap-2.5 px-4 py-2 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-70"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        {t.admin.nav.loyalty}
+                      </a>
+                      <a href={adminUsersHref} class="flex items-center gap-2.5 px-4 py-2 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-70"><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="1.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M19 8v6M16 11h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
                         {t.user.users}
                       </a>
-                      <a href={adminMenuHref} class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">
+
+                      <!-- Operations -->
+                      <div class="mx-3 my-1 border-t border-white/8"></div>
+                      <p class="px-4 pt-0.5 pb-0.5 text-[10px] font-semibold uppercase tracking-widest text-white/20">{isEl ? "Λειτουργία" : "Operations"}</p>
+                      <a href={adminOrdersHref} class="flex items-center gap-2.5 px-4 py-2 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-70"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><rect x="9" y="3" width="6" height="4" rx="1" stroke="currentColor" stroke-width="1.5"/><path d="M9 12h6M9 16h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                        {t.user.orders}
+                      </a>
+                      <a href={adminTipsHref} class="flex items-center gap-2.5 px-4 py-2 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-70"><path d="M12 2v2M12 20v2M6.22 6.22l-1.42-1.42M19.2 19.2l-1.42-1.42M2 12h2M20 12h2M6.22 17.78l-1.42 1.42M19.2 4.8l-1.42 1.42" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.5"/></svg>
+                        {t.user.tips}
+                      </a>
+                      <a href={adminMenuHref} class="flex items-center gap-2.5 px-4 py-2 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-70"><path d="M4 6h16M4 10h16M4 14h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
                         {t.user.editMenu}
                       </a>
@@ -214,70 +259,99 @@ const displayName = user?.user_metadata?.full_name?.split(" ")[0]
       </div>
 
       <!-- Mobile drawer -->
-      <div id="mobileMenu" class="md:hidden hidden border-t border-white/10 px-4 py-4">
-        <div class="flex flex-col gap-3 text-sm">
-          <!-- Language switcher in mobile -->
-          <a
-            href={switchHref}
-            class="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white/90 hover:bg-white/10"
-          >
-            {switchLabel}
-          </a>
+      <div id="mobileMenu" class="md:hidden hidden border-t border-white/10">
+        <div class="overflow-y-auto max-h-[calc(100svh-72px)] px-3 py-3 flex flex-col gap-1">
 
-          {nav.map((i) => (
-            <a
-              href={i.href}
-              class="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white/90 hover:bg-white/10"
-            >
-              {i.label}
+          <!-- Main nav -->
+          <div class="grid grid-cols-3 gap-1 mb-1">
+            {nav.map((i) => (
+              <a
+                href={i.href}
+                class={isActive(i.href)
+                  ? "flex flex-col items-center justify-center gap-1 rounded-xl border border-amber-400/30 bg-amber-400/10 px-2 py-3 text-xs text-amber-400 font-medium transition text-center leading-tight"
+                  : "flex flex-col items-center justify-center gap-1 rounded-xl border border-white/10 bg-white/5 px-2 py-3 text-xs text-white/70 hover:bg-white/10 hover:text-white transition text-center leading-tight"}
+              >
+                {i.label}
+              </a>
+            ))}
+          </div>
+
+          <!-- Language + login row -->
+          <div class="grid grid-cols-2 gap-1 mb-1">
+            <a href={switchHref} class="flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-xs text-white/70 hover:bg-white/10 transition">
+              {switchLabel}
             </a>
-          ))}
+            {!user ? (
+              <a href={loginHref} class="flex items-center justify-center rounded-xl border border-amber-400/20 bg-amber-400/5 px-3 py-2.5 text-xs text-amber-400 hover:bg-amber-400/10 transition">
+                {loginLabel}
+              </a>
+            ) : (
+              <a href={logoutHref} class="flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-xs text-white/50 hover:text-white hover:bg-white/10 transition">
+                {logoutLabel}
+              </a>
+            )}
+          </div>
 
-          {user ? (
+          {user && (
             <>
-              <div class="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
-                <div class="flex items-center gap-2 px-4 py-3 border-b border-white/10">
-                  <span class="text-sm text-white/70 font-medium">{displayName}</span>
-                  {role === "admin" && <span class="rounded-full bg-amber-400/15 px-2 py-0.5 text-xs font-semibold text-amber-400">Admin</span>}
-                  {role === "employee" && <span class="rounded-full bg-sky-400/15 px-2 py-0.5 text-xs font-semibold text-sky-400">Staff</span>}
-                </div>
-                <a href={accountHref} class="flex items-center px-4 py-3 text-sm text-white/60 hover:text-white hover:bg-white/5 transition">
+              <!-- User header -->
+              <div class="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/3 border border-white/8">
+                <span class="text-sm font-medium text-white/80">{displayName}</span>
+                {role === "admin" && <span class="rounded-full bg-amber-400/15 px-2 py-0.5 text-xs font-semibold text-amber-400">Admin</span>}
+                {role === "employee" && <span class="rounded-full bg-sky-400/15 px-2 py-0.5 text-xs font-semibold text-sky-400">Staff</span>}
+              </div>
+
+              <!-- Customer links -->
+              <div class="grid grid-cols-2 gap-1">
+                <a href={accountHref} class="flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-xs text-white/70 hover:text-white hover:bg-white/10 transition text-center">
                   {t.user.myAccount}
                 </a>
-                {role === "admin" && (
-                  <>
-                    <div class="border-t border-white/10"></div>
-                    <p class="px-4 pt-2.5 pb-1 text-xs font-semibold uppercase tracking-widest text-amber-400/50">{t.user.adminSection}</p>
-                    <a href={adminHref} class="flex items-center px-4 py-2.5 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">{t.user.dashboard}</a>
-                    <a href={adminAnalyticsHref} class="flex items-center px-4 py-2.5 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">{t.user.analytics}</a>
-                    <a href={adminCalendarHref} class="flex items-center px-4 py-2.5 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">{t.user.calendar}</a>
-                    <a href={adminOrdersHref} class="flex items-center px-4 py-2.5 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">{t.user.orders}</a>
-                    <a href={adminTipsHref} class="flex items-center px-4 py-2.5 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">{t.user.tips}</a>
-                    <a href={adminUsersHref} class="flex items-center px-4 py-2.5 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">{t.user.users}</a>
-                    <a href={adminMenuHref} class="flex items-center px-4 py-2.5 pb-2 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">{t.user.editMenu}</a>
-                  </>
-                )}
-                {(role === "employee" || role === "admin") && (
-                  <>
-                    <div class="border-t border-white/10"></div>
-                    <p class="px-4 pt-2.5 pb-1 text-xs font-semibold uppercase tracking-widest text-sky-400/50">{t.user.staffSection}</p>
-                    <a href={staffHref} class="flex items-center px-4 py-2.5 text-sm text-sky-400/80 hover:text-sky-400 hover:bg-sky-400/5 transition">{t.user.activeOrders}</a>
-                    <a href={staffOrderHref} class="flex items-center px-4 py-2.5 pb-2 text-sm text-sky-400/80 hover:text-sky-400 hover:bg-sky-400/5 transition">{t.user.newOrder}</a>
-                  </>
-                )}
-                <div class="border-t border-white/10"></div>
-                <a href={logoutHref} class="flex items-center px-4 py-3 text-sm text-white/50 hover:text-white hover:bg-white/5 transition">
-                  {logoutLabel}
+                <a href={accountHref} class="flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-xs text-white/70 hover:text-white hover:bg-white/10 transition text-center">
+                  {t.user.myReservations}
                 </a>
               </div>
+
+              {role === "admin" && (
+                <>
+                  <p class="px-1 pt-1 text-[10px] font-semibold uppercase tracking-widest text-amber-400/50">{t.user.adminSection}</p>
+
+                  <!-- Business -->
+                  <p class="px-1 text-[9px] font-semibold uppercase tracking-widest text-white/25">{isEl ? "Επιχείρηση" : "Business"}</p>
+                  <div class="grid grid-cols-3 gap-1">
+                    <a href={adminHref}          class="flex items-center justify-center rounded-xl border border-amber-400/15 bg-amber-400/5 px-2 py-2.5 text-xs text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/10 transition text-center leading-tight">{t.user.dashboard}</a>
+                    <a href={adminAnalyticsHref} class="flex items-center justify-center rounded-xl border border-amber-400/15 bg-amber-400/5 px-2 py-2.5 text-xs text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/10 transition text-center leading-tight">{t.user.analytics}</a>
+                    <a href={adminCalendarHref}  class="flex items-center justify-center rounded-xl border border-amber-400/15 bg-amber-400/5 px-2 py-2.5 text-xs text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/10 transition text-center leading-tight">{t.user.calendar}</a>
+                  </div>
+
+                  <!-- Customers -->
+                  <p class="px-1 text-[9px] font-semibold uppercase tracking-widest text-white/25">{isEl ? "Πελάτες" : "Customers"}</p>
+                  <div class="grid grid-cols-2 gap-1">
+                    <a href={adminReservationsHref} class="flex items-center justify-center rounded-xl border border-amber-400/15 bg-amber-400/5 px-2 py-2.5 text-xs text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/10 transition text-center leading-tight">{t.user.adminReservations}</a>
+                    <a href={adminEventsHref}       class="flex items-center justify-center rounded-xl border border-amber-400/15 bg-amber-400/5 px-2 py-2.5 text-xs text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/10 transition text-center leading-tight">{t.admin.nav.events}</a>
+                    <a href={adminLoyaltyHref}      class="flex items-center justify-center rounded-xl border border-amber-400/15 bg-amber-400/5 px-2 py-2.5 text-xs text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/10 transition text-center leading-tight">{t.admin.nav.loyalty}</a>
+                    <a href={adminUsersHref}        class="flex items-center justify-center rounded-xl border border-amber-400/15 bg-amber-400/5 px-2 py-2.5 text-xs text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/10 transition text-center leading-tight">{t.user.users}</a>
+                  </div>
+
+                  <!-- Operations -->
+                  <p class="px-1 text-[9px] font-semibold uppercase tracking-widest text-white/25">{isEl ? "Λειτουργία" : "Operations"}</p>
+                  <div class="grid grid-cols-3 gap-1">
+                    <a href={adminOrdersHref} class="flex items-center justify-center rounded-xl border border-amber-400/15 bg-amber-400/5 px-2 py-2.5 text-xs text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/10 transition text-center leading-tight">{t.user.orders}</a>
+                    <a href={adminTipsHref}   class="flex items-center justify-center rounded-xl border border-amber-400/15 bg-amber-400/5 px-2 py-2.5 text-xs text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/10 transition text-center leading-tight">{t.user.tips}</a>
+                    <a href={adminMenuHref}   class="flex items-center justify-center rounded-xl border border-amber-400/15 bg-amber-400/5 px-2 py-2.5 text-xs text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/10 transition text-center leading-tight">{t.user.editMenu}</a>
+                  </div>
+                </>
+              )}
+
+              {(role === "employee" || role === "admin") && (
+                <>
+                  <p class="px-1 pt-1 text-[10px] font-semibold uppercase tracking-widest text-sky-400/50">{t.user.staffSection}</p>
+                  <div class="grid grid-cols-2 gap-1">
+                    <a href={staffHref}      class="flex items-center justify-center rounded-xl border border-sky-400/15 bg-sky-400/5 px-2 py-2.5 text-xs text-sky-400/80 hover:text-sky-400 hover:bg-sky-400/10 transition text-center">{t.user.activeOrders}</a>
+                    <a href={staffOrderHref} class="flex items-center justify-center rounded-xl border border-sky-400/15 bg-sky-400/5 px-2 py-2.5 text-xs text-sky-400/80 hover:text-sky-400 hover:bg-sky-400/10 transition text-center">{t.user.newOrder}</a>
+                  </div>
+                </>
+              )}
             </>
-          ) : (
-            <a
-              href={loginHref}
-              class="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white/90 hover:bg-white/10"
-            >
-              {loginLabel}
-            </a>
           )}
 
         </div>

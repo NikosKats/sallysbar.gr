@@ -1,0 +1,274 @@
+---
+import "../../styles/global.css";
+import Header from "../../components/Header.astro";
+import { supabaseAdmin } from "../../lib/supabase";
+import { dict, withLangPrefix } from "../../i18n";
+
+const lang = Astro.locals.lang ?? "en";
+const t    = dict[lang];
+const isEl = lang === "el";
+
+// Filters from query string
+const url      = new URL(Astro.request.url);
+const statusF  = url.searchParams.get("status") ?? "all";   // all | pending | confirmed | cancelled
+const dateF    = url.searchParams.get("date") ?? "";         // YYYY-MM-DD
+
+let query = supabaseAdmin
+  .from("reservations")
+  .select("id, user_id, name, email, phone, date, time, party_size, notes, status, created_at")
+  .order("date", { ascending: true })
+  .order("time", { ascending: true });
+
+if (statusF !== "all") query = query.eq("status", statusF);
+if (dateF)             query = query.eq("date", dateF);
+
+const { data: rawRes } = await query.limit(500);
+const reservations = rawRes ?? [];
+
+function fmtDate(d: string) {
+  return new Date(d + "T00:00:00").toLocaleDateString(isEl ? "el-GR" : "en-GB", {
+    weekday: "short", day: "numeric", month: "short", year: "numeric",
+  });
+}
+
+function statusColor(s: string) {
+  return s === "confirmed" ? "#4ade80" : s === "cancelled" ? "#f87171" : "#fbbf24";
+}
+
+function statusLabel(s: string) {
+  if (!isEl) return s.charAt(0).toUpperCase() + s.slice(1);
+  return { pending: "Εκκρεμής", confirmed: "Επιβεβαιωμένη", cancelled: "Ακυρωμένη" }[s] ?? s;
+}
+
+const counts = {
+  all:       reservations.length,
+  pending:   reservations.filter(r => r.status === "pending").length,
+  confirmed: reservations.filter(r => r.status === "confirmed").length,
+  cancelled: reservations.filter(r => r.status === "cancelled").length,
+};
+---
+
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{isEl ? "Κρατήσεις" : "Reservations"} — Sally's Bar</title>
+    <meta name="robots" content="noindex,nofollow" />
+  </head>
+  <body class="min-h-screen bg-[#0b0b10] text-white">
+    <Header />
+    <div class="h-20"></div>
+
+    <!-- Subnav -->
+    <div class="sticky top-20 z-40 border-b border-amber-400/20 bg-[#0b0b10]/95 backdrop-blur">
+      <div class="mx-auto max-w-7xl px-4">
+        <nav class="flex items-center gap-1 py-2 overflow-x-auto text-sm">
+          <a href={withLangPrefix(lang, "/admin")}             class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.overview}</a>
+          <a href={withLangPrefix(lang, "/admin/analytics")}   class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.analytics}</a>
+          <a href={withLangPrefix(lang, "/admin/calendar")}    class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.calendar}</a>
+          <span class="shrink-0 h-4 w-px bg-white/15 mx-1.5"></span>
+          <span class="px-3 py-1.5 rounded-lg bg-amber-400/15 border border-amber-400/20 text-amber-400 font-medium whitespace-nowrap">{t.admin.nav.reservations}</span>
+          <a href={withLangPrefix(lang, "/admin/events")}       class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.events}</a>
+          <a href={withLangPrefix(lang, "/admin/loyalty")}      class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.loyalty}</a>
+          <a href={withLangPrefix(lang, "/admin/users")}        class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.users}</a>
+          <span class="shrink-0 h-4 w-px bg-white/15 mx-1.5"></span>
+          <a href={withLangPrefix(lang, "/admin/orders")}       class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.orders}</a>
+          <a href={withLangPrefix(lang, "/admin/tips")}         class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.tips}</a>
+          <a href={withLangPrefix(lang, "/admin/menu")}         class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.editMenu}</a>
+        </nav>
+      </div>
+    </div>
+
+    <main class="mx-auto max-w-7xl px-4 py-6 space-y-6">
+
+      <!-- Header + filters -->
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <h1 class="text-xl font-bold">{isEl ? "Κρατήσεις" : "Reservations"}</h1>
+        <form method="get" class="flex items-center gap-2 flex-wrap">
+          <input
+            type="date"
+            name="date"
+            value={dateF}
+            class="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white focus:outline-none focus:border-amber-400/50"
+          />
+          <input type="hidden" name="status" value={statusF} />
+          <button type="submit" class="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white/70 hover:text-white transition">
+            {isEl ? "Φίλτρο" : "Filter"}
+          </button>
+          {dateF && (
+            <a href={`?status=${statusF}`} class="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white/50 hover:text-white transition">
+              {isEl ? "Καθαρισμός" : "Clear date"}
+            </a>
+          )}
+        </form>
+      </div>
+
+      <!-- Status tabs -->
+      <div class="flex items-center gap-2 flex-wrap text-sm">
+        {(["all","pending","confirmed","cancelled"] as const).map(s => (
+          <a
+            href={`?status=${s}${dateF ? "&date=" + dateF : ""}`}
+            class={`px-3 py-1.5 rounded-lg border transition whitespace-nowrap ${
+              statusF === s
+                ? "bg-amber-400/15 border-amber-400/30 text-amber-400 font-medium"
+                : "border-white/10 bg-white/5 text-white/50 hover:text-white"
+            }`}
+          >
+            {s === "all" ? (isEl ? "Όλες" : "All") : statusLabel(s)}
+            <span class="ml-1 opacity-60">({counts[s]})</span>
+          </a>
+        ))}
+      </div>
+
+      <!-- Table -->
+      {reservations.length === 0 ? (
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-10 text-center text-white/40 text-sm">
+          {isEl ? "Δεν υπάρχουν κρατήσεις." : "No reservations found."}
+        </div>
+      ) : (
+        <div class="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm" id="resTable">
+              <thead>
+                <tr class="border-b border-white/10 text-white/40 text-xs uppercase tracking-wider">
+                  <th class="text-left px-4 py-3">{isEl ? "Ημερομηνία" : "Date"}</th>
+                  <th class="text-left px-4 py-3">{isEl ? "Ώρα" : "Time"}</th>
+                  <th class="text-left px-4 py-3">{isEl ? "Όνομα" : "Name"}</th>
+                  <th class="text-left px-4 py-3">{isEl ? "Άτομα" : "Guests"}</th>
+                  <th class="text-left px-4 py-3">{isEl ? "Επαφή" : "Contact"}</th>
+                  <th class="text-left px-4 py-3">{isEl ? "Σημειώσεις" : "Notes"}</th>
+                  <th class="text-left px-4 py-3">{isEl ? "Κατάσταση" : "Status"}</th>
+                  <th class="text-right px-4 py-3">{isEl ? "Ενέργειες" : "Actions"}</th>
+                </tr>
+              </thead>
+              <tbody id="resBody">
+                {reservations.map((r) => (
+                  <tr class="border-b border-white/5 hover:bg-white/[0.02] transition" data-id={r.id} data-status={r.status}>
+                    <td class="px-4 py-3 text-white/80 whitespace-nowrap">{fmtDate(r.date)}</td>
+                    <td class="px-4 py-3 text-white/80 whitespace-nowrap">{r.time}</td>
+                    <td class="px-4 py-3">
+                      <div class="font-medium text-white">{r.name}</div>
+                    </td>
+                    <td class="px-4 py-3 text-white/70">{r.party_size}</td>
+                    <td class="px-4 py-3">
+                      <div class="text-white/60 text-xs">{r.email}</div>
+                      {r.phone && <div class="text-white/40 text-xs">{r.phone}</div>}
+                    </td>
+                    <td class="px-4 py-3 text-white/40 text-xs max-w-[180px]">
+                      <span class="line-clamp-2">{r.notes || "—"}</span>
+                    </td>
+                    <td class="px-4 py-3">
+                      <span class="status-badge text-xs font-semibold px-2 py-0.5 rounded-full"
+                        style={`background:${statusColor(r.status)}22;color:${statusColor(r.status)}`}>
+                        {statusLabel(r.status)}
+                      </span>
+                    </td>
+                    <td class="px-4 py-3 text-right whitespace-nowrap">
+                      {r.status !== "confirmed" && (
+                        <button
+                          class="action-btn confirm-btn text-xs px-2.5 py-1 rounded-lg border border-green-400/30 text-green-400 hover:bg-green-400/10 transition mr-1"
+                          data-id={r.id}
+                          data-action="confirmed"
+                        >
+                          {isEl ? "Επιβεβαίωση" : "Confirm"}
+                        </button>
+                      )}
+                      {r.status !== "cancelled" && (
+                        <button
+                          class="action-btn cancel-btn text-xs px-2.5 py-1 rounded-lg border border-red-400/30 text-red-400 hover:bg-red-400/10 transition mr-1"
+                          data-id={r.id}
+                          data-action="cancelled"
+                        >
+                          {isEl ? "Ακύρωση" : "Cancel"}
+                        </button>
+                      )}
+                      <button
+                        class="action-btn delete-btn text-xs px-2.5 py-1 rounded-lg border border-white/10 text-white/30 hover:text-red-400 hover:border-red-400/30 transition"
+                        data-id={r.id}
+                        data-action="delete"
+                      >
+                        {isEl ? "Διαγρ." : "Del"}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </main>
+
+    <script define:vars={{ isEl }}>
+      const statusColors = { confirmed: "#4ade80", cancelled: "#f87171", pending: "#fbbf24" };
+
+      function slabel(s) {
+        if (!isEl) return s.charAt(0).toUpperCase() + s.slice(1);
+        return { pending: "Εκκρεμής", confirmed: "Επιβεβαιωμένη", cancelled: "Ακυρωμένη" }[s] ?? s;
+      }
+
+      function makeBtn(id, action) {
+        const cfg = {
+          confirmed: { cls: "border-green-400/30 text-green-400 hover:bg-green-400/10 mr-1", label: isEl ? "Επιβεβαίωση" : "Confirm" },
+          cancelled: { cls: "border-red-400/30 text-red-400 hover:bg-red-400/10 mr-1",       label: isEl ? "Ακύρωση" : "Cancel" },
+          delete:    { cls: "border-white/10 text-white/30 hover:text-red-400 hover:border-red-400/30", label: isEl ? "Διαγρ." : "Del" },
+        }[action];
+        const b = document.createElement("button");
+        b.className = `action-btn text-xs px-2.5 py-1 rounded-lg border transition ${cfg.cls}`;
+        b.dataset.id = id; b.dataset.action = action;
+        b.textContent = cfg.label;
+        return b;
+      }
+
+      function rebuildActions(cell, id, newStatus) {
+        cell.innerHTML = "";
+        if (newStatus !== "confirmed") cell.appendChild(makeBtn(id, "confirmed"));
+        if (newStatus !== "cancelled") cell.appendChild(makeBtn(id, "cancelled"));
+        cell.appendChild(makeBtn(id, "delete"));
+      }
+
+      // Event delegation on table body
+      document.getElementById("resBody")?.addEventListener("click", async (e) => {
+        const btn = e.target.closest(".action-btn");
+        if (!btn) return;
+
+        const id     = btn.dataset.id;
+        const action = btn.dataset.action;
+        const row    = btn.closest("tr");
+
+        if (action === "delete") {
+          if (!confirm(isEl ? "Διαγραφή κράτησης;" : "Delete this reservation?")) return;
+          const res = await fetch("/api/admin/reservations", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id }),
+          });
+          if (res.ok) row?.remove();
+          else alert(isEl ? "Σφάλμα." : "Error.");
+          return;
+        }
+
+        // Confirm / Cancel
+        const res = await fetch("/api/admin/reservations", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id, status: action }),
+        });
+        if (!res.ok) { alert(isEl ? "Σφάλμα." : "Error."); return; }
+
+        // Update badge
+        const badge = row?.querySelector(".status-badge");
+        const color = statusColors[action] ?? "#fff";
+        if (badge) {
+          badge.textContent      = slabel(action);
+          badge.style.background = color + "22";
+          badge.style.color      = color;
+        }
+
+        // Rebuild action buttons
+        const actionsCell = row?.querySelector("td:last-child");
+        if (actionsCell) rebuildActions(actionsCell, id, action);
+      });
+    </script>
+  </body>
+</html>

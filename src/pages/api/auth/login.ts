@@ -6,7 +6,9 @@ export const POST: APIRoute = async ({ request, cookies, redirect }) => {
   const email = formData.get("email")?.toString() ?? "";
   const password = formData.get("password")?.toString() ?? "";
   const next = formData.get("next")?.toString() ?? "/dashboard";
-  const captchaToken = formData.get("captchaToken")?.toString() || undefined;
+  const rawToken = formData.get("captchaToken")?.toString() || undefined;
+  // Skip captcha in local dev — Turnstile tokens are invalid on localhost
+  const captchaToken = import.meta.env.DEV ? undefined : rawToken;
 
   if (!email || !password) {
     return redirect(`/login?error=invalid&next=${encodeURIComponent(next)}`);

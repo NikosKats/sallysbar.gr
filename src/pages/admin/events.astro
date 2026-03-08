@@ -1,0 +1,436 @@
+---
+import "../../styles/global.css";
+import Header from "../../components/Header.astro";
+import { supabaseAdmin } from "../../lib/supabase";
+import { dict, withLangPrefix } from "../../i18n";
+
+const lang = Astro.locals.lang ?? "en";
+const t    = dict[lang];
+const isEl = lang === "el";
+
+if (Astro.locals.role !== "admin") {
+  return Astro.redirect(withLangPrefix(lang, "/admin"));
+}
+
+const todayIso = new Date().toISOString().slice(0, 10);
+
+const { data: events } = await supabaseAdmin
+  .from("events")
+  .select("id, title, title_el, event_date, event_time, capacity, price, is_published, image_url")
+  .order("event_date", { ascending: false });
+
+// Count RSVPs per event
+const eventIds = (events ?? []).map(e => e.id);
+const { data: rsvpCounts } = eventIds.length > 0
+  ? await supabaseAdmin
+      .from("event_rsvps")
+      .select("event_id, guests")
+      .in("event_id", eventIds)
+      .eq("status", "confirmed")
+  : { data: [] };
+
+const rsvpMap = new Map<string, number>();
+for (const r of rsvpCounts ?? []) {
+  rsvpMap.set(r.event_id, (rsvpMap.get(r.event_id) ?? 0) + r.guests);
+}
+
+function fmtDate(d: string) {
+  return new Date(d + "T00:00:00").toLocaleDateString(isEl ? "el-GR" : "en-GB", {
+    day: "numeric", month: "short", year: "numeric",
+  });
+}
+---
+
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{isEl ? "Events" : "Events"} — Sally's Bar Admin</title>
+    <meta name="robots" content="noindex,nofollow" />
+  </head>
+  <body class="min-h-screen bg-[#0b0b10] text-white">
+    <Header />
+    <div class="h-20"></div>
+
+    <!-- Subnav -->
+    <div class="sticky top-20 z-40 border-b border-amber-400/20 bg-[#0b0b10]/95 backdrop-blur">
+      <div class="mx-auto max-w-7xl px-4">
+        <nav class="flex items-center gap-1 py-2 overflow-x-auto text-sm">
+          <a href={withLangPrefix(lang, "/admin")}             class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.overview}</a>
+          <a href={withLangPrefix(lang, "/admin/analytics")}   class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.analytics}</a>
+          <a href={withLangPrefix(lang, "/admin/calendar")}    class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.calendar}</a>
+          <span class="shrink-0 h-4 w-px bg-white/15 mx-1.5"></span>
+          <a href={withLangPrefix(lang, "/admin/reservations")} class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.reservations}</a>
+          <span                                                  class="px-3 py-1.5 rounded-lg bg-amber-400/15 border border-amber-400/20 text-amber-400 font-medium whitespace-nowrap">{t.admin.nav.events}</span>
+          <a href={withLangPrefix(lang, "/admin/loyalty")}      class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.loyalty}</a>
+          <a href={withLangPrefix(lang, "/admin/users")}        class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.users}</a>
+          <span class="shrink-0 h-4 w-px bg-white/15 mx-1.5"></span>
+          <a href={withLangPrefix(lang, "/admin/orders")}       class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.orders}</a>
+          <a href={withLangPrefix(lang, "/admin/tips")}         class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.tips}</a>
+          <a href={withLangPrefix(lang, "/admin/menu")}         class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.editMenu}</a>
+        </nav>
+      </div>
+    </div>
+
+    <main class="mx-auto max-w-7xl px-4 py-6 space-y-6">
+
+      <div class="flex items-center justify-between flex-wrap gap-4">
+        <h1 class="text-xl font-bold">{isEl ? "Διαχείριση Events" : "Manage Events"}</h1>
+        <button
+          id="newEventBtn"
+          class="px-4 py-2 rounded-xl bg-amber-400 text-black text-sm font-semibold hover:bg-amber-300 transition"
+        >
+          + {isEl ? "Νέο Event" : "New Event"}
+        </button>
+      </div>
+
+      <!-- Event form (hidden by default) -->
+      <div id="eventFormWrap" class="hidden rounded-2xl border border-amber-400/20 bg-white/3 p-5">
+        <h2 id="formTitle" class="text-sm font-semibold text-white/50 uppercase tracking-widest mb-4">{isEl ? "Νέο Event" : "New Event"}</h2>
+        <form id="eventForm" class="space-y-3">
+          <input type="hidden" id="editId" value="" />
+
+          <div class="grid sm:grid-cols-2 gap-3">
+            <div class="flex flex-col gap-1">
+              <label class="text-xs text-white/40 uppercase tracking-wider">{isEl ? "Τίτλος (EN) *" : "Title (EN) *"}</label>
+              <input id="fTitle" type="text" required placeholder="Summer Night Party"
+                class="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-amber-400/50" />
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="text-xs text-white/40 uppercase tracking-wider">{isEl ? "Τίτλος (EL)" : "Title (EL)"}</label>
+              <input id="fTitleEl" type="text" placeholder="Καλοκαιρινή Βραδιά"
+                class="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-amber-400/50" />
+            </div>
+          </div>
+
+          <div class="grid sm:grid-cols-2 gap-3">
+            <div class="flex flex-col gap-1">
+              <label class="text-xs text-white/40 uppercase tracking-wider">{isEl ? "Περιγραφή (EN)" : "Description (EN)"}</label>
+              <textarea id="fDesc" rows="3" placeholder="A night of great music..."
+                class="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-amber-400/50 resize-none"></textarea>
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="text-xs text-white/40 uppercase tracking-wider">{isEl ? "Περιγραφή (EL)" : "Description (EL)"}</label>
+              <textarea id="fDescEl" rows="3" placeholder="Μια βραδιά με υπέροχη μουσική..."
+                class="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-amber-400/50 resize-none"></textarea>
+            </div>
+          </div>
+
+          <div class="grid sm:grid-cols-4 gap-3">
+            <div class="flex flex-col gap-1">
+              <label class="text-xs text-white/40 uppercase tracking-wider">{isEl ? "Ημερομηνία *" : "Date *"}</label>
+              <input id="fDate" type="date" required min={todayIso}
+                class="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400/50" />
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="text-xs text-white/40 uppercase tracking-wider">{isEl ? "Ώρα" : "Time"}</label>
+              <input id="fTime" type="time"
+                class="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400/50" />
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="text-xs text-white/40 uppercase tracking-wider">{isEl ? "Χωρητικότητα" : "Capacity"}</label>
+              <input id="fCapacity" type="number" min="1" placeholder={isEl ? "Απεριόριστη" : "Unlimited"}
+                class="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-amber-400/50" />
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="text-xs text-white/40 uppercase tracking-wider">{isEl ? "Τιμή (€)" : "Price (€)"}</label>
+              <input id="fPrice" type="number" min="0" step="0.5" placeholder={isEl ? "0 = Ελεύθερη" : "0 = Free"}
+                class="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-amber-400/50" />
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <input id="fPublished" type="checkbox" checked class="rounded" />
+            <label for="fPublished" class="text-sm text-white/60">{isEl ? "Δημοσιευμένο" : "Published"}</label>
+          </div>
+
+          <!-- Image upload -->
+          <div class="flex flex-col gap-2">
+            <label class="text-xs text-white/40 uppercase tracking-wider">{isEl ? "Φωτογραφία" : "Photo"}</label>
+            <div class="flex items-start gap-4">
+              <div id="imgPreviewWrap" class="hidden shrink-0">
+                <img id="imgPreview" src="" alt="Preview" class="h-20 w-32 object-cover rounded-xl border border-white/10" />
+                <button type="button" id="imgClearBtn" class="mt-1 text-xs text-white/30 hover:text-red-400 transition">
+                  {isEl ? "Αφαίρεση" : "Remove"}
+                </button>
+              </div>
+              <div class="flex-1">
+                <label
+                  id="imgDropZone"
+                  class="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-white/15 bg-white/3 px-4 py-5 cursor-pointer hover:border-amber-400/40 hover:bg-amber-400/3 transition text-center"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" class="opacity-40"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  <span class="text-xs text-white/40" id="imgDropLabel">{isEl ? "Κλικ ή σύρε αρχείο" : "Click or drop image"}</span>
+                  <span class="text-[10px] text-white/20">JPG, PNG, WebP · max 5MB</span>
+                  <input id="fImage" type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden" />
+                </label>
+                <p id="imgMsg" class="mt-1 text-xs text-red-400 hidden"></p>
+              </div>
+            </div>
+            <input type="hidden" id="fImageUrl" value="" />
+          </div>
+
+          <p id="formMsg" class="text-xs hidden"></p>
+
+          <div class="flex gap-2">
+            <button type="submit" id="formSubmitBtn" class="px-4 py-2 rounded-xl bg-amber-400 text-black text-sm font-semibold hover:bg-amber-300 transition disabled:opacity-40">
+              {isEl ? "Αποθήκευση" : "Save"}
+            </button>
+            <button type="button" id="formCancelBtn" class="px-4 py-2 rounded-xl border border-white/10 text-sm text-white/60 hover:text-white hover:bg-white/5 transition">
+              {isEl ? "Άκυρο" : "Cancel"}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Events table -->
+      {(events ?? []).length === 0 ? (
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-10 text-center text-white/40 text-sm">
+          {isEl ? "Δεν υπάρχουν events ακόμα." : "No events yet."}
+        </div>
+      ) : (
+        <div class="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm" id="eventsTable">
+              <thead>
+                <tr class="border-b border-white/10 text-white/40 text-xs uppercase tracking-wider">
+                  <th class="px-4 py-3 w-12"></th>
+                  <th class="text-left px-4 py-3">{isEl ? "Τίτλος" : "Title"}</th>
+                  <th class="text-left px-4 py-3">{isEl ? "Ημερομηνία" : "Date"}</th>
+                  <th class="text-left px-4 py-3">{isEl ? "Τιμή" : "Price"}</th>
+                  <th class="text-left px-4 py-3">{isEl ? "RSVP" : "RSVPs"}</th>
+                  <th class="text-left px-4 py-3">{isEl ? "Κατάσταση" : "Status"}</th>
+                  <th class="text-right px-4 py-3">{isEl ? "Ενέργειες" : "Actions"}</th>
+                </tr>
+              </thead>
+              <tbody id="eventsBody">
+                {(events ?? []).map((ev) => (
+                  <tr class="border-b border-white/5 hover:bg-white/[0.02] transition" data-id={ev.id}>
+                    <td class="px-4 py-3">
+                      {ev.image_url
+                        ? <img src={ev.image_url} alt="" class="h-10 w-14 object-cover rounded-lg border border-white/10" />
+                        : <div class="h-10 w-14 rounded-lg bg-white/5 border border-white/8 flex items-center justify-center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" class="opacity-20"><rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" stroke-width="1.5"/><circle cx="8.5" cy="8.5" r="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M21 15l-5-5L5 21" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+                      }
+                    </td>
+                    <td class="px-4 py-3">
+                      <p class="font-medium text-white">{ev.title}</p>
+                      {ev.title_el && <p class="text-xs text-white/35">{ev.title_el}</p>}
+                    </td>
+                    <td class="px-4 py-3 text-white/70 whitespace-nowrap">
+                      {fmtDate(ev.event_date)}
+                      {ev.event_time && <span class="text-white/35 ml-1">{ev.event_time.slice(0,5)}</span>}
+                    </td>
+                    <td class="px-4 py-3 text-white/60">
+                      {ev.price == null || ev.price === 0 ? (isEl ? "Ελεύθερη" : "Free") : `€${Number(ev.price).toFixed(0)}`}
+                    </td>
+                    <td class="px-4 py-3">
+                      <span class="text-white/70 font-medium">{rsvpMap.get(ev.id) ?? 0}</span>
+                      {ev.capacity && <span class="text-white/30 text-xs"> / {ev.capacity}</span>}
+                    </td>
+                    <td class="px-4 py-3">
+                      {ev.is_published
+                        ? <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-green-400/10 text-green-400 border border-green-400/20">{isEl ? "Δημοσιευμένο" : "Published"}</span>
+                        : <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-white/5 text-white/35 border border-white/10">{isEl ? "Κρυφό" : "Draft"}</span>
+                      }
+                    </td>
+                    <td class="px-4 py-3 text-right whitespace-nowrap">
+                      <button
+                        class="edit-evt-btn text-xs px-2.5 py-1 rounded-lg border border-amber-400/30 text-amber-400 hover:bg-amber-400/10 transition mr-1"
+                        data-ev={JSON.stringify({ id: ev.id, title: ev.title, title_el: ev.title_el ?? "", description: "", description_el: "", event_date: ev.event_date, event_time: ev.event_time ?? "", capacity: ev.capacity ?? "", price: ev.price ?? "", is_published: ev.is_published, image_url: ev.image_url ?? "" })}
+                      >
+                        {isEl ? "Επεξ." : "Edit"}
+                      </button>
+                      <button
+                        class="del-evt-btn text-xs px-2.5 py-1 rounded-lg border border-white/10 text-white/30 hover:text-red-400 hover:border-red-400/30 transition"
+                        data-id={ev.id}
+                      >
+                        {isEl ? "Διαγρ." : "Del"}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+    </main>
+
+    <script define:vars={{ isEl }}>
+      const formWrap    = document.getElementById("eventFormWrap");
+      const formTitle   = document.getElementById("formTitle");
+      const eventForm   = document.getElementById("eventForm");
+      const formMsg     = document.getElementById("formMsg");
+      const submitBtn   = document.getElementById("formSubmitBtn");
+      const editIdInput = document.getElementById("editId");
+
+      // Image elements
+      const fImage       = document.getElementById("fImage");
+      const fImageUrl    = document.getElementById("fImageUrl");
+      const imgPreview   = document.getElementById("imgPreview");
+      const imgPreviewWrap = document.getElementById("imgPreviewWrap");
+      const imgDropZone  = document.getElementById("imgDropZone");
+      const imgDropLabel = document.getElementById("imgDropLabel");
+      const imgMsg       = document.getElementById("imgMsg");
+      const imgClearBtn  = document.getElementById("imgClearBtn");
+
+      function setImagePreview(url) {
+        if (url) {
+          imgPreview.src = url;
+          imgPreviewWrap.classList.remove("hidden");
+          fImageUrl.value = url;
+          imgDropLabel.textContent = isEl ? "Αντικατάσταση" : "Replace image";
+        } else {
+          imgPreview.src = "";
+          imgPreviewWrap.classList.add("hidden");
+          fImageUrl.value = "";
+          imgDropLabel.textContent = isEl ? "Κλικ ή σύρε αρχείο" : "Click or drop image";
+          fImage.value = "";
+        }
+      }
+
+      imgClearBtn.addEventListener("click", () => setImagePreview(""));
+
+      fImage.addEventListener("change", async () => {
+        const file = fImage.files[0];
+        if (!file) return;
+        await uploadImageFile(file);
+      });
+
+      // Drag and drop
+      imgDropZone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        imgDropZone.classList.add("border-amber-400/60");
+      });
+      imgDropZone.addEventListener("dragleave", () => {
+        imgDropZone.classList.remove("border-amber-400/60");
+      });
+      imgDropZone.addEventListener("drop", async (e) => {
+        e.preventDefault();
+        imgDropZone.classList.remove("border-amber-400/60");
+        const file = e.dataTransfer?.files[0];
+        if (file) await uploadImageFile(file);
+      });
+
+      async function uploadImageFile(file) {
+        imgMsg.className = "mt-1 text-xs hidden";
+        imgDropLabel.textContent = isEl ? "Ανέβασμα…" : "Uploading…";
+
+        const fd = new FormData();
+        fd.append("file", file);
+
+        const res = await fetch("/api/admin/events/upload", { method: "POST", body: fd });
+        const json = await res.json().catch(() => ({}));
+
+        if (res.ok && json.url) {
+          setImagePreview(json.url);
+          imgMsg.className = "mt-1 text-xs hidden";
+        } else {
+          imgDropLabel.textContent = isEl ? "Κλικ ή σύρε αρχείο" : "Click or drop image";
+          imgMsg.textContent = json.error ?? (isEl ? "Σφάλμα ανεβάσματος." : "Upload failed.");
+          imgMsg.className = "mt-1 text-xs text-red-400 block";
+        }
+      }
+
+      function showForm(title) {
+        formTitle.textContent = title;
+        formWrap.classList.remove("hidden");
+        formWrap.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+
+      function hideForm() {
+        formWrap.classList.add("hidden");
+        eventForm.reset();
+        editIdInput.value = "";
+        formMsg.className = "text-xs hidden";
+        setImagePreview("");
+      }
+
+      document.getElementById("newEventBtn").addEventListener("click", () => {
+        editIdInput.value = "";
+        setImagePreview("");
+        showForm(isEl ? "Νέο Event" : "New Event");
+      });
+
+      document.getElementById("formCancelBtn").addEventListener("click", hideForm);
+
+      // Edit button — fill form
+      document.querySelectorAll(".edit-evt-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const ev = JSON.parse(btn.dataset.ev);
+          editIdInput.value = ev.id;
+          document.getElementById("fTitle").value     = ev.title;
+          document.getElementById("fTitleEl").value   = ev.title_el;
+          document.getElementById("fDesc").value      = ev.description;
+          document.getElementById("fDescEl").value    = ev.description_el;
+          document.getElementById("fDate").value      = ev.event_date;
+          document.getElementById("fTime").value      = ev.event_time;
+          document.getElementById("fCapacity").value  = ev.capacity;
+          document.getElementById("fPrice").value     = ev.price;
+          document.getElementById("fPublished").checked = ev.is_published;
+          setImagePreview(ev.image_url || "");
+          showForm(isEl ? "Επεξεργασία Event" : "Edit Event");
+        });
+      });
+
+      // Form submit (create or update)
+      eventForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const id = editIdInput.value;
+        const payload = {
+          id: id || undefined,
+          title:          document.getElementById("fTitle").value.trim(),
+          title_el:       document.getElementById("fTitleEl").value.trim(),
+          description:    document.getElementById("fDesc").value.trim(),
+          description_el: document.getElementById("fDescEl").value.trim(),
+          event_date:     document.getElementById("fDate").value,
+          event_time:     document.getElementById("fTime").value || null,
+          capacity:       document.getElementById("fCapacity").value || null,
+          price:          document.getElementById("fPrice").value || null,
+          is_published:   document.getElementById("fPublished").checked,
+          image_url:      fImageUrl.value || null,
+        };
+
+        submitBtn.disabled = true;
+        formMsg.className = "text-xs hidden";
+
+        const res = await fetch("/api/admin/events", {
+          method: id ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        if (res.ok) {
+          location.reload();
+        } else {
+          const { error } = await res.json().catch(() => ({}));
+          formMsg.textContent = error ?? (isEl ? "Σφάλμα." : "Error.");
+          formMsg.className = "text-xs text-red-400 block";
+          submitBtn.disabled = false;
+        }
+      });
+
+      // Delete
+      document.querySelectorAll(".del-evt-btn").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const id = btn.dataset.id;
+          const confirm_msg = isEl ? "Διαγραφή event;" : "Delete this event?";
+          if (!confirm(confirm_msg)) return;
+          btn.disabled = true;
+          const res = await fetch("/api/admin/events", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id }),
+          });
+          if (res.ok) {
+            btn.closest("tr").remove();
+          } else {
+            btn.disabled = false;
+            alert(isEl ? "Σφάλμα διαγραφής." : "Delete failed.");
+          }
+        });
+      });
+    </script>
+  </body>
+</html>
