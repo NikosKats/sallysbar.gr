@@ -357,19 +357,53 @@ const L = {
   s13: {
     head: isEl ? "13. Σύνδεση με Telegram" : "13. Telegram integration",
     body: isEl ? `
-      <p>Τρέχουμε δύο Telegram chats:</p>
-      <ul>
-        <li><strong>Barman chat</strong> — δέχεται νέες παραγγελίες, κουμπιά: 🔄 Ετοιμάζεται · ❌ Ακύρωση, μετά ✅ Έτοιμη.</li>
-        <li><strong>Waiter chat</strong> — δέχεται ειδοποιήσεις παράδοσης, κουμπί: 📦 Παραδόθηκε.</li>
-      </ul>
-      <p>Όλο το προσωπικό βάρδιας πρέπει να είναι και στα δύο chats. Τα κουμπιά ενημερώνουν τη βάση άμεσα και στέλνουν push στο PWA.</p>
+      <p>Τρέχουμε τρία Telegram κανάλια + έναν bot που στέλνει όλες τις ειδοποιήσεις. Όλο το προσωπικό βάρδιας πρέπει να μπει στα κανάλια που το αφορούν — έτσι λαμβάνεις ειδοποιήσεις και στο Telegram, όχι μόνο στο PWA.</p>
+      <p><strong>Πώς να μπεις (μία φορά ανά συσκευή):</strong></p>
+      <ol>
+        <li>Εγκατέστησε <strong>Telegram</strong> από το App Store / Play Store και φτιάξε λογαριασμό.</li>
+        <li>Πάτα τον σύνδεσμο πρόσκλησης παρακάτω — θα ανοίξει το Telegram.</li>
+        <li>Πάτα <strong>Join / Συμμετοχή</strong>.</li>
+        <li>Ενεργοποίησε τις ειδοποιήσεις του καναλιού (🔔 πάνω δεξιά → Ενεργοποίηση).</li>
+        <li>Άνοιξε και τον bot: <a href="https://t.me/sallysbar_bot" target="_blank">@sallysbar_bot</a> και πάτα <strong>Start</strong>.</li>
+      </ol>
+      <p><strong>🍸 Μπάρμαν — Sally's Bar — Barman Operations</strong><br/>
+        <a href="https://t.me/+B4LY8mZgeHdmMTU0" target="_blank">https://t.me/+B4LY8mZgeHdmMTU0</a><br/>
+        Νέες παραγγελίες με κουμπιά: 🔄 Ετοιμάζεται · ❌ Ακύρωση, μετά ✅ Έτοιμη.
+      </p>
+      <p><strong>🧑‍🍳 Σερβιτόροι — Sally's Bar — Waiter Operations</strong><br/>
+        <a href="https://t.me/+KuFvVQCq7FQ0ZDE0" target="_blank">https://t.me/+KuFvVQCq7FQ0ZDE0</a><br/>
+        Ειδοποιήσεις έτοιμων ποτών, κλήσεις πελάτη (παραγγελία / πληρωμή), κουμπί: 📦 Παραδόθηκε.
+      </p>
+      <p><strong>📅 Κρατήσεις — Sally's Bar — Booking Operations</strong><br/>
+        <a href="https://t.me/+6FzCifsLq0NiNzVk" target="_blank">https://t.me/+6FzCifsLq0NiNzVk</a><br/>
+        Νέες κρατήσεις τραπεζιών από το <code>/book</code> και RSVP σε events.
+      </p>
+      <p><strong>🤖 Bot</strong>: <a href="https://t.me/sallysbar_bot" target="_blank">@sallysbar_bot</a> — αυτός στέλνει όλα τα μηνύματα. Μην τον μπλοκάρεις.</p>
+      <p>Τα κουμπιά σε κάθε μήνυμα ενημερώνουν τη βάση άμεσα και στέλνουν push στο PWA σε όλους. Telegram και PWA δουλεύουν παράλληλα — χρησιμοποίησε όποιο είναι μπροστά σου.</p>
     ` : `
-      <p>We run two Telegram chats:</p>
-      <ul>
-        <li><strong>Barman chat</strong> — receives new orders, buttons: 🔄 Preparing · ❌ Cancel, then ✅ Ready once preparing.</li>
-        <li><strong>Waiter chat</strong> — receives ready-to-deliver alerts, button: 📦 Delivered.</li>
-      </ul>
-      <p>Everyone on shift should be in both chats. Button taps update the database instantly and fire pushes to the PWA.</p>
+      <p>We run three Telegram channels + one bot that sends every notification. All on-shift staff should join the channels relevant to their role — that way alerts land in Telegram too, not just the PWA.</p>
+      <p><strong>How to join (once per device):</strong></p>
+      <ol>
+        <li>Install <strong>Telegram</strong> from the App Store / Play Store and create an account.</li>
+        <li>Tap the invite link below — it opens Telegram.</li>
+        <li>Tap <strong>Join</strong>.</li>
+        <li>Enable channel notifications (🔔 top-right → Unmute).</li>
+        <li>Also open the bot: <a href="https://t.me/sallysbar_bot" target="_blank">@sallysbar_bot</a> and tap <strong>Start</strong>.</li>
+      </ol>
+      <p><strong>🍸 Barman — Sally's Bar — Barman Operations</strong><br/>
+        <a href="https://t.me/+B4LY8mZgeHdmMTU0" target="_blank">https://t.me/+B4LY8mZgeHdmMTU0</a><br/>
+        New orders with buttons: 🔄 Preparing · ❌ Cancel, then ✅ Ready.
+      </p>
+      <p><strong>🧑‍🍳 Waiters — Sally's Bar — Waiter Operations</strong><br/>
+        <a href="https://t.me/+KuFvVQCq7FQ0ZDE0" target="_blank">https://t.me/+KuFvVQCq7FQ0ZDE0</a><br/>
+        Ready-to-serve alerts, customer calls (order / pay), button: 📦 Delivered.
+      </p>
+      <p><strong>📅 Bookings — Sally's Bar — Booking Operations</strong><br/>
+        <a href="https://t.me/+6FzCifsLq0NiNzVk" target="_blank">https://t.me/+6FzCifsLq0NiNzVk</a><br/>
+        New table bookings from <code>/book</code> and event RSVPs.
+      </p>
+      <p><strong>🤖 Bot</strong>: <a href="https://t.me/sallysbar_bot" target="_blank">@sallysbar_bot</a> — this account sends every message. Don't block it.</p>
+      <p>Button taps in any channel update the database instantly and fire a PWA push to everyone. Telegram + PWA run in parallel — use whichever is in front of you.</p>
     `,
   },
   s14: {
