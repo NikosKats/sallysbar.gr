@@ -16,7 +16,7 @@ const isEl = lang === "el";
 const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
 const { data: profile } = await supabase
   .from("profiles")
-  .select("full_name, role, created_at, birthday")
+  .select("full_name, role, created_at, birthday, birthday_updated_at")
   .eq("id", user.id)
   .single();
 
@@ -138,12 +138,43 @@ function statusLabel(s: string) {
             <input type="email" value={user.email} disabled
               class="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-white/60 cursor-not-allowed" />
           </div>
-          <div>
-            <label class="text-xs text-white/30 mb-1 block">{isEl ? "Γενέθλια" : "Birthday"}</label>
-            <input id="fBirthday" type="date" value={profile?.birthday ?? ""}
-              class="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400/50" />
-            <p class="text-xs text-white/25 mt-1">{isEl ? "Για μπόνους μήνα γενεθλίων." : "For birthday-month bonus points."}</p>
-          </div>
+          {(() => {
+            const THIRTY = 30 * 24 * 60 * 60 * 1000;
+            const lastAt = profile?.birthday_updated_at ? new Date(profile.birthday_updated_at).getTime() : 0;
+            const locked = lastAt > 0 && (Date.now() - lastAt) < THIRTY;
+            const unlockAt = locked ? new Date(lastAt + THIRTY) : null;
+            const unlockStr = unlockAt ? unlockAt.toLocaleDateString(isEl ? "el-GR" : "en-GB", { day: "2-digit", month: "2-digit", year: "numeric" }) : "";
+            const bdStr = profile?.birthday
+              ? new Date(profile.birthday + "T00:00:00").toLocaleDateString(isEl ? "el-GR" : "en-GB", { day: "2-digit", month: "2-digit", year: "numeric" })
+              : "—";
+            return (
+              <div>
+                <label class="text-xs text-white/30 mb-1 block">{isEl ? "Γενέθλια (ηη/μμ/εεεε)" : "Birthday (dd/mm/yyyy)"}</label>
+                {locked ? (
+                  <>
+                    <input type="text" value={bdStr} disabled
+                      class="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-white/60 cursor-not-allowed" />
+                    <input id="fBirthday" type="hidden" value={profile?.birthday ?? ""} data-locked="1" />
+                    <p class="text-xs text-amber-200/70 mt-1">
+                      {isEl
+                        ? `Κλείδωμα για προστασία πόντων. Επόμενη αλλαγή: ${unlockStr}.`
+                        : `Locked to protect rewards. Next change: ${unlockStr}.`}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <input id="fBirthday" type="date" value={profile?.birthday ?? ""}
+                      class="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400/50" />
+                    <p class="text-xs text-white/25 mt-1">
+                      {isEl
+                        ? "Για μπόνους μήνα γενεθλίων. Αλλαγή επιτρέπεται κάθε 30 ημέρες."
+                        : "For birthday-month bonus points. Editable once every 30 days."}
+                    </p>
+                  </>
+                )}
+              </div>
+            );
+          })()}
           <div>
             <label class="text-xs text-white/30 mb-1 block">{ta.accountType}</label>
             <input type="text" value={profile?.role ?? "customer"} disabled
@@ -416,10 +447,13 @@ function statusLabel(s: string) {
       const btn = profileForm.querySelector("button[type=submit]") as HTMLButtonElement;
       btn.disabled = true;
       msg.className = "text-xs hidden";
-      const payload = {
+      const bdEl = document.getElementById("fBirthday") as HTMLInputElement;
+      const payload: Record<string, unknown> = {
         full_name: (document.getElementById("fName") as HTMLInputElement).value,
-        birthday: (document.getElementById("fBirthday") as HTMLInputElement).value || null,
       };
+      if (bdEl && bdEl.dataset.locked !== "1") {
+        payload.birthday = bdEl.value || null;
+      }
       const res = await fetch("/api/account/update", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

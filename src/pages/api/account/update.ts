@@ -16,14 +16,35 @@ export const POST: APIRoute = async ({ request, locals }) => {
   }
 
   if (body.birthday !== undefined) {
+    const { data: current } = await supabaseAdmin
+      .from("profiles")
+      .select("birthday, birthday_updated_at")
+      .eq("id", locals.user.id)
+      .single();
+
+    let next: string | null;
     if (body.birthday === null || body.birthday === "") {
-      update.birthday = null;
+      next = null;
     } else {
       const bd = String(body.birthday);
       if (!/^\d{4}-\d{2}-\d{2}$/.test(bd)) {
         return new Response(JSON.stringify({ error: "bad_birthday" }), { status: 400 });
       }
-      update.birthday = bd;
+      next = bd;
+    }
+
+    const changed = (current?.birthday ?? null) !== next;
+    if (changed) {
+      if (current?.birthday_updated_at) {
+        const ageMs = Date.now() - new Date(current.birthday_updated_at).getTime();
+        const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
+        if (ageMs < THIRTY_DAYS) {
+          const nextAt = new Date(new Date(current.birthday_updated_at).getTime() + THIRTY_DAYS).toISOString();
+          return new Response(JSON.stringify({ error: "birthday_locked", next_change_at: nextAt }), { status: 429 });
+        }
+      }
+      update.birthday = next;
+      update.birthday_updated_at = new Date().toISOString();
     }
   }
 
