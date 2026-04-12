@@ -1,6 +1,7 @@
 import type { APIRoute } from "astro";
 import { createSupabaseServerClient, supabaseAdmin } from "../../../lib/supabase";
 import { pushOrderStatus, pushToAllStaff } from "../../../lib/pushOrders";
+import { awardPointsForOrderIds } from "../../../lib/loyalty";
 
 async function requireAuth(request: Request, cookies: any) {
   const supabase = createSupabaseServerClient(request, cookies);
@@ -41,6 +42,8 @@ export const PATCH: APIRoute = async ({ request, cookies }) => {
       .update({ status: "paid" })
       .eq("session_id", session_id)
       .eq("status", "delivered");
+
+    await awardPointsForOrderIds(deliveredOrders.map((o) => o.id));
 
     await supabaseAdmin
       .from("table_sessions")
@@ -136,6 +139,7 @@ export const PATCH: APIRoute = async ({ request, cookies }) => {
 
       if (ordersToPay.length > 0) {
         await supabaseAdmin.from("orders").update({ status: "paid" }).in("id", ordersToPay);
+        await awardPointsForOrderIds(ordersToPay);
         const { data: paidRows } = await supabaseAdmin
           .from("orders")
           .select("id, table_number")
@@ -207,6 +211,7 @@ export const PATCH: APIRoute = async ({ request, cookies }) => {
     }
     await supabaseAdmin.from("orders").update({ status: "paid" }).eq("id", id);
     await pushOrderStatus({ id: order.id, table_number: order.table_number, status: "paid" });
+    await awardPointsForOrderIds([id]);
 
     const cents = Number(tip_amount_cents);
     if (cents > 0 && (tip_type === "cash" || tip_type === "card")) {

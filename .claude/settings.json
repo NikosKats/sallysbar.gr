@@ -10,7 +10,23 @@
       "Bash(git commit:*)",
       "Bash(npm install:*)",
       "Bash(git push:*)",
-      "Bash(ls /Users/nikolaoskatsilidis/Desktop/sallysbar.gr/src/middleware*)"
+      "Bash(ls /Users/nikolaoskatsilidis/Desktop/sallysbar.gr/src/middleware*)",
+      "Bash(curl -s -X POST https://sallysbar.gr/api/reservations -H \"Content-Type: application/json\" -d '{\"name\":\"Test Booking\",\"email\":\"test@example.com\",\"phone\":\"+30123456789\",\"date\":\"2026-05-01\",\"time\":\"20:00\",\"party_size\":\"4\",\"notes\":\"Test from Claude — please confirm/reject from Telegram\"}' -w \"\\\\nHTTP %{http_code}\\\\n\")",
+      "Bash(curl -s \"https://api.telegram.org/bot8760807520:AAFjcDspazWzr6Rd0tUX-OMp4j2U00_BnIk/getWebhookInfo\")",
+      "Bash(curl -s -X POST https://sallysbar.gr/api/reservations -H \"Content-Type: application/json\" -d '{\"name\":\"Test Booking 2\",\"email\":\"test2@example.com\",\"phone\":\"+30987654321\",\"date\":\"2026-05-10\",\"time\":\"21:30\",\"party_size\":\"2\",\"notes\":\"Second test — confirm/reject please\"}' -w \"\\\\nHTTP %{http_code}\\\\n\")",
+      "Bash(curl -s \"https://api.telegram.org/bot8760807520:AAFjcDspazWzr6Rd0tUX-OMp4j2U00_BnIk/getChat?chat_id=-1003855453083\")",
+      "Bash(curl -s -X POST \"https://api.telegram.org/bot8760807520:AAFjcDspazWzr6Rd0tUX-OMp4j2U00_BnIk/sendMessage\" -H \"Content-Type: application/json\" -d '{\"chat_id\":\"-1003855453083\",\"text\":\"Direct test from Claude\",\"reply_markup\":{\"inline_keyboard\":[[{\"text\":\"Test\",\"callback_data\":\"test:1\"}]]}}')",
+      "Bash(curl -s https://sallysbar.gr/api/debug-booking)",
+      "Bash(curl -s -X POST https://sallysbar.gr/api/reservations -H \"Content-Type: application/json\" -d '{\"name\":\"Real Test\",\"email\":\"youremail@sallysbar.gr\",\"phone\":\"+30123\",\"date\":\"2026-06-15\",\"time\":\"20:00\",\"party_size\":\"4\",\"notes\":\"Final test — confirm me!\"}' -w \"\\\\nHTTP %{http_code}\\\\n\")",
+      "Bash(find /Users/nikolaoskatsilidis/Desktop/sallysbar.gr/public -type f \\\\\\( -name \"*.jpg\" -o -name \"*.png\" -o -name \"*.webp\" -o -name \"*.gif\" -o -name \"*.mp4\" \\\\\\) -size +100k -exec ls -lh {} \\\\;)",
+      "Bash(sort -k5 -hr)",
+      "Bash(cwebp -version)",
+      "Bash(node scripts/optimize-images.mjs)",
+      "Bash(du -sh /Users/nikolaoskatsilidis/Desktop/sallysbar.gr/public/*)",
+      "Bash(ls /Users/nikolaoskatsilidis/Desktop/sallysbar.gr/public/photos/*.jpg)"
+    ],
+    "additionalDirectories": [
+      "/Users/nikolaoskatsilidis/Desktop/sallysbar.gr/public/photos"
     ]
   }
 }

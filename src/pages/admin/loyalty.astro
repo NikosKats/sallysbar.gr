@@ -3,6 +3,7 @@ import "../../styles/global.css";
 import Header from "../../components/Header.astro";
 import AdminNav from "../../components/AdminNav.astro";
 import { supabaseAdmin } from "../../lib/supabase";
+import { getLoyaltySettings, getTiers, getRewards } from "../../lib/loyalty";
 import { dict, withLangPrefix } from "../../i18n";
 
 const lang = Astro.locals.lang ?? "en";
@@ -12,6 +13,14 @@ const isEl = lang === "el";
 if (Astro.locals.role !== "admin") {
   return Astro.redirect(withLangPrefix(lang, "/admin"));
 }
+
+const settings = await getLoyaltySettings();
+const tiers    = await getTiers();
+const rewards  = await getRewards(false);
+
+const DOW_LABELS = isEl
+  ? ["Κυρ","Δευ","Τρι","Τετ","Πεμ","Παρ","Σαβ"]
+  : ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 
 // Fetch all loyalty events
 const { data: allEvents } = await supabaseAdmin
@@ -112,6 +121,119 @@ const silverCount = customers.filter(c => c.total >= 100 && c.total < 250).lengt
           <p class="text-xs text-white/40 uppercase tracking-wider mb-1">🥈 {isEl ? "Ασημένιο" : "Silver"}</p>
           <p class="text-2xl font-bold text-slate-400">{silverCount}</p>
         </div>
+      </div>
+
+      <!-- Earn rules -->
+      <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+        <h2 class="text-sm font-semibold text-white/50 uppercase tracking-widest mb-4">
+          {isEl ? "Κανόνες Πιστότητας" : "Earn Rules"}
+        </h2>
+        <form id="rulesForm" class="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <div class="flex flex-col gap-1">
+            <label class="text-xs text-white/40 uppercase tracking-wider">{isEl ? "Πόντοι ανά €" : "Points per €"}</label>
+            <input id="rulePpe" type="number" min="0" max="100" step="0.1" value={settings.points_per_euro}
+              class="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400/50" required />
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="text-xs text-white/40 uppercase tracking-wider">{isEl ? "Ελάχ. παραγγελία (€)" : "Min order (€)"}</label>
+            <input id="ruleMin" type="number" min="0" step="0.01" value={(settings.min_order_cents / 100).toFixed(2)}
+              class="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400/50" required />
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="text-xs text-white/40 uppercase tracking-wider">{isEl ? "Γενέθλια ×" : "Birthday ×"}</label>
+            <input id="ruleBday" type="number" min="1" max="10" step="0.5" value={settings.birthday_multiplier}
+              class="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400/50" required />
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="text-xs text-white/40 uppercase tracking-wider">{isEl ? "Παραπομπή (πόντοι)" : "Referral (pts)"}</label>
+            <input id="ruleRef" type="number" min="0" max="100000" step="1" value={settings.referral_points}
+              class="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400/50" required />
+          </div>
+          <div class="flex flex-col gap-1">
+            <label class="text-xs text-white/40 uppercase tracking-wider">{isEl ? "Event RSVP (πόντοι)" : "Event RSVP (pts)"}</label>
+            <input id="ruleRsvp" type="number" min="0" max="100000" step="1" value={settings.event_rsvp_points}
+              class="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400/50" required />
+          </div>
+          <div class="flex flex-col gap-1 col-span-2 md:col-span-3">
+            <label class="text-xs text-white/40 uppercase tracking-wider">{isEl ? "Διπλοί πόντοι (ημέρες)" : "Double-points days"}</label>
+            <div id="dowButtons" class="flex flex-wrap gap-2">
+              {DOW_LABELS.map((label, idx) => (
+                <button type="button" data-dow={idx}
+                  class={`dow-btn px-3 py-1.5 rounded-xl border text-xs font-medium transition ${settings.double_point_dows.includes(idx) ? 'bg-amber-400 text-black border-amber-400' : 'border-white/15 text-white/60 hover:border-white/30'}`}
+                  data-active={settings.double_point_dows.includes(idx) ? 'true' : 'false'}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div class="col-span-2 md:col-span-3 flex items-center gap-3">
+            <button type="submit" class="px-4 py-2 rounded-xl bg-amber-400 text-black text-sm font-semibold hover:bg-amber-300 transition disabled:opacity-40">
+              {isEl ? "Αποθήκευση" : "Save"}
+            </button>
+            <p id="rulesMsg" class="text-xs hidden"></p>
+          </div>
+        </form>
+        <p class="text-xs text-white/30 mt-3">
+          {isEl
+            ? "Πόντοι απονέμονται όταν παραγγελία πληρωθεί + υπάρχει συνδεδεμένος πελάτης. Ισχύει ο μεγαλύτερος πολλαπλασιαστής (διπλή ημέρα ή μήνας γενεθλίων)."
+            : "Points award on paid orders with an attached customer. Highest multiplier wins (double-day or birthday month)."}
+        </p>
+      </div>
+
+      <!-- Tiers -->
+      <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-sm font-semibold text-white/50 uppercase tracking-widest">{isEl ? "Επίπεδα Μελών" : "Membership Tiers"}</h2>
+          <button id="addTierBtn" class="text-xs px-2.5 py-1 rounded-lg border border-white/15 text-white/70 hover:bg-white/5">+ {isEl ? "Νέο επίπεδο" : "New tier"}</button>
+        </div>
+        <div id="tiersWrap" class="space-y-2">
+          {tiers.map(tr => (
+            <div class="tier-row grid grid-cols-12 gap-2 items-center" data-key={tr.key}>
+              <input class="t-key col-span-2 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white/80" value={tr.key} readonly />
+              <input class="t-label-en col-span-2 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white" value={tr.label_en} placeholder="EN" />
+              <input class="t-label-el col-span-2 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white" value={tr.label_el} placeholder="EL" />
+              <input class="t-icon col-span-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white text-center" value={tr.icon} placeholder="🥇" />
+              <input class="t-color col-span-1 h-8 rounded-lg border border-white/10 bg-white/5" type="color" value={tr.color} />
+              <input class="t-threshold col-span-2 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white" type="number" min="0" value={tr.threshold} />
+              <button class="t-del col-span-1 text-xs text-red-400 hover:text-red-300">✕</button>
+              <input class="t-perk-en col-span-6 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white/80" value={tr.perk_en} placeholder="Perk EN" />
+              <input class="t-perk-el col-span-6 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white/80" value={tr.perk_el} placeholder="Perk EL" />
+            </div>
+          ))}
+        </div>
+        <div class="mt-3 flex items-center gap-3">
+          <button id="saveTiersBtn" class="px-4 py-2 rounded-xl bg-amber-400 text-black text-sm font-semibold hover:bg-amber-300 transition disabled:opacity-40">
+            {isEl ? "Αποθήκευση επιπέδων" : "Save tiers"}
+          </button>
+          <p id="tiersMsg" class="text-xs hidden"></p>
+        </div>
+      </div>
+
+      <!-- Rewards catalog -->
+      <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-sm font-semibold text-white/50 uppercase tracking-widest">{isEl ? "Κατάλογος Εξαργύρωσης" : "Reward Catalog"}</h2>
+          <button id="addRewardBtn" class="text-xs px-2.5 py-1 rounded-lg border border-white/15 text-white/70 hover:bg-white/5">+ {isEl ? "Νέα ανταμοιβή" : "New reward"}</button>
+        </div>
+        <div id="rewardsWrap" class="space-y-2">
+          {rewards.map(r => (
+            <div class="reward-row grid grid-cols-12 gap-2 items-center" data-id={r.id}>
+              <input class="r-name-en col-span-3 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white" value={r.name_en} placeholder="Name EN" />
+              <input class="r-name-el col-span-3 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white" value={r.name_el} placeholder="Name EL" />
+              <input class="r-cost col-span-2 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white" type="number" min="1" value={r.cost} />
+              <input class="r-sort col-span-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white" type="number" value={r.sort_order} title={isEl ? "Σειρά" : "Sort"} />
+              <label class="col-span-2 text-xs text-white/60 flex items-center gap-1">
+                <input class="r-active" type="checkbox" checked={r.active} />
+                {isEl ? "Ενεργό" : "Active"}
+              </label>
+              <button class="r-save col-span-1 text-xs text-green-400 hover:text-green-300">💾</button>
+              <input class="r-desc-en col-span-6 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white/80" value={r.description_en} placeholder="Desc EN" />
+              <input class="r-desc-el col-span-5 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white/80" value={r.description_el} placeholder="Desc EL" />
+              <button class="r-del col-span-1 text-xs text-red-400 hover:text-red-300">✕</button>
+            </div>
+          ))}
+        </div>
+        <p id="rewardsMsg" class="text-xs hidden mt-3"></p>
       </div>
 
       <!-- Award points form -->
@@ -220,6 +342,189 @@ const silverCount = customers.filter(c => c.total >= 100 && c.total < 250).lengt
     </main>
 
     <script define:vars={{ isEl }}>
+      // DOW toggle buttons
+      document.querySelectorAll(".dow-btn").forEach(b => {
+        b.addEventListener("click", () => {
+          const active = b.dataset.active === "true";
+          b.dataset.active = active ? "false" : "true";
+          if (active) {
+            b.classList.remove("bg-amber-400","text-black","border-amber-400");
+            b.classList.add("border-white/15","text-white/60","hover:border-white/30");
+          } else {
+            b.classList.add("bg-amber-400","text-black","border-amber-400");
+            b.classList.remove("border-white/15","text-white/60","hover:border-white/30");
+          }
+        });
+      });
+
+      document.getElementById("rulesForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const btn = e.currentTarget.querySelector("button[type=submit]");
+        const msg = document.getElementById("rulesMsg");
+        const dows = Array.from(document.querySelectorAll(".dow-btn"))
+          .filter(b => b.dataset.active === "true")
+          .map(b => Number(b.dataset.dow));
+        const payload = {
+          points_per_euro: Number(document.getElementById("rulePpe").value),
+          min_order_cents: Math.round(Number(document.getElementById("ruleMin").value) * 100),
+          birthday_multiplier: Number(document.getElementById("ruleBday").value),
+          referral_points: Number(document.getElementById("ruleRef").value),
+          event_rsvp_points: Number(document.getElementById("ruleRsvp").value),
+          double_point_dows: dows,
+        };
+        btn.disabled = true;
+        msg.className = "text-xs hidden";
+        try {
+          const res = await fetch("/api/admin/loyalty-settings", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          if (res.ok) {
+            msg.textContent = isEl ? "✓ Αποθηκεύτηκε." : "✓ Saved.";
+            msg.className = "text-xs text-green-400 block";
+          } else {
+            const { error } = await res.json().catch(() => ({}));
+            msg.textContent = error ?? (isEl ? "Σφάλμα." : "Error.");
+            msg.className = "text-xs text-red-400 block";
+          }
+        } catch {
+          msg.textContent = isEl ? "Σφάλμα δικτύου." : "Network error.";
+          msg.className = "text-xs text-red-400 block";
+        } finally { btn.disabled = false; }
+      });
+
+      // ─── Tiers ──────────────────────────────────────────────
+      document.getElementById("addTierBtn").addEventListener("click", () => {
+        const wrap = document.getElementById("tiersWrap");
+        const row = document.createElement("div");
+        row.className = "tier-row grid grid-cols-12 gap-2 items-center";
+        row.dataset.key = "";
+        row.innerHTML = `
+          <input class="t-key col-span-2 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white" placeholder="key" />
+          <input class="t-label-en col-span-2 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white" placeholder="EN" />
+          <input class="t-label-el col-span-2 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white" placeholder="EL" />
+          <input class="t-icon col-span-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white text-center" placeholder="🥇" />
+          <input class="t-color col-span-1 h-8 rounded-lg border border-white/10 bg-white/5" type="color" value="#f59e0b" />
+          <input class="t-threshold col-span-2 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white" type="number" min="0" value="0" />
+          <button class="t-del col-span-1 text-xs text-red-400 hover:text-red-300">✕</button>
+          <input class="t-perk-en col-span-6 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white/80" placeholder="Perk EN" />
+          <input class="t-perk-el col-span-6 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white/80" placeholder="Perk EL" />`;
+        wrap.appendChild(row);
+      });
+
+      document.getElementById("tiersWrap").addEventListener("click", async (e) => {
+        const btn = e.target.closest(".t-del");
+        if (!btn) return;
+        const row = btn.closest(".tier-row");
+        const key = row.dataset.key;
+        if (key) {
+          if (!confirm(isEl ? `Διαγραφή "${key}";` : `Delete "${key}"?`)) return;
+          const res = await fetch("/api/admin/loyalty-tiers", {
+            method: "DELETE", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ key }),
+          });
+          if (!res.ok) { alert(isEl ? "Σφάλμα." : "Error."); return; }
+        }
+        row.remove();
+      });
+
+      document.getElementById("saveTiersBtn").addEventListener("click", async (e) => {
+        const btn = e.currentTarget;
+        const msg = document.getElementById("tiersMsg");
+        const rows = Array.from(document.querySelectorAll(".tier-row"));
+        const tiers = rows.map((r, i) => ({
+          key: r.querySelector(".t-key").value.trim().toLowerCase(),
+          label_en: r.querySelector(".t-label-en").value.trim(),
+          label_el: r.querySelector(".t-label-el").value.trim(),
+          icon: r.querySelector(".t-icon").value,
+          color: r.querySelector(".t-color").value,
+          threshold: Number(r.querySelector(".t-threshold").value),
+          perk_en: r.querySelector(".t-perk-en").value,
+          perk_el: r.querySelector(".t-perk-el").value,
+          sort_order: i,
+        })).filter(t => t.key);
+        btn.disabled = true;
+        try {
+          const res = await fetch("/api/admin/loyalty-tiers", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ tiers }),
+          });
+          msg.className = res.ok ? "text-xs text-green-400 block" : "text-xs text-red-400 block";
+          msg.textContent = res.ok ? (isEl ? "✓ Αποθηκεύτηκε." : "✓ Saved.") : (isEl ? "Σφάλμα." : "Error.");
+        } finally { btn.disabled = false; }
+      });
+
+      // ─── Rewards ────────────────────────────────────────────
+      function collectReward(row) {
+        return {
+          id: row.dataset.id || undefined,
+          name_en: row.querySelector(".r-name-en").value.trim(),
+          name_el: row.querySelector(".r-name-el").value.trim(),
+          description_en: row.querySelector(".r-desc-en").value,
+          description_el: row.querySelector(".r-desc-el").value,
+          cost: Number(row.querySelector(".r-cost").value),
+          sort_order: Number(row.querySelector(".r-sort").value || 0),
+          active: row.querySelector(".r-active").checked,
+        };
+      }
+
+      document.getElementById("addRewardBtn").addEventListener("click", () => {
+        const wrap = document.getElementById("rewardsWrap");
+        const row = document.createElement("div");
+        row.className = "reward-row grid grid-cols-12 gap-2 items-center";
+        row.innerHTML = `
+          <input class="r-name-en col-span-3 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white" placeholder="Name EN" />
+          <input class="r-name-el col-span-3 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white" placeholder="Name EL" />
+          <input class="r-cost col-span-2 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white" type="number" min="1" value="100" />
+          <input class="r-sort col-span-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white" type="number" value="0" />
+          <label class="col-span-2 text-xs text-white/60 flex items-center gap-1"><input class="r-active" type="checkbox" checked /> ${isEl ? "Ενεργό" : "Active"}</label>
+          <button class="r-save col-span-1 text-xs text-green-400 hover:text-green-300">💾</button>
+          <input class="r-desc-en col-span-6 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white/80" placeholder="Desc EN" />
+          <input class="r-desc-el col-span-5 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white/80" placeholder="Desc EL" />
+          <button class="r-del col-span-1 text-xs text-red-400 hover:text-red-300">✕</button>`;
+        wrap.appendChild(row);
+      });
+
+      document.getElementById("rewardsWrap").addEventListener("click", async (e) => {
+        const msg = document.getElementById("rewardsMsg");
+        const saveBtn = e.target.closest(".r-save");
+        const delBtn  = e.target.closest(".r-del");
+        if (saveBtn) {
+          const row = saveBtn.closest(".reward-row");
+          const data = collectReward(row);
+          if (!data.name_en || !data.name_el || !(data.cost > 0)) {
+            msg.textContent = isEl ? "Συμπλήρωσε όλα τα πεδία." : "Fill all fields.";
+            msg.className = "text-xs text-red-400 block mt-3";
+            return;
+          }
+          const res = await fetch("/api/admin/loyalty-rewards", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data),
+          });
+          const j = await res.json().catch(() => ({}));
+          if (res.ok) {
+            if (!row.dataset.id && j.id) row.dataset.id = j.id;
+            msg.textContent = isEl ? "✓ Αποθηκεύτηκε." : "✓ Saved.";
+            msg.className = "text-xs text-green-400 block mt-3";
+          } else {
+            msg.textContent = j.error ?? (isEl ? "Σφάλμα." : "Error.");
+            msg.className = "text-xs text-red-400 block mt-3";
+          }
+        } else if (delBtn) {
+          const row = delBtn.closest(".reward-row");
+          const id = row.dataset.id;
+          if (id) {
+            if (!confirm(isEl ? "Διαγραφή ανταμοιβής;" : "Delete reward?")) return;
+            const res = await fetch("/api/admin/loyalty-rewards", {
+              method: "DELETE", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ id }),
+            });
+            if (!res.ok) { msg.textContent = isEl ? "Σφάλμα." : "Error."; msg.className = "text-xs text-red-400 block mt-3"; return; }
+          }
+          row.remove();
+        }
+      });
+
       // Quick-award: click button fills the award form above
       document.querySelectorAll(".quick-award-btn").forEach(btn => {
         btn.addEventListener("click", () => {

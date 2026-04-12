@@ -86,10 +86,15 @@ const displayName = user?.user_metadata?.full_name?.split(" ")[0]
         <!-- Brand -->
         <a href={brandHref} class="flex items-center gap-3">
           <img
-            src="/logo/1-logo.png"
+            src="/logo/logo-64.webp"
+            srcset="/logo/logo-64.webp 1x, /logo/logo-128.webp 2x"
             alt="Sally's Bar logo"
+            width="32"
+            height="32"
             class="h-8 w-8 rounded-md object-contain"
             loading="eager"
+            decoding="async"
+            fetchpriority="high"
           />
           <span class="text-sm font-semibold tracking-wide text-white/90">
             Sally's Bar
@@ -256,6 +261,7 @@ const displayName = user?.user_metadata?.full_name?.split(" ")[0]
         <button
           id="mobileMenuBtn"
           class="md:hidden inline-flex items-center justify-center rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm text-white/90 hover:bg-white/10"
+          style="touch-action: manipulation;"
           aria-label={ariaOpenMenu}
           aria-expanded="false"
           aria-controls="mobileMenu"
@@ -268,9 +274,22 @@ const displayName = user?.user_metadata?.full_name?.split(" ")[0]
         </button>
       </div>
 
-      <!-- Mobile drawer -->
-      <div id="mobileMenu" class="md:hidden hidden border-t border-white/10">
-        <div class="overflow-y-auto max-h-[calc(100svh-72px)] px-3 py-3 flex flex-col gap-1">
+    </div>
+  </div>
+
+  <!-- Mobile drawer — rendered OUTSIDE backdrop-blur container to avoid iOS repaint cost -->
+  <div
+    id="mobileMenu"
+    class="md:hidden fixed inset-0 top-0 z-40 hidden"
+    aria-hidden="true"
+  >
+    <div id="mobileMenuScrim" class="absolute inset-0 bg-black/60"></div>
+    <div
+      id="mobileMenuPanel"
+      class="absolute inset-x-0 top-0 bg-[#0b0b10] border-b border-white/10 max-h-[100svh] overflow-y-auto overscroll-contain will-change-transform"
+      style="padding-top: calc(env(safe-area-inset-top, 0px) + 84px);"
+    >
+      <div class="px-3 pb-6 pt-2 flex flex-col gap-1">
 
           <!-- Main nav -->
           <div class="grid grid-cols-3 gap-1 mb-1">
@@ -381,22 +400,30 @@ const displayName = user?.user_metadata?.full_name?.split(" ")[0]
     const btn = document.getElementById("mobileMenuBtn");
     const menu = document.getElementById("mobileMenu");
 
+    const scrim = document.getElementById("mobileMenuScrim");
+
     function closeMenu() {
       if (!menu || !btn) return;
       menu.classList.add("hidden");
+      menu.setAttribute("aria-hidden", "true");
       btn.setAttribute("aria-expanded", "false");
+      document.body.style.overflow = "";
+    }
+
+    function openMenu() {
+      if (!menu || !btn) return;
+      menu.classList.remove("hidden");
+      menu.setAttribute("aria-hidden", "false");
+      btn.setAttribute("aria-expanded", "true");
+      document.body.style.overflow = "hidden";
     }
 
     btn?.addEventListener("click", () => {
-      const isHidden = menu?.classList.contains("hidden");
-      if (!menu) return;
-      if (isHidden) {
-        menu.classList.remove("hidden");
-        btn.setAttribute("aria-expanded", "true");
-      } else {
-        closeMenu();
-      }
+      if (menu?.classList.contains("hidden")) openMenu();
+      else closeMenu();
     });
+
+    scrim?.addEventListener("click", closeMenu);
 
     menu?.addEventListener("click", (e) => {
       const a = e.target.closest("a");

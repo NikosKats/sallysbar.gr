@@ -60,6 +60,33 @@ export async function pushOrderCreated(order: { id: string; table_number: number
   });
 }
 
+export async function pushToUser(userId: string, payload: OrderPushPayload): Promise<void> {
+  const keys = vapidKeys();
+  if (!keys) return;
+  const { data: subs } = await supabaseAdmin
+    .from("push_subscriptions")
+    .select("endpoint, p256dh, auth")
+    .eq("user_id", userId);
+  if (!subs?.length) return;
+  const stale: string[] = [];
+  await Promise.all(
+    subs.map(async (s) => {
+      try {
+        const res = await sendWebPush(
+          { endpoint: s.endpoint, p256dh: s.p256dh, auth: s.auth },
+          payload,
+          keys,
+          { ttl: 3600, urgency: "high", topic: payload.tag },
+        );
+        if (res.status === 404 || res.status === 410) stale.push(s.endpoint);
+      } catch (e) { console.warn("push error", e); }
+    }),
+  );
+  if (stale.length) {
+    await supabaseAdmin.from("push_subscriptions").delete().in("endpoint", stale);
+  }
+}
+
 export async function pushOrderStatus(order: { id: string; table_number: number; status: string }) {
   const map: Record<string, { emoji: string; label: string }> = {
     preparing: { emoji: "🔄", label: "Preparing" },

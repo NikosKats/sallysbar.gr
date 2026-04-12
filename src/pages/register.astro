@@ -84,7 +84,7 @@ const loginHref = withLangPrefix(lang, "/login");
 
     <div class="card">
       <a href={withLangPrefix(lang, "/")} class="brand">
-        <img src="/logo/1-logo.png" alt="Sally's Bar" />
+        <img src="/logo/logo-128.webp" alt="Sally's Bar" width="64" height="64" loading="eager" />
         <span>Sally's Bar</span>
       </a>
 
@@ -248,8 +248,22 @@ const loginHref = withLangPrefix(lang, "/login");
           return;
         }
 
+        // Capture referral code from URL (?ref=<uuid>) and persist for later claim
+        const refId = new URLSearchParams(window.location.search).get("ref");
+        if (refId) try { localStorage.setItem("pending_ref", refId); } catch {}
+
         // Email confirmation disabled — user is logged in immediately
         if (data.session) {
+          if (refId) {
+            try {
+              await fetch("/api/loyalty/claim-referral", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ referrer_id: refId }),
+              });
+              localStorage.removeItem("pending_ref");
+            } catch {}
+          }
           window.location.href = redirectTo;
           return;
         }

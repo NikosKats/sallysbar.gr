@@ -32,6 +32,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
   // Session handling: join existing session or create a new one
   let finalSessionId: string;
   let roundNumber = 1;
+  let customerUserId: string | null = null;
 
   if (session_id) {
     // Adding a round to an existing session — find the next round number
@@ -43,6 +44,12 @@ export const POST: APIRoute = async ({ request, locals }) => {
       .limit(1);
     roundNumber = (existingRounds?.[0]?.round_number ?? 0) + 1;
     finalSessionId = session_id;
+    const { data: sess } = await supabaseAdmin
+      .from("table_sessions")
+      .select("customer_user_id")
+      .eq("id", session_id)
+      .maybeSingle();
+    customerUserId = sess?.customer_user_id ?? null;
   } else {
     // New session
     const { data: session, error: sessionErr } = await supabaseAdmin
@@ -65,6 +72,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
       waiter_id: locals.user?.id ?? null,
       session_id: finalSessionId,
       round_number: roundNumber,
+      customer_user_id: customerUserId,
     })
     .select()
     .single();

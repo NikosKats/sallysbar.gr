@@ -20,7 +20,7 @@ today.setHours(0, 0, 0, 0);
 // ── Fetch open sessions ────────────────────────────────────────────────────────
 const { data: rawSessions } = await supabaseAdmin
   .from("table_sessions")
-  .select("id, table_number, status, created_at")
+  .select("id, table_number, status, created_at, customer_user_id")
   .eq("status", "open")
   .gte("created_at", today.toISOString())
   .order("created_at", { ascending: true });
@@ -307,6 +307,18 @@ function fmtEur(cents: number) {
                         )}
                       </div>
                       <p class="text-xs text-white/30 mt-0.5">{timeAgo(session.created_at)}</p>
+                      <div class="mt-1.5">
+                        <button
+                          type="button"
+                          class="attach-customer-btn inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border border-amber-400/30 text-amber-300 hover:bg-amber-400/10 transition"
+                          data-session-id={session.id}
+                          data-attached={session.customer_user_id ? "1" : ""}
+                        >
+                          {session.customer_user_id
+                            ? (isEl ? "✓ Πελάτης συνδεδεμένος" : "✓ Customer attached")
+                            : (isEl ? "📷 Σύνδεση κάρτας πιστότητας" : "📷 Attach loyalty card")}
+                        </button>
+                      </div>
                     </div>
                     {session.awaitingCents > 0 && (
                       <div class="text-right">
@@ -856,6 +868,119 @@ function fmtEur(cents: number) {
           else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') setDot('error');
           else setDot('connecting');
         });
+    </script>
+
+    <!-- Loyalty attach modal -->
+    <dialog id="attachModal" class="rounded-2xl p-0 bg-[#14141c] text-white w-[min(92vw,420px)] border border-white/10 backdrop:bg-black/70">
+      <div class="p-5 space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="font-semibold">Attach loyalty card</h3>
+          <button type="button" id="attachClose" class="text-white/60 hover:text-white text-xl leading-none">×</button>
+        </div>
+        <video id="attachVideo" class="w-full rounded-xl bg-black aspect-square object-cover" playsinline muted></video>
+        <div class="space-y-2">
+          <label class="text-xs text-white/40 uppercase tracking-wider">Or paste code</label>
+          <input id="attachManual" type="text" placeholder="loyalty:xxxxxxxx-xxxx-..." class="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm" />
+          <button type="button" id="attachSubmit" class="w-full px-4 py-2 rounded-xl bg-amber-400 text-black text-sm font-semibold hover:bg-amber-300 transition">Attach</button>
+        </div>
+        <p id="attachMsg" class="text-xs hidden"></p>
+      </div>
+    </dialog>
+
+    <script>
+      (() => {
+        const modal = document.getElementById("attachModal") as HTMLDialogElement | null;
+        if (!modal) return;
+        const video = document.getElementById("attachVideo") as HTMLVideoElement;
+        const manual = document.getElementById("attachManual") as HTMLInputElement;
+        const submit = document.getElementById("attachSubmit") as HTMLButtonElement;
+        const msg = document.getElementById("attachMsg") as HTMLElement;
+        const closeBtn = document.getElementById("attachClose") as HTMLButtonElement;
+        let currentSessionId: string | null = null;
+        let stream: MediaStream | null = null;
+        let scanRaf = 0;
+        let detector: any = null;
+
+        function setMsg(text: string, ok: boolean) {
+          msg.textContent = text;
+          msg.className = "text-xs block " + (ok ? "text-green-400" : "text-red-400");
+        }
+
+        async function startScan() {
+          const BD = (window as any).BarcodeDetector;
+          if (!BD) return;
+          try {
+            detector = new BD({ formats: ["qr_code"] });
+            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+            video.srcObject = stream;
+            await video.play();
+            const tick = async () => {
+              if (!detector || !video.videoWidth) { scanRaf = requestAnimationFrame(tick); return; }
+              try {
+                const codes = await detector.detect(video);
+                if (codes?.length) {
+                  const raw = codes[0].rawValue as string;
+                  if (raw?.startsWith("loyalty:")) {
+                    await attach(raw);
+                    return;
+                  }
+                }
+              } catch {}
+              scanRaf = requestAnimationFrame(tick);
+            };
+            scanRaf = requestAnimationFrame(tick);
+          } catch (e) {
+            console.warn("camera unavailable", e);
+          }
+        }
+
+        function stopScan() {
+          cancelAnimationFrame(scanRaf);
+          if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+          video.srcObject = null;
+        }
+
+        async function attach(code: string) {
+          if (!currentSessionId) return;
+          submit.disabled = true;
+          try {
+            const res = await fetch("/api/staff/attach-customer", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ session_id: currentSessionId, loyalty_code: code }),
+            });
+            const json = await res.json().catch(() => ({}));
+            if (res.ok) {
+              setMsg(`✓ Attached ${json.customer?.name ?? ""}`, true);
+              setTimeout(() => { modal.close(); stopScan(); window.location.reload(); }, 800);
+            } else {
+              setMsg(json.error ?? "Error", false);
+            }
+          } catch {
+            setMsg("Network error", false);
+          } finally {
+            submit.disabled = false;
+          }
+        }
+
+        document.querySelectorAll(".attach-customer-btn").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            currentSessionId = (btn as HTMLElement).dataset.sessionId ?? null;
+            manual.value = "";
+            msg.className = "text-xs hidden";
+            modal.showModal();
+            startScan();
+          });
+        });
+
+        submit.addEventListener("click", () => {
+          const val = manual.value.trim();
+          if (val) attach(val);
+        });
+
+        closeBtn.addEventListener("click", () => { modal.close(); stopScan(); });
+        modal.addEventListener("close", stopScan);
+      })();
     </script>
   </body>
 </html>

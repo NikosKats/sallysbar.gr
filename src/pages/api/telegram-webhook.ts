@@ -5,7 +5,8 @@ import {
   editMessageText,
   answerCallbackQuery,
 } from "../../lib/telegram";
-import { pushOrderStatus } from "../../lib/pushOrders";
+import { pushOrderStatus, pushToUser } from "../../lib/pushOrders";
+import { sendEmail } from "../../lib/email";
 
 type OrderItem = { name: string; qty: number; price_cents: number };
 
@@ -48,6 +49,10 @@ async function handleUpdate(body: Record<string, unknown>): Promise<Response> {
   if (!action || !orderId) {
     await answerCallbackQuery(cb.id, "Unknown action.");
     return new Response("ok");
+  }
+
+  if (action === "confirm_booking" || action === "reject_booking") {
+    return handleBookingCallback(action, orderId, cb);
   }
 
   const { data: order } = await supabaseAdmin
@@ -187,5 +192,96 @@ async function handleUpdate(body: Record<string, unknown>): Promise<Response> {
     await answerCallbackQuery(cb.id, "Order cancelled.");
   }
 
+  return new Response("ok");
+}
+
+function escapeHtml(s: string) {
+  return s.replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!)
+  );
+}
+
+async function handleBookingCallback(
+  action: string,
+  reservationId: string,
+  cb: { id: string; message: { message_id: number; chat: { id: number } } }
+): Promise<Response> {
+  const { data: r } = await supabaseAdmin
+    .from("reservations")
+    .select("*")
+    .eq("id", reservationId)
+    .single();
+
+  if (!r) {
+    await answerCallbackQuery(cb.id, "Booking not found.");
+    return new Response("ok");
+  }
+
+  const confirmed = action === "confirm_booking";
+  const newStatus = confirmed ? "confirmed" : "rejected";
+
+  await supabaseAdmin
+    .from("reservations")
+    .update({ status: newStatus, decided_at: new Date().toISOString() })
+    .eq("id", reservationId);
+
+  const header = confirmed
+    ? `✅ <b>Booking confirmed</b>`
+    : `❌ <b>Booking rejected</b>`;
+
+  const lines = [
+    header,
+    ``,
+    `👤 <b>${escapeHtml(r.name)}</b>`,
+    `👥 Party of ${r.party_size}`,
+    `🗓 ${escapeHtml(r.date)} at ${escapeHtml(r.time)}`,
+    `✉️ ${escapeHtml(r.email)}`,
+    r.phone ? `📞 ${escapeHtml(r.phone)}` : "",
+    r.notes ? `\n📝 <i>${escapeHtml(r.notes)}</i>` : "",
+    `\n<code>#${reservationId.slice(0, 8)}</code>`,
+  ].filter(Boolean);
+
+  await editMessageText(
+    import.meta.env.TELEGRAM_BOOKING_CHAT_ID,
+    cb.message.message_id,
+    lines.join("\n"),
+    { reply_markup: { inline_keyboard: [] } }
+  );
+
+  // Notify customer
+  try {
+    const subject = confirmed
+      ? `Your booking at Sally's Bar is confirmed ✅`
+      : `Your booking at Sally's Bar could not be confirmed`;
+    const intro = confirmed
+      ? `Great news — we've confirmed your booking. We can't wait to see you!`
+      : `Unfortunately we couldn't accommodate your booking at the requested time. Please try another slot or contact us directly.`;
+    const html = `
+      <div style="font-family:system-ui,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#111">
+        <h2 style="margin:0 0 12px">${confirmed ? "Booking confirmed ✅" : "Booking not confirmed"}</h2>
+        <p>Hi ${escapeHtml(r.name)},</p>
+        <p>${intro}</p>
+        <div style="background:#f6f6f6;border-radius:12px;padding:16px;margin:16px 0">
+          <div><strong>Date:</strong> ${escapeHtml(r.date)} at ${escapeHtml(r.time)}</div>
+          <div><strong>Party:</strong> ${r.party_size}</div>
+          ${r.notes ? `<div><strong>Notes:</strong> ${escapeHtml(r.notes)}</div>` : ""}
+        </div>
+        <p style="color:#666;font-size:12px">Sally's Bar · Skala</p>
+      </div>`;
+    await sendEmail({ to: r.email, subject, html });
+  } catch (e) { console.warn("[booking] email failed", e); }
+
+  if (r.user_id) {
+    try {
+      await pushToUser(r.user_id, {
+        title: confirmed ? "Booking confirmed ✅" : "Booking not confirmed",
+        body: `${r.date} at ${r.time} · party of ${r.party_size}`,
+        tag: `booking-${reservationId}`,
+        url: "/account",
+      });
+    } catch (e) { console.warn("[booking] push failed", e); }
+  }
+
+  await answerCallbackQuery(cb.id, confirmed ? "Booking confirmed ✅" : "Booking rejected ❌");
   return new Response("ok");
 }

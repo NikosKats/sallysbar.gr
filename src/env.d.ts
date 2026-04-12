@@ -16,6 +16,12 @@ interface ImportMetaEnv {
   readonly TELEGRAM_BOT_TOKEN: string;
   readonly TELEGRAM_BARMAN_CHAT_ID: string;
   readonly TELEGRAM_WAITER_CHAT_ID: string;
+  readonly TELEGRAM_BOOKING_CHAT_ID: string;
+  readonly RESEND_API_KEY: string;
+  readonly RESEND_FROM: string;
+  readonly VAPID_PUBLIC_KEY: string;
+  readonly VAPID_PRIVATE_KEY: string;
+  readonly VAPID_SUBJECT: string;
   readonly TABLE_SECRET: string;
   readonly ANTHROPIC_API_KEY: string;
 }

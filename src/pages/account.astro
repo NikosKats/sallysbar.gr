@@ -3,6 +3,7 @@ import "../styles/global.css";
 import Header from "../components/Header.astro";
 import { createSupabaseServerClient, supabaseAdmin } from "../lib/supabase";
 import { withLangPrefix, dict } from "../i18n";
+import { getTiers, getRewards, currentTier, nextTier } from "../lib/loyalty";
 
 const user = Astro.locals.user;
 const lang = Astro.locals.lang ?? "en";
@@ -15,7 +16,7 @@ const isEl = lang === "el";
 const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
 const { data: profile } = await supabase
   .from("profiles")
-  .select("full_name, role, created_at")
+  .select("full_name, role, created_at, birthday")
   .eq("id", user.id)
   .single();
 
@@ -63,17 +64,32 @@ const { data: loyaltyEvents } = await supabaseAdmin
 
 const loyaltyBalance = (loyaltyEvents ?? []).reduce((s, e) => s + e.points, 0);
 
-// Tier logic
-const TIERS = [
-  { key: "Bronze", label: ta.tierBronze, min: 0,   nextAt: 100,  color: "#cd7f32", bg: "rgba(205,127,50,.12)", border: "rgba(205,127,50,.3)" },
-  { key: "Silver", label: ta.tierSilver, min: 100,  nextAt: 250,  color: "#94a3b8", bg: "rgba(148,163,184,.12)", border: "rgba(148,163,184,.3)" },
-  { key: "Gold",   label: ta.tierGold,   min: 250,  nextAt: null, color: "#f59e0b", bg: "rgba(245,158,11,.12)", border: "rgba(245,158,11,.3)" },
-];
-const tier = [...TIERS].reverse().find(t => loyaltyBalance >= t.min) ?? TIERS[0];
-const tierProgress = tier.nextAt
-  ? Math.min(100, Math.round(((loyaltyBalance - tier.min) / (tier.nextAt - tier.min)) * 100))
+// Dynamic tier logic (configurable from admin)
+const tiers     = await getTiers();
+const rewards   = await getRewards(true);
+const tierRow   = currentTier(tiers, loyaltyBalance);
+const nextRow   = nextTier(tiers, loyaltyBalance);
+const tierLabel = tierRow ? (isEl ? tierRow.label_el : tierRow.label_en) : "—";
+const tierPerk  = tierRow ? (isEl ? tierRow.perk_el  : tierRow.perk_en)  : "";
+const tierColor = tierRow?.color ?? "#94a3b8";
+const tierIcon  = tierRow?.icon  ?? "";
+const tierBg    = `${tierColor}1f`;
+const tierBorder= `${tierColor}4d`;
+const tierMin   = tierRow?.threshold ?? 0;
+const tierNextAt= nextRow?.threshold ?? null;
+const nextLabel = nextRow ? (isEl ? nextRow.label_el : nextRow.label_en) : "";
+const tierProgress = tierNextAt
+  ? Math.min(100, Math.round(((loyaltyBalance - tierMin) / (tierNextAt - tierMin)) * 100))
   : 100;
-const ptsToNext = tier.nextAt ? tier.nextAt - loyaltyBalance : 0;
+const ptsToNext = tierNextAt ? tierNextAt - loyaltyBalance : 0;
+
+// Active (pending) redemptions
+const { data: activeRedemptions } = await supabaseAdmin
+  .from("loyalty_redemptions")
+  .select("id, code, cost, status, created_at, loyalty_rewards(name_en, name_el)")
+  .eq("user_id", user.id)
+  .eq("status", "pending")
+  .order("created_at", { ascending: false });
 
 function fmtDate(d: string) {
   return new Date(d + "T00:00:00").toLocaleDateString(isEl ? "el-GR" : "en-GB", {
@@ -108,75 +124,151 @@ function statusLabel(s: string) {
         <p class="mt-1 text-sm text-white/40">{ta.subtitle}</p>
       </div>
 
-      <!-- Profile card -->
+      <!-- Profile card (editable) -->
       <div class="rounded-2xl border border-white/10 bg-white/5 p-6 space-y-4">
         <h2 class="text-sm font-semibold text-white/50 uppercase tracking-widest">{ta.profileSection}</h2>
-        <div class="grid sm:grid-cols-2 gap-4">
+        <form id="profileForm" class="grid sm:grid-cols-2 gap-4">
           <div>
-            <p class="text-xs text-white/30 mb-1">{ta.name}</p>
-            <p class="text-sm text-white font-medium">{displayName}</p>
+            <label class="text-xs text-white/30 mb-1 block">{ta.name}</label>
+            <input id="fName" type="text" value={profile?.full_name ?? ""} maxlength="120"
+              class="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400/50" />
           </div>
           <div>
-            <p class="text-xs text-white/30 mb-1">{ta.email}</p>
-            <p class="text-sm text-white font-medium">{user.email}</p>
+            <label class="text-xs text-white/30 mb-1 block">{ta.email}</label>
+            <input type="email" value={user.email} disabled
+              class="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-white/60 cursor-not-allowed" />
           </div>
           <div>
-            <p class="text-xs text-white/30 mb-1">{ta.memberSince}</p>
-            <p class="text-sm text-white font-medium">{memberSince}</p>
+            <label class="text-xs text-white/30 mb-1 block">{isEl ? "Γενέθλια" : "Birthday"}</label>
+            <input id="fBirthday" type="date" value={profile?.birthday ?? ""}
+              class="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400/50" />
+            <p class="text-xs text-white/25 mt-1">{isEl ? "Για μπόνους μήνα γενεθλίων." : "For birthday-month bonus points."}</p>
           </div>
           <div>
-            <p class="text-xs text-white/30 mb-1">{ta.accountType}</p>
-            <p class="text-sm text-white font-medium capitalize">{profile?.role ?? "customer"}</p>
+            <label class="text-xs text-white/30 mb-1 block">{ta.accountType}</label>
+            <input type="text" value={profile?.role ?? "customer"} disabled
+              class="w-full rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-white/60 capitalize cursor-not-allowed" />
           </div>
-        </div>
-        <div class="pt-2 border-t border-white/10">
+          <div class="sm:col-span-2 flex items-center gap-3">
+            <button type="submit" class="px-4 py-2 rounded-xl bg-amber-400 text-black text-sm font-semibold hover:bg-amber-300 transition disabled:opacity-40">
+              {isEl ? "Αποθήκευση" : "Save"}
+            </button>
+            <p id="profileMsg" class="text-xs hidden"></p>
+          </div>
+        </form>
+        <div class="pt-4 border-t border-white/10 flex flex-wrap items-center gap-4">
+          <p class="text-xs text-white/40">{ta.memberSince}: <span class="text-white/70">{memberSince}</span></p>
           <a href="/forgot-password" class="text-sm text-white/50 hover:text-white transition underline underline-offset-2">
             {ta.changePassword}
           </a>
+          <button id="deleteAccountBtn" class="ml-auto text-xs text-red-400/70 hover:text-red-400 underline underline-offset-2">
+            {isEl ? "Διαγραφή λογαριασμού" : "Delete account"}
+          </button>
         </div>
       </div>
 
       <!-- Loyalty Points -->
-      <div class="rounded-2xl border bg-white/5 p-6 space-y-4" style={`border-color:${tier.border}`}>
+      <div class="rounded-2xl border bg-white/5 p-6 space-y-4" style={`border-color:${tierBorder}`}>
         <!-- Header row: section label + balance -->
         <div class="flex items-center justify-between gap-3">
           <h2 class="text-sm font-semibold text-white/50 uppercase tracking-widest">{ta.loyaltySection}</h2>
           <div class="flex items-baseline gap-1.5">
-            <span class="text-2xl font-bold" style={`color:${tier.color}`}>{loyaltyBalance}</span>
+            <span class="text-2xl font-bold" style={`color:${tierColor}`}>{loyaltyBalance}</span>
             <span class="text-xs text-white/40">{ta.loyaltyPoints}</span>
           </div>
         </div>
 
+        <!-- Loyalty Card QR -->
+        <div class="rounded-xl bg-white p-4 flex items-center gap-4">
+          <canvas id="loyaltyQr" width="140" height="140" class="shrink-0" data-code={`loyalty:${user.id}`}></canvas>
+          <div class="min-w-0">
+            <p class="text-xs uppercase tracking-wider text-neutral-500">{isEl ? "Κάρτα Πιστότητας" : "Loyalty Card"}</p>
+            <p class="text-base font-bold text-neutral-900 truncate">{displayName}</p>
+            <p class="text-xs text-neutral-600 mt-1">{isEl ? "Δείξε τον κωδικό στον σερβιτόρο για να κερδίσεις πόντους." : "Show this code to the waiter to earn points."}</p>
+          </div>
+        </div>
+
+        <!-- Wallet buttons -->
+        <div class="grid grid-cols-2 gap-2">
+          <button id="appleWalletBtn" class="flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-black px-3 py-2.5 text-xs text-white hover:bg-white/5 transition">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.5 12.5c0-2.5 2-3.7 2.1-3.8-1.1-1.6-2.9-1.9-3.5-1.9-1.5-.2-2.9.9-3.6.9-.7 0-1.9-.9-3.1-.9-1.6 0-3 .9-3.8 2.3-1.6 2.8-.4 7 1.2 9.3.8 1.1 1.7 2.4 2.9 2.3 1.2-.1 1.6-.8 3-.8s1.8.8 3 .8c1.2 0 2-1.1 2.8-2.3.9-1.3 1.3-2.6 1.3-2.7-.1 0-2.3-.9-2.3-3.2M14.8 5.3c.6-.8 1.1-1.9 1-3-.9 0-2.1.6-2.7 1.4-.6.7-1.1 1.8-1 2.9 1 .1 2.1-.5 2.7-1.3"/></svg>
+            {isEl ? "Apple Wallet" : "Add to Apple Wallet"}
+          </button>
+          <button id="googleWalletBtn" class="flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 py-2.5 text-xs text-white hover:bg-white/10 transition">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="18" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 10h18" stroke="currentColor" stroke-width="1.5"/></svg>
+            {isEl ? "Google Wallet" : "Save to Google Wallet"}
+          </button>
+        </div>
+
         <!-- Tier badge + progress -->
         <div class="space-y-2">
-          <div class="flex items-center justify-between">
+          <div class="flex items-center justify-between gap-2 flex-wrap">
             <span
               class="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full"
-              style={`background:${tier.bg};color:${tier.color};border:1px solid ${tier.border}`}
+              style={`background:${tierBg};color:${tierColor};border:1px solid ${tierBorder}`}
             >
-              {tier.key === "Bronze" && "🥉"}
-              {tier.key === "Silver" && "🥈"}
-              {tier.key === "Gold"   && "🥇"}
-              {tier.label}
+              {tierIcon}
+              {tierLabel}
             </span>
             <span class="text-xs text-white/30">
-              {tier.nextAt
-                ? `${ptsToNext} ${ta.tierProgressLabel} ${
-                    TIERS.find(t => t.min === tier.nextAt)?.label ?? ""
-                  }`
-                : ta.tierMaxLabel
-              }
+              {tierNextAt ? `${ptsToNext} ${ta.tierProgressLabel} ${nextLabel}` : ta.tierMaxLabel}
             </span>
           </div>
+          {tierPerk && <p class="text-xs italic text-white/50">“{tierPerk}”</p>}
           <!-- Progress bar -->
           <div class="h-1.5 rounded-full bg-white/10 overflow-hidden">
-            <div
-              class="h-full rounded-full transition-all"
-              style={`width:${tierProgress}%;background:${tier.color}`}
-            ></div>
+            <div class="h-full rounded-full transition-all" style={`width:${tierProgress}%;background:${tierColor}`}></div>
           </div>
           <p class="text-xs text-white/25">{ta.loyaltyEarnHint}</p>
         </div>
+
+        <!-- Active redemptions -->
+        {activeRedemptions && activeRedemptions.length > 0 && (
+          <div class="space-y-2 pt-1 border-t border-white/8">
+            <p class="text-xs font-semibold text-white/50 uppercase tracking-wider">{isEl ? "Ενεργοί κωδικοί εξαργύρωσης" : "Active redemption codes"}</p>
+            {activeRedemptions.map((r: any) => (
+              <div class="flex items-center justify-between gap-3 rounded-xl border border-amber-400/30 bg-amber-400/5 px-3 py-2">
+                <div class="min-w-0">
+                  <p class="text-sm text-white font-medium truncate">{isEl ? r.loyalty_rewards?.name_el : r.loyalty_rewards?.name_en}</p>
+                  <p class="text-xs text-white/40">{isEl ? "Δείξε στον σερβιτόρο" : "Show to your waiter"}</p>
+                </div>
+                <code class="text-base font-bold tracking-widest text-amber-400">{r.code}</code>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <!-- Rewards catalog -->
+        {rewards.length > 0 && (
+          <div class="space-y-2 pt-1 border-t border-white/8">
+            <p class="text-xs font-semibold text-white/50 uppercase tracking-wider">{isEl ? "Εξαργύρωση πόντων" : "Redeem points"}</p>
+            <div class="space-y-1.5">
+              {rewards.map(rw => {
+                const canAfford = loyaltyBalance >= rw.cost;
+                const name = isEl ? rw.name_el : rw.name_en;
+                const desc = isEl ? rw.description_el : rw.description_en;
+                return (
+                  <div class="flex items-center justify-between gap-3 rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2">
+                    <div class="min-w-0">
+                      <p class="text-sm text-white font-medium truncate">{name}</p>
+                      {desc && <p class="text-xs text-white/40 truncate">{desc}</p>}
+                    </div>
+                    <button
+                      class="redeem-btn shrink-0 text-xs px-3 py-1.5 rounded-lg font-semibold transition disabled:opacity-40 disabled:cursor-not-allowed"
+                      style={canAfford ? "background:#f59e0b;color:#000" : "background:rgba(255,255,255,.06);color:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.1)"}
+                      data-reward-id={rw.id}
+                      data-cost={rw.cost}
+                      disabled={!canAfford}
+                    >
+                      {rw.cost} {isEl ? "πόντοι" : "pts"}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+            <p class="text-xs text-white/25">{isEl ? "Μετά την εξαργύρωση, δείξε τον κωδικό στον σερβιτόρο." : "After redeeming, show the code to your waiter."}</p>
+          </div>
+        )}
 
         <!-- History -->
         {loyaltyEvents && loyaltyEvents.length > 0 ? (
@@ -292,7 +384,129 @@ function statusLabel(s: string) {
     </main>
 
   <script>
+    import QRCode from "qrcode";
+    const loyaltyCanvas = document.getElementById("loyaltyQr") as HTMLCanvasElement | null;
+    const loyaltyCode = (loyaltyCanvas?.dataset.code) || "";
+    if (loyaltyCanvas && loyaltyCode) {
+      QRCode.toCanvas(loyaltyCanvas, loyaltyCode, {
+        width: 140,
+        margin: 1,
+        color: { dark: "#0a0a0f", light: "#ffffff" },
+      }).catch((e) => console.error("loyalty qr failed", e));
+    }
     const isEl = document.documentElement.lang === "el";
+
+    // Pending referral claim (for users who signed up via ?ref=… and confirmed via email)
+    try {
+      const pendingRef = localStorage.getItem("pending_ref");
+      if (pendingRef) {
+        fetch("/api/loyalty/claim-referral", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ referrer_id: pendingRef }),
+        }).finally(() => localStorage.removeItem("pending_ref"));
+      }
+    } catch {}
+
+    // Profile update
+    const profileForm = document.getElementById("profileForm") as HTMLFormElement | null;
+    profileForm?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const msg = document.getElementById("profileMsg")!;
+      const btn = profileForm.querySelector("button[type=submit]") as HTMLButtonElement;
+      btn.disabled = true;
+      msg.className = "text-xs hidden";
+      const payload = {
+        full_name: (document.getElementById("fName") as HTMLInputElement).value,
+        birthday: (document.getElementById("fBirthday") as HTMLInputElement).value || null,
+      };
+      const res = await fetch("/api/account/update", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        msg.textContent = isEl ? "✓ Αποθηκεύτηκε." : "✓ Saved.";
+        msg.className = "text-xs text-green-400 block";
+      } else {
+        const j = await res.json().catch(() => ({}));
+        msg.textContent = j.error ?? (isEl ? "Σφάλμα." : "Error.");
+        msg.className = "text-xs text-red-400 block";
+      }
+      btn.disabled = false;
+    });
+
+    // Delete account
+    document.getElementById("deleteAccountBtn")?.addEventListener("click", async () => {
+      const email = prompt(isEl
+        ? "Για επιβεβαίωση διαγραφής, πληκτρολόγησε το email σου:"
+        : "To confirm deletion, type your email:");
+      if (!email) return;
+      if (!confirm(isEl ? "Όλα τα δεδομένα σου θα διαγραφούν οριστικά. Σίγουρα;" : "All your data will be permanently deleted. Are you sure?")) return;
+      const res = await fetch("/api/account/delete", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm_email: email }),
+      });
+      if (res.ok) {
+        alert(isEl ? "Ο λογαριασμός διαγράφηκε." : "Account deleted.");
+        window.location.href = "/";
+      } else {
+        const j = await res.json().catch(() => ({}));
+        alert(j.error === "confirm_mismatch"
+          ? (isEl ? "Το email δεν ταιριάζει." : "Email doesn't match.")
+          : (isEl ? "Σφάλμα. Δοκίμασε ξανά." : "Error. Try again."));
+      }
+    });
+
+    // Wallet buttons
+    document.getElementById("appleWalletBtn")?.addEventListener("click", async () => {
+      const res = await fetch("/api/wallet/apple-pass", { method: "POST" });
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = "sallys-loyalty.pkpass"; a.click();
+        URL.revokeObjectURL(url);
+      } else {
+        const j = await res.json().catch(() => ({}));
+        alert(j.fallback ?? j.message ?? (isEl ? "Δεν είναι διαθέσιμο." : "Not available yet."));
+      }
+    });
+
+    document.getElementById("googleWalletBtn")?.addEventListener("click", async () => {
+      const res = await fetch("/api/wallet/google-pass", { method: "POST" });
+      const j = await res.json().catch(() => ({}));
+      if (res.ok && j.saveUrl) {
+        window.location.href = j.saveUrl;
+      } else {
+        alert(j.message ?? (isEl ? "Δεν είναι διαθέσιμο." : "Not available yet."));
+      }
+    });
+
+    // Redeem buttons
+    document.querySelectorAll<HTMLButtonElement>(".redeem-btn").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const cost = btn.dataset.cost;
+        const msg = isEl ? `Εξαργύρωση ${cost} πόντων;` : `Redeem ${cost} points?`;
+        if (!confirm(msg)) return;
+        btn.disabled = true;
+        btn.textContent = "…";
+        const res = await fetch("/api/loyalty/redeem", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reward_id: btn.dataset.rewardId }),
+        });
+        const j = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          alert(j.error === "insufficient_points"
+            ? (isEl ? "Δεν έχεις αρκετούς πόντους." : "Not enough points.")
+            : (isEl ? "Σφάλμα. Δοκίμασε ξανά." : "Error. Try again."));
+          btn.disabled = false;
+          btn.textContent = `${cost} ${isEl ? "πόντοι" : "pts"}`;
+          return;
+        }
+        alert(isEl ? `✓ Κωδικός: ${j.code}\nΔείξε τον στον σερβιτόρο.` : `✓ Code: ${j.code}\nShow this to your waiter.`);
+        location.reload();
+      });
+    });
 
     document.getElementById("resList")?.addEventListener("click", async (e) => {
       const btn = (e.target as Element).closest(".cancel-res-btn") as HTMLElement | null;

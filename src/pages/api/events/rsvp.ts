@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 import { supabaseAdmin } from "../../../lib/supabase";
+import { awardEventRsvpPoints } from "../../../lib/loyalty";
 
 export const POST: APIRoute = async ({ request, locals }) => {
   let body: Record<string, unknown>;
@@ -67,6 +68,10 @@ export const POST: APIRoute = async ({ request, locals }) => {
   if (error) {
     console.error("[events/rsvp] insert error:", error.message);
     return new Response(JSON.stringify({ error: "db" }), { status: 500 });
+  }
+
+  if (locals.user) {
+    try { await awardEventRsvpPoints(locals.user.id, event_id); } catch {}
   }
 
   return new Response(JSON.stringify({ ok: true }), { status: 200 });
