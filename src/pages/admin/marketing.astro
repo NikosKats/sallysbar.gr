@@ -148,9 +148,14 @@ const presets = [
     <!-- Campaign modal -->
     <div id="campModal" class="fixed inset-0 z-[70] hidden bg-black/70 backdrop-blur-sm p-0 sm:p-4">
       <div class="relative mx-auto w-full max-w-lg h-full sm:h-auto sm:max-h-[calc(100vh-2rem)] sm:my-4 rounded-none sm:rounded-2xl border border-white/10 bg-[#141420] flex flex-col">
-        <div class="flex items-start justify-between p-5 border-b border-white/10 shrink-0">
+        <div class="flex items-start justify-between p-5 border-b border-white/10 shrink-0 gap-3">
           <h3 id="campTitle" class="text-lg font-bold text-amber-200">{isEl ? "Καμπάνια" : "Campaign"}</h3>
-          <button id="campClose" type="button" class="text-white/40 hover:text-white text-3xl leading-none px-2 -mt-1">×</button>
+          <div class="flex items-center gap-2">
+            <button id="campAiBtn" type="button" class="text-xs px-3 py-1.5 rounded-lg bg-gradient-to-br from-fuchsia-500/30 to-amber-400/30 border border-white/15 text-white hover:from-fuchsia-500/50 hover:to-amber-400/50 transition">
+              ✨ {isEl ? "AI δημιουργία" : "AI Generate"}
+            </button>
+            <button id="campClose" type="button" class="text-white/40 hover:text-white text-3xl leading-none px-2 -mt-1">×</button>
+          </div>
         </div>
         <form id="campForm" class="flex-1 overflow-y-auto p-5 space-y-3">
           <input type="hidden" name="id" />
@@ -235,6 +240,52 @@ const presets = [
         function closeModal() { modal.classList.add("hidden"); modal.classList.remove("flex"); }
 
         document.getElementById("newCampBtn").addEventListener("click", () => openModal(null, isEl ? "Νέα καμπάνια" : "New campaign"));
+
+        const aiBtn = document.getElementById("campAiBtn");
+        aiBtn.addEventListener("click", async () => {
+          const seed = form.elements.name.value.trim() || form.elements.description.value.trim();
+          const brief = prompt(
+            isEl
+              ? "Περιγράψτε την καμπάνια (π.χ. 'Happy hour κοκτέιλ για επιβάτες κρουαζιέρας', 'UK τουρίστες να κλείσουν τραπέζι', 'Κάρτα για Google review')"
+              : "Describe the campaign (e.g. 'Happy hour cocktails for cruise passengers', 'UK tourists book a table', 'Checkout card for Google reviews')",
+            seed
+          );
+          if (!brief || brief.trim().length < 3) return;
+          const prevLabel = aiBtn.textContent;
+          aiBtn.disabled = true;
+          aiBtn.textContent = isEl ? "⏳ Δημιουργία…" : "⏳ Generating…";
+          try {
+            const res = await fetch("/api/admin/marketing-ai-generate", {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ brief }),
+            });
+            const j = await res.json();
+            if (!res.ok || !j.campaign) {
+              alert((isEl ? "Σφάλμα AI: " : "AI error: ") + (j.error ?? "unknown"));
+              return;
+            }
+            const g = j.campaign;
+            const descParts = [g.description, g.headline_en, g.subtitle_en, g.headline_el, g.subtitle_el].filter(Boolean);
+            const combinedDesc = g.description || descParts[0] || "";
+            for (const [k, v] of Object.entries({
+              name: g.name,
+              slug: g.slug,
+              target_url: g.target_url,
+              description: combinedDesc,
+              utm_source: g.utm_source,
+              utm_medium: g.utm_medium,
+              utm_campaign: g.utm_campaign,
+              utm_content: g.utm_content,
+            })) {
+              if (v && form.elements[k]) form.elements[k].value = v;
+            }
+          } catch (e) {
+            alert(isEl ? "Σφάλμα δικτύου" : "Network error");
+          } finally {
+            aiBtn.disabled = false;
+            aiBtn.textContent = prevLabel;
+          }
+        });
         document.getElementById("campClose").addEventListener("click", closeModal);
         document.getElementById("campCancel").addEventListener("click", closeModal);
         modal.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
