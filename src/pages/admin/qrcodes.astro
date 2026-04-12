@@ -124,7 +124,7 @@ const origin = new URL(Astro.request.url).origin;
             <div class="table-num font-heading text-3xl font-bold text-neutral-900">Table ${n}</div>
             <canvas class="qr-canvas" width="260" height="260"></canvas>
             <p class="text-[11px] text-neutral-600 leading-snug break-all">${url}</p>
-            <p class="text-xs text-neutral-700 font-medium">📱 Scan to see menu</p>
+            <p class="text-xs text-neutral-700 font-medium leading-snug">📱 Scan to see menu,<br/>call waiter to order or pay</p>
           `;
           grid.appendChild(card);
           const canvas = card.querySelector(".qr-canvas") as HTMLCanvasElement;
