@@ -1,0 +1,74 @@
+---
+import "../styles/global.css";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+const title = isEl ? "Εφαρμογή — Sally's Bar" : "App — Sally's Bar";
+---
+
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={isEl ? "Εγκαταστήστε την εφαρμογή Sally's Bar — μενού, πόντοι, scratch cards, ποτά έκπληξη." : "Install the Sally's Bar app — menu, points, scratch cards, surprise drinks."} />
+  </head>
+  <body class="min-h-screen bg-[#0a0a0f] text-white font-body antialiased overflow-x-hidden">
+    <div class="pointer-events-none fixed inset-0 -z-10 opacity-70">
+      <div class="hidden md:block absolute top-20 left-1/4 h-[520px] w-[520px] rounded-full bg-amber-400/10 blur-[140px]"></div>
+      <div class="hidden md:block absolute bottom-10 right-10 h-[420px] w-[420px] rounded-full bg-fuchsia-500/10 blur-[130px]"></div>
+    </div>
+
+    <Header />
+
+    <main class="mx-auto max-w-2xl px-5 py-16 pt-32 text-center">
+      <div class="text-xs uppercase tracking-[0.28em] text-amber-200/80 mb-4">Sally's Bar · Skala</div>
+      <h1 class="font-heading text-5xl md:text-6xl font-bold leading-[0.95] bg-gradient-to-br from-white via-amber-50 to-amber-200/80 bg-clip-text text-transparent">
+        {isEl ? "Η εφαρμογή μας" : "Get the app"}
+      </h1>
+      <p class="mt-5 text-lg text-white/70 leading-relaxed">
+        {isEl
+          ? "Μενού · Κρατήσεις · Πόντοι · Scratch cards · Εκδηλώσεις. Στο κινητό σας σε 10 δευτερόλεπτα — χωρίς app store."
+          : "Menu · Bookings · Points · Scratch cards · Events. On your phone in 10 seconds — no app store."}
+      </p>
+
+      <div class="mt-10" id="installAppSlot">
+        <p class="text-sm text-white/60">
+          {isEl
+            ? "Ανοίξτε αυτή τη σελίδα σε Chrome, Edge ή Samsung Internet για να εμφανιστεί το κουμπί εγκατάστασης."
+            : "Open this page in Chrome, Edge, or Samsung Internet to see the install button."}
+        </p>
+      </div>
+
+      <!-- iOS instructions -->
+      <div class="mt-10 rounded-2xl border border-white/10 bg-white/5 p-6 text-left">
+        <h2 class="font-heading text-xl font-semibold flex items-center gap-2"><span></span> {isEl ? "Στο iPhone / iPad" : "On iPhone / iPad"}</h2>
+        <ol class="mt-4 space-y-3 text-sm text-white/75">
+          <li class="flex gap-3"><span class="shrink-0 h-6 w-6 rounded-full bg-amber-400/15 text-amber-300 grid place-items-center text-xs font-bold">1</span><span>{isEl ? "Ανοίξτε αυτή τη σελίδα στο Safari." : "Open this page in Safari."}</span></li>
+          <li class="flex gap-3"><span class="shrink-0 h-6 w-6 rounded-full bg-amber-400/15 text-amber-300 grid place-items-center text-xs font-bold">2</span><span>{isEl ? "Πατήστε το κουμπί Κοινοποίηση ↗" : "Tap the Share button ↗"}</span></li>
+          <li class="flex gap-3"><span class="shrink-0 h-6 w-6 rounded-full bg-amber-400/15 text-amber-300 grid place-items-center text-xs font-bold">3</span><span>{isEl ? "Επιλέξτε «Προσθήκη στην Οθόνη Αφετηρίας»." : "Pick \"Add to Home Screen\"."}</span></li>
+        </ol>
+      </div>
+
+      <div class="mt-6 rounded-2xl border border-white/10 bg-white/5 p-6 text-left">
+        <h2 class="font-heading text-xl font-semibold flex items-center gap-2"><span></span> {isEl ? "Στο Android" : "On Android"}</h2>
+        <ol class="mt-4 space-y-3 text-sm text-white/75">
+          <li class="flex gap-3"><span class="shrink-0 h-6 w-6 rounded-full bg-amber-400/15 text-amber-300 grid place-items-center text-xs font-bold">1</span><span>{isEl ? "Ανοίξτε αυτή τη σελίδα σε Chrome." : "Open this page in Chrome."}</span></li>
+          <li class="flex gap-3"><span class="shrink-0 h-6 w-6 rounded-full bg-amber-400/15 text-amber-300 grid place-items-center text-xs font-bold">2</span><span>{isEl ? "Πατήστε «Εγκατάσταση εφαρμογής» παραπάνω (ή στο μενού ⋮)." : "Tap \"Install App\" above (or in the ⋮ menu)."}</span></li>
+          <li class="flex gap-3"><span class="shrink-0 h-6 w-6 rounded-full bg-amber-400/15 text-amber-300 grid place-items-center text-xs font-bold">3</span><span>{isEl ? "Η εφαρμογή εμφανίζεται στην αρχική οθόνη σας." : "The app appears on your home screen."}</span></li>
+        </ol>
+      </div>
+
+      <div class="mt-10 grid grid-cols-2 gap-3 text-left">
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-4"><div class="text-2xl">🎫</div><p class="mt-2 font-semibold">{isEl ? "Scratch cards" : "Scratch cards"}</p><p class="text-xs text-white/55 mt-1">{isEl ? "Ξυστά με εκπλήξεις μετά από κάθε επίσκεψη." : "Reveal a surprise on every visit."}</p></div>
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-4"><div class="text-2xl">👑</div><p class="mt-2 font-semibold">{isEl ? "Επίπεδα" : "Tiers"}</p><p class="text-xs text-white/55 mt-1">{isEl ? "Bronze → Black. Νέα προνόμια κάθε επίπεδο." : "Bronze → Black. New perks each tier."}</p></div>
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-4"><div class="text-2xl">⚡</div><p class="mt-2 font-semibold">{isEl ? "Αποψινή αποστολή" : "Tonight's Quest"}</p><p class="text-xs text-white/55 mt-1">{isEl ? "Κάντο και κέρδισε πόντους & ποτά." : "Do it, earn bonus points & drinks."}</p></div>
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-4"><div class="text-2xl">🎵</div><p class="mt-2 font-semibold">{isEl ? "Ειδοποιήσεις" : "Drops"}</p><p class="text-xs text-white/55 mt-1">{isEl ? "Κρυφά cocktails, happy hours, events." : "Secret cocktails, happy hours, events."}</p></div>
+      </div>
+    </main>
+
+    <Footer />
+  </body>
+</html>

@@ -79,7 +79,11 @@ const ariaOpenMenu = lang === "en" ? "Open menu" : "Άνοιγμα μενού";
 const displayName = user?.user_metadata?.full_name?.split(" ")[0]
   ?? user?.email?.split("@")[0]
   ?? "";
+
+import CustomerPwa from "./CustomerPwa.astro";
 ---
+
+<CustomerPwa />
 
 <header class="fixed top-0 inset-x-0 z-50">
   <div class="mx-auto max-w-6xl px-4 sm:px-6">

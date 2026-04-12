@@ -22,6 +22,9 @@ const whatsapp = `https://wa.me/${site.phoneE164.replace(/\D/g, "")}`;
 const instaUrl = "https://www.instagram.com/sallys_bar/";
 
 const presets = [
+  { key: "install-app", name: isEl ? "📲 Κατέβασε την εφαρμογή" : "📲 Download our App", emoji: "📲",
+    desc: isEl ? "QR σε σουβέρ / καρτελάκια → /app με 1-tap εγκατάσταση PWA." : "QR on coasters / cards → /app with 1-tap PWA install.",
+    target: `${origin}/app`, source: "coaster", medium: "qr", campaign: "install-app" },
   { key: "directions", name: isEl ? "📍 Οδηγίες" : "📍 Get Directions", emoji: "📍",
     desc: isEl ? "QR στο χάρτη του Google — ιδανικό για flyers, ξενοδοχεία, taxi stands." : "Google Maps directions — ideal for flyers, hotels, taxi stands.",
     target: site.mapsShareUrl, source: "print", medium: "qr", campaign: "directions" },

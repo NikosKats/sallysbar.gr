@@ -4,6 +4,7 @@ import Header from "../components/Header.astro";
 import Footer from "../components/Footer.astro";
 import { withLangPrefix } from "../i18n";
 import { getLoyaltySettings, getTiers, getRewards } from "../lib/loyalty";
+import { supabaseAdmin } from "../lib/supabase";
 
 const lang = Astro.locals.lang ?? "en";
 const user = Astro.locals.user;
@@ -12,6 +13,34 @@ const isEl = lang === "el";
 const settings = await getLoyaltySettings();
 const tiers    = await getTiers();
 const rewards  = await getRewards(true);
+
+// Tonight's Quest (today's active quest, any language)
+const today = new Date().toISOString().slice(0, 10);
+const { data: quest } = await supabaseAdmin
+  .from("quests")
+  .select("id, title_en, title_el, description_en, description_el, reward_points, reward_label_en, reward_label_el, cta_url")
+  .eq("active_date", today).eq("active", true)
+  .order("created_at", { ascending: false })
+  .limit(1).maybeSingle();
+
+// Unrevealed scratch cards for the current user
+let myScratch: any[] = [];
+let questClaimed = false;
+if (user) {
+  const { data } = await supabaseAdmin
+    .from("scratch_cards")
+    .select("id, reward_type, reward_value, reward_label, revealed_at, created_at")
+    .eq("user_id", user.id)
+    .is("revealed_at", null)
+    .order("created_at", { ascending: false })
+    .limit(10);
+  myScratch = data ?? [];
+  if (quest) {
+    const { data: claim } = await supabaseAdmin
+      .from("quest_claims").select("id").eq("quest_id", quest.id).eq("user_id", user.id).maybeSingle();
+    questClaimed = !!claim;
+  }
+}
 
 const registerHref = withLangPrefix(lang, user ? "/account" : "/register");
 const loginHref    = withLangPrefix(lang, "/login");
@@ -111,6 +140,61 @@ const desc  = isEl
         <p class="mt-4 text-xs text-white/30">{t.finalSub}</p>
       </div>
     </section>
+
+    <!-- GAMIFICATION: scratch + quest (logged-in users only) -->
+    {user && (myScratch.length > 0 || quest) && (
+      <section class="mx-auto max-w-4xl px-6 -mt-4 mb-12 space-y-4">
+        {quest && (
+          <div class="rounded-3xl border border-amber-400/30 bg-gradient-to-br from-amber-500/10 to-fuchsia-500/10 p-5 relative overflow-hidden">
+            <div class="absolute -top-10 -right-10 h-40 w-40 rounded-full bg-amber-400/20 blur-3xl"></div>
+            <div class="relative flex items-start justify-between gap-4 flex-wrap">
+              <div class="min-w-0 flex-1">
+                <p class="text-[10px] uppercase tracking-[0.24em] text-amber-300/80 font-bold">{isEl ? "⚡ Αποψινή Αποστολή" : "⚡ Tonight's Quest"}</p>
+                <h3 class="font-heading text-2xl md:text-3xl font-bold mt-2">{isEl ? (quest.title_el || quest.title_en) : quest.title_en}</h3>
+                {(isEl ? quest.description_el : quest.description_en) && (
+                  <p class="text-sm text-white/75 mt-2 leading-relaxed">{isEl ? (quest.description_el || quest.description_en) : quest.description_en}</p>
+                )}
+                <p class="text-xs text-amber-200 mt-3 font-semibold">🏆 +{quest.reward_points} pts{(isEl ? quest.reward_label_el : quest.reward_label_en) && <span> · {isEl ? (quest.reward_label_el || quest.reward_label_en) : quest.reward_label_en}</span>}</p>
+              </div>
+              <div class="flex flex-col gap-2 shrink-0">
+                {quest.cta_url && (
+                  <a href={quest.cta_url} class="rounded-xl bg-white/10 hover:bg-white/15 border border-white/20 px-4 py-2 text-sm font-semibold text-center transition">{isEl ? "Ξεκίνα" : "Start"}</a>
+                )}
+                {questClaimed
+                  ? <span class="rounded-xl bg-emerald-400/15 text-emerald-300 border border-emerald-400/30 px-4 py-2 text-sm font-semibold text-center">✓ {isEl ? "Ολοκληρώθηκε" : "Claimed"}</span>
+                  : <button type="button" class="quest-claim-btn rounded-xl bg-amber-400 text-black px-4 py-2 text-sm font-semibold hover:bg-amber-300 transition" data-quest-id={quest.id}>{isEl ? "Διεκδίκησε" : "Claim reward"}</button>
+                }
+              </div>
+            </div>
+          </div>
+        )}
+
+        {myScratch.length > 0 && (
+          <div class="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
+            <div class="flex items-center justify-between flex-wrap gap-2 mb-4">
+              <p class="text-[10px] uppercase tracking-[0.24em] text-fuchsia-300 font-bold">🎫 {isEl ? "Ξυστά μου" : "My Scratch Cards"}</p>
+              <span class="text-xs text-white/40">{myScratch.length} {isEl ? "διαθέσιμα" : "available"}</span>
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {myScratch.map((s) => (
+                <button type="button" class="scratch-card group relative aspect-[4/3] rounded-2xl border border-white/10 bg-gradient-to-br from-fuchsia-500/20 via-amber-400/20 to-cyan-400/20 overflow-hidden hover:scale-[1.02] active:scale-[0.99] transition"
+                  data-id={s.id}>
+                  <div class="absolute inset-0 flex flex-col items-center justify-center text-center p-3 scratch-cover">
+                    <span class="text-3xl">🎫</span>
+                    <p class="mt-1 text-xs font-bold tracking-wider uppercase text-white/90">{isEl ? "Πάτα για αποκάλυψη" : "Tap to reveal"}</p>
+                  </div>
+                  <div class="absolute inset-0 flex flex-col items-center justify-center text-center p-3 bg-gradient-to-br from-amber-300 to-amber-500 text-black scratch-reveal opacity-0 pointer-events-none">
+                    <span class="text-2xl scratch-emoji">🎁</span>
+                    <p class="mt-1 text-base font-black scratch-label">—</p>
+                    <p class="mt-0.5 text-[10px] uppercase tracking-wider scratch-meta opacity-70"></p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </section>
+    )}
 
     <!-- HOW IT WORKS -->
     <section class="mx-auto max-w-6xl px-6 py-16">
@@ -234,6 +318,71 @@ const desc  = isEl
     </section>
 
     <Footer />
+
+    <script is:inline>
+      const isEl = document.documentElement.lang === "el";
+
+      document.querySelectorAll(".scratch-card").forEach((card) => {
+        card.addEventListener("click", async () => {
+          if (card.dataset.done) return;
+          card.dataset.done = "1";
+          const id = card.dataset.id;
+          const cover  = card.querySelector(".scratch-cover");
+          const reveal = card.querySelector(".scratch-reveal");
+          const label  = card.querySelector(".scratch-label");
+          const emoji  = card.querySelector(".scratch-emoji");
+          const meta   = card.querySelector(".scratch-meta");
+          try {
+            const res = await fetch("/api/loyalty/scratch-reveal", {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ id }),
+            });
+            const j = await res.json();
+            if (!res.ok || !j.reward) {
+              card.dataset.done = "";
+              alert((isEl ? "Σφάλμα: " : "Error: ") + (j.error ?? "unknown"));
+              return;
+            }
+            const r = j.reward;
+            const emojiMap = { points: "🏆", free_shot: "🥃", free_drink: "🍸", discount: "💸", merch: "🎁", custom: "✨" };
+            emoji.textContent = emojiMap[r.type] ?? "🎁";
+            label.textContent = r.label;
+            meta.textContent = r.auto_claimed
+              ? (isEl ? "✓ προστέθηκε στο λογαριασμό σου" : "✓ added to your account")
+              : (isEl ? "Δείξε στον σερβιτόρο" : "Show a waiter to claim");
+            cover.style.transition = "opacity .35s, transform .35s";
+            cover.style.opacity = "0";
+            cover.style.transform = "scale(0.9)";
+            reveal.style.transition = "opacity .4s .15s";
+            reveal.style.opacity = "1";
+          } catch {
+            card.dataset.done = "";
+            alert(isEl ? "Σφάλμα δικτύου" : "Network error");
+          }
+        });
+      });
+
+      const questBtn = document.querySelector(".quest-claim-btn");
+      if (questBtn) {
+        questBtn.addEventListener("click", async () => {
+          questBtn.disabled = true;
+          const orig = questBtn.textContent;
+          questBtn.textContent = "⏳";
+          const res = await fetch("/api/quests/claim", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ quest_id: questBtn.dataset.questId }),
+          });
+          const j = await res.json();
+          if (res.ok) {
+            questBtn.outerHTML = `<span class="rounded-xl bg-emerald-400/15 text-emerald-300 border border-emerald-400/30 px-4 py-2 text-sm font-semibold text-center">✓ ${isEl ? "Ολοκληρώθηκε" : "Claimed"} +${j.points} pts</span>`;
+          } else {
+            alert((isEl ? "Σφάλμα: " : "Error: ") + (j.error ?? "unknown"));
+            questBtn.disabled = false;
+            questBtn.textContent = orig;
+          }
+        });
+      }
+    </script>
 
     <script
       type="application/ld+json"

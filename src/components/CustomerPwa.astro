@@ -1,0 +1,56 @@
+---
+// PWA registration for the public (customer) site — installable + offline shell.
+---
+
+<link rel="manifest" href="/customer-manifest.webmanifest" />
+<meta name="theme-color" content="#0b0b10" />
+<link rel="apple-touch-icon" href="/favicon/apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Sally's Bar" />
+
+<script is:inline>
+  (function () {
+    if (!("serviceWorker" in navigator)) return;
+    navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {});
+  })();
+
+  (function () {
+    let deferred = null;
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      deferred = e;
+      // If we're on the dedicated /app page, surface a big prominent button.
+      const slot = document.getElementById("installAppSlot");
+      if (slot) {
+        slot.innerHTML = "";
+        const b = document.createElement("button");
+        b.textContent = (document.documentElement.lang === "el" ? "⬇ Εγκατάσταση εφαρμογής" : "⬇ Install App");
+        b.className = "w-full rounded-2xl bg-gradient-to-br from-amber-300 to-amber-500 text-black px-6 py-4 text-base font-bold shadow-lg shadow-amber-500/20 hover:scale-[1.02] active:scale-[0.98] transition";
+        b.addEventListener("click", async () => {
+          if (!deferred) return;
+          deferred.prompt();
+          const res = await deferred.userChoice;
+          if (res.outcome === "accepted") slot.innerHTML = "";
+          deferred = null;
+        });
+        slot.appendChild(b);
+        return;
+      }
+      // Otherwise show a floating install bubble once per session.
+      if (sessionStorage.getItem("installDismissed")) return;
+      const btn = document.createElement("button");
+      btn.textContent = (document.documentElement.lang === "el" ? "⬇ Εγκατάσταση εφαρμογής" : "⬇ Install app");
+      btn.style.cssText = "position:fixed;bottom:16px;right:16px;z-index:9999;padding:10px 14px;border-radius:12px;background:#fbbf24;color:#000;font-weight:600;font-size:13px;border:0;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.5);";
+      btn.addEventListener("click", async () => {
+        if (!deferred) return;
+        deferred.prompt();
+        const res = await deferred.userChoice;
+        if (res.outcome === "accepted") btn.remove();
+        else sessionStorage.setItem("installDismissed", "1");
+        deferred = null;
+      });
+      document.body.appendChild(btn);
+    });
+  })();
+</script>

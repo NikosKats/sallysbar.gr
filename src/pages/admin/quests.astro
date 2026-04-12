@@ -1,0 +1,185 @@
+---
+import "../../styles/global.css";
+import AdminNav from "../../components/AdminNav.astro";
+import { supabaseAdmin } from "../../lib/supabase";
+import { withLangPrefix } from "../../i18n";
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+
+if (Astro.locals.role !== "admin") {
+  return Astro.redirect(withLangPrefix(lang, "/admin"));
+}
+
+const today = new Date().toISOString().slice(0, 10);
+
+const { data: quests } = await supabaseAdmin
+  .from("quests")
+  .select("*")
+  .order("active_date", { ascending: false })
+  .limit(200);
+
+// Claim counts
+const ids = (quests ?? []).map(q => q.id);
+const claimsByQuest = new Map<string, number>();
+if (ids.length > 0) {
+  const { data: claims } = await supabaseAdmin
+    .from("quest_claims").select("quest_id").in("quest_id", ids);
+  for (const c of claims ?? []) claimsByQuest.set(c.quest_id, (claimsByQuest.get(c.quest_id) ?? 0) + 1);
+}
+---
+
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{isEl ? "Αποστολές" : "Quests"} — Admin</title>
+    <meta name="robots" content="noindex,nofollow" />
+  </head>
+  <body class="min-h-screen bg-[#0b0b10] text-white">
+    <AdminNav active="quests" />
+
+    <main class="mx-auto max-w-5xl px-4 py-6 space-y-6">
+      <div class="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h1 class="text-2xl font-bold">{isEl ? "Αποψινές Αποστολές" : "Tonight's Quests"}</h1>
+          <p class="text-sm text-white/50 mt-1">
+            {isEl
+              ? "Καθημερινή αποστολή που πυροδοτεί push στους εγκαταστημένους χρήστες. Κερδίζουν πόντους όταν την ολοκληρώνουν."
+              : "Daily quest that fires push notifications to installed users. They earn points when they claim."}
+          </p>
+        </div>
+        <button id="newQuestBtn" class="rounded-xl bg-amber-400 text-black px-4 py-2 text-sm font-semibold hover:bg-amber-300 transition">
+          + {isEl ? "Νέα αποστολή" : "New quest"}
+        </button>
+      </div>
+
+      <div class="space-y-3">
+        {(quests ?? []).length === 0 && (
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-8 text-center text-white/50 text-sm">
+            {isEl ? "Δεν υπάρχουν αποστολές ακόμα." : "No quests yet."}
+          </div>
+        )}
+        {(quests ?? []).map(q => (
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-4" data-quest-id={q.id}>
+            <div class="flex items-start justify-between gap-3 flex-wrap">
+              <div class="min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <h3 class="text-base font-semibold text-white">{q.title_en}</h3>
+                  <span class={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full ${q.active_date === today ? "bg-emerald-400/15 text-emerald-300" : "bg-white/10 text-white/50"}`}>{q.active_date}</span>
+                  {!q.active && <span class="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/10 text-white/50">{isEl ? "Ανενεργό" : "Inactive"}</span>}
+                </div>
+                <p class="text-xs text-white/50 mt-1">
+                  <span>+{q.reward_points} pts</span>
+                  {q.reward_label_en && <span> · {q.reward_label_en}</span>}
+                  <span class="ml-2 text-amber-300/80">{claimsByQuest.get(q.id) ?? 0} {isEl ? "claims" : "claims"}</span>
+                  {q.push_sent_at && <span class="ml-2 text-white/40">· {isEl ? "push στις" : "pushed"} {new Date(q.push_sent_at).toLocaleTimeString(isEl ? "el-GR" : "en-GB", { hour: "2-digit", minute: "2-digit" })}</span>}
+                </p>
+                {q.description_en && <p class="text-sm text-white/70 mt-2 whitespace-pre-line">{q.description_en}</p>}
+              </div>
+              <div class="flex items-center gap-2 flex-wrap">
+                <button class="quest-push-btn text-xs px-3 py-1.5 rounded-lg bg-amber-400/15 text-amber-300 hover:bg-amber-400/25 transition">🔔 {isEl ? "Στείλε push" : "Send push"}</button>
+                <button class="quest-edit-btn text-xs px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 transition"
+                  data-q={JSON.stringify(q)}>{isEl ? "Επεξεργασία" : "Edit"}</button>
+                <button class="quest-del-btn text-xs px-3 py-1.5 rounded-lg bg-red-500/15 text-red-300 hover:bg-red-500/25 transition">{isEl ? "Διαγραφή" : "Delete"}</button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </main>
+
+    <!-- Quest modal -->
+    <div id="qModal" class="fixed inset-0 z-[70] hidden bg-black/70 backdrop-blur-sm p-0 sm:p-4">
+      <div class="relative mx-auto w-full max-w-2xl h-full sm:h-auto sm:max-h-[calc(100vh-2rem)] sm:my-4 rounded-none sm:rounded-2xl border border-white/10 bg-[#141420] flex flex-col">
+        <div class="flex items-start justify-between p-5 border-b border-white/10 shrink-0">
+          <h3 id="qTitle" class="text-lg font-bold text-amber-200">{isEl ? "Αποστολή" : "Quest"}</h3>
+          <button id="qClose" type="button" class="text-white/40 hover:text-white text-3xl leading-none px-2 -mt-1">×</button>
+        </div>
+        <form id="qForm" class="flex-1 overflow-y-auto p-5 space-y-3">
+          <input type="hidden" name="id" />
+          <div class="grid sm:grid-cols-2 gap-3">
+            <label class="block"><span class="text-xs text-white/50">Title EN *</span>
+              <input name="title_en" required class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" /></label>
+            <label class="block"><span class="text-xs text-white/50">Title EL *</span>
+              <input name="title_el" required class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" /></label>
+            <label class="block sm:col-span-2"><span class="text-xs text-white/50">{isEl ? "Περιγραφή (EN)" : "Description (EN)"}</span>
+              <textarea name="description_en" rows="2" class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"></textarea></label>
+            <label class="block sm:col-span-2"><span class="text-xs text-white/50">{isEl ? "Περιγραφή (EL)" : "Description (EL)"}</span>
+              <textarea name="description_el" rows="2" class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"></textarea></label>
+            <label class="block"><span class="text-xs text-white/50">{isEl ? "Ημερομηνία" : "Active date"} *</span>
+              <input name="active_date" type="date" required value={today} class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" /></label>
+            <label class="block"><span class="text-xs text-white/50">{isEl ? "Πόντοι ανταμοιβής" : "Reward points"}</span>
+              <input name="reward_points" type="number" min="0" max="5000" value="50" class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" /></label>
+            <label class="block"><span class="text-xs text-white/50">{isEl ? "Ετικέτα ανταμοιβής (EN)" : "Reward label (EN)"}</span>
+              <input name="reward_label_en" placeholder="+ free shot" class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" /></label>
+            <label class="block"><span class="text-xs text-white/50">{isEl ? "Ετικέτα ανταμοιβής (EL)" : "Reward label (EL)"}</span>
+              <input name="reward_label_el" placeholder="+ δωρεάν σφηνάκι" class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" /></label>
+            <label class="block sm:col-span-2"><span class="text-xs text-white/50">CTA URL ({isEl ? "προαιρετικό — deep link" : "optional — deep link"})</span>
+              <input name="cta_url" placeholder="/book" class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white font-mono" /></label>
+            <label class="flex items-center gap-2 text-sm text-white/80 rounded-xl border border-white/10 bg-white/5 px-3 py-2 sm:col-span-2">
+              <input type="checkbox" name="active" checked class="h-4 w-4" /> {isEl ? "Ενεργή" : "Active"}
+            </label>
+          </div>
+          <p id="qMsg" class="text-xs hidden"></p>
+        </form>
+        <div class="shrink-0 border-t border-white/10 p-4 bg-[#141420] flex gap-3">
+          <button id="qCancel" type="button" class="flex-1 rounded-xl border border-white/15 text-white/70 px-4 py-3 text-sm font-semibold hover:bg-white/5 transition">{isEl ? "Άκυρο" : "Cancel"}</button>
+          <button id="qSave" type="button" class="flex-[2] rounded-xl bg-amber-400 text-black px-4 py-3 text-sm font-semibold hover:bg-amber-300 transition">{isEl ? "Αποθήκευση" : "Save"}</button>
+        </div>
+      </div>
+    </div>
+
+    <script is:inline define:vars={{ isEl, today }}>
+      const modal = document.getElementById("qModal");
+      const form = document.getElementById("qForm");
+      const msg = document.getElementById("qMsg");
+
+      function openModal(q) {
+        form.reset();
+        for (const k of ["id","title_en","title_el","description_en","description_el","active_date","reward_points","reward_label_en","reward_label_el","cta_url"]) {
+          if (form.elements[k]) form.elements[k].value = q?.[k] ?? (k === "active_date" ? today : k === "reward_points" ? "50" : "");
+        }
+        form.elements.active.checked = q?.active !== false;
+        modal.classList.remove("hidden"); modal.classList.add("flex");
+        msg.className = "text-xs hidden";
+      }
+      function closeModal() { modal.classList.add("hidden"); modal.classList.remove("flex"); }
+      document.getElementById("newQuestBtn").addEventListener("click", () => openModal(null));
+      document.getElementById("qClose").addEventListener("click", closeModal);
+      document.getElementById("qCancel").addEventListener("click", closeModal);
+      modal.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
+
+      document.querySelectorAll(".quest-edit-btn").forEach(b => b.addEventListener("click", () => { try { openModal(JSON.parse(b.dataset.q)); } catch {} }));
+      document.querySelectorAll(".quest-del-btn").forEach(b => b.addEventListener("click", async () => {
+        if (!confirm(isEl ? "Διαγραφή;" : "Delete?")) return;
+        const id = b.closest("[data-quest-id]").dataset.questId;
+        const r = await fetch(`/api/admin/quests?id=${id}`, { method: "DELETE" });
+        if (r.ok) location.reload(); else alert("Error");
+      }));
+      document.querySelectorAll(".quest-push-btn").forEach(b => b.addEventListener("click", async () => {
+        const id = b.closest("[data-quest-id]").dataset.questId;
+        b.disabled = true; const orig = b.textContent; b.textContent = "⏳";
+        const r = await fetch("/api/admin/quest-push", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
+        const j = await r.json();
+        b.disabled = false;
+        if (r.ok) alert((isEl ? "Στάλθηκε σε " : "Sent to ") + j.sent + (isEl ? " χρήστες" : " users"));
+        else alert((isEl ? "Σφάλμα: " : "Error: ") + (j.error ?? "unknown"));
+        b.textContent = orig;
+      }));
+
+      document.getElementById("qSave").addEventListener("click", async () => {
+        if (!form.reportValidity()) return;
+        const fd = new FormData(form);
+        const payload = Object.fromEntries(fd.entries());
+        payload.active = fd.get("active") === "on";
+        payload.reward_points = Number(payload.reward_points) || 0;
+        if (!payload.id) delete payload.id;
+        msg.className = "text-xs hidden";
+        const r = await fetch("/api/admin/quests", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+        if (r.ok) location.reload();
+        else { const j = await r.json().catch(() => ({})); msg.textContent = j.error ?? "Error"; msg.className = "text-xs text-red-400 block"; }
+      });
+    </script>
+  </body>
+</html>

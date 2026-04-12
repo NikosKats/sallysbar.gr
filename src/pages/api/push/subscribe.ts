@@ -2,9 +2,9 @@ import type { APIRoute } from "astro";
 import { supabaseAdmin } from "../../../lib/supabase";
 
 export const POST: APIRoute = async ({ request, locals }) => {
-  if (!locals.role || !["employee", "admin"].includes(locals.role)) {
-    return json({ error: "Unauthorized" }, 401);
-  }
+  // Any logged-in user can subscribe — customers opt in for quest + drop notifications,
+  // staff/admin keep their existing order notifications.
+  if (!locals.user) return json({ error: "Unauthorized" }, 401);
 
   let sub: any;
   try { sub = await request.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
@@ -35,9 +35,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
 };
 
 export const DELETE: APIRoute = async ({ request, locals }) => {
-  if (!locals.role || !["employee", "admin"].includes(locals.role)) {
-    return json({ error: "Unauthorized" }, 401);
-  }
+  if (!locals.user) return json({ error: "Unauthorized" }, 401);
   let body: any;
   try { body = await request.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
   if (!body?.endpoint) return json({ error: "endpoint required" }, 400);
