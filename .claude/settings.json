@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e ':*)",
+      "Bash(npx astro:*)",
+      "Bash(ls /Users/nikolaoskatsilidis/Desktop/sallysbar.gr/wrangler*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m ':*)",
+      "Bash(npx wrangler:*)",
+      "Bash(git commit:*)"
+    ]
+  }
+}

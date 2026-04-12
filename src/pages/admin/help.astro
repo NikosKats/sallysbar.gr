@@ -1,0 +1,407 @@
+---
+import "../../styles/global.css";
+import Header from "../../components/Header.astro";
+import { dict, withLangPrefix } from "../../i18n";
+
+const lang = Astro.locals.lang ?? "en";
+const t = dict[lang];
+---
+
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Help & Guide — Sally's Bar Admin</title>
+    <meta name="robots" content="noindex,nofollow" />
+    <style>
+      .help-prose h3 { font-family: "Playfair Display", serif; font-weight: 700; }
+      .help-prose ol, .help-prose ul { padding-left: 1.25rem; }
+      .help-prose ol { list-style: decimal; }
+      .help-prose ul { list-style: disc; }
+      .help-prose li { margin-bottom: .4rem; color: rgba(255,255,255,.72); line-height: 1.65; }
+      .help-prose li::marker { color: rgba(252,211,77,.5); }
+      .help-prose p { color: rgba(255,255,255,.72); line-height: 1.7; margin-bottom: .8rem; }
+      .help-prose code { background: rgba(252,211,77,.08); color: #fcd34d; padding: 2px 6px; border-radius: 4px; font-size: .85em; border: 1px solid rgba(252,211,77,.15); }
+      .help-prose strong { color: #fff; font-weight: 600; }
+      .help-prose a { color: #fcd34d; text-decoration: underline; text-underline-offset: 3px; }
+      .help-prose a:hover { color: #fde68a; }
+      details { transition: border-color .2s; }
+      details[open] { border-color: rgba(252,211,77,.35) !important; }
+      details summary::-webkit-details-marker { display: none; }
+    </style>
+  </head>
+  <body class="min-h-screen bg-[#0a0a0f] text-white font-body antialiased">
+    <div class="pointer-events-none fixed inset-0 -z-10 opacity-60">
+      <div class="absolute -top-40 left-1/3 h-[520px] w-[520px] rounded-full bg-amber-400/10 blur-[140px]"></div>
+      <div class="absolute bottom-0 right-0 h-[420px] w-[420px] rounded-full bg-fuchsia-500/10 blur-[140px]"></div>
+    </div>
+
+    <Header />
+    <div class="h-20"></div>
+
+    <!-- Admin sub-nav -->
+    <div class="sticky top-20 z-40 border-b border-amber-400/20 bg-[#0a0a0f]/95 backdrop-blur">
+      <div class="mx-auto max-w-7xl px-4">
+        <nav class="flex items-center gap-1 py-2 overflow-x-auto text-sm">
+          <a href={withLangPrefix(lang, "/admin")}          class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.overview}</a>
+          <a href={withLangPrefix(lang, "/admin/qrcodes")}  class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">QR Codes</a>
+          <span class="px-3 py-1.5 rounded-lg bg-amber-400/15 border border-amber-400/20 text-amber-400 font-medium whitespace-nowrap">Help & Guide</span>
+        </nav>
+      </div>
+    </div>
+
+    <main class="mx-auto max-w-4xl px-5 py-10">
+      <!-- Hero -->
+      <div class="mb-10">
+        <div class="text-xs uppercase tracking-[0.28em] text-amber-200/80 mb-3">Operator Manual</div>
+        <h1 class="font-heading text-5xl md:text-6xl font-bold leading-[0.95] bg-gradient-to-br from-white via-amber-50 to-amber-200/80 bg-clip-text text-transparent">
+          How to use Sally's Bar
+        </h1>
+        <p class="mt-5 text-lg text-white/65 max-w-2xl leading-relaxed">
+          Everything you need to run the venue through this app — installing it on your phone, taking orders, preparing drinks, closing tables, and managing the business.
+        </p>
+      </div>
+
+      <!-- TOC -->
+      <div class="mb-10 rounded-3xl border border-white/10 bg-white/[0.03] backdrop-blur p-6">
+        <div class="text-xs uppercase tracking-[0.24em] text-amber-200/70 mb-4">Contents</div>
+        <ol class="grid gap-2 sm:grid-cols-2 text-sm text-white/75 list-decimal pl-5">
+          <li><a href="#install" class="hover:text-amber-200 transition">Install the app (PWA)</a></li>
+          <li><a href="#push" class="hover:text-amber-200 transition">Enable push notifications</a></li>
+          <li><a href="#customer" class="hover:text-amber-200 transition">Customer flow (QR + /table/n)</a></li>
+          <li><a href="#waiter" class="hover:text-amber-200 transition">Waiter — take an order</a></li>
+          <li><a href="#barman" class="hover:text-amber-200 transition">Barman — prepare orders</a></li>
+          <li><a href="#deliver" class="hover:text-amber-200 transition">Deliver & close table</a></li>
+          <li><a href="#admin-overview" class="hover:text-amber-200 transition">Admin overview & analytics</a></li>
+          <li><a href="#admin-menu" class="hover:text-amber-200 transition">Edit the menu</a></li>
+          <li><a href="#admin-qr" class="hover:text-amber-200 transition">Generate table QR codes</a></li>
+          <li><a href="#admin-events" class="hover:text-amber-200 transition">Events & reservations</a></li>
+          <li><a href="#admin-users" class="hover:text-amber-200 transition">Users, roles & loyalty</a></li>
+          <li><a href="#admin-tips" class="hover:text-amber-200 transition">Tips tracking</a></li>
+          <li><a href="#telegram" class="hover:text-amber-200 transition">Telegram integration</a></li>
+          <li><a href="#troubleshoot" class="hover:text-amber-200 transition">Troubleshooting</a></li>
+        </ol>
+      </div>
+
+      <div class="help-prose space-y-4">
+
+        <!-- 1. Install -->
+        <details id="install" class="group rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur" open>
+          <summary class="cursor-pointer px-6 py-5 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+              <span class="grid place-items-center h-9 w-9 rounded-xl bg-amber-300/15 text-lg">📲</span>
+              <h3 class="text-xl">1. Install the app on your phone (PWA)</h3>
+            </div>
+            <span class="text-white/40 group-open:rotate-180 transition-transform text-xl">▾</span>
+          </summary>
+          <div class="px-6 pb-6 space-y-4">
+            <p>Sally's Bar runs as a <strong>Progressive Web App</strong> — no App Store needed. Install it once on your phone and it behaves like a native app (home-screen icon, full screen, push notifications).</p>
+
+            <p><strong>iPhone / iPad (Safari):</strong></p>
+            <ol>
+              <li>Open <code>sallysbar.gr/staff</code> in <strong>Safari</strong> (not Chrome).</li>
+              <li>Tap the <strong>Share</strong> icon (square with ↑ arrow) at the bottom.</li>
+              <li>Scroll and tap <strong>"Add to Home Screen"</strong>.</li>
+              <li>Tap <strong>Add</strong> in the top-right. Open the new "Sally's Staff" icon from your home screen.</li>
+            </ol>
+            <p class="text-sm text-amber-200/80">⚠️ On iOS, push notifications only work when launched from the home-screen icon (iOS 16.4+).</p>
+
+            <p><strong>Android (Chrome):</strong></p>
+            <ol>
+              <li>Open <code>sallysbar.gr/staff</code> in Chrome.</li>
+              <li>Tap the <strong>⋮</strong> menu → <strong>"Install app"</strong> or <strong>"Add to Home screen"</strong>.</li>
+              <li>Confirm and open from the home screen.</li>
+            </ol>
+
+            <p><strong>Desktop (Chrome/Edge):</strong> click the install icon (⊕ / computer icon) in the address bar when visiting <code>/staff</code>.</p>
+          </div>
+        </details>
+
+        <!-- 2. Push notifications -->
+        <details id="push" class="group rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur">
+          <summary class="cursor-pointer px-6 py-5 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+              <span class="grid place-items-center h-9 w-9 rounded-xl bg-amber-300/15 text-lg">🔔</span>
+              <h3 class="text-xl">2. Enable push notifications</h3>
+            </div>
+            <span class="text-white/40 group-open:rotate-180 transition-transform text-xl">▾</span>
+          </summary>
+          <div class="px-6 pb-6 space-y-4">
+            <p>After installing the PWA, open it and tap the <strong>"🔔 Enable notifications"</strong> banner at the bottom. Accept the system prompt.</p>
+            <p>You'll get a push on every order event:</p>
+            <ul>
+              <li><strong>🍹 New order</strong> — when a waiter submits a new round.</li>
+              <li><strong>🔄 Preparing</strong> — barman accepted the order.</li>
+              <li><strong>✅ Ready to serve</strong> — drinks are done, a waiter needs to deliver.</li>
+              <li><strong>📦 Delivered</strong> — order was handed to the guest.</li>
+              <li><strong>💶 Paid</strong> — table paid up and session closed.</li>
+              <li><strong>❌ Cancelled</strong> — order was cancelled.</li>
+            </ul>
+            <p>Notifications are sent to <strong>every installed device</strong> of every logged-in staff/admin user. Re-enabling on a new phone is automatic once you log in.</p>
+          </div>
+        </details>
+
+        <!-- 3. Customer flow -->
+        <details id="customer" class="group rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur">
+          <summary class="cursor-pointer px-6 py-5 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+              <span class="grid place-items-center h-9 w-9 rounded-xl bg-sky-300/15 text-lg">👤</span>
+              <h3 class="text-xl">3. What the customer sees (QR → /table/n)</h3>
+            </div>
+            <span class="text-white/40 group-open:rotate-180 transition-transform text-xl">▾</span>
+          </summary>
+          <div class="px-6 pb-6 space-y-4">
+            <p>Every table has a printed QR that opens <code>sallysbar.gr/table/&lt;number&gt;</code>. The customer can:</p>
+            <ul>
+              <li><strong>Browse the full menu</strong> in English or Greek.</li>
+              <li>Tap <strong>"Call Waiter to Order"</strong> — a waiter gets a live notification with the table number.</li>
+              <li>Tap <strong>"Call Waiter to Pay"</strong> and choose Card or Cash — waiter is alerted with the payment method.</li>
+              <li>After paying, they see a <strong>Google review</strong> prompt.</li>
+            </ul>
+            <p>Customers never place orders themselves — they <em>call</em> a waiter who writes up the order on their own phone.</p>
+          </div>
+        </details>
+
+        <!-- 4. Waiter -->
+        <details id="waiter" class="group rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur">
+          <summary class="cursor-pointer px-6 py-5 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+              <span class="grid place-items-center h-9 w-9 rounded-xl bg-fuchsia-300/15 text-lg">🧑‍🍳</span>
+              <h3 class="text-xl">4. Waiter — take an order</h3>
+            </div>
+            <span class="text-white/40 group-open:rotate-180 transition-transform text-xl">▾</span>
+          </summary>
+          <div class="px-6 pb-6 space-y-4">
+            <ol>
+              <li>Open the PWA — you land on <code>/staff</code>, which lists <strong>open tables</strong>, their rounds and totals.</li>
+              <li>Tap <strong>"+ New Order"</strong> (or <strong>"Add Round"</strong> on an existing table) to open <code>/staff/order</code>.</li>
+              <li>Pick the table number (or keep the preselected session).</li>
+              <li>Tap + / − next to each menu item to set quantities. Totals update live.</li>
+              <li>Optionally add a <strong>note</strong> (e.g. "no ice", "extra lime").</li>
+              <li>Tap <strong>Send to Barman</strong>. You'll see a ✓ confirmation and a push fires to the barman.</li>
+            </ol>
+            <p><strong>Adding a round to an existing table:</strong> from <code>/staff</code>, tap the table card → <strong>Add Round</strong>. All rounds share a <em>session</em>, and the total grows with each round. This is how you bill multiple orders under one final payment.</p>
+          </div>
+        </details>
+
+        <!-- 5. Barman -->
+        <details id="barman" class="group rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur">
+          <summary class="cursor-pointer px-6 py-5 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+              <span class="grid place-items-center h-9 w-9 rounded-xl bg-amber-300/15 text-lg">🍸</span>
+              <h3 class="text-xl">5. Barman — receive & prepare orders</h3>
+            </div>
+            <span class="text-white/40 group-open:rotate-180 transition-transform text-xl">▾</span>
+          </summary>
+          <div class="px-6 pb-6 space-y-4">
+            <p>You receive orders two ways — via the <strong>PWA push notification</strong> and via the <strong>Telegram group</strong> (if configured). Both work; pick whichever is in front of you.</p>
+            <p><strong>From Telegram (easiest during a rush):</strong></p>
+            <ol>
+              <li>A message arrives in the Barman chat with table number, items, total, and two buttons.</li>
+              <li>Tap <strong>🔄 Preparing</strong> once you start making it — waiters see the update.</li>
+              <li>When drinks are ready, tap <strong>✅ Ready</strong>. A new message lands in the Waiter chat: <em>"Deliver to table N"</em>.</li>
+              <li>If you need to kill an order, tap <strong>❌ Cancel</strong> (only works while it's still pending).</li>
+            </ol>
+            <p><strong>From the PWA:</strong> open <code>/staff</code> → every round is listed with its current status. Tapping status chips isn't wired on staff yet — use Telegram buttons to move through <em>pending → preparing → ready</em>.</p>
+          </div>
+        </details>
+
+        <!-- 6. Deliver & close -->
+        <details id="deliver" class="group rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur">
+          <summary class="cursor-pointer px-6 py-5 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+              <span class="grid place-items-center h-9 w-9 rounded-xl bg-green-300/15 text-lg">📦</span>
+              <h3 class="text-xl">6. Deliver the drinks & close the table</h3>
+            </div>
+            <span class="text-white/40 group-open:rotate-180 transition-transform text-xl">▾</span>
+          </summary>
+          <div class="px-6 pb-6 space-y-4">
+            <ol>
+              <li>When drinks are ready, the waiter sees a <strong>✅ Ready</strong> push. Bring them to the table.</li>
+              <li>In the Waiter Telegram chat, tap <strong>📦 Delivered</strong>. The round is now counted as <em>delivered</em> and awaiting payment.</li>
+              <li>When the guest asks for the bill, open <code>/staff</code>. Tap the table → you'll see the running total and each delivered round.</li>
+              <li>Choose one of:
+                <ul>
+                  <li><strong>Pay session</strong> — closes every delivered round as paid and closes the table. Add the tip amount + type (cash/card) if any.</li>
+                  <li><strong>Partial pay</strong> — pick specific items a guest is paying for now. Tables stay open for the rest.</li>
+                </ul>
+              </li>
+              <li>Confirm. A <strong>💶 Paid</strong> push fires to everyone.</li>
+            </ol>
+            <p><strong>Cancelling a round:</strong> only possible while still in <em>pending</em>. Use the <strong>❌ Cancel</strong> button in Telegram or /staff.</p>
+          </div>
+        </details>
+
+        <!-- 7. Admin overview -->
+        <details id="admin-overview" class="group rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur">
+          <summary class="cursor-pointer px-6 py-5 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+              <span class="grid place-items-center h-9 w-9 rounded-xl bg-amber-300/15 text-lg">📊</span>
+              <h3 class="text-xl">7. Admin — overview & analytics</h3>
+            </div>
+            <span class="text-white/40 group-open:rotate-180 transition-transform text-xl">▾</span>
+          </summary>
+          <div class="px-6 pb-6 space-y-4">
+            <p><a href={withLangPrefix(lang, "/admin")}><code>/admin</code></a> is your daily dashboard:</p>
+            <ul>
+              <li><strong>Today's status</strong> — totals, pending/preparing/ready/delivered counts, revenue.</li>
+              <li><strong>Revenue</strong> — today, this week, this month, this year.</li>
+              <li><strong>Monthly bar chart</strong> — revenue per month for the current year.</li>
+              <li><strong>Last 30 days calendar</strong> — revenue + order count per day.</li>
+              <li><strong>Best sellers</strong> — top items by units sold (YTD).</li>
+              <li><strong>Recent orders</strong> — last 20 orders, any status.</li>
+            </ul>
+            <p><a href={withLangPrefix(lang, "/admin/analytics")}><code>/admin/analytics</code></a> drills deeper into long-term trends.</p>
+          </div>
+        </details>
+
+        <!-- 8. Edit menu -->
+        <details id="admin-menu" class="group rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur">
+          <summary class="cursor-pointer px-6 py-5 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+              <span class="grid place-items-center h-9 w-9 rounded-xl bg-sky-300/15 text-lg">📝</span>
+              <h3 class="text-xl">8. Edit the menu</h3>
+            </div>
+            <span class="text-white/40 group-open:rotate-180 transition-transform text-xl">▾</span>
+          </summary>
+          <div class="px-6 pb-6 space-y-4">
+            <p>Go to <a href={withLangPrefix(lang, "/admin/menu")}><code>/admin/menu</code></a>:</p>
+            <ul>
+              <li>Create/rename/reorder <strong>categories</strong> (Cocktails, Beer, Wine…).</li>
+              <li>Add/edit items — <strong>name (EN + EL)</strong>, description, price (€), tags.</li>
+              <li>Hide items with the visibility toggle (they disappear from /menu and /table/n but stay in history).</li>
+            </ul>
+            <p>Changes are live immediately — customers scanning a QR will see the new menu.</p>
+          </div>
+        </details>
+
+        <!-- 9. QR codes -->
+        <details id="admin-qr" class="group rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur">
+          <summary class="cursor-pointer px-6 py-5 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+              <span class="grid place-items-center h-9 w-9 rounded-xl bg-amber-300/15 text-lg">🔳</span>
+              <h3 class="text-xl">9. Generate table QR codes</h3>
+            </div>
+            <span class="text-white/40 group-open:rotate-180 transition-transform text-xl">▾</span>
+          </summary>
+          <div class="px-6 pb-6 space-y-4">
+            <ol>
+              <li>Open <a href={withLangPrefix(lang, "/admin/qrcodes")}><code>/admin/qrcodes</code></a>.</li>
+              <li>Enter the range (e.g. <strong>From 1 To 20</strong>) — one QR per table number.</li>
+              <li>Optional: force a menu language (Auto = customer device default).</li>
+              <li>Click <strong>Generate</strong> — each QR appears as a printable card.</li>
+              <li>Click <strong>🖨 Print</strong> and choose <strong>Save as PDF</strong>, or print onto A4 and cut along the borders. Laminate and place on tables.</li>
+            </ol>
+            <p>Every QR points at <code>/table/&lt;n&gt;</code>. Reprint any time — URLs don't change when you regenerate.</p>
+          </div>
+        </details>
+
+        <!-- 10. Events + reservations -->
+        <details id="admin-events" class="group rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur">
+          <summary class="cursor-pointer px-6 py-5 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+              <span class="grid place-items-center h-9 w-9 rounded-xl bg-fuchsia-300/15 text-lg">🎉</span>
+              <h3 class="text-xl">10. Events & reservations</h3>
+            </div>
+            <span class="text-white/40 group-open:rotate-180 transition-transform text-xl">▾</span>
+          </summary>
+          <div class="px-6 pb-6 space-y-4">
+            <p><a href={withLangPrefix(lang, "/admin/events")}><code>/admin/events</code></a>:</p>
+            <ul>
+              <li>Create events with date/time, capacity, price, EN + EL titles.</li>
+              <li>Toggle <strong>Published</strong> to make them visible on <code>/events</code>.</li>
+              <li>See RSVPs per event and total guests.</li>
+            </ul>
+            <p><a href={withLangPrefix(lang, "/admin/reservations")}><code>/admin/reservations</code></a>:</p>
+            <ul>
+              <li>List of all table bookings (from <code>/book</code>).</li>
+              <li>Mark confirmed / cancelled / arrived.</li>
+              <li>See party size, date, time, notes.</li>
+            </ul>
+            <p><a href={withLangPrefix(lang, "/admin/calendar")}><code>/admin/calendar</code></a> shows both reservations and events on a monthly view.</p>
+          </div>
+        </details>
+
+        <!-- 11. Users + loyalty -->
+        <details id="admin-users" class="group rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur">
+          <summary class="cursor-pointer px-6 py-5 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+              <span class="grid place-items-center h-9 w-9 rounded-xl bg-sky-300/15 text-lg">👥</span>
+              <h3 class="text-xl">11. Users, roles & loyalty</h3>
+            </div>
+            <span class="text-white/40 group-open:rotate-180 transition-transform text-xl">▾</span>
+          </summary>
+          <div class="px-6 pb-6 space-y-4">
+            <p><a href={withLangPrefix(lang, "/admin/users")}><code>/admin/users</code></a>:</p>
+            <ul>
+              <li>See every registered account.</li>
+              <li>Change role: <strong>customer</strong> / <strong>employee</strong> (can access /staff) / <strong>admin</strong> (everything).</li>
+              <li>Promote a new hire by searching their email and changing the role dropdown.</li>
+            </ul>
+            <p><a href={withLangPrefix(lang, "/admin/loyalty")}><code>/admin/loyalty</code></a>:</p>
+            <ul>
+              <li>View customer points and tier levels.</li>
+              <li>Add/adjust points manually (e.g. promo credit).</li>
+            </ul>
+          </div>
+        </details>
+
+        <!-- 12. Tips -->
+        <details id="admin-tips" class="group rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur">
+          <summary class="cursor-pointer px-6 py-5 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+              <span class="grid place-items-center h-9 w-9 rounded-xl bg-green-300/15 text-lg">💸</span>
+              <h3 class="text-xl">12. Tips tracking</h3>
+            </div>
+            <span class="text-white/40 group-open:rotate-180 transition-transform text-xl">▾</span>
+          </summary>
+          <div class="px-6 pb-6 space-y-4">
+            <p><a href={withLangPrefix(lang, "/admin/tips")}><code>/admin/tips</code></a> totals tips per waiter per period (day / week / month), split by cash vs card. Waiters enter tip amount + type when closing a session.</p>
+          </div>
+        </details>
+
+        <!-- 13. Telegram -->
+        <details id="telegram" class="group rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur">
+          <summary class="cursor-pointer px-6 py-5 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+              <span class="grid place-items-center h-9 w-9 rounded-xl bg-sky-300/15 text-lg">✈️</span>
+              <h3 class="text-xl">13. Telegram integration</h3>
+            </div>
+            <span class="text-white/40 group-open:rotate-180 transition-transform text-xl">▾</span>
+          </summary>
+          <div class="px-6 pb-6 space-y-4">
+            <p>We run two Telegram chats:</p>
+            <ul>
+              <li><strong>Barman chat</strong> — receives new orders, buttons: 🔄 Preparing · ❌ Cancel, then ✅ Ready once preparing.</li>
+              <li><strong>Waiter chat</strong> — receives ready-to-deliver alerts, button: 📦 Delivered.</li>
+            </ul>
+            <p>Everyone on shift should be in both chats. Button taps update the database instantly and fire pushes to the PWA.</p>
+          </div>
+        </details>
+
+        <!-- 14. Troubleshooting -->
+        <details id="troubleshoot" class="group rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur">
+          <summary class="cursor-pointer px-6 py-5 flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+              <span class="grid place-items-center h-9 w-9 rounded-xl bg-red-300/15 text-lg">🩹</span>
+              <h3 class="text-xl">14. Troubleshooting</h3>
+            </div>
+            <span class="text-white/40 group-open:rotate-180 transition-transform text-xl">▾</span>
+          </summary>
+          <div class="px-6 pb-6 space-y-4">
+            <ul>
+              <li><strong>No push notifications on iPhone</strong> — make sure you opened the app from the home-screen icon, not from Safari. iOS 16.4 or newer required.</li>
+              <li><strong>"🔔 Enable notifications" banner doesn't appear</strong> — either already enabled (check device settings) or you're using a browser that blocks notifications in incognito/private mode.</li>
+              <li><strong>Forgot to tap Ready / Delivered</strong> — admin can fix order status from <code>/admin/orders</code>.</li>
+              <li><strong>Wrong item in an order</strong> — cancel the round (while pending) and re-enter. Once <em>preparing</em>, it's locked; ask the barman to adjust verbally.</li>
+              <li><strong>Customer can't scan QR</strong> — hand them a phone with <code>/menu</code> open, or type <code>sallysbar.gr/table/&lt;their-table&gt;</code>.</li>
+              <li><strong>Logged-out suddenly</strong> — session expired; sign back in at <code>/login</code>. Push subscriptions survive.</li>
+            </ul>
+            <p>Still stuck? Message the admin.</p>
+          </div>
+        </details>
+
+      </div>
+    </main>
+  </body>
+</html>
