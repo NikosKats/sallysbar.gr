@@ -68,5 +68,17 @@ export const POST: APIRoute = async ({ request }) => {
     console.error("[careers/apply] notify error", e);
   }
 
+  // Push to admins
+  try {
+    const { pushToAdmins } = await import("../../../lib/adminPush");
+    await pushToAdmins({
+      title: "💼 New job application",
+      body: `${full_name} applied for ${job_id ? "a position" : "a role"}`,
+      url: "/admin/careers",
+      tag: "job-application",
+      urgent: true,
+    });
+  } catch {}
+
   return json({ ok: true });
 };

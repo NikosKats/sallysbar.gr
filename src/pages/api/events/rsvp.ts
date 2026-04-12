@@ -74,5 +74,16 @@ export const POST: APIRoute = async ({ request, locals }) => {
     try { await awardEventRsvpPoints(locals.user.id, event_id); } catch {}
   }
 
+  // Notify admins
+  try {
+    const { pushToAdmins } = await import("../../../lib/adminPush");
+    await pushToAdmins({
+      title: "🎵 New event RSVP",
+      body: `${name.trim()} · ${guestsNum} guest${guestsNum > 1 ? "s" : ""}`,
+      url: "/admin/events",
+      tag: `rsvp-${event_id}`,
+    });
+  } catch {}
+
   return new Response(JSON.stringify({ ok: true }), { status: 200 });
 };

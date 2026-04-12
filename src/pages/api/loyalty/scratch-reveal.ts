@@ -73,6 +73,17 @@ export const POST: APIRoute = async ({ request, locals, clientAddress }) => {
         reason: "duplicate_phone_signup_reveal",
         action: "blocked",
       });
+      // Alert admins — duplicate-phone signup attempt is a potential fraud signal
+      try {
+        const { pushToAdmins } = await import("../../../lib/adminPush");
+        await pushToAdmins({
+          title: "⚠️ Blocked duplicate signup",
+          body: `${locals.user.email ?? "unknown"} tried to claim a signup bonus on an already-used phone.`,
+          url: `/admin/users/${locals.user.id}`,
+          tag: "abuse",
+          urgent: true,
+        });
+      } catch {}
       return json({
         error: "phone_already_claimed",
         message: "This phone number has already claimed a signup bonus.",

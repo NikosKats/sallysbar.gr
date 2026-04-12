@@ -110,5 +110,17 @@ export const POST: APIRoute = async ({ request, locals }) => {
     });
   } catch (e) { console.warn("[reservations] ack email failed", e); }
 
+  // Push to admins
+  try {
+    const { pushToAdmins } = await import("../../lib/adminPush");
+    await pushToAdmins({
+      title: "📅 New reservation",
+      body: `${name.trim()} · ${partySizeNum} guests · ${date} ${time}`,
+      url: "/admin/reservations",
+      tag: `res-${reservationId}`,
+      urgent: true,
+    });
+  } catch {}
+
   return new Response(JSON.stringify({ ok: true }), { status: 200 });
 };

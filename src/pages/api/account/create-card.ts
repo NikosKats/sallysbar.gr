@@ -70,6 +70,17 @@ export const POST: APIRoute = async ({ request, locals }) => {
     });
   } catch {}
 
+  // Notify admins of new loyalty signup
+  try {
+    const { pushToAdmins } = await import("../../../lib/adminPush");
+    await pushToAdmins({
+      title: "🎁 New loyalty member",
+      body: `${full_name} activated their card`,
+      url: `/admin/users/${locals.user.id}`,
+      tag: `loyalty-signup-${locals.user.id}`,
+    });
+  } catch {}
+
   return json({ ok: true });
 };
 
