@@ -6,19 +6,60 @@ import StickyCta from "../components/StickyCta.astro";
 import { site } from "../data/site";
 
 import { getMenu, formatPriceEUR } from "../lib/menuService";
+import { dict } from "../i18n";
 
-const title = `Menu • ${site.name}`;
-const desc = `Cocktails, beer, wine and spirits at ${site.name} in Skala, Kefalonia.`;
+const lang = Astro.locals.lang ?? "en";
+const t = dict[lang];
+
+const menuBase = lang === "el" ? "/el/menu" : "/menu";
+const canonical = lang === "el" ? "https://sallysbar.gr/el/menu" : "https://sallysbar.gr/menu";
+const ogLocale = lang === "el" ? "el_GR" : "en_US";
+
+const title = `${t.meta.menuTitle} • ${site.name}`;
+const desc = lang === "el"
+  ? `Κοκτέιλ, μπύρα, κρασί και ποτά στο ${site.name} στη Σκάλα, Κεφαλονιά.`
+  : `Cocktails, beer, wine and spirits at ${site.name} in Skala, Kefalonia.`;
+const keywords = lang === "el"
+  ? "μενού, κοκτέιλ, μπύρα, κρασί, Σκάλα, Κεφαλονιά, Sally's Bar"
+  : "menu, cocktails, beer, wine, Skala, Kefalonia, Sally's Bar";
+
+// Lang-aware UI strings
+const ui = lang === "el"
+  ? {
+      subtitle: "Ποτά & Μεζέδες",
+      fallbackTitle: t.meta.menuTitle,
+      allChip: "Όλα",
+      topShort: "↑ Πάνω",
+      directionsLabel: "📍 Οδηγίες",
+      instagramLabel: "Instagram",
+      cocktailsPill: `🍸 ${t.meta.cocktailsRange}`,
+      allergiesNote: `🍋 ${t.meta.allergiesNote}`,
+    }
+  : {
+      subtitle: "Drinks & Bites",
+      fallbackTitle: "Our Menu",
+      allChip: "All",
+      topShort: "↑ Top",
+      directionsLabel: "📍 Directions",
+      instagramLabel: "Instagram",
+      cocktailsPill: `🍸 ${t.meta.cocktailsRange}`,
+      allergiesNote: `🍋 ${t.meta.allergiesNote}`,
+    };
 
 const menuSlug = new URL(Astro.request.url).searchParams.get("menu") ?? undefined;
 const { menu: currentMenu, menus: activeMenus, categories, items } = await (async () => {
-  const all = await getMenu("en");
+  const all = await getMenu(lang);
   if (menuSlug) {
     const pick = all.menus?.find(m => m.slug === menuSlug);
-    if (pick && pick.id !== all.menu?.id) return await getMenu("en", pick.id);
+    if (pick && pick.id !== all.menu?.id) return await getMenu(lang, pick.id);
   }
   return all;
 })();
+
+const currentMenuName = lang === "el"
+  ? (currentMenu?.name_el ?? ui.fallbackTitle)
+  : (currentMenu?.name_en ?? ui.fallbackTitle);
+
 // Group items by category
 const byCategory = new Map<number, typeof items>();
 for (const it of items) {
@@ -30,18 +71,24 @@ for (const it of items) {
 // Collect unique tags for filter chips
 const tagSet = new Set<string>();
 for (const it of items) {
-  (it.tags ?? []).forEach((t) => tagSet.add(t));
+  (it.tags ?? []).forEach((tg) => tagSet.add(tg));
 }
 const allTags = Array.from(tagSet).sort((a, b) => a.localeCompare(b));
 ---
 
-<html lang="en">
+<html lang={lang}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>{title}</title>
     <meta name="description" content={desc} />
-    <link rel="canonical" href="https://sallysbar.gr/menu" />
+    <meta name="keywords" content={keywords} />
+    <link rel="canonical" href={canonical} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={desc} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:locale" content={ogLocale} />
+    <meta property="og:type" content="website" />
   </head>
 
   <body class="min-h-screen bg-[#0a0a0f] text-white font-body antialiased pb-24 md:pb-0 overflow-x-hidden">
@@ -56,22 +103,22 @@ const allTags = Array.from(tagSet).sort((a, b) => a.localeCompare(b));
     <main class="mx-auto max-w-3xl px-6 py-10 pt-28">
       <!-- Header -->
       <div class="flex flex-col gap-4">
-        <div class="text-xs uppercase tracking-[0.28em] text-amber-200/80">Drinks & Bites</div>
-        <h1 class="font-heading text-5xl md:text-6xl font-bold leading-[0.95] bg-gradient-to-br from-white via-amber-50 to-amber-200/80 bg-clip-text text-transparent">{currentMenu?.name_en ?? "Our Menu"}</h1>
+        <div class="text-xs uppercase tracking-[0.28em] text-amber-200/80">{ui.subtitle}</div>
+        <h1 class="font-heading text-5xl md:text-6xl font-bold leading-[0.95] bg-gradient-to-br from-white via-amber-50 to-amber-200/80 bg-clip-text text-transparent">{currentMenuName}</h1>
 
         {activeMenus && activeMenus.length > 1 && (
           <div class="mt-4 flex flex-wrap gap-2">
             {activeMenus.map((m) => (
-              <a href={`/menu?menu=${m.slug}`}
+              <a href={`${menuBase}?menu=${m.slug}`}
                 class={`rounded-full px-4 py-1.5 text-sm border transition ${currentMenu?.id === m.id ? "bg-amber-300/20 border-amber-300/50 text-amber-200" : "border-white/15 bg-white/5 text-white/70 hover:bg-white/10"}`}>
-                {m.name_en}
+                {lang === "el" ? m.name_el : m.name_en}
               </a>
             ))}
           </div>
         )}
 
         <div class="flex flex-col gap-3 text-white/70">
-          <p class="text-white/70">🍸 Cocktails €5–10 · {site.hours.text}</p>
+          <p class="text-white/70">{ui.cocktailsPill} · {site.hours.text}</p>
 
           <div class="flex flex-wrap gap-2">
             <a
@@ -79,14 +126,14 @@ const allTags = Array.from(tagSet).sort((a, b) => a.localeCompare(b));
               target="_blank"
               class="inline-flex items-center justify-center rounded-full border border-amber-300/30 bg-amber-300/5 px-4 py-2 text-sm text-amber-100 hover:bg-amber-300/10 hover:border-amber-300/50 transition"
             >
-              📍 Directions
+              {ui.directionsLabel}
             </a>
             <a
               href={site.socials.instagram}
               target="_blank"
               class="inline-flex items-center justify-center rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm text-white/80 hover:text-white hover:bg-white/10 transition"
             >
-              Instagram
+              {ui.instagramLabel}
             </a>
           </div>
         </div>
@@ -95,13 +142,13 @@ const allTags = Array.from(tagSet).sort((a, b) => a.localeCompare(b));
       <!-- Search + Tag filter -->
       <div class="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur p-4">
         <div class="flex flex-col gap-3">
-          <label class="text-sm text-white/70" for="menuSearch">Search menu</label>
+          <label class="text-sm text-white/70" for="menuSearch">{t.cta.searchLabel}</label>
 
           <div class="flex items-center gap-3">
             <input
               id="menuSearch"
               type="search"
-              placeholder="Search cocktails, beers, tags…"
+              placeholder={t.cta.searchPlaceholder}
               class="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white placeholder:text-white/40 outline-none focus:border-white/20"
             />
 
@@ -109,9 +156,9 @@ const allTags = Array.from(tagSet).sort((a, b) => a.localeCompare(b));
               id="clearSearch"
               type="button"
               class="shrink-0 rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white/80 hover:bg-white/10 transition"
-              aria-label="Clear search"
+              aria-label={t.cta.clear}
             >
-              Clear
+              {t.cta.clear}
             </button>
           </div>
 
@@ -122,16 +169,16 @@ const allTags = Array.from(tagSet).sort((a, b) => a.localeCompare(b));
                 data-tag="__all__"
                 class="tag-chip rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-white"
               >
-                All
+                {ui.allChip}
               </button>
 
-              {allTags.map((t) => (
+              {allTags.map((tg) => (
                 <button
                   type="button"
-                  data-tag={t}
+                  data-tag={tg}
                   class="tag-chip rounded-full border border-white/10 bg-black/30 px-3 py-1.5 text-xs text-white/70 hover:bg-white/10 hover:text-white transition"
                 >
-                  {t}
+                  {tg}
                 </button>
               ))}
             </div>
@@ -164,12 +211,12 @@ const allTags = Array.from(tagSet).sort((a, b) => a.localeCompare(b));
                   <div class="h-px w-10 bg-gradient-to-r from-amber-300/60 to-transparent mb-3"></div>
                   <h2 class="font-heading text-3xl font-bold">{c.name}</h2>
                 </div>
-                <a href="#top" class="text-xs uppercase tracking-widest text-white/40 hover:text-amber-200 transition">↑ Top</a>
+                <a href="#top" class="text-xs uppercase tracking-widest text-white/40 hover:text-amber-200 transition">{ui.topShort}</a>
               </div>
 
               {list.length === 0 ? (
                 <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-5 text-sm text-white/60">
-                  Coming soon.
+                  {t.meta.comingSoon}
                 </div>
               ) : (
                 <div class="rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur overflow-hidden">
@@ -185,9 +232,9 @@ const allTags = Array.from(tagSet).sort((a, b) => a.localeCompare(b));
                           <div class="flex flex-wrap items-center gap-2">
                             <div class="font-semibold text-[15px] group-hover:text-amber-100 transition">{item.name}</div>
 
-                            {item.tags?.map((t) => (
+                            {item.tags?.map((tg) => (
                               <span class="rounded-full border border-white/10 bg-black/30 px-2 py-0.5 text-[10px] uppercase tracking-wider text-white/60">
-                                {t}
+                                {tg}
                               </span>
                             ))}
                           </div>
@@ -215,7 +262,7 @@ const allTags = Array.from(tagSet).sort((a, b) => a.localeCompare(b));
       </div>
 
       <div class="mt-12 rounded-2xl border border-amber-300/15 bg-gradient-to-br from-amber-500/5 to-transparent p-5 text-sm text-white/70 text-center">
-        🍋 Allergies? Ask our staff. Prices may vary during events.
+        {ui.allergiesNote}
       </div>
     </main>
 
