@@ -403,11 +403,11 @@ function statusLabel(s: string) {
           <div class="flex items-center justify-between gap-2">
             <div>
               <p class="text-[10px] uppercase tracking-[0.22em] text-white/50 font-bold">📲 {isEl ? "Εφαρμογή" : "App"}</p>
-              <p class="text-sm text-white/70 mt-1">{isEl ? "Κατέβασε το Sally's στο κινητό σου." : "Install Sally's on your phone."}</p>
+              <p id="installLabel" class="text-sm text-white/70 mt-1">{isEl ? "Κατέβασε το Sally's στο κινητό σου." : "Install Sally's on your phone."}</p>
             </div>
-            <a href={withLangPrefix(lang, "/app")} class="shrink-0 rounded-xl bg-gradient-to-br from-amber-300 to-amber-500 text-black text-xs font-bold px-4 py-2 transition hover:scale-[1.02]">
+            <button id="installBtn" type="button" class="shrink-0 rounded-xl bg-gradient-to-br from-amber-300 to-amber-500 text-black text-xs font-bold px-4 py-2 transition hover:scale-[1.02]">
               {isEl ? "Εγκατάσταση" : "Install"}
-            </a>
+            </button>
           </div>
         </div>
       </section>
@@ -885,10 +885,42 @@ function statusLabel(s: string) {
         });
       }
 
-      // Install card — show only if beforeinstallprompt already fired and not standalone
+      // Install card — programmatic install on Android/Chrome + iOS guidance otherwise
       const installCard = document.getElementById("installCard");
+      const installBtn  = document.getElementById("installBtn");
+      const installLabel = document.getElementById("installLabel");
       const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
-      if (installCard && !isStandalone) installCard.classList.remove("hidden");
+      const isIos = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+      let deferredInstall = null;
+
+      window.addEventListener("beforeinstallprompt", (e) => {
+        e.preventDefault();
+        deferredInstall = e;
+      });
+
+      if (installCard && !isStandalone) {
+        installCard.classList.remove("hidden");
+        if (isIos && installLabel) {
+          installLabel.innerHTML = isEl
+            ? "Άνοιξε στο Safari → πάτα <strong>Κοινοποίηση ↗</strong> → <strong>Προσθήκη στην Οθόνη Αφετηρίας</strong>."
+            : "Open in Safari → tap <strong>Share ↗</strong> → <strong>Add to Home Screen</strong>.";
+          if (installBtn) installBtn.textContent = isEl ? "Οδηγίες" : "How";
+        }
+      }
+
+      if (installBtn) {
+        installBtn.addEventListener("click", async () => {
+          if (deferredInstall) {
+            deferredInstall.prompt();
+            const r = await deferredInstall.userChoice;
+            if (r.outcome === "accepted") installCard?.classList.add("hidden");
+            deferredInstall = null;
+            return;
+          }
+          // No prompt available → open the dedicated /app page for instructions.
+          window.location.href = "/app";
+        });
+      }
 
       // Notifications
       const notifBtn = document.getElementById("notifToggle");
