@@ -12,7 +12,15 @@ const isEl = lang === "el";
 
 const settings = await getLoyaltySettings();
 const tiers    = await getTiers();
-const rewards  = await getRewards(true);
+const rewardsRaw = await getRewards(true);
+// Dedupe defensively — in case the admin table has duplicate rows with same name/cost.
+const seenReward = new Set<string>();
+const rewards = rewardsRaw.filter(r => {
+  const k = `${r.name_en}|${r.cost}`;
+  if (seenReward.has(k)) return false;
+  seenReward.add(k);
+  return true;
+});
 
 // Tonight's Quest (today's active quest, any language)
 const today = new Date().toISOString().slice(0, 10);
