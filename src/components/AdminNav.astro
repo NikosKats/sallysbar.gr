@@ -10,13 +10,7 @@ const lang = Astro.locals.lang ?? "en";
 const t = dict[lang];
 const isEl = lang === "el";
 
-type Item = {
-  key: string;
-  label: string;
-  href: string;
-  icon: string;
-  desc: string;
-};
+type Item = { key: string; label: string; href: string; icon: string };
 type Group = { title: string; items: Item[] };
 
 const I = {
@@ -36,214 +30,153 @@ const I = {
 };
 
 const groups: Group[] = [
-  {
-    title: isEl ? "Πίνακας" : "Dashboard",
-    items: [
-      { key: "overview",  label: t.admin.nav.overview,  href: withLangPrefix(lang, "/admin"),          icon: I.overview,  desc: isEl ? "Γενική εικόνα" : "At-a-glance summary" },
-      { key: "analytics", label: t.admin.nav.analytics, href: withLangPrefix(lang, "/admin/analytics"), icon: I.analytics, desc: isEl ? "Στατιστικά & αναφορές" : "Stats & reports" },
-      { key: "calendar",  label: t.admin.nav.calendar,  href: withLangPrefix(lang, "/admin/calendar"),  icon: I.calendar,  desc: isEl ? "Ημερολόγιο" : "Bookings calendar" },
-    ],
-  },
-  {
-    title: isEl ? "Λειτουργία" : "Operations",
-    items: [
-      { key: "reservations", label: t.admin.nav.reservations, href: withLangPrefix(lang, "/admin/reservations"), icon: I.reservations, desc: isEl ? "Κρατήσεις" : "Table bookings" },
-      { key: "events",       label: t.admin.nav.events,       href: withLangPrefix(lang, "/admin/events"),       icon: I.events,       desc: isEl ? "Εκδηλώσεις & RSVP" : "Events & RSVPs" },
-      { key: "orders",       label: t.admin.nav.orders,       href: withLangPrefix(lang, "/admin/orders"),       icon: I.orders,       desc: isEl ? "Παραγγελίες" : "Active orders" },
-      { key: "tips",         label: t.admin.nav.tips,         href: withLangPrefix(lang, "/admin/tips"),         icon: I.tips,         desc: isEl ? "Φιλοδωρήματα" : "Tips & earnings" },
-    ],
-  },
-  {
-    title: isEl ? "Περιεχόμενο" : "Content",
-    items: [
-      { key: "editMenu", label: t.admin.nav.editMenu,         href: withLangPrefix(lang, "/admin/menu"),    icon: I.editMenu, desc: isEl ? "Κατάλογος" : "Menu editor" },
-      { key: "loyalty",  label: t.admin.nav.loyalty,          href: withLangPrefix(lang, "/admin/loyalty"), icon: I.loyalty,  desc: isEl ? "Πρόγραμμα επιβράβευσης" : "Rewards program" },
-      { key: "careers",  label: isEl ? "Καριέρα" : "Careers", href: withLangPrefix(lang, "/admin/careers"), icon: I.careers,  desc: isEl ? "Αγγελίες & αιτήσεις" : "Jobs & applications" },
-    ],
-  },
-  {
-    title: isEl ? "Σύστημα" : "System",
-    items: [
-      { key: "users",   label: t.admin.nav.users,              href: withLangPrefix(lang, "/admin/users"),   icon: I.users,   desc: isEl ? "Χρήστες & ρόλοι" : "Users & roles" },
-      { key: "qrcodes", label: isEl ? "QR Codes" : "QR Codes", href: withLangPrefix(lang, "/admin/qrcodes"), icon: I.qrcodes, desc: isEl ? "QR codes τραπεζιών" : "Table QR codes" },
-      { key: "help",    label: isEl ? "Οδηγός" : "Help & Guide", href: withLangPrefix(lang, "/admin/help"),  icon: I.help,    desc: isEl ? "Βοήθεια & οδηγίες" : "Docs & how-to" },
-    ],
-  },
+  { title: isEl ? "Πίνακας" : "Dashboard", items: [
+    { key: "overview",  label: t.admin.nav.overview,  href: withLangPrefix(lang, "/admin"),          icon: I.overview },
+    { key: "analytics", label: t.admin.nav.analytics, href: withLangPrefix(lang, "/admin/analytics"), icon: I.analytics },
+    { key: "calendar",  label: t.admin.nav.calendar,  href: withLangPrefix(lang, "/admin/calendar"),  icon: I.calendar },
+  ]},
+  { title: isEl ? "Λειτουργία" : "Operations", items: [
+    { key: "reservations", label: t.admin.nav.reservations, href: withLangPrefix(lang, "/admin/reservations"), icon: I.reservations },
+    { key: "events",       label: t.admin.nav.events,       href: withLangPrefix(lang, "/admin/events"),       icon: I.events },
+    { key: "orders",       label: t.admin.nav.orders,       href: withLangPrefix(lang, "/admin/orders"),       icon: I.orders },
+    { key: "tips",         label: t.admin.nav.tips,         href: withLangPrefix(lang, "/admin/tips"),         icon: I.tips },
+  ]},
+  { title: isEl ? "Περιεχόμενο" : "Content", items: [
+    { key: "editMenu", label: t.admin.nav.editMenu,         href: withLangPrefix(lang, "/admin/menu"),    icon: I.editMenu },
+    { key: "loyalty",  label: t.admin.nav.loyalty,          href: withLangPrefix(lang, "/admin/loyalty"), icon: I.loyalty },
+    { key: "careers",  label: isEl ? "Καριέρα" : "Careers", href: withLangPrefix(lang, "/admin/careers"), icon: I.careers },
+  ]},
+  { title: isEl ? "Σύστημα" : "System", items: [
+    { key: "users",   label: t.admin.nav.users,                href: withLangPrefix(lang, "/admin/users"),   icon: I.users },
+    { key: "qrcodes", label: isEl ? "QR Codes" : "QR Codes",   href: withLangPrefix(lang, "/admin/qrcodes"), icon: I.qrcodes },
+    { key: "help",    label: isEl ? "Οδηγός" : "Help & Guide", href: withLangPrefix(lang, "/admin/help"),    icon: I.help },
+  ]},
 ];
 
-const allItems = groups.flatMap(g => g.items);
-const activeItem = allItems.find(i => i.key === active) ?? allItems[0];
-const activeGroup = groups.find(g => g.items.some(i => i.key === active));
+const activeItem = groups.flatMap(g => g.items).find(i => i.key === active);
 ---
 
-<div class="sticky top-20 z-40 border-b border-amber-400/20 bg-[#0b0b10]/95 backdrop-blur-md">
-  <div class="mx-auto max-w-7xl px-3 sm:px-5">
-    <div class="flex items-center gap-3 py-3">
-      <!-- Brand -->
-      <div class="flex items-center gap-2 shrink-0">
-        <div class="h-8 w-8 rounded-lg bg-gradient-to-br from-amber-300 to-amber-500 text-black grid place-items-center font-bold text-sm shadow-lg shadow-amber-500/20">S</div>
-        <div class="hidden md:block leading-tight">
-          <p class="text-[10px] uppercase tracking-[0.2em] text-amber-300/70">{isEl ? "Πίνακας Διαχείρισης" : "Admin Panel"}</p>
-          <p class="text-xs text-white/50">Sally's Bar</p>
-        </div>
-      </div>
+<!-- Global: push <main> (next sibling) right on desktop to make room for sidebar -->
+<style is:global>
+  @media (min-width: 1024px) {
+    .admin-nav-root ~ main { margin-left: 260px; }
+  }
+</style>
 
-      <!-- Breadcrumb: active group → active page -->
-      <div class="hidden md:flex items-center gap-2 text-xs text-white/40 ml-2 pl-4 border-l border-white/10 min-w-0">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-50 shrink-0">
-          <path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        {activeGroup && <span class="truncate">{activeGroup.title}</span>}
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-50 shrink-0">
-          <path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        <span class="text-amber-300 font-medium truncate">{activeItem.label}</span>
-      </div>
-
-      <!-- Trigger pushed right -->
-      <div class="ml-auto relative">
-        <button
-          id="adminNavBtn"
-          type="button"
-          aria-haspopup="true"
-          aria-expanded="false"
-          class="flex items-center gap-2 rounded-xl border border-amber-400/30 bg-amber-400/10 hover:bg-amber-400/15 text-amber-200 px-3 sm:px-4 py-2 text-sm font-medium transition"
-        >
-          <span set:html={activeItem.icon} class="w-[18px] h-[18px] inline-flex items-center justify-center"></span>
-          <span class="truncate max-w-[140px] sm:max-w-none">{activeItem.label}</span>
-          <svg id="adminNavChevron" width="14" height="14" viewBox="0 0 12 12" fill="none" class="transition-transform opacity-70">
-            <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
-
-        <!-- Dropdown panel -->
-        <div
-          id="adminNavMenu"
-          role="menu"
-          aria-labelledby="adminNavBtn"
-          class="hidden absolute right-0 top-full mt-2 w-[min(94vw,340px)] rounded-2xl border border-white/10 bg-[#141420]/98 backdrop-blur-xl shadow-2xl shadow-black/60 z-50 overflow-hidden"
-        >
-          <div class="p-2 border-b border-white/10">
-            <div class="relative">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">
-                <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/>
-                <path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-              </svg>
-              <input
-                id="adminNavSearch"
-                type="search"
-                placeholder={isEl ? "Αναζήτηση…" : "Search…"}
-                autocomplete="off"
-                class="w-full rounded-lg border border-white/10 bg-white/5 pl-8 pr-3 py-1.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-amber-400/50"
-              />
-            </div>
-          </div>
-
-          <div id="adminNavGroups" class="max-h-[70vh] overflow-y-auto p-2 space-y-3">
-            {groups.map((g) => (
-              <div class="admin-nav-group" data-group-title={g.title.toLowerCase()}>
-                <p class="px-2 pt-1 pb-1 text-[10px] uppercase tracking-[0.18em] text-white/40 font-semibold">{g.title}</p>
-                <div class="space-y-0.5">
-                  {g.items.map((i) => {
-                    const isActive = i.key === active;
-                    return (
-                      <a
-                        href={i.href}
-                        role="menuitem"
-                        class={`admin-nav-item flex items-center gap-2.5 px-2 py-2 rounded-lg transition group ${isActive ? "bg-amber-400/15 text-amber-200" : "text-white/75 hover:bg-white/5 hover:text-amber-200"}`}
-                        data-search={`${i.label.toLowerCase()} ${i.desc.toLowerCase()} ${i.key}`}
-                      >
-                        <span class={`shrink-0 w-8 h-8 rounded-lg grid place-items-center ${isActive ? "bg-amber-400/20 text-amber-300" : "bg-white/5 text-white/50 group-hover:text-amber-300"}`}>
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" set:html={i.icon}></svg>
-                        </span>
-                        <span class="flex-1 min-w-0">
-                          <span class="block text-sm font-medium truncate">{i.label}</span>
-                          <span class="block text-[11px] text-white/40 truncate">{i.desc}</span>
-                        </span>
-                        {isActive && (
-                          <span class="text-amber-400 text-xs">●</span>
-                        )}
-                      </a>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-            <div id="adminNavEmpty" class="hidden text-center text-white/40 text-sm py-6">
-              {isEl ? "Δεν βρέθηκε κάτι." : "No matches."}
-            </div>
-          </div>
-
-          <div class="border-t border-white/10 p-2 flex items-center justify-between text-[11px] text-white/40">
-            <span>{isEl ? "↑↓ μετακίνηση · Enter άνοιγμα · Esc κλείσιμο" : "↑↓ navigate · Enter open · Esc close"}</span>
-            <a href={withLangPrefix(lang, "/")} class="hover:text-amber-300 transition">{isEl ? "← Δημόσιος ιστότοπος" : "← Public site"}</a>
-          </div>
-        </div>
+<div class="admin-nav-root">
+  <!-- Mobile top bar -->
+  <div class="lg:hidden sticky top-20 z-40 border-b border-amber-400/20 bg-[#0b0b10]/95 backdrop-blur-md">
+    <div class="flex items-center gap-3 px-4 py-3">
+      <button id="adminMenuBtn" type="button" aria-label="Open admin menu" class="shrink-0 rounded-lg border border-white/10 bg-white/5 p-2 text-white/80 hover:bg-white/10 transition">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+      <div class="min-w-0 flex-1">
+        <p class="text-[10px] uppercase tracking-[0.2em] text-amber-300/70">{isEl ? "Πίνακας Διαχείρισης" : "Admin Panel"}</p>
+        <p class="text-sm font-semibold text-amber-200 truncate">{activeItem?.label ?? ""}</p>
       </div>
     </div>
+  </div>
+
+  <!-- Desktop sidebar (fixed) -->
+  <aside id="adminSidebar" class="lg:fixed lg:top-20 lg:bottom-0 lg:left-0 lg:w-[260px] lg:border-r lg:border-white/10 lg:bg-[#0e0e16]/95 lg:backdrop-blur-md lg:z-40 lg:flex lg:flex-col hidden">
+    <div class="px-5 py-5 border-b border-white/10 flex items-center gap-3">
+      <div class="h-9 w-9 rounded-xl bg-gradient-to-br from-amber-300 to-amber-500 text-black grid place-items-center font-bold shadow-lg shadow-amber-500/20">S</div>
+      <div class="leading-tight min-w-0">
+        <p class="text-[10px] uppercase tracking-[0.2em] text-amber-300/70">{isEl ? "Πίνακας Διαχείρισης" : "Admin Panel"}</p>
+        <p class="text-sm font-semibold text-white truncate">Sally's Bar</p>
+      </div>
+    </div>
+    <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-5">
+      {groups.map(g => (
+        <div>
+          <p class="px-2 mb-1.5 text-[10px] uppercase tracking-[0.18em] text-white/40 font-semibold">{g.title}</p>
+          <div class="space-y-0.5">
+            {g.items.map(i => {
+              const isActive = i.key === active;
+              return (
+                <a
+                  href={i.href}
+                  class={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition group ${isActive ? "bg-amber-400/15 text-amber-200 font-medium" : "text-white/70 hover:bg-white/5 hover:text-amber-200"}`}
+                >
+                  <span class={`shrink-0 w-5 h-5 inline-flex items-center justify-center ${isActive ? "text-amber-300" : "text-white/50 group-hover:text-amber-300"}`}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" set:html={i.icon}></svg>
+                  </span>
+                  <span class="flex-1 truncate">{i.label}</span>
+                  {isActive && <span class="h-1.5 w-1.5 rounded-full bg-amber-400"></span>}
+                </a>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </nav>
+    <div class="border-t border-white/10 p-3">
+      <a href={withLangPrefix(lang, "/")} class="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-white/50 hover:text-amber-300 hover:bg-white/5 transition">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        {isEl ? "Δημόσιος ιστότοπος" : "Public site"}
+      </a>
+    </div>
+  </aside>
+
+  <!-- Mobile drawer -->
+  <div id="adminMobileDrawer" class="lg:hidden fixed inset-0 z-[60] hidden">
+    <div id="adminDrawerBackdrop" class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+    <aside class="absolute left-0 top-0 bottom-0 w-[88vw] max-w-[320px] bg-[#0e0e16] border-r border-white/10 flex flex-col">
+      <div class="px-5 py-5 border-b border-white/10 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="h-9 w-9 rounded-xl bg-gradient-to-br from-amber-300 to-amber-500 text-black grid place-items-center font-bold shadow-lg">S</div>
+          <div class="leading-tight">
+            <p class="text-[10px] uppercase tracking-[0.2em] text-amber-300/70">{isEl ? "Πίνακας" : "Admin"}</p>
+            <p class="text-sm font-semibold text-white">Sally's Bar</p>
+          </div>
+        </div>
+        <button id="adminDrawerClose" aria-label="Close" class="text-white/50 hover:text-white text-3xl leading-none -mt-1">×</button>
+      </div>
+      <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-5">
+        {groups.map(g => (
+          <div>
+            <p class="px-2 mb-1.5 text-[10px] uppercase tracking-[0.18em] text-white/40 font-semibold">{g.title}</p>
+            <div class="space-y-0.5">
+              {g.items.map(i => {
+                const isActive = i.key === active;
+                return (
+                  <a
+                    href={i.href}
+                    class={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition ${isActive ? "bg-amber-400/15 text-amber-200 font-medium" : "text-white/75 hover:bg-white/5 hover:text-amber-200"}`}
+                  >
+                    <span class={`shrink-0 w-5 h-5 inline-flex items-center justify-center ${isActive ? "text-amber-300" : "text-white/50"}`}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" set:html={i.icon}></svg>
+                    </span>
+                    <span class="flex-1 truncate">{i.label}</span>
+                  </a>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </nav>
+      <div class="border-t border-white/10 p-3">
+        <a href={withLangPrefix(lang, "/")} class="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-white/50 hover:text-amber-300 transition">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          {isEl ? "Δημόσιος ιστότοπος" : "Public site"}
+        </a>
+      </div>
+    </aside>
   </div>
 </div>
 
 <script is:inline>
   (function () {
-    const btn = document.getElementById("adminNavBtn");
-    const menu = document.getElementById("adminNavMenu");
-    const chev = document.getElementById("adminNavChevron");
-    const search = document.getElementById("adminNavSearch");
-    const empty = document.getElementById("adminNavEmpty");
-    if (!btn || !menu) return;
-
-    function setOpen(open) {
-      menu.classList.toggle("hidden", !open);
-      btn.setAttribute("aria-expanded", open ? "true" : "false");
-      if (chev) chev.style.transform = open ? "rotate(180deg)" : "";
-      if (open && search) {
-        search.value = "";
-        applyFilter("");
-        setTimeout(() => search.focus(), 30);
-      }
-    }
-
-    function applyFilter(q) {
-      q = q.trim().toLowerCase();
-      let anyVisible = false;
-      document.querySelectorAll(".admin-nav-group").forEach((g) => {
-        let groupHas = false;
-        g.querySelectorAll(".admin-nav-item").forEach((it) => {
-          const hay = it.getAttribute("data-search") || "";
-          const match = !q || hay.includes(q);
-          it.classList.toggle("hidden", !match);
-          if (match) groupHas = true;
-        });
-        g.classList.toggle("hidden", !groupHas);
-        if (groupHas) anyVisible = true;
-      });
-      if (empty) empty.classList.toggle("hidden", anyVisible);
-    }
-
-    btn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      setOpen(menu.classList.contains("hidden"));
-    });
-    document.addEventListener("click", (e) => {
-      if (!menu.contains(e.target) && e.target !== btn && !btn.contains(e.target)) setOpen(false);
-    });
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") setOpen(false);
-      if ((e.key === "k" || e.key === "K") && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        setOpen(true);
-      }
-    });
-
-    if (search) {
-      search.addEventListener("input", (e) => applyFilter(e.target.value || ""));
-      search.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-          const first = menu.querySelector(".admin-nav-item:not(.hidden)");
-          if (first && first.href) window.location.href = first.href;
-        }
-      });
-    }
+    const btn = document.getElementById("adminMenuBtn");
+    const drawer = document.getElementById("adminMobileDrawer");
+    const backdrop = document.getElementById("adminDrawerBackdrop");
+    const closeBtn = document.getElementById("adminDrawerClose");
+    if (!btn || !drawer) return;
+    function open() { drawer.classList.remove("hidden"); document.body.style.overflow = "hidden"; }
+    function close() { drawer.classList.add("hidden"); document.body.style.overflow = ""; }
+    btn.addEventListener("click", open);
+    backdrop && backdrop.addEventListener("click", close);
+    closeBtn && closeBtn.addEventListener("click", close);
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });
   })();
 </script>
