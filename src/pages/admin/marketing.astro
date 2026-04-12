@@ -22,6 +22,12 @@ const whatsapp = `https://wa.me/${site.phoneE164.replace(/\D/g, "")}`;
 const instaUrl = "https://www.instagram.com/sallys_bar/";
 
 const presets = [
+  { key: "book-a-stay", name: isEl ? "🏠 Κράτησε κατάλυμα (Kefalonia BnB)" : "🏠 Book a Stay (Kefalonia BnB)", emoji: "🏠",
+    desc: isEl
+      ? "QR σε καρτελάκια/λογαριασμό → κράτηση διαμονής στο kefaloniabnb.com. Στοχεύει τουρίστες που τρώνε/πίνουν στο bar."
+      : "QR on cards / bills → books a stay at kefaloniabnb.com. Targets tourists eating/drinking at the bar.",
+    target: "https://kefaloniabnb.com/?utm_source=sallysbar&utm_medium=qr&utm_campaign=book-a-stay",
+    source: "bar", medium: "qr", campaign: "book-a-stay" },
   { key: "signup-bonus", name: isEl ? "⭐ Bonus Εγγραφής (Scratch Card)" : "⭐ Signup Bonus (Scratch Card)", emoji: "⭐",
     desc: isEl
       ? "QR σε flyers/σουβέρ → εγγραφή στο /register → αυτόματη scratch card. Ενεργοποίησε το toggle «Bonus εγγραφής» στο /admin/scratch πρώτα."
