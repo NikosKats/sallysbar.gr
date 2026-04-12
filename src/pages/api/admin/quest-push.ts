@@ -25,9 +25,16 @@ export const POST: APIRoute = async ({ request, locals }) => {
   };
   if (!vapidKeys.publicKey || !vapidKeys.privateKey) return json({ error: "vapid_not_configured" }, 503);
 
-  const { data: subs } = await supabaseAdmin
-    .from("push_subscriptions")
-    .select("endpoint, p256dh, auth, user_id");
+  // Customers only — exclude staff / admin so barmen don't get gamification pings.
+  // We query the two sets separately (Supabase filtering with NOT IN on uuids is fiddly)
+  // and filter client-side: cheaper than a stored procedure and fine for the scale.
+  const { data: staffIds } = await supabaseAdmin
+    .from("profiles").select("id").in("role", ["employee", "admin"]);
+  const staffSet = new Set((staffIds ?? []).map((u: any) => u.id));
+
+  const { data: allSubs } = await supabaseAdmin
+    .from("push_subscriptions").select("endpoint, p256dh, auth, user_id");
+  const subs = (allSubs ?? []).filter((s: any) => !s.user_id || !staffSet.has(s.user_id));
 
   if (!subs || subs.length === 0) return json({ ok: true, sent: 0, failed: 0 });
 

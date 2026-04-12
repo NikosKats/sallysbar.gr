@@ -20,9 +20,15 @@ export async function pushToAllStaff(payload: OrderPushPayload): Promise<void> {
   const keys = vapidKeys();
   if (!keys) { console.warn("VAPID keys not configured — skipping push"); return; }
 
+  // Staff-only: join push_subscriptions to profiles and keep role IN (employee, admin).
+  const { data: staffIds } = await supabaseAdmin
+    .from("profiles").select("id").in("role", ["employee", "admin"]);
+  if (!staffIds?.length) return;
+
   const { data: subs } = await supabaseAdmin
     .from("push_subscriptions")
-    .select("endpoint, p256dh, auth");
+    .select("endpoint, p256dh, auth")
+    .in("user_id", staffIds.map((u: any) => u.id));
 
   if (!subs?.length) return;
 
