@@ -77,13 +77,13 @@ const { data: jobs } = await supabaseAdmin
     </main>
 
     <!-- Editor modal -->
-    <div id="jobModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
-      <div class="relative w-full max-w-2xl my-8 rounded-2xl border border-white/10 bg-[#141420] p-6 space-y-4">
-        <div class="flex items-start justify-between">
+    <div id="jobModal" class="fixed inset-0 z-50 hidden bg-black/70 backdrop-blur-sm p-0 sm:p-4">
+      <div class="relative mx-auto w-full max-w-2xl h-full sm:h-auto sm:max-h-[calc(100vh-2rem)] sm:my-4 rounded-none sm:rounded-2xl border border-white/10 bg-[#141420] flex flex-col">
+        <div class="flex items-start justify-between p-5 border-b border-white/10 shrink-0">
           <h3 id="modalTitle" class="text-lg font-bold text-amber-200">{isEl ? "Αγγελία" : "Job"}</h3>
-          <button id="closeJobBtn" class="text-white/40 hover:text-white text-2xl leading-none">×</button>
+          <button id="closeJobBtn" class="text-white/40 hover:text-white text-3xl leading-none px-2 -mt-1">×</button>
         </div>
-        <form id="jobForm" class="space-y-3">
+        <form id="jobForm" class="flex-1 overflow-y-auto p-5 space-y-3">
           <input type="hidden" name="id" />
           <div class="grid sm:grid-cols-2 gap-3">
             <label class="block"><span class="text-xs text-white/50">Title EN</span>
@@ -116,15 +116,22 @@ const { data: jobs } = await supabaseAdmin
               <textarea name="requirements_el" rows="3" class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"></textarea></label>
             <label class="block"><span class="text-xs text-white/50">{isEl ? "Σειρά" : "Sort order"}</span>
               <input name="sort_order" type="number" value="0" class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" /></label>
-            <label class="flex items-center gap-2 text-sm text-white/70 sm:col-span-1 mt-6">
-              <input type="checkbox" name="active" checked /> {isEl ? "Ενεργή" : "Active"}
+            <label class="flex items-center gap-2 text-sm text-white/80 rounded-xl border border-white/10 bg-white/5 px-3 py-2 self-end">
+              <input type="checkbox" name="active" checked class="h-4 w-4" /> {isEl ? "Ενεργή αγγελία" : "Active listing"}
             </label>
           </div>
           <p id="jobFormMsg" class="text-xs hidden"></p>
-          <button type="submit" class="w-full rounded-xl bg-amber-400 text-black px-4 py-3 text-sm font-semibold hover:bg-amber-300 transition">
-            {isEl ? "Αποθήκευση" : "Save"}
-          </button>
         </form>
+        <div class="shrink-0 border-t border-white/10 p-4 bg-[#141420]">
+          <div class="flex items-center gap-3">
+            <button type="button" id="cancelJobBtn" class="flex-1 rounded-xl border border-white/15 text-white/70 px-4 py-3 text-sm font-semibold hover:bg-white/5 transition">
+              {isEl ? "Άκυρο" : "Cancel"}
+            </button>
+            <button type="button" id="saveJobBtn" class="flex-[2] rounded-xl bg-amber-400 text-black px-4 py-3 text-sm font-semibold hover:bg-amber-300 transition">
+              {isEl ? "Αποθήκευση" : "Save"}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -153,6 +160,8 @@ const { data: jobs } = await supabaseAdmin
 
       document.getElementById("newJobBtn").addEventListener("click", () => openModal(null));
       document.getElementById("closeJobBtn").addEventListener("click", closeModal);
+      document.getElementById("cancelJobBtn").addEventListener("click", closeModal);
+      document.getElementById("saveJobBtn").addEventListener("click", () => form.requestSubmit());
       modal.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
 
       document.querySelectorAll(".edit-btn").forEach(btn => {
