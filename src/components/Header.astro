@@ -54,6 +54,8 @@ const accountHref   = withLangPrefix(lang, "/account");
 const adminHref          = withLangPrefix(lang, "/admin");
 const adminUsersHref     = withLangPrefix(lang, "/admin/users");
 const adminMenuHref      = withLangPrefix(lang, "/admin/menu");
+const adminQrHref        = withLangPrefix(lang, "/admin/qrcodes");
+const adminHelpHref      = withLangPrefix(lang, "/admin/help");
 const adminAnalyticsHref = withLangPrefix(lang, "/admin/analytics");
 const adminOrdersHref    = withLangPrefix(lang, "/admin/orders");
 const adminCalendarHref  = withLangPrefix(lang, "/admin/calendar");
@@ -205,6 +207,14 @@ const displayName = user?.user_metadata?.full_name?.split(" ")[0]
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-70"><path d="M4 6h16M4 10h16M4 14h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
                         {t.user.editMenu}
                       </a>
+                      <a href={adminQrHref} class="flex items-center gap-2.5 px-4 py-2 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-70"><rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/><rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/><path d="M14 14h3v3M20 14v7M14 20h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                        QR Codes
+                      </a>
+                      <a href={adminHelpHref} class="flex items-center gap-2.5 px-4 py-2 text-sm text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/5 transition">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-70"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.5"/><path d="M9.5 9a2.5 2.5 0 115 0c0 1.5-2.5 2-2.5 3.5M12 17h.01" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                        {isEl ? "Οδηγός" : "Help & Guide"}
+                      </a>
                     </>
                   )}
 
@@ -338,6 +348,13 @@ const displayName = user?.user_metadata?.full_name?.split(" ")[0]
                     <a href={adminOrdersHref} class="flex items-center justify-center rounded-xl border border-amber-400/15 bg-amber-400/5 px-2 py-2.5 text-xs text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/10 transition text-center leading-tight">{t.user.orders}</a>
                     <a href={adminTipsHref}   class="flex items-center justify-center rounded-xl border border-amber-400/15 bg-amber-400/5 px-2 py-2.5 text-xs text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/10 transition text-center leading-tight">{t.user.tips}</a>
                     <a href={adminMenuHref}   class="flex items-center justify-center rounded-xl border border-amber-400/15 bg-amber-400/5 px-2 py-2.5 text-xs text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/10 transition text-center leading-tight">{t.user.editMenu}</a>
+                  </div>
+
+                  <!-- Tools -->
+                  <p class="px-1 text-[9px] font-semibold uppercase tracking-widest text-white/25">{isEl ? "Εργαλεία" : "Tools"}</p>
+                  <div class="grid grid-cols-2 gap-1">
+                    <a href={adminQrHref}   class="flex items-center justify-center rounded-xl border border-amber-400/15 bg-amber-400/5 px-2 py-2.5 text-xs text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/10 transition text-center leading-tight">QR Codes</a>
+                    <a href={adminHelpHref} class="flex items-center justify-center rounded-xl border border-amber-400/15 bg-amber-400/5 px-2 py-2.5 text-xs text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/10 transition text-center leading-tight">{isEl ? "Οδηγός" : "Help & Guide"}</a>
                   </div>
                 </>
               )}

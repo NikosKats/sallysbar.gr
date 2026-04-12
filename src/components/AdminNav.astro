@@ -1,0 +1,87 @@
+---
+import { dict, withLangPrefix } from "../i18n";
+
+interface Props {
+  /** Key identifying the active page: overview, analytics, calendar, reservations, events, loyalty, users, orders, tips, editMenu, qrcodes, help */
+  active: string;
+}
+
+const { active } = Astro.props;
+const lang = Astro.locals.lang ?? "en";
+const t = dict[lang];
+const isEl = lang === "el";
+
+const qrLabel   = isEl ? "QR Codes" : "QR Codes";
+const helpLabel = isEl ? "Οδηγός" : "Help & Guide";
+
+const items = [
+  { key: "overview",     label: t.admin.nav.overview,     href: withLangPrefix(lang, "/admin") },
+  { key: "analytics",    label: t.admin.nav.analytics,    href: withLangPrefix(lang, "/admin/analytics") },
+  { key: "calendar",     label: t.admin.nav.calendar,     href: withLangPrefix(lang, "/admin/calendar") },
+  { key: "reservations", label: t.admin.nav.reservations, href: withLangPrefix(lang, "/admin/reservations") },
+  { key: "events",       label: t.admin.nav.events,       href: withLangPrefix(lang, "/admin/events") },
+  { key: "loyalty",      label: t.admin.nav.loyalty,      href: withLangPrefix(lang, "/admin/loyalty") },
+  { key: "users",        label: t.admin.nav.users,        href: withLangPrefix(lang, "/admin/users") },
+  { key: "orders",       label: t.admin.nav.orders,       href: withLangPrefix(lang, "/admin/orders") },
+  { key: "tips",         label: t.admin.nav.tips,         href: withLangPrefix(lang, "/admin/tips") },
+  { key: "editMenu",     label: t.admin.nav.editMenu,     href: withLangPrefix(lang, "/admin/menu") },
+  { key: "qrcodes",      label: qrLabel,                  href: withLangPrefix(lang, "/admin/qrcodes") },
+  { key: "help",         label: helpLabel,                href: withLangPrefix(lang, "/admin/help") },
+];
+
+const activeItem = items.find(i => i.key === active) ?? items[0];
+---
+
+<div class="sticky top-20 z-40 border-b border-amber-400/20 bg-[#0b0b10]/95 backdrop-blur">
+  <div class="mx-auto max-w-7xl px-3 sm:px-4">
+
+    <!-- Mobile: current page pill + dropdown selector -->
+    <div class="sm:hidden py-2 flex items-center gap-2">
+      <span class="shrink-0 rounded-lg bg-amber-400/15 border border-amber-400/20 text-amber-400 font-medium text-xs px-2.5 py-1.5 whitespace-nowrap">
+        {activeItem.label}
+      </span>
+      <div class="relative flex-1">
+        <select
+          id="adminNavSelect"
+          class="appearance-none w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 pr-8 text-sm text-white/85 focus:border-amber-300/50 focus:outline-none"
+          aria-label="Admin navigation"
+        >
+          <option value="" disabled selected>Go to…</option>
+          {items.map(i => (
+            <option value={i.href} selected={i.key === active}>{i.label}</option>
+          ))}
+        </select>
+        <svg class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 opacity-60" width="14" height="14" viewBox="0 0 12 12" fill="none">
+          <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Desktop: horizontal pill nav -->
+    <nav class="hidden sm:flex items-center gap-1 py-2 overflow-x-auto text-sm flex-wrap">
+      {items.map((i, idx) => {
+        const isActive = i.key === active;
+        const base = "px-3 py-1.5 rounded-lg whitespace-nowrap transition";
+        const cls = isActive
+          ? `${base} bg-amber-400/15 border border-amber-400/20 text-amber-400 font-medium`
+          : `${base} text-white/50 hover:text-amber-400 hover:bg-amber-400/5`;
+        return (
+          <>
+            {(idx === 3 || idx === 7 || idx === 10) && (
+              <span class="shrink-0 h-4 w-px bg-white/15 mx-1"></span>
+            )}
+            {isActive ? <span class={cls}>{i.label}</span> : <a href={i.href} class={cls}>{i.label}</a>}
+          </>
+        );
+      })}
+    </nav>
+
+  </div>
+</div>
+
+<script is:inline>
+  document.getElementById("adminNavSelect")?.addEventListener("change", (e) => {
+    const v = e.target.value;
+    if (v) window.location.href = v;
+  });
+</script>
