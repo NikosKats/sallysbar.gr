@@ -166,120 +166,210 @@ const desc = "Sally's Bar is the best cocktail bar and nightlife spot in Skala, 
     />
   </head>
 
-  <body class="min-h-screen bg-[#0b0b10] text-white font-body">
+  <body class="min-h-screen bg-[#0a0a0f] text-white font-body antialiased overflow-x-hidden">
+    <!-- Ambient backdrop -->
+    <div class="pointer-events-none fixed inset-0 -z-10 opacity-60">
+      <div class="absolute -top-40 left-1/3 h-[520px] w-[520px] rounded-full bg-amber-400/10 blur-[140px]"></div>
+      <div class="absolute top-[40%] -right-40 h-[480px] w-[480px] rounded-full bg-sky-500/10 blur-[140px]"></div>
+      <div class="absolute bottom-0 left-0 h-[420px] w-[420px] rounded-full bg-fuchsia-500/10 blur-[140px]"></div>
+    </div>
+
     <Header />
 
     <!-- HERO -->
-    <section class="relative overflow-hidden">
+    <section class="relative overflow-hidden min-h-[92vh] flex items-center">
       <img
         id="hero-image"
         src="/hero/1-hero.jpg"
         alt={t.home.heroAlt}
-        class="absolute inset-0 h-full w-full object-cover transition-opacity duration-700 opacity-100"
+        class="absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 opacity-100 scale-105"
         loading="eager"
       />
 
-      <div class="absolute inset-0 bg-black/50"></div>
+      <!-- Layered overlays for depth -->
+      <div class="absolute inset-0 bg-gradient-to-b from-black/40 via-black/55 to-[#0a0a0f]"></div>
+      <div class="absolute inset-0 bg-gradient-to-tr from-amber-900/20 via-transparent to-sky-900/20 mix-blend-overlay"></div>
+      <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(0,0,0,0.6)_100%)]"></div>
 
-      <div class="relative mx-auto max-w-6xl px-6 py-32 md:py-40">
-        <div class="text-xs uppercase tracking-[0.25em] text-white/60">
+      <div class="relative mx-auto max-w-6xl px-6 py-24 md:py-28 w-full">
+        <!-- Eyebrow -->
+        <div class="inline-flex items-center gap-2 rounded-full border border-amber-300/30 bg-amber-300/5 px-3 py-1 text-[11px] uppercase tracking-[0.28em] text-amber-200/90 backdrop-blur">
+          <span class="h-1.5 w-1.5 rounded-full bg-amber-300 animate-pulse"></span>
           {t.home.locationLine}
         </div>
 
-        <div class="mt-4 flex items-center gap-4">
+        <!-- Title -->
+        <div class="mt-6 flex items-center gap-4 md:gap-5">
           <img
             src="/logo/1-logo.png"
             alt="Sally's Bar logo"
-            class="h-12 w-12 md:h-16 md:w-16"
+            class="h-14 w-14 md:h-20 md:w-20 drop-shadow-[0_0_30px_rgba(251,191,36,0.3)]"
             loading="eager"
           />
-          <h1 class="text-5xl font-semibold leading-tight md:text-7xl">
+          <h1 class="font-heading text-6xl md:text-8xl font-bold leading-[0.95] tracking-tight bg-gradient-to-br from-white via-amber-50 to-amber-200/80 bg-clip-text text-transparent">
             {site.name}
           </h1>
         </div>
 
-        <p class="mt-6 max-w-2xl text-xl text-white/70">
-          <span class="text-white font-semibold">{copy.tagline}</span><br />
+        <!-- Tagline -->
+        <p class="mt-8 max-w-2xl text-lg md:text-xl text-white/75 leading-relaxed">
+          <span class="block font-heading text-2xl md:text-3xl text-white font-semibold italic mb-2">{copy.tagline}</span>
           {t.home.heroSubline}
         </p>
 
-        <div class="mt-6">
+        <!-- Season + price pill -->
+        <div class="mt-7 flex flex-wrap items-center gap-3">
           <SeasonBanner
             isOpenNow={site.season.isOpenNow}
             opensFromText={copy.opensFromText}
           />
-        </div>
-
-        <div class="mt-8 flex flex-wrap gap-3 items-center">
-          <a
-            href={site.mapsShareUrl}
-            target="_blank"
-            class="rounded-2xl bg-white px-6 py-3 font-semibold text-black hover:bg-white/90"
-          >
-            {t.home.ctaDirections}
-          </a>
-          <a
-            href={`tel:${site.phoneE164}`}
-            class="rounded-2xl border border-white/20 px-6 py-3 font-semibold hover:bg-white/10"
-          >
-            {t.home.ctaCall}
-          </a>
-        </div>
-
-        <div class="mt-4 flex flex-wrap gap-2 text-sm">
-          <a href={site.socials.instagram} target="_blank" class="rounded-full border border-white/15 px-4 py-2 text-white/80 hover:text-white hover:bg-white/10 transition">
-            {t.home.linkInstagram}
-          </a>
-          <a href={site.socials.facebook} target="_blank" class="rounded-full border border-white/15 px-4 py-2 text-white/80 hover:text-white hover:bg-white/10 transition">
-            {t.home.linkFacebook}
-          </a>
-          <a href={site.socials.tripadvisor} target="_blank" class="rounded-full border border-white/15 px-4 py-2 text-white/80 hover:text-white hover:bg-white/10 transition">
-            {t.home.linkTripadvisor}
-          </a>
-          <a href={site.reviews.googleUrl} target="_blank" class="rounded-full border border-white/15 px-4 py-2 text-white/80 hover:text-white hover:bg-white/10 transition">
-            {t.home.linkGoogleReviews}
-          </a>
-        </div>
-
-        <div class="mt-8 flex flex-wrap gap-3 text-sm text-white/70">
-          <div class="rounded-full border border-white/10 px-3 py-1">
-            ⭐ {site.ratings.google.rating} {t.home.googleRatingLabel}
-          </div>
-          <div class="rounded-full border border-white/10 px-3 py-1">
-            {copy.hoursText}
-          </div>
-          <div class="rounded-full border border-white/10 px-3 py-1">
-            {site.addressFull}
-          </div>
-        </div>
-
-        <div class="mt-8 grid gap-3 md:max-w-2xl md:grid-cols-2">
-          <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
-            <div class="text-sm font-semibold">{t.home.earlyTitle}</div>
-            <div class="mt-1 text-sm text-white/70">{t.home.earlyText}</div>
-          </div>
-          <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
-            <div class="text-sm font-semibold">{t.home.lateTitle}</div>
-            <div class="mt-1 text-sm text-white/70">{t.home.lateText}</div>
-          </div>
-        </div>
-
-        <div class="mt-6">
-          <div class="inline-block rounded-full border border-white/20 px-5 py-2 text-sm">
+          <div class="rounded-full border border-amber-300/30 bg-amber-300/5 px-4 py-1.5 text-sm text-amber-200">
             {t.home.pricePill}
           </div>
         </div>
 
-        <p class="mt-4 text-sm text-white/70">{t.home.ukLine}</p>
+        <!-- Primary CTAs -->
+        <div class="mt-8 flex flex-wrap gap-3 items-center">
+          <a
+            href={site.mapsShareUrl}
+            target="_blank"
+            class="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-200 to-amber-400 px-7 py-3.5 font-semibold text-black shadow-lg shadow-amber-500/20 hover:shadow-amber-500/40 hover:scale-[1.02] active:scale-[0.98] transition"
+          >
+            <span class="relative z-10 flex items-center gap-2">📍 {t.home.ctaDirections}</span>
+            <span class="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent opacity-0 group-hover:opacity-100 transition"></span>
+          </a>
+          <a
+            href={`tel:${site.phoneE164}`}
+            class="rounded-2xl border border-white/25 bg-white/5 backdrop-blur px-7 py-3.5 font-semibold hover:bg-white/10 hover:border-white/40 transition"
+          >
+            📞 {t.home.ctaCall}
+          </a>
+        </div>
+
+        <!-- Stat badges (tight) -->
+        <div class="mt-7 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-white/75">
+          <a href={site.reviews.googleUrl} target="_blank" class="flex items-center gap-1.5 hover:text-amber-200 transition">
+            <span class="text-amber-300">★</span>
+            <span class="font-semibold text-white">{site.ratings.google.rating}</span>
+            <span>{t.home.googleRatingLabel}</span>
+          </a>
+          <span class="h-4 w-px bg-white/15"></span>
+          <span>{copy.hoursText}</span>
+          <span class="h-4 w-px bg-white/15 hidden md:inline"></span>
+          <span class="hidden md:inline">{site.addressFull}</span>
+        </div>
+
+        <!-- Socials -->
+        <div class="mt-6 flex flex-wrap gap-2 text-sm">
+          <a href={site.socials.instagram} target="_blank" class="rounded-full border border-white/15 bg-white/5 backdrop-blur px-4 py-1.5 text-white/80 hover:text-white hover:border-white/30 hover:bg-white/10 transition">{t.home.linkInstagram}</a>
+          <a href={site.socials.facebook} target="_blank" class="rounded-full border border-white/15 bg-white/5 backdrop-blur px-4 py-1.5 text-white/80 hover:text-white hover:border-white/30 hover:bg-white/10 transition">{t.home.linkFacebook}</a>
+          <a href={site.socials.tripadvisor} target="_blank" class="rounded-full border border-white/15 bg-white/5 backdrop-blur px-4 py-1.5 text-white/80 hover:text-white hover:border-white/30 hover:bg-white/10 transition">{t.home.linkTripadvisor}</a>
+          <a href={site.reviews.googleUrl} target="_blank" class="rounded-full border border-white/15 bg-white/5 backdrop-blur px-4 py-1.5 text-white/80 hover:text-white hover:border-white/30 hover:bg-white/10 transition">{t.home.linkGoogleReviews}</a>
+        </div>
+
+        <!-- Scroll cue -->
+        <div class="mt-14 hidden md:flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-white/40">
+          <span class="h-px w-10 bg-white/20"></span>
+          <span>Scroll</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- EARLY / LATE MOOD CARDS -->
+    <section class="relative mx-auto max-w-6xl px-6 -mt-10 md:-mt-16 z-10">
+      <div class="grid gap-4 md:grid-cols-2">
+        <div class="group rounded-3xl border border-amber-300/20 bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent p-6 backdrop-blur-xl hover:border-amber-300/40 transition">
+          <div class="flex items-center gap-3">
+            <div class="text-2xl">🌇</div>
+            <h3 class="font-heading text-xl font-semibold text-amber-100">{t.home.earlyTitle}</h3>
+          </div>
+          <p class="mt-3 text-white/75 leading-relaxed">{t.home.earlyText}</p>
+        </div>
+        <div class="group rounded-3xl border border-fuchsia-300/20 bg-gradient-to-br from-fuchsia-500/10 via-fuchsia-500/5 to-transparent p-6 backdrop-blur-xl hover:border-fuchsia-300/40 transition">
+          <div class="flex items-center gap-3">
+            <div class="text-2xl">🌃</div>
+            <h3 class="font-heading text-xl font-semibold text-fuchsia-100">{t.home.lateTitle}</h3>
+          </div>
+          <p class="mt-3 text-white/75 leading-relaxed">{t.home.lateText}</p>
+        </div>
+      </div>
+      <p class="mt-5 text-center text-sm text-white/50 italic">{t.home.ukLine}</p>
+    </section>
+
+    <!-- PHOTO GALLERY -->
+    <section class="mx-auto max-w-6xl px-6 py-20">
+      <div class="mb-10">
+        <div class="text-xs uppercase tracking-[0.28em] text-amber-200/80 mb-3">Gallery</div>
+        <h2 class="font-heading text-4xl md:text-5xl font-bold">{t.home.photoStripTitle}</h2>
+      </div>
+
+      <div class="grid gap-3 md:gap-4 md:grid-cols-4 md:grid-rows-2">
+        <div class="gallery-img group relative col-span-2 row-span-2 cursor-zoom-in overflow-hidden rounded-3xl">
+          <img src="/photos/5.premium-drinks.jpg" alt={t.home.photoAltPremium} class="h-full w-full object-cover transition duration-700 group-hover:scale-110" loading="eager" />
+          <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition"></div>
+        </div>
+        <div class="gallery-img group relative cursor-zoom-in overflow-hidden rounded-3xl">
+          <img src="/photos/1.sallys-bar-cocktails-skala.jpg" alt={t.home.photoAltSignature} class="h-full w-full object-cover transition duration-700 group-hover:scale-110" loading="eager" />
+          <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition"></div>
+        </div>
+        <div class="gallery-img group relative cursor-zoom-in overflow-hidden rounded-3xl">
+          <img src="/photos/3.sallys-bar-lounge.jpg" alt={t.home.photoAltLounge} class="h-full w-full object-cover transition duration-700 group-hover:scale-110" loading="eager" />
+          <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition"></div>
+        </div>
+        <div class="gallery-img group relative cursor-zoom-in overflow-hidden rounded-3xl">
+          <img src="/photos/5.signature-cocktails.jpg" alt={t.home.photoAltSignature2} class="h-full w-full object-cover transition duration-700 group-hover:scale-110" loading="eager" />
+          <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition"></div>
+        </div>
+        <div class="gallery-img group relative cursor-zoom-in overflow-hidden rounded-3xl">
+          <img src="/photos/5.bar-lighting.jpg" alt={t.home.photoAltLighting} class="h-full w-full object-cover transition duration-700 group-hover:scale-110" loading="eager" />
+          <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- WHY -->
+    <section class="mx-auto max-w-6xl px-6 pb-20">
+      <div class="mb-10">
+        <div class="text-xs uppercase tracking-[0.28em] text-amber-200/80 mb-3">Why Sally's</div>
+        <h2 class="font-heading text-4xl md:text-5xl font-bold">Three reasons you'll stay all night</h2>
+      </div>
+      <div class="grid gap-5 md:grid-cols-3">
+        <div class="group relative rounded-3xl border border-white/10 bg-white/[0.03] p-7 overflow-hidden hover:border-amber-300/30 hover:-translate-y-1 transition duration-300">
+          <div class="absolute inset-0 opacity-0 group-hover:opacity-100 bg-gradient-to-br from-amber-400/5 to-transparent transition"></div>
+          <div class="relative">
+            <div class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-300/15 text-2xl mb-4">🍸</div>
+            <h3 class="font-heading text-2xl font-semibold">{t.home.why1Title}</h3>
+            <p class="mt-3 text-white/70 leading-relaxed">{t.home.why1Text}</p>
+          </div>
+        </div>
+        <div class="group relative rounded-3xl border border-white/10 bg-white/[0.03] p-7 overflow-hidden hover:border-sky-300/30 hover:-translate-y-1 transition duration-300">
+          <div class="absolute inset-0 opacity-0 group-hover:opacity-100 bg-gradient-to-br from-sky-400/5 to-transparent transition"></div>
+          <div class="relative">
+            <div class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-300/15 text-2xl mb-4">🎶</div>
+            <h3 class="font-heading text-2xl font-semibold">{t.home.why2Title}</h3>
+            <p class="mt-3 text-white/70 leading-relaxed">{t.home.why2Text}</p>
+          </div>
+        </div>
+        <div class="group relative rounded-3xl border border-white/10 bg-white/[0.03] p-7 overflow-hidden hover:border-fuchsia-300/30 hover:-translate-y-1 transition duration-300">
+          <div class="absolute inset-0 opacity-0 group-hover:opacity-100 bg-gradient-to-br from-fuchsia-400/5 to-transparent transition"></div>
+          <div class="relative">
+            <div class="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-fuchsia-300/15 text-2xl mb-4">🌊</div>
+            <h3 class="font-heading text-2xl font-semibold">{t.home.why3Title}</h3>
+            <p class="mt-3 text-white/70 leading-relaxed">{t.home.why3Text}</p>
+          </div>
+        </div>
       </div>
     </section>
 
     <!-- VISIT / MAP -->
-    <section id="visit" class="mx-auto max-w-6xl px-6 py-12">
-      <h2 class="text-3xl font-semibold">{t.home.visitTitle}</h2>
-      <div class="mt-6 overflow-hidden rounded-2xl border border-white/10">
+    <section id="visit" class="mx-auto max-w-6xl px-6 pb-20">
+      <div class="mb-10">
+        <div class="text-xs uppercase tracking-[0.28em] text-amber-200/80 mb-3">Find Us</div>
+        <h2 class="font-heading text-4xl md:text-5xl font-bold">{t.home.visitTitle}</h2>
+      </div>
+      <div class="overflow-hidden rounded-3xl border border-white/10 shadow-2xl shadow-black/50">
         <iframe
-          class="w-full h-[420px] border-0"
+          class="w-full h-[460px] border-0 grayscale-[0.3] contrast-[1.05]"
           src="https://www.google.com/maps?q=Sally%27s%20Bar%20Skala%20Kefalonia&output=embed"
           loading="lazy"
           title="Google Maps"
@@ -287,73 +377,14 @@ const desc = "Sally's Bar is the best cocktail bar and nightlife spot in Skala, 
       </div>
     </section>
 
-    <!-- PHOTO GALLERY -->
-    <section class="mx-auto max-w-6xl px-6 py-14">
-      <h2 class="text-3xl font-semibold">{t.home.photoStripTitle}</h2>
-
-      <div class="mt-10 grid gap-4 md:grid-cols-4 md:grid-rows-2">
-        <img
-          src="/photos/5.premium-drinks.jpg"
-          alt={t.home.photoAltPremium}
-          class="col-span-2 row-span-2 h-full w-full object-cover rounded-3xl"
-          loading="eager"
-        />
-        <div class="gallery-img cursor-zoom-in">
-          <img
-            src="/photos/1.sallys-bar-cocktails-skala.jpg"
-            alt={t.home.photoAltSignature}
-            class="h-full w-full object-cover rounded-3xl"
-            loading="eager"
-          />
-        </div>
-        <div class="gallery-img cursor-zoom-in">
-          <img
-            src="/photos/3.sallys-bar-lounge.jpg"
-            alt={t.home.photoAltLounge}
-            class="h-full w-full object-cover rounded-3xl"
-            loading="eager"
-          />
-        </div>
-        <div class="gallery-img cursor-zoom-in">
-          <img
-            src="/photos/5.signature-cocktails.jpg"
-            alt={t.home.photoAltSignature2}
-            class="h-full w-full object-cover rounded-3xl"
-            loading="eager"
-          />
-        </div>
-        <div class="gallery-img cursor-zoom-in">
-          <img
-            src="/photos/5.bar-lighting.jpg"
-            alt={t.home.photoAltLighting}
-            class="h-full w-full object-cover rounded-3xl"
-            loading="eager"
-          />
-        </div>
+    <!-- FAQ -->
+    <section class="mx-auto max-w-4xl px-6 pb-20">
+      <div class="mb-10 text-center">
+        <div class="text-xs uppercase tracking-[0.28em] text-amber-200/80 mb-3">FAQ</div>
+        <h2 class="font-heading text-3xl md:text-4xl font-bold mb-3">Skala Kefalonia Nightlife — Your Questions Answered</h2>
+        <p class="text-white/60 text-sm">Everything you need to know about visiting Sally's Bar in Skala, Kefalonia.</p>
       </div>
-    </section>
-
-    <!-- WHY -->
-    <section class="mx-auto max-w-6xl px-6 py-10 grid gap-6 md:grid-cols-3">
-      <div class="rounded-2xl border border-white/10 p-6 bg-white/5">
-        <h2 class="text-xl font-semibold">{t.home.why1Title}</h2>
-        <p class="mt-3 text-white/70">{t.home.why1Text}</p>
-      </div>
-      <div class="rounded-2xl border border-white/10 p-6 bg-white/5">
-        <h2 class="text-xl font-semibold">{t.home.why2Title}</h2>
-        <p class="mt-3 text-white/70">{t.home.why2Text}</p>
-      </div>
-      <div class="rounded-2xl border border-white/10 p-6 bg-white/5">
-        <h2 class="text-xl font-semibold">{t.home.why3Title}</h2>
-        <p class="mt-3 text-white/70">{t.home.why3Text}</p>
-      </div>
-    </section>
-
-    <!-- FAQ / SEO CONTENT -->
-    <section class="mx-auto max-w-6xl px-6 py-14">
-      <h2 class="text-3xl font-semibold mb-2">Skala Kefalonia Nightlife — Your Questions Answered</h2>
-      <p class="text-white/60 mb-8 text-sm">Everything you need to know about visiting Sally's Bar in Skala, Kefalonia.</p>
-      <div class="space-y-4">
+      <div class="space-y-3">
         {[
           {
             q: "What is the best bar in Skala, Kefalonia?",
@@ -376,31 +407,29 @@ const desc = "Sally's Bar is the best cocktail bar and nightlife spot in Skala, 
             a: "No booking required! Sally's Bar is walk-in friendly. Just turn up, grab a seat, and let us take care of the rest. Groups are always welcome.",
           },
         ].map(({ q, a }) => (
-          <details class="rounded-2xl border border-white/10 bg-white/5 group" open={false}>
-            <summary class="px-5 py-4 cursor-pointer text-sm font-semibold text-white list-none flex justify-between items-center">
-              {q}
-              <span class="text-white/40 group-open:rotate-180 transition-transform text-lg">▾</span>
+          <details class="group rounded-2xl border border-white/10 bg-white/[0.03] hover:border-white/20 transition" open={false}>
+            <summary class="px-6 py-4 cursor-pointer text-[15px] font-semibold text-white list-none flex justify-between items-center gap-4">
+              <span>{q}</span>
+              <span class="shrink-0 grid place-items-center h-7 w-7 rounded-full border border-white/15 text-white/60 group-open:rotate-180 group-open:bg-amber-300/10 group-open:border-amber-300/30 group-open:text-amber-200 transition-transform transition">▾</span>
             </summary>
-            <p class="px-5 pb-5 text-sm text-white/70 leading-relaxed">{a}</p>
+            <p class="px-6 pb-5 text-sm text-white/70 leading-relaxed">{a}</p>
           </details>
         ))}
       </div>
     </section>
 
     <!-- LOCAL SEO TEXT BLOCK -->
-    <section class="mx-auto max-w-6xl px-6 pb-14">
-      <div class="rounded-2xl border border-white/10 bg-white/5 p-8">
-        <h2 class="text-2xl font-semibold mb-4">The Heart of Kefalonia Nightlife in Skala</h2>
-        <div class="text-white/65 text-sm leading-relaxed space-y-3">
-          <p>
-            If you're looking for the best nightlife in Skala, Kefalonia, Sally's Bar has been the village's favourite meeting point for years. Located steps from the main strip, we welcome locals, expats, and tourists — especially visitors from the UK and Ireland who make Skala their summer home.
-          </p>
-          <p>
-            We serve over 30 cocktails crafted with premium spirits, alongside a full selection of beers, wines, and soft drinks. Whether you're after a quiet drink after dinner or you want to stay out until 2AM, Sally's Bar adapts to your night. Come early for the lounge vibe, stay late for the energy.
-          </p>
-          <p>
-            Kefalonia is one of Greece's most beautiful islands, and Skala is its most social village. When the sun goes down, the bars fill up — and Sally's is where everyone ends up. Rated one of the top bars in Kefalonia on TripAdvisor and Google, we'd love to see you this season.
-          </p>
+    <section class="mx-auto max-w-6xl px-6 pb-20">
+      <div class="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-white/[0.04] to-white/[0.01] p-8 md:p-12">
+        <div class="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-amber-400/10 blur-3xl"></div>
+        <div class="relative">
+          <div class="text-xs uppercase tracking-[0.28em] text-amber-200/80 mb-3">Our Story</div>
+          <h2 class="font-heading text-3xl md:text-4xl font-bold mb-6">The Heart of Kefalonia Nightlife in Skala</h2>
+          <div class="text-white/70 leading-relaxed space-y-4 max-w-3xl">
+            <p>If you're looking for the best nightlife in Skala, Kefalonia, Sally's Bar has been the village's favourite meeting point for years. Located steps from the main strip, we welcome locals, expats, and tourists — especially visitors from the UK and Ireland who make Skala their summer home.</p>
+            <p>We serve over 30 cocktails crafted with premium spirits, alongside a full selection of beers, wines, and soft drinks. Whether you're after a quiet drink after dinner or you want to stay out until 2AM, Sally's Bar adapts to your night. Come early for the lounge vibe, stay late for the energy.</p>
+            <p>Kefalonia is one of Greece's most beautiful islands, and Skala is its most social village. When the sun goes down, the bars fill up — and Sally's is where everyone ends up. Rated one of the top bars in Kefalonia on TripAdvisor and Google, we'd love to see you this season.</p>
+          </div>
         </div>
       </div>
     </section>
