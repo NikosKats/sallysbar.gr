@@ -23,7 +23,8 @@
       "Bash(cwebp -version)",
       "Bash(node scripts/optimize-images.mjs)",
       "Bash(du -sh /Users/nikolaoskatsilidis/Desktop/sallysbar.gr/public/*)",
-      "Bash(ls /Users/nikolaoskatsilidis/Desktop/sallysbar.gr/public/photos/*.jpg)"
+      "Bash(ls /Users/nikolaoskatsilidis/Desktop/sallysbar.gr/public/photos/*.jpg)",
+      "Bash(grep -l \"manifest\\\\|serviceWorker\" /Users/nikolaoskatsilidis/Desktop/sallysbar.gr/src/**/*.astro)"
     ],
     "additionalDirectories": [
       "/Users/nikolaoskatsilidis/Desktop/sallysbar.gr/public/photos"

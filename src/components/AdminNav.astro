@@ -68,6 +68,14 @@ const groups: Group[] = [
 const activeItem = groups.flatMap(g => g.items).find(i => i.key === active);
 ---
 
+<!-- PWA hooks: manifest + theme color + iOS meta (browsers accept these in body) -->
+<link rel="manifest" href="/admin-manifest.webmanifest" />
+<meta name="theme-color" content="#0b0b10" />
+<link rel="apple-touch-icon" href="/favicon/apple-touch-icon.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Sally's Admin" />
+
 <!-- Hide the public site Header + its spacer on admin pages, and shift ALL body content
      right on desktop so the fixed sidebar never overlaps (main, pre-main <section>s, etc.). -->
 <style is:global>
@@ -200,5 +208,37 @@ const activeItem = groups.flatMap(g => g.items).find(i => i.key === active);
     backdrop && backdrop.addEventListener("click", close);
     closeBtn && closeBtn.addEventListener("click", close);
     document.addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });
+  })();
+
+  // Register service worker for PWA (installable + offline-ready)
+  (function () {
+    if (!("serviceWorker" in navigator)) return;
+    navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {});
+  })();
+
+  // Install-to-home-screen prompt (Android / desktop Chrome)
+  (function () {
+    let deferred = null;
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      deferred = e;
+      if (document.getElementById("adminInstallBtn")) return;
+      const btn = document.createElement("button");
+      btn.id = "adminInstallBtn";
+      btn.type = "button";
+      btn.textContent = "⬇ Install admin app";
+      btn.style.cssText = "position:fixed;bottom:16px;right:16px;z-index:9999;padding:10px 14px;border-radius:12px;background:#fbbf24;color:#000;font-weight:600;font-size:13px;border:0;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.5);";
+      btn.addEventListener("click", async () => {
+        if (!deferred) return;
+        deferred.prompt();
+        const res = await deferred.userChoice;
+        if (res.outcome === "accepted") btn.remove();
+        deferred = null;
+      });
+      document.body.appendChild(btn);
+    });
+    window.addEventListener("appinstalled", () => {
+      const b = document.getElementById("adminInstallBtn"); if (b) b.remove();
+    });
   })();
 </script>
