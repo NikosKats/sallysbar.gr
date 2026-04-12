@@ -4,6 +4,7 @@ import Header from "../components/Header.astro";
 import { createSupabaseServerClient, supabaseAdmin } from "../lib/supabase";
 import { withLangPrefix, dict } from "../i18n";
 import { getTiers, getRewards, currentTier, nextTier } from "../lib/loyalty";
+import { TODOS, getTodoStates } from "../lib/todos";
 
 const user = Astro.locals.user;
 const lang = Astro.locals.lang ?? "en";
@@ -164,6 +165,13 @@ const { count: visitsCount } = await supabaseAdmin
 
 const vapidPublicKey = import.meta.env.VAPID_PUBLIC_KEY ?? "";
 
+// Todos state
+const todoStates = await getTodoStates(user.id);
+const todoStateByKey = new Map(todoStates.map(s => [s.key, s]));
+const todosCompleted = todoStates.filter(s => s.status === "completed").length;
+const totalTodoPoints = TODOS.reduce((s, t) => s + t.points, 0);
+const earnedTodoPoints = TODOS.filter(t => todoStateByKey.get(t.key)?.status === "completed").reduce((s, t) => s + t.points, 0);
+
 function reasonLabel(r: string | null): string {
   if (!r) return isEl ? "Πόντοι" : "Points";
   if (r.startsWith("order:"))    return isEl ? "Παραγγελία" : "Order";
@@ -253,6 +261,63 @@ function statusLabel(s: string) {
         <a href={withLangPrefix(lang, "/book")}    class="flex flex-col items-center gap-2 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 p-4 text-center transition group"><span class="text-2xl">📅</span><span class="text-xs font-semibold text-white/70 group-hover:text-amber-300">{isEl ? "Κράτηση" : "Book"}</span></a>
         <a href={withLangPrefix(lang, "/events")}  class="flex flex-col items-center gap-2 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 p-4 text-center transition group"><span class="text-2xl">🎵</span><span class="text-xs font-semibold text-white/70 group-hover:text-amber-300">{isEl ? "Events" : "Events"}</span></a>
         <a href={withLangPrefix(lang, "/loyalty")} class="flex flex-col items-center gap-2 rounded-2xl border border-amber-400/30 bg-amber-400/10 hover:bg-amber-400/20 p-4 text-center transition group"><span class="text-2xl">🎁</span><span class="text-xs font-semibold text-amber-200">{isEl ? "Επιβραβεύσεις" : "Rewards"}</span></a>
+      </section>
+
+      <!-- Tasks -->
+      <section class="rounded-2xl border border-white/10 bg-white/5 p-5">
+        <div class="flex items-center justify-between gap-2 flex-wrap mb-2">
+          <div>
+            <p class="text-[10px] uppercase tracking-[0.24em] text-amber-300 font-bold">🎯 {isEl ? "Αποστολές σου" : "My Tasks"}</p>
+            <h2 class="font-heading text-xl font-bold mt-1">{todosCompleted} / {TODOS.length} {isEl ? "ολοκληρωμένες" : "completed"} <span class="text-sm font-normal text-white/50">· {earnedTodoPoints} / {totalTodoPoints} pts</span></h2>
+          </div>
+          <div class="text-xs text-white/50">{isEl ? "Πάτα για διεκδίκηση" : "Tap to claim"}</div>
+        </div>
+        <div class="w-full h-1.5 rounded-full bg-white/5 overflow-hidden mb-4">
+          <div class="h-full rounded-full bg-gradient-to-r from-amber-400 to-fuchsia-500" style={"width:" + Math.round((todosCompleted / TODOS.length) * 100) + "%"}></div>
+        </div>
+
+        {(["onboarding","achievement","social"] as const).map(cat => {
+          const items = TODOS.filter(t => t.category === cat);
+          const title = cat === "onboarding" ? (isEl ? "Ξεκίνημα" : "Onboarding")
+                      : cat === "achievement" ? (isEl ? "Επιτεύγματα" : "Achievements")
+                      : (isEl ? "Κοινωνικά" : "Social");
+          return (
+            <div class="mt-3">
+              <p class="text-[10px] uppercase tracking-wider text-white/40 font-semibold mb-2 px-1">{title}</p>
+              <div class="grid sm:grid-cols-2 gap-2">
+                {items.map(t => {
+                  const s = todoStateByKey.get(t.key);
+                  const status = s?.status ?? "locked";
+                  const pill = status === "completed" ? "bg-emerald-400/15 text-emerald-300"
+                             : status === "available" ? "bg-amber-400/15 text-amber-300"
+                             : "bg-white/5 text-white/40";
+                  return (
+                    <div class={`flex items-center gap-3 rounded-xl border p-3 ${status === "completed" ? "border-emerald-400/20 bg-emerald-400/5" : "border-white/10 bg-white/[0.03]"}`}
+                         data-todo-key={t.key} data-todo-type={t.type} data-todo-link={t.link ?? ""}>
+                      <div class="shrink-0 text-2xl">{t.emoji}</div>
+                      <div class="min-w-0 flex-1">
+                        <p class="text-sm font-semibold text-white truncate">{isEl ? t.title_el : t.title_en}</p>
+                        <p class="text-xs text-white/50 truncate">{isEl ? t.desc_el : t.desc_en}</p>
+                      </div>
+                      <div class="shrink-0 text-right">
+                        <span class={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full ${pill}`}>
+                          {status === "completed" ? (isEl ? "✓ OK" : "✓ Done")
+                           : status === "available" ? `+${t.points}`
+                           : (isEl ? "Κλειδωμένο" : "Locked")}
+                        </span>
+                        {status === "available" && (
+                          <button type="button" class="todo-claim-btn mt-1 block text-[11px] text-amber-300 hover:text-amber-200 font-semibold">
+                            {isEl ? "Διεκδίκηση" : "Claim"}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
       </section>
 
       <!-- Invite friends (referrals) -->
@@ -856,6 +921,43 @@ function statusLabel(s: string) {
         for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
         return out;
       }
+
+      // Task claim handler
+      document.querySelectorAll(".todo-claim-btn").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const row = btn.closest("[data-todo-key]");
+          if (!row) return;
+          const key  = row.dataset.todoKey;
+          const type = row.dataset.todoType;
+          const link = row.dataset.todoLink;
+
+          // For honor tasks with a link, open it first so the user actually does the thing.
+          if (type === "honor" && link) {
+            window.open(link, "_blank", "noopener");
+          }
+
+          const payload = { key };
+          // install_app needs client-side verification — check display-mode.
+          if (key === "install_app") {
+            payload.installed = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+            if (!payload.installed) {
+              alert(isEl ? "Εγκατάστησε την εφαρμογή πρώτα (➕ Προσθήκη στην αρχική οθόνη)." : "Install the app first (➕ Add to Home Screen).");
+              return;
+            }
+          }
+
+          btn.disabled = true;
+          const prev = btn.textContent;
+          btn.textContent = "⏳";
+          const r = await fetch("/api/todos/claim", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          const j = await r.json();
+          if (r.ok) { window.location.reload(); }
+          else { alert((isEl ? "Σφάλμα: " : "Error: ") + (j.error ?? "unknown")); btn.disabled = false; btn.textContent = prev; }
+        });
+      });
 
       // Inline scratch reveal (same animation as /loyalty)
       document.querySelectorAll(".scratch-card").forEach((card) => {
