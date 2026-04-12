@@ -56,12 +56,13 @@ const groups: Group[] = [
 const activeItem = groups.flatMap(g => g.items).find(i => i.key === active);
 ---
 
-<!-- Hide the public site Header + its spacer on admin pages, and push <main> right for the sidebar -->
+<!-- Hide the public site Header + its spacer on admin pages, and push <main> right for the sidebar.
+     Uses :has() so it works even when the header is nested inside a wrapper (e.g. .no-print). -->
 <style is:global>
-  body > header.fixed.top-0.inset-x-0,
-  body > header.fixed.top-0.inset-x-0 + div.h-20 { display: none !important; }
+  html:has(.admin-nav-root) header.fixed.top-0.inset-x-0,
+  html:has(.admin-nav-root) header.fixed.top-0.inset-x-0 + div.h-20 { display: none !important; }
   @media (min-width: 1024px) {
-    .admin-nav-root ~ main { margin-left: 260px; }
+    html:has(.admin-nav-root) main { margin-left: 260px; }
   }
 </style>
 
