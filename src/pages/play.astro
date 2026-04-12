@@ -22,24 +22,36 @@ const { data: tonightQuest } = await supabaseAdmin
   .order("created_at", { ascending: false })
   .limit(1).maybeSingle();
 
-// Scratch pool odds
 const totalWeight = SCRATCH_POOL.reduce((s, r) => s + r.weight, 0);
 const poolView = SCRATCH_POOL.map(r => ({
   label: isEl ? r.label_el : r.label_en,
   type: r.type,
   pct: (r.weight / totalWeight) * 100,
-  weight: r.weight,
   emoji: r.type === "points" ? "🏆" : r.type === "free_shot" ? "🥃" : r.type === "free_drink" ? "🍸" : r.type === "discount" ? "💸" : "✨",
 }));
 
 const registerHref = withLangPrefix(lang, user ? "/account" : "/register");
-const loyaltyHref  = withLangPrefix(lang, "/loyalty");
 const appHref      = withLangPrefix(lang, "/app");
 
-const title = isEl ? "Παίξε · Sally's Bar" : "Play · Sally's Bar";
-const desc  = isEl
-  ? "Scratch cards. Αποψινές αποστολές. VIP επίπεδα. Κέρδισε πόντους, ποτά, εκπλήξεις — κάθε φορά που έρχεσαι."
-  : "Scratch cards. Tonight's quests. VIP tiers. Win points, drinks, surprises — every time you come in.";
+const title = (isEl ? "Παίξε" : "Play") + " · Sally's Bar";
+const descText = isEl
+  ? "Scratch cards, αποψινές αποστολές, VIP επίπεδα. Κέρδισε πόντους, ποτά, εκπλήξεις κάθε φορά που έρχεσαι."
+  : "Scratch cards, tonight's quests, VIP tiers. Win points, drinks and surprises every time you come in.";
+
+const heroA = isEl ? "Κάθε επίσκεψη" : "Every visit";
+const heroB = isEl ? "είναι μια νίκη." : "is a win.";
+const heroP = isEl
+  ? "Scratch cards με άμεσες ανταμοιβές. Νυχτερινές αποστολές. VIP επίπεδα. Όλα στο κινητό σου, δωρεάν."
+  : "Scratch cards with instant rewards. Nightly quests. VIP tiers. All on your phone, free.";
+
+const ctaMain = user
+  ? (isEl ? "Η κάρτα μου" : "My dashboard")
+  : (isEl ? "Ξεκίνα να παίζεις δωρεάν" : "Start playing free");
+
+const refPts = settings.referral_points;
+const referralCopy = isEl
+  ? "Στείλε το link σου. Μόλις γραφτεί ο φίλος σου, παίρνεις +" + refPts + " πόντους ΚΑΙ μια scratch card. Χωρίς όριο."
+  : "Share your link. The moment your friend signs up, you get +" + refPts + " points AND a scratch card. Unlimited.";
 ---
 
 <html lang={lang}>
@@ -47,16 +59,8 @@ const desc  = isEl
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>{title}</title>
-    <meta name="description" content={desc} />
-    <meta property="og:title" content={title} />
-    <meta property="og:description" content={desc} />
+    <meta name="description" content={descText} />
     <link rel="canonical" href={`https://sallysbar.gr${withLangPrefix(lang, "/play")}`} />
-    <style>
-      .shine { background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.15) 50%, rgba(255,255,255,0) 100%); background-size: 200% 100%; animation: shine 3s linear infinite; }
-      @keyframes shine { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-      .tilt-right { transform: rotate(3deg); } .tilt-left { transform: rotate(-3deg); }
-      .grid-bg { background-image: radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px); background-size: 24px 24px; }
-    </style>
   </head>
   <body class="min-h-screen bg-[#0a0a0f] text-white font-body antialiased overflow-x-hidden">
     <div class="pointer-events-none fixed inset-0 -z-10 opacity-80">
@@ -67,56 +71,45 @@ const desc  = isEl
 
     <Header />
 
-    <!-- HERO -->
-    <section class="relative pt-32 pb-16 md:pt-40 md:pb-24">
+    <section class="relative pt-32 pb-16 md:pt-40 md:pb-20">
       <div class="mx-auto max-w-4xl px-6 text-center">
-        <div class="inline-flex items-center gap-2 rounded-full border border-fuchsia-300/30 bg-fuchsia-300/5 px-3 py-1 text-[11px] uppercase tracking-[0.28em] text-fuchsia-200">
+        <div class="inline-flex items-center gap-2 rounded-full border border-fuchsia-300/30 bg-fuchsia-300/5 px-3 py-1 text-xs uppercase tracking-[0.28em] text-fuchsia-200">
           <span class="h-1.5 w-1.5 rounded-full bg-fuchsia-300 animate-pulse"></span>
           {isEl ? "Το παιχνίδι στο Sally's" : "The game at Sally's"}
         </div>
         <h1 class="mt-6 font-heading text-5xl md:text-7xl font-black leading-[0.95] tracking-tight">
-          <span class="bg-gradient-to-br from-white via-amber-50 to-amber-200/80 bg-clip-text text-transparent">{isEl ? "Κάθε επίσκεψη" : "Every visit"}</span><br/>
-          <span class="bg-gradient-to-br from-fuchsia-300 via-amber-300 to-cyan-300 bg-clip-text text-transparent">{isEl ? "είναι μια νίκη." : "is a win."}</span>
+          <span class="bg-gradient-to-br from-white via-amber-50 to-amber-200/80 bg-clip-text text-transparent">{heroA}</span><br/>
+          <span class="bg-gradient-to-br from-fuchsia-300 via-amber-300 to-cyan-300 bg-clip-text text-transparent">{heroB}</span>
         </h1>
-        <p class="mt-6 text-lg md:text-xl text-white/70 leading-relaxed max-w-2xl mx-auto">
-          {isEl
-            ? "Scratch cards με άμεσες ανταμοιβές. Νυχτερινές αποστολές. VIP επίπεδα που σε πάνε πάνω. Όλα στο κινητό σου — δωρεάν."
-            : "Scratch cards with instant rewards. Nightly quests. VIP tiers that level you up. All on your phone — free."}
-        </p>
+        <p class="mt-6 text-lg md:text-xl text-white/70 leading-relaxed max-w-2xl mx-auto">{heroP}</p>
         <div class="mt-10 flex flex-wrap gap-3 justify-center">
-          <a href={registerHref} class="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-200 to-amber-400 px-8 py-4 font-bold text-black shadow-[0_0_40px_rgba(251,191,36,0.35)] hover:shadow-[0_0_60px_rgba(251,191,36,0.55)] hover:scale-[1.03] active:scale-[0.98] transition">
-            <span class="relative z-10">🎁 {user ? (isEl ? "Η κάρτα μου" : "My dashboard") : (isEl ? "Ξεκίνα να παίζεις δωρεάν" : "Start playing free")}</span>
-            <span class="absolute inset-0 shine"></span>
+          <a href={registerHref} class="rounded-2xl bg-gradient-to-br from-amber-200 to-amber-400 px-8 py-4 font-bold text-black shadow-lg shadow-amber-500/30 hover:scale-[1.03] active:scale-[0.98] transition">
+            🎁 {ctaMain}
           </a>
           <a href={appHref} class="rounded-2xl border border-white/25 bg-white/5 px-7 py-4 font-semibold hover:bg-white/10 transition">
             📲 {isEl ? "Εγκατάσταση app" : "Install app"}
           </a>
         </div>
-        <p class="mt-4 text-xs text-white/30">{isEl ? "Χωρίς χρέωση · Χωρίς app store · 30 δευτερόλεπτα" : "No cost · No app store · 30 seconds"}</p>
+        <p class="mt-4 text-xs text-white/30">{isEl ? "Χωρίς χρέωση. Χωρίς app store. 30 δευτερόλεπτα." : "No cost. No app store. 30 seconds."}</p>
       </div>
     </section>
 
-    <!-- TONIGHT'S QUEST banner (if active) -->
     {tonightQuest && (
-      <section class="mx-auto max-w-4xl px-6 -mt-6 mb-10">
+      <section class="mx-auto max-w-4xl px-6 -mt-4 mb-10">
         <div class="rounded-3xl border border-amber-400/30 bg-gradient-to-br from-amber-500/15 to-fuchsia-500/15 p-6 relative overflow-hidden">
           <div class="absolute -top-10 -right-10 h-40 w-40 rounded-full bg-amber-400/20 blur-3xl"></div>
           <div class="relative flex items-center justify-between gap-4 flex-wrap">
             <div class="min-w-0">
-              <p class="text-[10px] uppercase tracking-[0.24em] text-amber-300/80 font-bold animate-pulse">⚡ {isEl ? "Ενεργή τώρα — απόψε" : "Live now — tonight"}</p>
+              <p class="text-xs uppercase tracking-[0.24em] text-amber-300/80 font-bold animate-pulse">⚡ {isEl ? "Ενεργή τώρα απόψε" : "Live now tonight"}</p>
               <h2 class="font-heading text-2xl md:text-3xl font-bold mt-2">{isEl ? (tonightQuest.title_el || tonightQuest.title_en) : tonightQuest.title_en}</h2>
-              {(isEl ? tonightQuest.description_el : tonightQuest.description_en) && (
-                <p class="text-sm text-white/75 mt-2 leading-relaxed max-w-lg">{isEl ? (tonightQuest.description_el || tonightQuest.description_en) : tonightQuest.description_en}</p>
-              )}
-              <p class="text-sm text-amber-200 font-semibold mt-3">🏆 +{tonightQuest.reward_points} pts{(isEl ? tonightQuest.reward_label_el : tonightQuest.reward_label_en) && <span> · {isEl ? (tonightQuest.reward_label_el || tonightQuest.reward_label_en) : tonightQuest.reward_label_en}</span>}</p>
+              <p class="text-sm text-amber-200 font-semibold mt-3">🏆 +{tonightQuest.reward_points} pts</p>
             </div>
-            <a href={loyaltyHref} class="shrink-0 rounded-xl bg-amber-400 text-black px-5 py-3 text-sm font-bold hover:bg-amber-300 transition">{isEl ? "Αποδέξου →" : "Accept →"}</a>
+            <a href={withLangPrefix(lang, "/loyalty")} class="shrink-0 rounded-xl bg-amber-400 text-black px-5 py-3 text-sm font-bold hover:bg-amber-300 transition">{isEl ? "Αποδέξου" : "Accept"} →</a>
           </div>
         </div>
       </section>
     )}
 
-    <!-- 4 PILLARS -->
     <section class="mx-auto max-w-6xl px-6 py-12">
       <div class="text-center mb-12">
         <p class="text-xs uppercase tracking-[0.28em] text-amber-300/70">{isEl ? "Πώς παίζεις" : "How you play"}</p>
@@ -124,77 +117,51 @@ const desc  = isEl
       </div>
 
       <div class="grid md:grid-cols-2 gap-5">
-        <!-- Scratch -->
-        <div class="group relative rounded-3xl border border-amber-400/30 bg-gradient-to-br from-amber-500/10 via-transparent to-fuchsia-500/10 p-7 overflow-hidden hover:-translate-y-1 transition">
-          <div class="absolute inset-0 grid-bg opacity-30"></div>
-          <div class="relative">
-            <div class="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-300 to-amber-500 text-3xl shadow-[0_0_30px_rgba(251,191,36,0.4)]">🎫</div>
-            <h3 class="mt-5 font-heading text-2xl font-bold">{isEl ? "Scratch Cards" : "Scratch Cards"}</h3>
-            <p class="mt-2 text-white/70 leading-relaxed">{isEl
-              ? "Κάθε παραγγελία, κάθε check-in, κάθε σύσταση — παίρνεις μια ψηφιακή ξυστή κάρτα. Πάτα. Αποκάλυψε. Κέρδισε."
-              : "Every order, every check-in, every referral — you get a digital scratch card. Tap. Reveal. Win."}</p>
-            <div class="mt-5 flex flex-wrap gap-2 text-xs">
-              <span class="px-2.5 py-1 rounded-full bg-amber-400/15 text-amber-300 border border-amber-400/25">{isEl ? "Άμεσα" : "Instant"}</span>
-              <span class="px-2.5 py-1 rounded-full bg-amber-400/15 text-amber-300 border border-amber-400/25">{isEl ? "Δωρεάν" : "Free"}</span>
-              <span class="px-2.5 py-1 rounded-full bg-amber-400/15 text-amber-300 border border-amber-400/25">{isEl ? "Κάθε επίσκεψη" : "Every visit"}</span>
-            </div>
+        <div class="rounded-3xl border border-amber-400/30 bg-amber-400/5 p-7 hover:-translate-y-1 transition">
+          <div class="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-300 to-amber-500 text-3xl">🎫</div>
+          <h3 class="mt-5 font-heading text-2xl font-bold">{isEl ? "Scratch Cards" : "Scratch Cards"}</h3>
+          <p class="mt-2 text-white/70 leading-relaxed">{isEl ? "Κάθε παραγγελία, κάθε check-in, κάθε σύσταση — παίρνεις μια ψηφιακή ξυστή κάρτα. Πάτα. Αποκάλυψε. Κέρδισε." : "Every order, check-in, and referral gives you a digital scratch card. Tap. Reveal. Win."}</p>
+          <div class="mt-5 flex flex-wrap gap-2 text-xs">
+            <span class="px-2.5 py-1 rounded-full bg-amber-400/15 text-amber-300 border border-amber-400/25">{isEl ? "Άμεσα" : "Instant"}</span>
+            <span class="px-2.5 py-1 rounded-full bg-amber-400/15 text-amber-300 border border-amber-400/25">{isEl ? "Δωρεάν" : "Free"}</span>
+            <span class="px-2.5 py-1 rounded-full bg-amber-400/15 text-amber-300 border border-amber-400/25">{isEl ? "Κάθε επίσκεψη" : "Every visit"}</span>
           </div>
         </div>
 
-        <!-- Quests -->
-        <div class="group relative rounded-3xl border border-fuchsia-400/30 bg-gradient-to-br from-fuchsia-500/10 via-transparent to-cyan-500/10 p-7 overflow-hidden hover:-translate-y-1 transition">
-          <div class="absolute inset-0 grid-bg opacity-30"></div>
-          <div class="relative">
-            <div class="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-fuchsia-400 to-fuchsia-600 text-3xl shadow-[0_0_30px_rgba(217,70,239,0.4)]">⚡</div>
-            <h3 class="mt-5 font-heading text-2xl font-bold">{isEl ? "Αποψινές Αποστολές" : "Tonight's Quests"}</h3>
-            <p class="mt-2 text-white/70 leading-relaxed">{isEl
-              ? "Ξεχωριστή αποστολή κάθε βράδυ. Ειδοποίηση στο κινητό, ανταμοιβή στο ποτήρι σου. «Κάνε 2 check-ins με φίλο — δώρο σφηνάκι.»"
-              : "A fresh quest every night. Push to your phone, reward on your glass. \"Check in with a friend × 2 → free shot.\""}</p>
-            <div class="mt-5 flex flex-wrap gap-2 text-xs">
-              <span class="px-2.5 py-1 rounded-full bg-fuchsia-400/15 text-fuchsia-300 border border-fuchsia-400/25">{isEl ? "Κάθε νύχτα" : "Every night"}</span>
-              <span class="px-2.5 py-1 rounded-full bg-fuchsia-400/15 text-fuchsia-300 border border-fuchsia-400/25">{isEl ? "Push alert" : "Push alert"}</span>
-              <span class="px-2.5 py-1 rounded-full bg-fuchsia-400/15 text-fuchsia-300 border border-fuchsia-400/25">{isEl ? "Ομαδικά" : "Group-friendly"}</span>
-            </div>
+        <div class="rounded-3xl border border-fuchsia-400/30 bg-fuchsia-400/5 p-7 hover:-translate-y-1 transition">
+          <div class="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-fuchsia-400 to-fuchsia-600 text-3xl">⚡</div>
+          <h3 class="mt-5 font-heading text-2xl font-bold">{isEl ? "Αποψινές Αποστολές" : "Tonight's Quests"}</h3>
+          <p class="mt-2 text-white/70 leading-relaxed">{isEl ? "Ξεχωριστή αποστολή κάθε βράδυ. Ειδοποίηση στο κινητό, ανταμοιβή στο ποτήρι σου." : "A fresh quest every night. Push to your phone, reward in your glass."}</p>
+          <div class="mt-5 flex flex-wrap gap-2 text-xs">
+            <span class="px-2.5 py-1 rounded-full bg-fuchsia-400/15 text-fuchsia-300 border border-fuchsia-400/25">{isEl ? "Κάθε νύχτα" : "Every night"}</span>
+            <span class="px-2.5 py-1 rounded-full bg-fuchsia-400/15 text-fuchsia-300 border border-fuchsia-400/25">Push alert</span>
           </div>
         </div>
 
-        <!-- Tiers -->
-        <div class="group relative rounded-3xl border border-cyan-400/30 bg-gradient-to-br from-cyan-500/10 via-transparent to-amber-500/10 p-7 overflow-hidden hover:-translate-y-1 transition">
-          <div class="absolute inset-0 grid-bg opacity-30"></div>
-          <div class="relative">
-            <div class="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-400 to-cyan-600 text-3xl shadow-[0_0_30px_rgba(34,211,238,0.4)]">👑</div>
-            <h3 class="mt-5 font-heading text-2xl font-bold">{isEl ? "VIP Επίπεδα" : "VIP Tiers"}</h3>
-            <p class="mt-2 text-white/70 leading-relaxed">{isEl
-              ? "Μπρούντζος → Ασήμι → Χρυσό → Πλατίνα → Μαύρη Κάρτα. Κάθε επίπεδο ξεκλειδώνει νέα προνόμια: priority booking, ειδικό μενού, καλεσμένος-guest."
-              : "Bronze → Silver → Gold → Platinum → Black Card. Each tier unlocks new perks: priority booking, secret menu, plus-ones."}</p>
-            <div class="mt-5 flex flex-wrap gap-2 text-xs">
-              {tiers.map(tr => (
-                <span class="px-2.5 py-1 rounded-full border" style={`background:${tr.color}1f;color:${tr.color};border-color:${tr.color}55`}>{tr.icon} {isEl ? tr.label_el : tr.label_en}</span>
-              ))}
-            </div>
+        <div class="rounded-3xl border border-cyan-400/30 bg-cyan-400/5 p-7 hover:-translate-y-1 transition">
+          <div class="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-400 to-cyan-600 text-3xl">👑</div>
+          <h3 class="mt-5 font-heading text-2xl font-bold">{isEl ? "VIP Επίπεδα" : "VIP Tiers"}</h3>
+          <p class="mt-2 text-white/70 leading-relaxed">{isEl ? "Κάθε επίπεδο ξεκλειδώνει νέα προνόμια: priority booking, secret menu, plus-ones." : "Each tier unlocks new perks: priority booking, secret menu, plus-ones."}</p>
+          <div class="mt-5 flex flex-wrap gap-2 text-xs">
+            {tiers.map(tr => (
+              <span class="px-2.5 py-1 rounded-full bg-white/5 border border-white/15 text-white/80">{tr.icon} {isEl ? tr.label_el : tr.label_en}</span>
+            ))}
           </div>
         </div>
 
-        <!-- Referrals -->
-        <div class="group relative rounded-3xl border border-emerald-400/30 bg-gradient-to-br from-emerald-500/10 via-transparent to-amber-500/10 p-7 overflow-hidden hover:-translate-y-1 transition">
-          <div class="absolute inset-0 grid-bg opacity-30"></div>
-          <div class="relative">
-            <div class="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 text-3xl shadow-[0_0_30px_rgba(52,211,153,0.4)]">🤝</div>
-            <h3 class="mt-5 font-heading text-2xl font-bold">{isEl ? "Συστάσεις" : "Referrals"}</h3>
-            <p class="mt-2 text-white/70 leading-relaxed">{isEl
-              ? `Στείλε το link σου. Μόλις γραφτεί ο φίλος σου, παίρνεις +${settings.referral_points} πόντους ΚΑΙ μια scratch card. Χωρίς όριο.`
-              : `Share your link. The moment your friend signs up, you get +${settings.referral_points} points AND a scratch card. Unlimited.`}</p>
-            <div class="mt-5 flex flex-wrap gap-2 text-xs">
-              <span class="px-2.5 py-1 rounded-full bg-emerald-400/15 text-emerald-300 border border-emerald-400/25">+{settings.referral_points} pts</span>
-              <span class="px-2.5 py-1 rounded-full bg-emerald-400/15 text-emerald-300 border border-emerald-400/25">+🎫 scratch</span>
-              <span class="px-2.5 py-1 rounded-full bg-emerald-400/15 text-emerald-300 border border-emerald-400/25">{isEl ? "Χωρίς όριο" : "Unlimited"}</span>
-            </div>
+        <div class="rounded-3xl border border-emerald-400/30 bg-emerald-400/5 p-7 hover:-translate-y-1 transition">
+          <div class="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 text-3xl">🤝</div>
+          <h3 class="mt-5 font-heading text-2xl font-bold">{isEl ? "Συστάσεις" : "Referrals"}</h3>
+          <p class="mt-2 text-white/70 leading-relaxed">{referralCopy}</p>
+          <div class="mt-5 flex flex-wrap gap-2 text-xs">
+            <span class="px-2.5 py-1 rounded-full bg-emerald-400/15 text-emerald-300 border border-emerald-400/25">+{settings.referral_points} pts</span>
+            <span class="px-2.5 py-1 rounded-full bg-emerald-400/15 text-emerald-300 border border-emerald-400/25">+ scratch 🎫</span>
+            <span class="px-2.5 py-1 rounded-full bg-emerald-400/15 text-emerald-300 border border-emerald-400/25">{isEl ? "Χωρίς όριο" : "Unlimited"}</span>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- SCRATCH REWARDS ODDS -->
     <section class="mx-auto max-w-4xl px-6 py-12">
       <div class="text-center mb-10">
         <p class="text-xs uppercase tracking-[0.28em] text-amber-300/70">{isEl ? "Τι μπορείς να κερδίσεις" : "What you can win"}</p>
@@ -203,26 +170,24 @@ const desc  = isEl
       </div>
 
       <div class="rounded-3xl border border-white/10 bg-white/5 overflow-hidden">
-        {poolView.map((r, i) => (
+        {poolView.map(r => (
           <div class="flex items-center gap-4 px-5 py-4 border-t border-white/5 first:border-t-0">
             <div class="shrink-0 h-10 w-10 rounded-xl bg-white/5 border border-white/10 grid place-items-center text-xl">{r.emoji}</div>
             <div class="flex-1 min-w-0">
               <p class="font-semibold text-white">{r.label}</p>
               <div class="mt-1.5 h-1.5 w-full rounded-full bg-white/5 overflow-hidden">
-                <div class="h-full rounded-full" style={`width:${r.pct}%;background:linear-gradient(90deg,#fbbf24,#d946ef)`}></div>
+                <div class="h-full rounded-full bg-gradient-to-r from-amber-400 to-fuchsia-500" style={"width:" + r.pct.toFixed(1) + "%"}></div>
               </div>
             </div>
             <div class="shrink-0 text-right">
               <p class="text-lg font-mono font-bold text-amber-300">{r.pct.toFixed(1)}%</p>
-              <p class="text-[10px] uppercase tracking-wider text-white/40">{isEl ? "πιθανότητα" : "chance"}</p>
+              <p class="text-xs uppercase tracking-wider text-white/40">{isEl ? "πιθανότητα" : "chance"}</p>
             </div>
           </div>
         ))}
       </div>
-      <p class="text-center mt-5 text-xs text-white/40">{isEl ? "Αριθμοί ενδεικτικοί. Το σύνολο των πιθανοτήτων ισούται με 100%." : "Illustrative. All probabilities sum to 100%."}</p>
     </section>
 
-    <!-- HOW TO START -->
     <section class="mx-auto max-w-6xl px-6 py-12">
       <div class="text-center mb-10">
         <p class="text-xs uppercase tracking-[0.28em] text-amber-300/70">{isEl ? "Πώς ξεκινάς" : "How to start"}</p>
@@ -230,50 +195,48 @@ const desc  = isEl
       </div>
 
       <div class="grid md:grid-cols-3 gap-5">
-        <div class="rounded-3xl border border-white/10 bg-white/[0.03] p-7 relative">
+        <div class="rounded-3xl border border-white/10 bg-white/5 p-7 relative">
           <div class="absolute -top-4 -left-4 h-12 w-12 rounded-full bg-amber-400 text-black text-2xl font-black grid place-items-center shadow-lg">1</div>
           <h3 class="mt-4 font-heading text-xl font-bold">{isEl ? "Εγγράψου δωρεάν" : "Sign up free"}</h3>
           <p class="mt-2 text-sm text-white/60 leading-relaxed">{isEl ? "Email + όνομα. 30 δευτερόλεπτα. Παίρνεις αμέσως μία scratch card καλωσορίσματος." : "Email + name. 30 seconds. You instantly get a welcome scratch card."}</p>
         </div>
-        <div class="rounded-3xl border border-white/10 bg-white/[0.03] p-7 relative">
+        <div class="rounded-3xl border border-white/10 bg-white/5 p-7 relative">
           <div class="absolute -top-4 -left-4 h-12 w-12 rounded-full bg-fuchsia-400 text-black text-2xl font-black grid place-items-center shadow-lg">2</div>
           <h3 class="mt-4 font-heading text-xl font-bold">{isEl ? "Ενεργοποίησε κάρτα" : "Activate card"}</h3>
           <p class="mt-2 text-sm text-white/60 leading-relaxed">{isEl ? "Τηλέφωνο + βασικά στοιχεία. Ξεκλειδώνεις ανταμοιβές, ειδοποιήσεις και το VIP σύστημα." : "Phone + basic info. Unlocks rewards, push alerts, and the VIP system."}</p>
         </div>
-        <div class="rounded-3xl border border-white/10 bg-white/[0.03] p-7 relative">
+        <div class="rounded-3xl border border-white/10 bg-white/5 p-7 relative">
           <div class="absolute -top-4 -left-4 h-12 w-12 rounded-full bg-cyan-400 text-black text-2xl font-black grid place-items-center shadow-lg">3</div>
           <h3 class="mt-4 font-heading text-xl font-bold">{isEl ? "Έλα και παίξε" : "Come in & play"}</h3>
-          <p class="mt-2 text-sm text-white/60 leading-relaxed">{isEl ? "Δείξε το QR στον σερβιτόρο. Κάθε €1 = πόντοι, κάθε παραγγελία = νέα scratch card." : "Show your QR to a waiter. Every €1 = points, every order = a fresh scratch card."}</p>
+          <p class="mt-2 text-sm text-white/60 leading-relaxed">{isEl ? "Δείξε το QR στον σερβιτόρο. Κάθε €1 = πόντοι, κάθε παραγγελία = νέα scratch card." : "Show your QR to a waiter. Every €1 earns points, every order drops a fresh scratch card."}</p>
         </div>
       </div>
     </section>
 
-    <!-- LIVE PERKS ROW -->
     <section class="mx-auto max-w-4xl px-6 py-12">
-      <div class="rounded-3xl border border-white/10 bg-gradient-to-br from-white/5 via-white/[0.02] to-white/5 p-7 md:p-10">
-        <p class="text-xs uppercase tracking-[0.28em] text-amber-300/70 text-center">{isEl ? "Και επιπλέον…" : "And on top of all that…"}</p>
+      <div class="rounded-3xl border border-white/10 bg-white/5 p-7 md:p-10">
+        <p class="text-xs uppercase tracking-[0.28em] text-amber-300/70 text-center">{isEl ? "Και επιπλέον" : "And on top of it all"}</p>
         <div class="mt-6 grid sm:grid-cols-2 md:grid-cols-4 gap-4">
           <div class="text-center"><div class="text-3xl">🎂</div><p class="mt-2 text-sm font-bold">{settings.birthday_multiplier}× {isEl ? "πόντοι" : "points"}</p><p class="text-xs text-white/50">{isEl ? "όλο τον μήνα των γενεθλίων σου" : "all your birthday month"}</p></div>
-          <div class="text-center"><div class="text-3xl">💶</div><p class="mt-2 text-sm font-bold">{settings.points_per_euro} {isEl ? "πόντοι/€" : "pt/€"}</p><p class="text-xs text-white/50">{isEl ? "αυτόματα σε κάθε παραγγελία" : "auto on every order"}</p></div>
+          <div class="text-center"><div class="text-3xl">💶</div><p class="mt-2 text-sm font-bold">{settings.points_per_euro} {isEl ? "πόντοι / €" : "pt / €"}</p><p class="text-xs text-white/50">{isEl ? "αυτόματα σε κάθε παραγγελία" : "auto on every order"}</p></div>
           <div class="text-center"><div class="text-3xl">🎉</div><p class="mt-2 text-sm font-bold">+{settings.event_rsvp_points} pts</p><p class="text-xs text-white/50">{isEl ? "για κάθε κράτηση σε event" : "for every event RSVP"}</p></div>
-          <div class="text-center"><div class="text-3xl">🔔</div><p class="mt-2 text-sm font-bold">{isEl ? "Secret drops" : "Secret drops"}</p><p class="text-xs text-white/50">{isEl ? "κρυφά cocktails & happy hours" : "hidden cocktails & happy hours"}</p></div>
+          <div class="text-center"><div class="text-3xl">🔔</div><p class="mt-2 text-sm font-bold">Secret drops</p><p class="text-xs text-white/50">{isEl ? "κρυφά cocktails & happy hours" : "hidden cocktails & happy hours"}</p></div>
         </div>
       </div>
     </section>
 
-    <!-- FINAL CTA -->
     <section class="mx-auto max-w-3xl px-6 py-16 text-center">
       <h2 class="font-heading text-4xl md:text-6xl font-black leading-tight">
         <span class="bg-gradient-to-br from-white to-amber-200/80 bg-clip-text text-transparent">{isEl ? "Το επόμενο ποτό σου" : "Your next drink"}</span><br/>
         <span class="bg-gradient-to-br from-amber-300 to-fuchsia-400 bg-clip-text text-transparent">{isEl ? "ίσως είναι δώρο." : "might be on us."}</span>
       </h2>
-      <p class="mt-5 text-white/60 text-lg">{isEl ? "Ξεκλείδωσε τον πρώτο σου καλωσόρισμα bonus — τώρα." : "Unlock your first welcome bonus — right now."}</p>
+      <p class="mt-5 text-white/60 text-lg">{isEl ? "Ξεκλείδωσε τον πρώτο σου καλωσόρισμα bonus τώρα." : "Unlock your first welcome bonus right now."}</p>
       <div class="mt-8 flex flex-wrap gap-3 justify-center">
-        <a href={registerHref} class="rounded-2xl bg-gradient-to-br from-amber-200 to-amber-400 px-8 py-4 font-bold text-black shadow-lg shadow-amber-500/20 hover:scale-[1.03] active:scale-[0.98] transition">
-          🎁 {user ? (isEl ? "Πάρε την κάρτα σου" : "Open my dashboard") : (isEl ? "Εγγραφή & πάρε scratch card" : "Sign up & claim scratch card")}
+        <a href={registerHref} class="rounded-2xl bg-gradient-to-br from-amber-200 to-amber-400 px-8 py-4 font-bold text-black shadow-lg shadow-amber-500/30 hover:scale-[1.03] active:scale-[0.98] transition">
+          🎁 {ctaMain}
         </a>
       </div>
-      <p class="mt-4 text-[11px] text-white/30">{isEl ? "18+ · Υπεύθυνη κατανάλωση · Οι ανταμοιβές εξαργυρώνονται μόνο στο κατάστημα" : "18+ · Drink responsibly · Rewards redeemed at the bar only"}</p>
+      <p class="mt-4 text-xs text-white/30">{isEl ? "18+ · Υπεύθυνη κατανάλωση · Οι ανταμοιβές εξαργυρώνονται μόνο στο κατάστημα" : "18+ · Drink responsibly · Rewards redeemed at the bar only"}</p>
     </section>
 
     <Footer />
