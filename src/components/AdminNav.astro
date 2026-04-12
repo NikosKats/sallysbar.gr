@@ -56,8 +56,10 @@ const groups: Group[] = [
 const activeItem = groups.flatMap(g => g.items).find(i => i.key === active);
 ---
 
-<!-- Global: push <main> (next sibling) right on desktop to make room for sidebar -->
+<!-- Hide the public site Header + its spacer on admin pages, and push <main> right for the sidebar -->
 <style is:global>
+  body > header.fixed.top-0.inset-x-0,
+  body > header.fixed.top-0.inset-x-0 + div.h-20 { display: none !important; }
   @media (min-width: 1024px) {
     .admin-nav-root ~ main { margin-left: 260px; }
   }
@@ -65,7 +67,7 @@ const activeItem = groups.flatMap(g => g.items).find(i => i.key === active);
 
 <div class="admin-nav-root">
   <!-- Mobile top bar -->
-  <div class="lg:hidden sticky top-20 z-40 border-b border-amber-400/20 bg-[#0b0b10]/95 backdrop-blur-md">
+  <div class="lg:hidden sticky top-0 z-40 border-b border-amber-400/20 bg-[#0b0b10]/95 backdrop-blur-md">
     <div class="flex items-center gap-3 px-4 py-3">
       <button id="adminMenuBtn" type="button" aria-label="Open admin menu" class="shrink-0 rounded-lg border border-white/10 bg-white/5 p-2 text-white/80 hover:bg-white/10 transition">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
@@ -77,8 +79,8 @@ const activeItem = groups.flatMap(g => g.items).find(i => i.key === active);
     </div>
   </div>
 
-  <!-- Desktop sidebar (fixed) -->
-  <aside id="adminSidebar" class="lg:fixed lg:top-20 lg:bottom-0 lg:left-0 lg:w-[260px] lg:border-r lg:border-white/10 lg:bg-[#0e0e16]/95 lg:backdrop-blur-md lg:z-40 lg:flex lg:flex-col hidden">
+  <!-- Desktop sidebar (fixed, full-height since public header is hidden) -->
+  <aside id="adminSidebar" class="lg:fixed lg:top-0 lg:bottom-0 lg:left-0 lg:w-[260px] lg:border-r lg:border-white/10 lg:bg-[#0e0e16]/95 lg:backdrop-blur-md lg:z-40 lg:flex lg:flex-col hidden">
     <div class="px-5 py-5 border-b border-white/10 flex items-center gap-3">
       <div class="h-9 w-9 rounded-xl bg-gradient-to-br from-amber-300 to-amber-500 text-black grid place-items-center font-bold shadow-lg shadow-amber-500/20">S</div>
       <div class="leading-tight min-w-0">
@@ -111,9 +113,9 @@ const activeItem = groups.flatMap(g => g.items).find(i => i.key === active);
       ))}
     </nav>
     <div class="border-t border-white/10 p-3">
-      <a href={withLangPrefix(lang, "/")} class="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-white/50 hover:text-amber-300 hover:bg-white/5 transition">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        {isEl ? "Δημόσιος ιστότοπος" : "Public site"}
+      <a href={withLangPrefix(lang, "/")} target="_blank" rel="noopener" class="flex items-center justify-center gap-2 w-full rounded-xl bg-gradient-to-br from-amber-300 to-amber-500 text-black px-3 py-2.5 text-sm font-semibold shadow-lg shadow-amber-500/10 hover:shadow-amber-500/30 hover:scale-[1.01] active:scale-[0.99] transition">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M14 3h7v7M10 14L21 3M19 14v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        {isEl ? "Επίσκεψη ιστότοπου" : "Visit site"}
       </a>
     </div>
   </aside>
