@@ -59,22 +59,28 @@ const timeSlots = ["17:00","18:00","19:00","20:00","21:00","22:00","23:00","00:0
       /* Info panel */
       .info-panel { position: static; }
       .info-title {
-        font-size: 1.9rem;
+        font-size: 2.4rem;
+        font-family: "Playfair Display", serif;
       }
       .info-label {
         font-size: .7rem;
         font-weight: 600;
-        letter-spacing: .12em;
+        letter-spacing: .28em;
         text-transform: uppercase;
-        color: #f59e0b;
-        margin-bottom: .75rem;
+        color: #fcd34d;
+        margin-bottom: .85rem;
       }
       .info-title {
         font-weight: 700;
-        line-height: 1.15;
+        line-height: 1.05;
         color: #fff;
-        margin-bottom: 1rem;
+        margin-bottom: 1.25rem;
+        background: linear-gradient(135deg, #fff 0%, #fef3c7 60%, #fcd34d 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
       }
+      @media (min-width: 801px) { .info-title { font-size: 3.25rem; } }
       .info-sub {
         font-size: .9rem;
         color: rgba(255,255,255,.45);
@@ -109,14 +115,16 @@ const timeSlots = ["17:00","18:00","19:00","20:00","21:00","22:00","23:00","00:0
 
       /* Form panel */
       .form-card {
-        background: rgba(255,255,255,.03);
-        border: 1px solid rgba(255,255,255,.08);
-        border-radius: 1.25rem;
+        background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.01));
+        border: 1px solid rgba(255,255,255,.1);
+        border-radius: 1.5rem;
         overflow: hidden;
+        backdrop-filter: blur(12px);
+        box-shadow: 0 20px 60px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.05);
       }
       .form-card-top {
-        height: 3px;
-        background: linear-gradient(90deg, #d97706, #f59e0b, #d97706);
+        height: 4px;
+        background: linear-gradient(90deg, transparent, #fcd34d, #f59e0b, #fcd34d, transparent);
       }
       .form-body { padding: 2rem; }
       @media (max-width: 480px) { .form-body { padding: 1.5rem; } }
@@ -164,19 +172,20 @@ const timeSlots = ["17:00","18:00","19:00","20:00","21:00","22:00","23:00","00:0
 
       .submit-btn {
         width: 100%;
-        padding: .875rem 1rem;
-        border-radius: .65rem;
-        background: #f59e0b;
-        color: #000;
+        padding: 1rem 1rem;
+        border-radius: .85rem;
+        background: linear-gradient(135deg, #fcd34d, #f59e0b);
+        color: #0a0a0f;
         font-size: .9rem;
         font-weight: 700;
-        letter-spacing: .03em;
+        letter-spacing: .04em;
         border: none;
         cursor: pointer;
-        transition: background .15s, transform .1s;
-        margin-top: .25rem;
+        transition: box-shadow .2s, transform .1s, filter .2s;
+        margin-top: .5rem;
+        box-shadow: 0 8px 24px rgba(245,158,11,.25);
       }
-      .submit-btn:hover:not(:disabled) { background: #fbbf24; }
+      .submit-btn:hover:not(:disabled) { filter: brightness(1.08); box-shadow: 0 10px 30px rgba(245,158,11,.4); }
       .submit-btn:active:not(:disabled) { transform: scale(.99); }
       .submit-btn:disabled { opacity: .4; cursor: not-allowed; }
 
@@ -222,7 +231,11 @@ const timeSlots = ["17:00","18:00","19:00","20:00","21:00","22:00","23:00","00:0
       .back-link:hover { color: #fbbf24; }
     </style>
   </head>
-  <body class="bg-[#0b0b10] text-white font-body">
+  <body class="bg-[#0a0a0f] text-white font-body antialiased overflow-x-hidden">
+    <div class="pointer-events-none fixed inset-0 -z-10 opacity-70">
+      <div class="absolute top-20 left-1/4 h-[560px] w-[560px] rounded-full bg-amber-400/10 blur-[160px]"></div>
+      <div class="absolute bottom-0 right-10 h-[460px] w-[460px] rounded-full bg-fuchsia-500/10 blur-[140px]"></div>
+    </div>
     <Header />
 
     <div class="page-wrap">
