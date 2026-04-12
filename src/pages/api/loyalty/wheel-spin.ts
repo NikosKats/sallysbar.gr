@@ -26,6 +26,11 @@ export const GET: APIRoute = async ({ locals }) => {
   const settings = await getWheelSettings();
   if (!settings.enabled) return json({ canSpin: false, reason: "disabled" });
 
+  // Staff and admin play a different role — wheel is customer-only
+  if (locals.role === "admin" || locals.role === "employee") {
+    return json({ canSpin: false, reason: "staff_role", role: locals.role });
+  }
+
   // Check today's spin
   const { data: existing } = await supabaseAdmin
     .from("wheel_spins")

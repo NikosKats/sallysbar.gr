@@ -91,28 +91,72 @@ for (const c of categories) {
         const sub     = document.getElementById("wheelSub");
         if (!section || !btn || !disk || !msg || !sub) return;
 
-        // Probe server: can this user spin?
+        // ALWAYS show the section — we use a badge to explain the state.
+        section.classList.remove("hidden");
+
+        function renderBadge(text, cls) {
+          const holder = document.getElementById("wheelBadge");
+          if (!holder) return;
+          holder.innerHTML = "<span class=\"inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider " + cls + "\">" + text + "</span>";
+        }
+
+        // Probe server
         let state = null;
         try {
           const r = await fetch("/api/loyalty/wheel-spin");
           state = await r.json();
-        } catch {
-          console.error("[wheel] probe failed");
+        } catch (e) {
+          console.error("[wheel] probe failed", e);
+          renderBadge(isEl ? "⚠️ Σφάλμα server" : "⚠️ Server error", "bg-red-400/15 text-red-300 border border-red-400/30");
+          btn.disabled = true; btn.textContent = "—";
+          sub.textContent = isEl ? "Δεν μπόρεσα να ελέγξω την κατάστασή σου." : "Couldn't check your status.";
+          return;
         }
 
-        if (state?.reason === "auth_required") return;    // guest — hide wheel entirely
-        if (state?.reason === "disabled") return;          // admin turned it off
+        // 1. Not signed in
+        if (state.reason === "auth_required") {
+          renderBadge(isEl ? "🔒 Μη συνδεδεμένος" : "🔒 Not signed in", "bg-white/10 text-white/70 border border-white/20");
+          btn.disabled = false;
+          btn.textContent = isEl ? "Συνδέσου για να παίξεις" : "Sign in to spin";
+          btn.onclick = () => { window.location.href = (isEl ? "/el/login" : "/login") + "?next=" + encodeURIComponent(window.location.pathname); };
+          sub.textContent = isEl ? "Δωρεάν εγγραφή. Παίξε μια φορά κάθε μέρα στο bar." : "Free signup. One spin per day at the bar.";
+          return;
+        }
 
-        // Show the section for logged-in users. If the probe failed (500 / table missing),
-        // we still show it so the user sees *something* and we log to console for debug.
-        section.classList.remove("hidden");
+        // 2. Admin / staff
+        if (state.reason === "staff_role") {
+          const isAdmin = state.role === "admin";
+          renderBadge(isAdmin ? "👑 Admin" : "🧑‍🍳 Staff",
+            isAdmin ? "bg-fuchsia-400/15 text-fuchsia-300 border border-fuchsia-400/30"
+                    : "bg-sky-400/15 text-sky-300 border border-sky-400/30");
+          btn.disabled = true;
+          btn.textContent = isEl ? "🚫 Μόνο για πελάτες" : "🚫 Customers only";
+          sub.textContent = isEl
+            ? "Η ρόδα είναι μόνο για πελάτες. Μπες με λογαριασμό customer για δοκιμή."
+            : "The wheel is customer-only. Sign in as a customer to test.";
+          return;
+        }
 
-        if (state?.reason === "already_spun_today") {
+        // 3. Admin turned it off
+        if (state.reason === "disabled") {
+          renderBadge(isEl ? "⏸ Ανενεργή" : "⏸ Temporarily off", "bg-white/10 text-white/60 border border-white/20");
+          btn.disabled = true;
+          btn.textContent = isEl ? "Ανενεργή" : "Disabled";
+          sub.textContent = isEl ? "Ο ιδιοκτήτης έχει απενεργοποιήσει τη ρόδα." : "The owner has the wheel switched off.";
+          return;
+        }
+
+        // 4. Already spun today
+        if (state.reason === "already_spun_today") {
+          renderBadge(isEl ? "✓ Σήμερα έγινε" : "✓ Spun today", "bg-emerald-400/15 text-emerald-300 border border-emerald-400/30");
           btn.disabled = true;
           btn.textContent = "✓ " + (isEl ? "Έγινε σήμερα" : "Spun today");
           sub.textContent = (isEl ? "Νέα προσπάθεια αύριο. Τελευταίο έπαθλο: " : "Come back tomorrow. Last prize: ") + (state.lastReward ?? "—");
           return;
         }
+
+        // 5. Can spin
+        renderBadge(isEl ? "🎯 Μπορείς να παίξεις" : "🎯 You can spin", "bg-amber-400/15 text-amber-300 border border-amber-400/30");
 
         // segment size = 45deg each, pointer at top = 0deg mark between slices 0 and 7
         // We'll land in center of segment i: rotation = full spins + (360 - (i*45 + 22.5))
@@ -227,6 +271,7 @@ for (const c of categories) {
             <h2 class="font-heading text-xl font-bold mt-1">{isEl ? "Μία περιστροφή την ημέρα" : "One spin per day"}</h2>
             <p id="wheelSub" class="text-xs text-white/60 mt-1">{isEl ? "Πάτα το κουμπί για να γυρίσεις — κερδίζεις πάντα κάτι." : "Tap to spin — every spin wins something."}</p>
           </div>
+          <div id="wheelBadge" class="shrink-0"></div>
         </div>
 
         <div class="relative mt-4 mx-auto" style="width:240px;height:240px;">
