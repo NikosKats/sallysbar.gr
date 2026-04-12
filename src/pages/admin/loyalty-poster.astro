@@ -1,0 +1,120 @@
+---
+import "../../styles/global.css";
+import { getLoyaltySettings } from "../../lib/loyalty";
+import { withLangPrefix } from "../../i18n";
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+
+if (Astro.locals.role !== "admin") {
+  return Astro.redirect(withLangPrefix(lang, "/admin"));
+}
+
+const settings = await getLoyaltySettings();
+const ppe = settings.points_per_euro;
+const referral = settings.referral_points;
+const bdayMult = settings.birthday_multiplier;
+---
+
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <title>{isEl ? "Αφίσα Πιστότητας" : "Loyalty Poster"} — Sally's Bar</title>
+    <meta name="robots" content="noindex,nofollow" />
+    <style>
+      :root { color-scheme: dark; }
+      body { margin: 0; background: #0b0b10; color: white; font-family: system-ui, -apple-system, sans-serif; }
+      .toolbar { position: sticky; top: 0; z-index: 10; display: flex; gap: 10px; align-items: center; justify-content: space-between;
+        padding: 14px 20px; background: #111118; border-bottom: 1px solid rgba(255,255,255,0.1); }
+      .toolbar a, .toolbar button { font: inherit; cursor: pointer; border-radius: 10px; padding: 8px 14px; font-weight: 600; font-size: 13px; }
+      .back { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,0.2); text-decoration: none; }
+      .print-btn { background: #fbbf24; color: #000; border: 0; }
+      .stage { padding: 30px 20px; display: flex; justify-content: center; }
+
+      .poster {
+        width: 210mm; height: 297mm; background: linear-gradient(135deg, #0f0f18 0%, #1a1220 50%, #0f0f18 100%);
+        color: white; position: relative; overflow: hidden; padding: 20mm 18mm; box-sizing: border-box;
+        display: flex; flex-direction: column; align-items: center; text-align: center;
+      }
+      .poster::before {
+        content: ""; position: absolute; inset: 0;
+        background:
+          radial-gradient(circle at 20% 10%, rgba(251,191,36,0.25), transparent 40%),
+          radial-gradient(circle at 80% 90%, rgba(217,70,239,0.22), transparent 45%);
+        pointer-events: none;
+      }
+      .poster > * { position: relative; }
+      .label { font-size: 10pt; letter-spacing: 0.3em; text-transform: uppercase; color: #fcd34d; margin-bottom: 6mm; }
+      .title { font-size: 44pt; font-weight: 800; line-height: 0.95; margin: 0 0 6mm;
+        background: linear-gradient(135deg, #fef3c7 0%, #fbbf24 60%, #f59e0b 100%);
+        -webkit-background-clip: text; background-clip: text; color: transparent; }
+      .sub { font-size: 14pt; color: rgba(255,255,255,0.82); max-width: 150mm; line-height: 1.35; margin: 0 0 10mm; }
+      .qr-wrap { background: white; border-radius: 10mm; padding: 8mm; box-shadow: 0 0 0 2mm rgba(251,191,36,0.3); margin: 2mm 0 8mm; }
+      .qr-wrap canvas { display: block; width: 90mm !important; height: 90mm !important; }
+      .scan-cue { font-size: 16pt; font-weight: 700; color: #fbbf24; margin: 0 0 2mm; }
+      .url { font-size: 11pt; color: rgba(255,255,255,0.6); letter-spacing: 0.05em; margin-bottom: 8mm; }
+      .perks { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm 10mm; width: 160mm; margin-bottom: 8mm; }
+      .perk { display: flex; align-items: center; gap: 3mm; font-size: 11pt; text-align: left; }
+      .perk .ico { font-size: 18pt; }
+      .footer { margin-top: auto; font-size: 9pt; color: rgba(255,255,255,0.55); letter-spacing: 0.2em; text-transform: uppercase; }
+      .brand { font-size: 13pt; font-weight: 700; letter-spacing: 0.3em; color: rgba(255,255,255,0.85); margin-bottom: 2mm; text-transform: uppercase; }
+
+      @media print {
+        @page { size: A4; margin: 0; }
+        html, body { background: white !important; margin: 0 !important; padding: 0 !important; }
+        .toolbar, .no-print { display: none !important; }
+        .stage { padding: 0 !important; }
+        .poster { width: 210mm !important; height: 297mm !important; box-shadow: none !important;
+          -webkit-print-color-adjust: exact; print-color-adjust: exact; break-after: page; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="toolbar no-print">
+      <a class="back" href={withLangPrefix(lang, "/admin/loyalty")}>← {isEl ? "Πίσω" : "Back"}</a>
+      <div style="font-weight:700; font-size:14px;">{isEl ? "Αφίσα Πιστότητας" : "Loyalty Poster"}</div>
+      <button class="print-btn" onclick="window.print()">🖨️ {isEl ? "Εκτύπωση" : "Print"}</button>
+    </div>
+
+    <div class="stage">
+      <div class="poster" id="poster">
+        <div class="brand">Sally's Bar · Skala</div>
+        <div class="label">{isEl ? "Πρόγραμμα Πιστότητας" : "Loyalty Program"}</div>
+        <h1 class="title">{isEl ? "Κερδίστε σε κάθε επίσκεψη" : "Earn on every visit"}</h1>
+        <p class="sub">
+          {isEl
+            ? `Σκανάρετε για να γίνετε μέλος. Κερδίστε ${ppe} πόντο${ppe === 1 ? "" : "υς"} ανά €1, μπόνους στα γενέθλιά σας, και ${referral} πόντους για κάθε φίλο που φέρνετε.`
+            : `Scan to join. Earn ${ppe} point${ppe === 1 ? "" : "s"} per €1 spent, birthday bonuses, and ${referral} points for every friend you bring.`}
+        </p>
+
+        <div class="qr-wrap">
+          <canvas id="qr" width="340" height="340"></canvas>
+        </div>
+        <p class="scan-cue">📱 {isEl ? "Σκανάρετε & Εγγραφείτε" : "Scan & Join Free"}</p>
+        <p class="url" id="urlTxt">sallysbar.gr/loyalty</p>
+
+        <div class="perks">
+          <div class="perk"><span class="ico">⭐</span><span>{isEl ? `${ppe} πόντοι ανά €` : `${ppe} pts per €1`}</span></div>
+          <div class="perk"><span class="ico">🎂</span><span>{isEl ? `${bdayMult}× πόντοι γενεθλίων` : `${bdayMult}× birthday points`}</span></div>
+          <div class="perk"><span class="ico">🤝</span><span>{isEl ? `+${referral} πόντοι ανά φίλο` : `+${referral} per referral`}</span></div>
+          <div class="perk"><span class="ico">🎁</span><span>{isEl ? "Δωρεάν ποτά & έκπτωση" : "Free drinks & discounts"}</span></div>
+        </div>
+
+        <div class="footer">{isEl ? "Δωρεάν εγγραφή · Χωρίς χρεώσεις" : "Free to join · No fees"}</div>
+      </div>
+    </div>
+
+    <script>
+      import QRCode from "qrcode";
+      const url = `${window.location.origin}/loyalty`;
+      (document.getElementById("urlTxt") as HTMLElement).textContent = url.replace(/^https?:\/\//, "");
+      const canvas = document.getElementById("qr") as HTMLCanvasElement;
+      QRCode.toCanvas(canvas, url, {
+        width: 340,
+        margin: 1,
+        color: { dark: "#0a0a0f", light: "#ffffff" },
+        errorCorrectionLevel: "H",
+      }).catch((e: unknown) => console.error(e));
+    </script>
+  </body>
+</html>

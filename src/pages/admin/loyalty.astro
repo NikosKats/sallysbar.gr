@@ -101,6 +101,10 @@ const silverCount = customers.filter(c => c.total >= 100 && c.total < 250).lengt
 
       <div class="flex items-center justify-between flex-wrap gap-4">
         <h1 class="text-xl font-bold">{isEl ? "Πιστότητα Πελατών" : "Customer Loyalty"}</h1>
+        <a href={withLangPrefix(lang, "/admin/loyalty-poster")} target="_blank"
+          class="inline-flex items-center gap-2 rounded-xl bg-amber-400 text-black px-4 py-2 text-sm font-semibold hover:bg-amber-300 transition">
+          🖨️ {isEl ? "Αφίσα για εκτύπωση" : "Print Marketing Poster"}
+        </a>
       </div>
 
       <!-- Stats row -->
