@@ -30,14 +30,18 @@ if (userIds.length > 0) {
   for (const p of profiles ?? []) emailMap.set(p.id, p.full_name || p.email || p.id.slice(0, 8));
 }
 
-// Eligible members for single-issue search — every registered user with a profile row.
-// (Using `.not("card_issued_at", "is", null)` was too strict — it excluded signed-up users
-// who hadn't yet completed the "Activate loyalty card" flow.)
-const { data: members } = await supabaseAdmin
-  .from("profiles")
-  .select("id, email, full_name")
-  .order("full_name", { ascending: true })
-  .limit(500);
+// Eligible members: every registered auth.users entry.
+// Using auth.admin.listUsers so we catch users who signed up but never had a
+// `profiles` row auto-created (depends on your Supabase auth-to-profile trigger).
+const { data: authList } = await supabaseAdmin.auth.admin.listUsers({ perPage: 500 });
+const authUsers = authList?.users ?? [];
+const { data: profileRows } = await supabaseAdmin.from("profiles").select("id, full_name");
+const nameById = new Map((profileRows ?? []).map((p: any) => [p.id, p.full_name]));
+const members = authUsers.map(u => ({
+  id: u.id,
+  email: u.email ?? "",
+  full_name: (nameById.get(u.id) as string | undefined) ?? u.user_metadata?.full_name ?? u.email?.split("@")[0] ?? "—",
+})).sort((a, b) => (a.full_name ?? "").localeCompare(b.full_name ?? ""));
 
 // Stats
 const total = (cards ?? []).length;

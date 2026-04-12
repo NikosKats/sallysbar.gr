@@ -24,11 +24,9 @@ export const POST: APIRoute = async ({ request, locals }) => {
   }
 
   if (mode === "all-members") {
-    // Any registered user with a profile row — we used to filter by card_issued_at,
-    // but that excluded signed-up users who hadn't activated yet. Scratch cards
-    // are a free hook to nudge them toward activation.
-    const { data: members } = await supabaseAdmin
-      .from("profiles").select("id");
+    // Every registered auth user (whether or not a profiles row exists yet).
+    const { data: list } = await supabaseAdmin.auth.admin.listUsers({ perPage: 500 });
+    const members = (list?.users ?? []).map(u => ({ id: u.id }));
     if (!members || members.length === 0) return json({ ok: true, issued: 0 });
     let issued = 0;
     for (const m of members as any[]) {
