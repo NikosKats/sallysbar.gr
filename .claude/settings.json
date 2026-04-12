@@ -24,7 +24,11 @@
       "Bash(node scripts/optimize-images.mjs)",
       "Bash(du -sh /Users/nikolaoskatsilidis/Desktop/sallysbar.gr/public/*)",
       "Bash(ls /Users/nikolaoskatsilidis/Desktop/sallysbar.gr/public/photos/*.jpg)",
-      "Bash(grep -l \"manifest\\\\|serviceWorker\" /Users/nikolaoskatsilidis/Desktop/sallysbar.gr/src/**/*.astro)"
+      "Bash(grep -l \"manifest\\\\|serviceWorker\" /Users/nikolaoskatsilidis/Desktop/sallysbar.gr/src/**/*.astro)",
+      "Bash(ls /Users/nikolaoskatsilidis/Desktop/sallysbar.gr/src/pages/admin/*poster*)",
+      "Bash(grep -l \"qrcode\" /Users/nikolaoskatsilidis/Desktop/sallysbar.gr/src/pages/admin/*.astro)",
+      "Bash(grep -l \"supabaseAdmin\" /Users/nikolaoskatsilidis/Desktop/sallysbar.gr/src/pages/r/*.ts)",
+      "Bash(grep -E \"mapLink|mapUrl|maps\\\\.google|instagram|whatsapp|phoneE164\" /Users/nikolaoskatsilidis/Desktop/sallysbar.gr/src/data/site.*)"
     ],
     "additionalDirectories": [
       "/Users/nikolaoskatsilidis/Desktop/sallysbar.gr/public/photos"

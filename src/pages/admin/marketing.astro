@@ -1,0 +1,292 @@
+---
+import "../../styles/global.css";
+import AdminNav from "../../components/AdminNav.astro";
+import { supabaseAdmin } from "../../lib/supabase";
+import { withLangPrefix } from "../../i18n";
+import { site } from "../../data/site";
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+
+if (Astro.locals.role !== "admin") {
+  return Astro.redirect(withLangPrefix(lang, "/admin"));
+}
+
+const { data: campaigns } = await supabaseAdmin
+  .from("campaigns")
+  .select("*")
+  .order("created_at", { ascending: false });
+
+const origin = "https://sallysbar.gr";
+const whatsapp = `https://wa.me/${site.phoneE164.replace(/\D/g, "")}`;
+const instaUrl = "https://www.instagram.com/sallys_bar/";
+
+const presets = [
+  { key: "directions", name: isEl ? "📍 Οδηγίες" : "📍 Get Directions", emoji: "📍",
+    desc: isEl ? "QR στο χάρτη του Google — ιδανικό για flyers, ξενοδοχεία, taxi stands." : "Google Maps directions — ideal for flyers, hotels, taxi stands.",
+    target: site.mapsShareUrl, source: "print", medium: "qr", campaign: "directions" },
+  { key: "book", name: isEl ? "🍸 Κράτηση τραπεζιού" : "🍸 Book a Table", emoji: "🍸",
+    desc: isEl ? "Απευθείας στη φόρμα κράτησης. Σουβέρ, καρτελάκια, welcome cards." : "Straight to the booking form. Coasters, cards, welcome kits.",
+    target: `${origin}/book`, source: "print", medium: "qr", campaign: "book-table" },
+  { key: "loyalty", name: isEl ? "🎁 Γίνε Μέλος / 10% έκπτωση" : "🎁 Join Loyalty / 10% off", emoji: "🎁",
+    desc: isEl ? "Εγγραφή επιβράβευσης. Βάλτε στις αποδείξεις και στα σουβέρ." : "Loyalty signup. Put on receipts and coasters.",
+    target: `${origin}/loyalty`, source: "receipt", medium: "qr", campaign: "loyalty-signup" },
+  { key: "events", name: isEl ? "🎵 Αποψινές Εκδηλώσεις" : "🎵 Tonight's Events", emoji: "🎵",
+    desc: isEl ? "Λίστα events. A-frame στην είσοδο, flyers στα πλοία." : "Events list. A-frame at door, cruise-terminal flyers.",
+    target: `${origin}/events`, source: "print", medium: "qr", campaign: "events" },
+  { key: "menu", name: isEl ? "📜 Δες το Μενού" : "📜 View Menu", emoji: "📜",
+    desc: isEl ? "Μενού στο κινητό — χωρίς app." : "Instant mobile menu — no app friction.",
+    target: `${origin}/menu`, source: "table", medium: "qr", campaign: "menu" },
+  { key: "review", name: isEl ? "⭐ Κριτική Google" : "⭐ Leave a Google Review", emoji: "⭐",
+    desc: isEl ? "Κάρτα στον καλεσμένο μετά την πληρωμή." : "Handed to guests at checkout.",
+    target: site.reviews.googleUrl, source: "checkout", medium: "qr", campaign: "google-review" },
+  { key: "whatsapp", name: isEl ? "💬 WhatsApp μας" : "💬 WhatsApp us", emoji: "💬",
+    desc: isEl ? "Click-to-chat. Ιδανικό για UK/τουρίστες." : "Click-to-chat. Great for UK / tourist reservations.",
+    target: whatsapp, source: "print", medium: "qr", campaign: "whatsapp" },
+  { key: "instagram", name: isEl ? "📸 Ακολούθησε Instagram" : "📸 Follow on Instagram", emoji: "📸",
+    desc: isEl ? "Κτίζει κοινό πριν και μετά το ταξίδι." : "Grows audience before/during/after the trip.",
+    target: instaUrl, source: "print", medium: "qr", campaign: "instagram" },
+  { key: "port", name: isEl ? "🚢 Info από το λιμάνι" : "🚢 Cruise / Port Info", emoji: "🚢",
+    desc: isEl ? "Flyer στο λιμάνι με χάρτη και απόσταση." : "Port flyer with map + walking distance.",
+    target: site.mapsShareUrl, source: "port", medium: "qr", campaign: "cruise-info" },
+  { key: "uk", name: isEl ? "🇬🇧 UK Visitors Welcome" : "🇬🇧 UK Visitors Welcome", emoji: "🇬🇧",
+    desc: isEl ? "Αγγλικό landing για travel magazines." : "English landing for travel-mag ads.",
+    target: `${origin}/?lang=en`, source: "travel-mag", medium: "print", campaign: "uk-tourists" },
+];
+---
+
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{isEl ? "Marketing" : "Marketing"} — Admin</title>
+    <meta name="robots" content="noindex,nofollow" />
+  </head>
+  <body class="min-h-screen bg-[#0b0b10] text-white">
+    <AdminNav active="marketing" />
+
+    <main class="mx-auto max-w-6xl px-4 py-6 space-y-6">
+      <div class="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h1 class="text-2xl font-bold">{isEl ? "Marketing & Καμπάνιες" : "Marketing & Campaigns"}</h1>
+          <p class="text-sm text-white/50 mt-1">
+            {isEl
+              ? "Δημιούργησε trackable QR codes με UTM tags για έντυπη διαφήμιση, σουβέρ και φυλλάδια."
+              : "Create trackable QR codes with UTM tags for print ads, coasters, flyers, and rack-cards."}
+          </p>
+        </div>
+        <button id="newCampBtn" class="rounded-xl bg-amber-400 text-black px-4 py-2 text-sm font-semibold hover:bg-amber-300 transition">
+          + {isEl ? "Νέα καμπάνια" : "New campaign"}
+        </button>
+      </div>
+
+      <!-- Presets -->
+      <section class="rounded-2xl border border-white/10 bg-white/5 p-5 space-y-3">
+        <h2 class="text-xs font-semibold uppercase tracking-widest text-white/50">{isEl ? "Έτοιμες Προτάσεις (1 κλικ)" : "One-Click Presets"}</h2>
+        <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {presets.map(p => (
+            <button type="button" class="preset-btn group text-left rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 hover:border-amber-400/40 p-4 transition"
+              data-preset={JSON.stringify(p)}>
+              <div class="flex items-start gap-3">
+                <span class="text-2xl">{p.emoji}</span>
+                <div class="min-w-0 flex-1">
+                  <p class="font-semibold text-sm text-white group-hover:text-amber-200">{p.name.replace(/^[^\s]+\s/, "")}</p>
+                  <p class="text-xs text-white/50 mt-1 leading-relaxed">{p.desc}</p>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <!-- Existing campaigns -->
+      <section class="space-y-3">
+        <h2 class="text-xs font-semibold uppercase tracking-widest text-white/50">{isEl ? "Οι καμπάνιες σου" : "Your campaigns"} <span class="text-white/30">({(campaigns ?? []).length})</span></h2>
+        {(campaigns ?? []).length === 0 ? (
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-8 text-center text-white/50 text-sm">
+            {isEl ? "Δεν υπάρχουν καμπάνιες ακόμα. Διάλεξε ένα preset παραπάνω ή φτιάξε νέα." : "No campaigns yet. Pick a preset above or create one."}
+          </div>
+        ) : (
+          <div class="grid md:grid-cols-2 gap-3">
+            {(campaigns ?? []).map(c => {
+              const shortUrl = `${origin}/r/${c.slug}`;
+              return (
+                <div class="rounded-2xl border border-white/10 bg-white/5 p-4 flex gap-4" data-camp-id={c.id}>
+                  <canvas class="camp-qr shrink-0 h-24 w-24 rounded-lg bg-white p-1" data-url={shortUrl}></canvas>
+                  <div class="min-w-0 flex-1">
+                    <div class="flex items-start justify-between gap-2 flex-wrap">
+                      <h3 class="font-semibold text-sm text-white truncate">{c.name}</h3>
+                      {!c.active && <span class="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/10 text-white/50">{isEl ? "Ανενεργό" : "Inactive"}</span>}
+                    </div>
+                    <p class="text-xs text-amber-300/80 font-mono truncate mt-1">{shortUrl.replace(/^https?:\/\//, "")}</p>
+                    <p class="text-[11px] text-white/40 truncate mt-0.5">→ {c.target_url}</p>
+                    <div class="mt-2 flex items-center gap-3 text-xs text-white/60">
+                      <span>👁 {c.scan_count ?? 0} {isEl ? "σκαναρίσματα" : "scans"}</span>
+                    </div>
+                    <div class="mt-3 flex flex-wrap gap-1.5">
+                      <button class="camp-copy-btn text-[11px] px-2 py-1 rounded-lg bg-white/10 hover:bg-white/15 transition" data-url={shortUrl}>🔗 {isEl ? "Αντιγραφή" : "Copy"}</button>
+                      <button class="camp-dl-btn text-[11px] px-2 py-1 rounded-lg bg-white/10 hover:bg-white/15 transition" data-slug={c.slug} data-name={c.name}>⬇ PNG</button>
+                      <a href={`/admin/marketing-poster?id=${c.id}`} target="_blank" class="text-[11px] px-2 py-1 rounded-lg bg-amber-400/15 text-amber-300 hover:bg-amber-400/25 transition">🖨 {isEl ? "Αφίσα" : "Poster"}</a>
+                      <button class="camp-edit-btn text-[11px] px-2 py-1 rounded-lg bg-white/10 hover:bg-white/15 transition"
+                        data-camp={JSON.stringify(c)}>{isEl ? "Επεξεργασία" : "Edit"}</button>
+                      <button class="camp-del-btn text-[11px] px-2 py-1 rounded-lg bg-red-500/15 text-red-300 hover:bg-red-500/25 transition">{isEl ? "Διαγραφή" : "Delete"}</button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+    </main>
+
+    <!-- Campaign modal -->
+    <div id="campModal" class="fixed inset-0 z-[70] hidden bg-black/70 backdrop-blur-sm p-0 sm:p-4">
+      <div class="relative mx-auto w-full max-w-lg h-full sm:h-auto sm:max-h-[calc(100vh-2rem)] sm:my-4 rounded-none sm:rounded-2xl border border-white/10 bg-[#141420] flex flex-col">
+        <div class="flex items-start justify-between p-5 border-b border-white/10 shrink-0">
+          <h3 id="campTitle" class="text-lg font-bold text-amber-200">{isEl ? "Καμπάνια" : "Campaign"}</h3>
+          <button id="campClose" type="button" class="text-white/40 hover:text-white text-3xl leading-none px-2 -mt-1">×</button>
+        </div>
+        <form id="campForm" class="flex-1 overflow-y-auto p-5 space-y-3">
+          <input type="hidden" name="id" />
+          <label class="block"><span class="text-xs text-white/50">{isEl ? "Όνομα" : "Name"} *</span>
+            <input name="name" required minlength="2" class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400/50" /></label>
+          <label class="block"><span class="text-xs text-white/50">Slug <span class="text-white/30">({isEl ? "προαιρετικό — auto από όνομα" : "optional — auto from name"})</span></span>
+            <input name="slug" placeholder="book-table" class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white font-mono" /></label>
+          <label class="block"><span class="text-xs text-white/50">{isEl ? "Target URL" : "Target URL"} *</span>
+            <input name="target_url" type="url" required placeholder="https://sallysbar.gr/book" class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white font-mono" /></label>
+          <label class="block"><span class="text-xs text-white/50">{isEl ? "Περιγραφή" : "Description"}</span>
+            <textarea name="description" rows="2" class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"></textarea></label>
+          <div class="grid grid-cols-2 gap-3">
+            <label class="block"><span class="text-xs text-white/50">utm_source</span>
+              <input name="utm_source" placeholder="print" class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white font-mono" /></label>
+            <label class="block"><span class="text-xs text-white/50">utm_medium</span>
+              <input name="utm_medium" placeholder="qr" class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white font-mono" /></label>
+            <label class="block"><span class="text-xs text-white/50">utm_campaign</span>
+              <input name="utm_campaign" placeholder="book-table" class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white font-mono" /></label>
+            <label class="block"><span class="text-xs text-white/50">utm_content</span>
+              <input name="utm_content" placeholder="coaster-v1" class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white font-mono" /></label>
+          </div>
+          <label class="flex items-center gap-2 text-sm text-white/80 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+            <input type="checkbox" name="active" checked class="h-4 w-4" /> {isEl ? "Ενεργή καμπάνια" : "Active campaign"}
+          </label>
+          <p id="campMsg" class="text-xs hidden"></p>
+        </form>
+        <div class="shrink-0 border-t border-white/10 p-4 bg-[#141420] flex gap-3">
+          <button id="campCancel" type="button" class="flex-1 rounded-xl border border-white/15 text-white/70 px-4 py-3 text-sm font-semibold hover:bg-white/5 transition">{isEl ? "Άκυρο" : "Cancel"}</button>
+          <button id="campSave" type="button" class="flex-[2] rounded-xl bg-amber-400 text-black px-4 py-3 text-sm font-semibold hover:bg-amber-300 transition">{isEl ? "Αποθήκευση" : "Save"}</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      import QRCode from "qrcode";
+      document.querySelectorAll<HTMLCanvasElement>(".camp-qr").forEach((c) => {
+        const url = c.dataset.url ?? "";
+        QRCode.toCanvas(c, url, { width: 96, margin: 1, color: { dark: "#0a0a0f", light: "#ffffff" }, errorCorrectionLevel: "H" }).catch(() => {});
+      });
+
+      document.querySelectorAll<HTMLButtonElement>(".camp-dl-btn").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const slug = btn.dataset.slug ?? "campaign";
+          const name = btn.dataset.name ?? slug;
+          const url = `${location.origin}/r/${slug}`;
+          const tmp = document.createElement("canvas");
+          await QRCode.toCanvas(tmp, url, { width: 800, margin: 2, color: { dark: "#0a0a0f", light: "#ffffff" }, errorCorrectionLevel: "H" });
+          const a = document.createElement("a");
+          a.download = `qr-${name.replace(/[^a-z0-9-_]+/gi, "_").slice(0, 40)}.png`;
+          a.href = tmp.toDataURL("image/png");
+          a.click();
+        });
+      });
+
+      document.querySelectorAll<HTMLButtonElement>(".camp-copy-btn").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const url = btn.dataset.url ?? "";
+          try { await navigator.clipboard.writeText(url); btn.textContent = "✓"; setTimeout(() => { btn.textContent = "🔗 Copy"; }, 1200); } catch {}
+        });
+      });
+    </script>
+
+    <script is:inline>
+      (function () {
+        const isEl = document.documentElement.lang === "el";
+        const modal = document.getElementById("campModal");
+        const form = document.getElementById("campForm");
+        const msg = document.getElementById("campMsg");
+        const title = document.getElementById("campTitle");
+
+        function openModal(data, label) {
+          form.reset();
+          form.elements.id.value = data?.id ?? "";
+          for (const k of ["name","slug","target_url","description","utm_source","utm_medium","utm_campaign","utm_content"]) {
+            if (form.elements[k]) form.elements[k].value = data?.[k] ?? "";
+          }
+          form.elements.active.checked = data?.active !== false;
+          title.textContent = label || (isEl ? "Νέα καμπάνια" : "New campaign");
+          msg.className = "text-xs hidden";
+          modal.classList.remove("hidden"); modal.classList.add("flex");
+        }
+        function closeModal() { modal.classList.add("hidden"); modal.classList.remove("flex"); }
+
+        document.getElementById("newCampBtn").addEventListener("click", () => openModal(null, isEl ? "Νέα καμπάνια" : "New campaign"));
+        document.getElementById("campClose").addEventListener("click", closeModal);
+        document.getElementById("campCancel").addEventListener("click", closeModal);
+        modal.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
+
+        document.querySelectorAll(".preset-btn").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const p = JSON.parse(btn.dataset.preset);
+            openModal({
+              name: p.name,
+              slug: p.key,
+              target_url: p.target,
+              utm_source: p.source,
+              utm_medium: p.medium,
+              utm_campaign: p.campaign,
+              utm_content: "",
+              description: p.desc,
+              active: true,
+            }, isEl ? "Νέα καμπάνια από preset" : "New campaign from preset");
+          });
+        });
+
+        document.querySelectorAll(".camp-edit-btn").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            try { openModal(JSON.parse(btn.dataset.camp), isEl ? "Επεξεργασία" : "Edit"); } catch {}
+          });
+        });
+
+        document.querySelectorAll(".camp-del-btn").forEach((btn) => {
+          btn.addEventListener("click", async () => {
+            if (!confirm(isEl ? "Διαγραφή καμπάνιας;" : "Delete this campaign?")) return;
+            const root = btn.closest("[data-camp-id]");
+            const id = root.dataset.campId;
+            const res = await fetch(`/api/admin/campaigns?id=${id}`, { method: "DELETE" });
+            if (res.ok) window.location.reload();
+            else alert("Error");
+          });
+        });
+
+        document.getElementById("campSave").addEventListener("click", async () => {
+          if (!form.reportValidity()) return;
+          const fd = new FormData(form);
+          const payload = Object.fromEntries(fd.entries());
+          payload.active = fd.get("active") === "on";
+          if (!payload.id) delete payload.id;
+          msg.className = "text-xs hidden";
+          const res = await fetch("/api/admin/campaigns", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          if (res.ok) { window.location.reload(); }
+          else {
+            const j = await res.json().catch(() => ({}));
+            msg.textContent = j.error ?? "Error";
+            msg.className = "text-xs text-red-400 block";
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>

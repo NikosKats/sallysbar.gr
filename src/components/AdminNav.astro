@@ -39,6 +39,7 @@ const I = {
   users:        `<circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.6"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>`,
   qrcodes:      `<rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.6"/><rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.6"/><path d="M14 14h3v3M20 14v7M14 20h3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>`,
   help:         `<circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M9 9a3 3 0 1 1 4.5 2.6c-.9.6-1.5 1.2-1.5 2.4M12 17h.01" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>`,
+  marketing:    `<path d="M3 11l18-7v16L3 13v-2z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M7 13v5a2 2 0 0 0 4 0v-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>`,
 };
 
 const groups: Group[] = [
@@ -52,6 +53,7 @@ const groups: Group[] = [
     { key: "events",       label: t.admin.nav.events,       href: withLangPrefix(lang, "/admin/events"),       icon: I.events },
     { key: "orders",       label: t.admin.nav.orders,       href: withLangPrefix(lang, "/admin/orders"),       icon: I.orders },
     { key: "tips",         label: t.admin.nav.tips,         href: withLangPrefix(lang, "/admin/tips"),         icon: I.tips },
+    { key: "marketing",    label: isEl ? "Marketing" : "Marketing", href: withLangPrefix(lang, "/admin/marketing"), icon: I.marketing },
   ]},
   { title: isEl ? "Περιεχόμενο" : "Content", items: [
     { key: "editMenu", label: t.admin.nav.editMenu,         href: withLangPrefix(lang, "/admin/menu"),    icon: I.editMenu },
