@@ -14,13 +14,42 @@ export const POST: APIRoute = async ({ request, locals }) => {
   try { body = await request.json(); } catch { return json({ error: "bad_json" }, 400); }
 
   const id = body.id ? String(body.id) : null;
-  const status = body.status ? String(body.status) : null;
   if (!id) return json({ error: "missing_id" }, 400);
-  if (!status || !ALLOWED.has(status)) return json({ error: "bad_status" }, 400);
+
+  const patch: Record<string, unknown> = {};
+  if (body.status !== undefined) {
+    const s = String(body.status);
+    if (!ALLOWED.has(s)) return json({ error: "bad_status" }, 400);
+    patch.status = s;
+  }
+  if (body.full_name !== undefined) {
+    const v = String(body.full_name).trim();
+    if (v.length < 2 || v.length > 120) return json({ error: "bad_name" }, 400);
+    patch.full_name = v;
+  }
+  if (body.email !== undefined) {
+    const v = String(body.email).trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return json({ error: "bad_email" }, 400);
+    patch.email = v;
+  }
+  if (body.phone !== undefined) {
+    const v = body.phone ? String(body.phone).trim() : null;
+    if (v && !/^\+?[\d\s\-()]{6,30}$/.test(v)) return json({ error: "bad_phone" }, 400);
+    patch.phone = v;
+  }
+  if (body.message !== undefined) {
+    const v = body.message ? String(body.message) : null;
+    if (v && v.length > 5000) return json({ error: "message_too_long" }, 400);
+    patch.message = v;
+  }
+  if (body.cv_url !== undefined) patch.cv_url = body.cv_url ? String(body.cv_url) : null;
+  if (body.cv_filename !== undefined) patch.cv_filename = body.cv_filename ? String(body.cv_filename) : null;
+
+  if (Object.keys(patch).length === 0) return json({ error: "nothing_to_update" }, 400);
 
   const { error } = await supabaseAdmin
     .from("job_applications")
-    .update({ status })
+    .update(patch)
     .eq("id", id);
 
   if (error) return json({ error: error.message }, 500);

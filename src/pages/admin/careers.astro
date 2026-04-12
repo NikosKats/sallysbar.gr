@@ -154,7 +154,11 @@ for (const j of jobs ?? []) jobTitleMap.set(j.id, isEl ? j.title_el : j.title_en
                     <option value="archived" selected={a.status === "archived"}>{isEl ? "Αρχειοθετήθηκε" : "Archived"}</option>
                   </select>
                   <span class="status-msg text-white/40 hidden"></span>
-                  <button type="button" class="app-del-btn ml-auto px-3 py-1 rounded-lg bg-red-500/15 text-red-300 hover:bg-red-500/25 transition">
+                  <button type="button" class="app-edit-btn ml-auto px-3 py-1 rounded-lg bg-white/10 hover:bg-white/15 transition"
+                    data-app={JSON.stringify({ id: a.id, full_name: a.full_name, email: a.email, phone: a.phone ?? "", message: a.message ?? "", cv_url: a.cv_url ?? "", cv_filename: a.cv_filename ?? "" })}>
+                    {isEl ? "Επεξεργασία" : "Edit"}
+                  </button>
+                  <button type="button" class="app-del-btn px-3 py-1 rounded-lg bg-red-500/15 text-red-300 hover:bg-red-500/25 transition">
                     {isEl ? "Διαγραφή" : "Delete"}
                   </button>
                 </div>
@@ -172,6 +176,40 @@ for (const j of jobs ?? []) jobTitleMap.set(j.id, isEl ? j.title_el : j.title_en
         )}
       </div>
     </main>
+
+    <!-- Application editor modal -->
+    <div id="appModal" class="fixed inset-0 z-50 hidden bg-black/70 backdrop-blur-sm p-0 sm:p-4">
+      <div class="relative mx-auto w-full max-w-lg h-full sm:h-auto sm:max-h-[calc(100vh-2rem)] sm:my-4 rounded-none sm:rounded-2xl border border-white/10 bg-[#141420] flex flex-col">
+        <div class="flex items-start justify-between p-5 border-b border-white/10 shrink-0">
+          <h3 class="text-lg font-bold text-amber-200">{isEl ? "Επεξεργασία Αίτησης" : "Edit Application"}</h3>
+          <button id="appCloseBtn" type="button" class="text-white/40 hover:text-white text-3xl leading-none px-2 -mt-1">×</button>
+        </div>
+        <form id="appForm" class="flex-1 overflow-y-auto p-5 space-y-3">
+          <input type="hidden" name="id" />
+          <label class="block"><span class="text-xs text-white/50">{isEl ? "Ονοματεπώνυμο" : "Full name"}</span>
+            <input name="full_name" required minlength="2" maxlength="120" class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" /></label>
+          <label class="block"><span class="text-xs text-white/50">Email</span>
+            <input name="email" type="email" required class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" /></label>
+          <label class="block"><span class="text-xs text-white/50">{isEl ? "Τηλέφωνο" : "Phone"}</span>
+            <input name="phone" type="tel" class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" /></label>
+          <label class="block"><span class="text-xs text-white/50">{isEl ? "CV URL" : "CV URL"}</span>
+            <input name="cv_url" type="url" class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" /></label>
+          <label class="block"><span class="text-xs text-white/50">{isEl ? "Όνομα αρχείου CV" : "CV filename"}</span>
+            <input name="cv_filename" class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" /></label>
+          <label class="block"><span class="text-xs text-white/50">{isEl ? "Μήνυμα / Βιογραφικό" : "Message / Bio"}</span>
+            <textarea name="message" rows="6" maxlength="5000" class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"></textarea></label>
+          <p id="appFormMsg" class="text-xs hidden"></p>
+        </form>
+        <div class="shrink-0 border-t border-white/10 p-4 bg-[#141420] flex gap-3">
+          <button id="appCancelBtn" type="button" class="flex-1 rounded-xl border border-white/15 text-white/70 px-4 py-3 text-sm font-semibold hover:bg-white/5 transition">
+            {isEl ? "Άκυρο" : "Cancel"}
+          </button>
+          <button id="appSaveBtn" type="button" class="flex-[2] rounded-xl bg-amber-400 text-black px-4 py-3 text-sm font-semibold hover:bg-amber-300 transition">
+            {isEl ? "Αποθήκευση" : "Save"}
+          </button>
+        </div>
+      </div>
+    </div>
 
     <!-- Editor modal -->
     <div id="jobModal" class="fixed inset-0 z-50 hidden bg-black/70 backdrop-blur-sm p-0 sm:p-4">
@@ -348,6 +386,46 @@ for (const j of jobs ?? []) jobTitleMap.set(j.id, isEl ? j.title_el : j.title_en
             msgEl.className = "status-msg text-red-400";
           }
         });
+      });
+
+      const appModal = document.getElementById("appModal");
+      const appForm  = document.getElementById("appForm");
+      const appMsg   = document.getElementById("appFormMsg");
+      function openAppModal(data) {
+        appForm.reset();
+        for (const k of ["id","full_name","email","phone","cv_url","cv_filename","message"]) {
+          if (appForm.elements[k]) appForm.elements[k].value = data[k] ?? "";
+        }
+        appMsg.className = "text-xs hidden";
+        appModal.classList.remove("hidden"); appModal.classList.add("flex");
+      }
+      function closeAppModal() { appModal.classList.add("hidden"); appModal.classList.remove("flex"); }
+      document.getElementById("appCloseBtn").addEventListener("click", closeAppModal);
+      document.getElementById("appCancelBtn").addEventListener("click", closeAppModal);
+      appModal.addEventListener("click", (e) => { if (e.target === appModal) closeAppModal(); });
+
+      document.querySelectorAll(".app-edit-btn").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.preventDefault(); e.stopPropagation();
+          try { openAppModal(JSON.parse(btn.dataset.app)); } catch {}
+        });
+      });
+
+      document.getElementById("appSaveBtn").addEventListener("click", async () => {
+        if (!appForm.reportValidity()) return;
+        const fd = new FormData(appForm);
+        const payload = Object.fromEntries(fd.entries());
+        appMsg.className = "text-xs hidden";
+        const res = await fetch("/api/admin/careers-application-status", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (res.ok) { window.location.reload(); }
+        else {
+          const j = await res.json().catch(() => ({}));
+          appMsg.textContent = j.error ?? "Error";
+          appMsg.className = "text-xs text-red-400 block";
+        }
       });
 
       document.querySelectorAll(".app-del-btn").forEach((btn) => {
