@@ -7,7 +7,7 @@ import { dict, withLangPrefix } from "../../i18n";
 
 const lang = Astro.locals.lang ?? "en";
 const t = dict[lang];
-const { categories, items } = await getMenuAdmin();
+const { menus, categories, items } = await getMenuAdmin();
 ---
 
 <html lang={lang}>
@@ -60,6 +60,17 @@ const { categories, items } = await getMenuAdmin();
 
     <!-- Sub-nav -->
     <AdminNav active="editMenu" />
+
+    <!-- Menus bar -->
+    <section class="mx-auto max-w-7xl px-4 pt-4">
+      <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-3">
+          <h2 class="font-semibold text-sm uppercase tracking-widest text-white/50">{lang === "el" ? "Μενού" : "Menus"}</h2>
+          <button id="newMenuBtn" class="rounded-xl bg-white px-3 py-1.5 text-sm font-semibold text-black hover:bg-white/90 transition">+ {lang === "el" ? "Νέο μενού" : "New menu"}</button>
+        </div>
+        <div id="menusList" class="flex flex-wrap gap-2"></div>
+      </div>
+    </section>
 
     <main class="mx-auto max-w-7xl px-4 py-8 grid gap-6 lg:grid-cols-[300px_1fr]">
 
@@ -178,6 +189,12 @@ const { categories, items } = await getMenuAdmin();
           <label>Slug *</label>
           <input id="catSlug" required placeholder="cocktails" />
         </div>
+        <div class="field">
+          <label>{lang === "el" ? "Μενού" : "Menu"} *</label>
+          <select id="catMenuId">
+            {menus.map((m: any) => <option value={m.id}>{m.name_en}</option>)}
+          </select>
+        </div>
         <div class="row2">
           <div class="field">
             <label>Sort order</label>
@@ -267,6 +284,58 @@ const { categories, items } = await getMenuAdmin();
       </div>
     </dialog>
 
+    <!-- Menu modal -->
+    <dialog id="menuModal">
+      <div class="modal-header">
+        <h3 id="menuModalTitle" class="font-semibold">{lang === "el" ? "Νέο μενού" : "New menu"}</h3>
+        <button class="close-btn" data-close="menuModal">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="menuId" />
+        <div class="row2">
+          <div class="field">
+            <label>Name (English) *</label>
+            <input id="menuNameEn" placeholder="Drinks" />
+          </div>
+          <div class="field">
+            <label>Name (Greek)</label>
+            <input id="menuNameEl" placeholder="Ποτά" />
+          </div>
+        </div>
+        <div class="field">
+          <label>Slug *</label>
+          <input id="menuSlug" placeholder="drinks" />
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label>{lang === "el" ? "Ώρα έναρξης" : "Start time"} (HH:MM)</label>
+            <input id="menuStart" type="time" />
+          </div>
+          <div class="field">
+            <label>{lang === "el" ? "Ώρα λήξης" : "End time"} (HH:MM)</label>
+            <input id="menuEnd" type="time" />
+          </div>
+        </div>
+        <p class="text-xs text-white/40">{lang === "el" ? "Άφησέ τα κενά για να εμφανίζεται το μενού όλη μέρα. Υποστηρίζεται και πέρασμα μεσάνυχτων (π.χ. 18:00 → 02:00)." : "Leave blank to show all day. Past-midnight ranges supported (e.g. 18:00 → 02:00)."}</p>
+        <div class="row2">
+          <div class="field">
+            <label>Sort order</label>
+            <input id="menuSort" type="number" placeholder="0" />
+          </div>
+          <div class="field" style="justify-content:flex-end;padding-bottom:.25rem;">
+            <div class="checkbox-row">
+              <input type="checkbox" id="menuActive" checked />
+              <label for="menuActive">{lang === "el" ? "Ενεργό" : "Active"}</label>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-ghost" data-close="menuModal">{t.admin.menu.cancel}</button>
+        <button class="btn-primary" id="menuSaveBtn">{t.admin.menu.save}</button>
+      </div>
+    </dialog>
+
     <!-- Delete confirm modal -->
     <dialog id="deleteModal">
       <div class="modal-header">
@@ -336,13 +405,18 @@ const { categories, items } = await getMenuAdmin();
     <div id="toast"></div>
 
     <!-- Seed data for JS -->
-    <script id="seedData" type="application/json" set:html={JSON.stringify({ categories, items, i18n: t.admin.menu })}></script>
+    <script id="seedData" type="application/json" set:html={JSON.stringify({ menus, categories, items, i18n: t.admin.menu, lang })}></script>
 
     <script>
       const seed = JSON.parse(document.getElementById("seedData")!.textContent!);
+      let menus: any[] = seed.menus || [];
       let cats: any[]  = seed.categories;
       let items: any[] = seed.items;
       const i18n: any  = seed.i18n;
+      const LANG: string = seed.lang || "en";
+      const L = (en: string, el: string) => LANG === "el" ? el : en;
+      let activeMenuId: number | null = menus[0]?.id ?? null;
+      const menuName = (m: any) => LANG === "el" ? (m.name_el || m.name_en) : m.name_en;
 
       // ── Utilities ───────────────────────────────────────
       function slugify(s: string) {
@@ -377,6 +451,121 @@ const { categories, items } = await getMenuAdmin();
         return res.json();
       }
 
+      // ── Menus rendering + CRUD ──────────────────────────
+      function fmtTime(t: string | null) {
+        if (!t) return "";
+        return t.slice(0, 5);
+      }
+
+      function renderMenus() {
+        const host = document.getElementById("menusList")!;
+        if (!menus.length) {
+          host.innerHTML = `<p class="text-sm text-white/50">${L("No menus yet. Create one to get started.", "Δεν υπάρχουν μενού. Δημιούργησε ένα για να ξεκινήσεις.")}</p>`;
+          return;
+        }
+        host.innerHTML = menus.map(m => {
+          const isActive = m.id === activeMenuId;
+          const times = (m.start_time || m.end_time)
+            ? `<span class="text-white/40">· ${fmtTime(m.start_time) || "00:00"}–${fmtTime(m.end_time) || "23:59"}</span>`
+            : "";
+          const onOff = m.is_active
+            ? `<span class="text-green-400">●</span>`
+            : `<span class="text-white/30">○</span>`;
+          return `
+            <div class="menu-pill flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition ${isActive ? "bg-white/10 border-white/30 text-white" : "border-white/10 bg-black/20 text-white/70"}" data-id="${m.id}">
+              <button class="menu-pick flex items-center gap-2" type="button">${onOff}<span class="font-medium">${esc(menuName(m))}</span> ${times}</button>
+              <button class="menu-edit text-white/40 hover:text-white" type="button" title="${i18n.edit}">✎</button>
+              <button class="menu-del text-red-400/60 hover:text-red-400" type="button" title="${i18n.del}">✕</button>
+            </div>`;
+        }).join("");
+        host.querySelectorAll<HTMLElement>(".menu-pick").forEach(b => b.addEventListener("click", () => {
+          const id = Number((b.closest("[data-id]") as HTMLElement).dataset.id);
+          activeMenuId = id;
+          renderMenus(); renderCats(); renderItems();
+        }));
+        host.querySelectorAll<HTMLElement>(".menu-edit").forEach(b => b.addEventListener("click", () => {
+          const id = Number((b.closest("[data-id]") as HTMLElement).dataset.id);
+          openMenuModal(menus.find(m => m.id === id));
+        }));
+        host.querySelectorAll<HTMLElement>(".menu-del").forEach(b => b.addEventListener("click", () => {
+          const id = Number((b.closest("[data-id]") as HTMLElement).dataset.id);
+          const m = menus.find(x => x.id === id);
+          if (!m) return;
+          document.getElementById("deleteMsg")!.textContent =
+            L(`Delete menu "${menuName(m)}"? Categories must be moved or deleted first.`,
+              `Διαγραφή μενού "${menuName(m)}"; Οι κατηγορίες πρέπει να μετακινηθούν ή να διαγραφούν πρώτα.`);
+          pendingDelete = async () => {
+            const res = await api("/api/admin/menu/menus", "DELETE", { id: m.id });
+            if (res.error) { toast(res.error, "error"); return; }
+            menus = menus.filter(x => x.id !== m.id);
+            if (activeMenuId === m.id) activeMenuId = menus[0]?.id ?? null;
+            renderMenus(); renderCats(); renderItems();
+            closeModal("deleteModal");
+            toast(L("Menu deleted", "Το μενού διαγράφηκε"));
+          };
+          openModal("deleteModal");
+        }));
+      }
+
+      function openMenuModal(m?: any) {
+        const isEdit = !!m;
+        document.getElementById("menuModalTitle")!.textContent = isEdit
+          ? L("Edit menu", "Επεξεργασία μενού")
+          : L("New menu", "Νέο μενού");
+        (document.getElementById("menuId")     as HTMLInputElement).value    = m?.id ?? "";
+        (document.getElementById("menuNameEn") as HTMLInputElement).value    = m?.name_en ?? "";
+        (document.getElementById("menuNameEl") as HTMLInputElement).value    = m?.name_el ?? "";
+        (document.getElementById("menuSlug")   as HTMLInputElement).value    = m?.slug ?? "";
+        (document.getElementById("menuStart")  as HTMLInputElement).value    = fmtTime(m?.start_time ?? null);
+        (document.getElementById("menuEnd")    as HTMLInputElement).value    = fmtTime(m?.end_time ?? null);
+        (document.getElementById("menuSort")   as HTMLInputElement).value    = m?.sort ?? "";
+        (document.getElementById("menuActive") as HTMLInputElement).checked  = m ? !!m.is_active : true;
+        openModal("menuModal");
+      }
+
+      document.getElementById("menuNameEn")!.addEventListener("input", function(this: HTMLInputElement) {
+        if (!(document.getElementById("menuId") as HTMLInputElement).value) {
+          (document.getElementById("menuSlug") as HTMLInputElement).value = slugify(this.value);
+        }
+      });
+
+      document.getElementById("newMenuBtn")!.addEventListener("click", () => openMenuModal());
+
+      document.getElementById("menuSaveBtn")!.addEventListener("click", async () => {
+        const id        = (document.getElementById("menuId")     as HTMLInputElement).value;
+        const name_en   = (document.getElementById("menuNameEn") as HTMLInputElement).value.trim();
+        const name_el   = (document.getElementById("menuNameEl") as HTMLInputElement).value.trim();
+        const slug      = (document.getElementById("menuSlug")   as HTMLInputElement).value.trim();
+        const start_time= (document.getElementById("menuStart")  as HTMLInputElement).value;
+        const end_time  = (document.getElementById("menuEnd")    as HTMLInputElement).value;
+        const sort      = Number((document.getElementById("menuSort") as HTMLInputElement).value) || 0;
+        const is_active = (document.getElementById("menuActive") as HTMLInputElement).checked;
+
+        if (!name_en || !slug) { toast(L("Name and slug required", "Απαιτούνται όνομα και slug"), "error"); return; }
+
+        const btn = document.getElementById("menuSaveBtn") as HTMLButtonElement;
+        btn.disabled = true; btn.textContent = i18n.saving;
+
+        const body: any = { name_en, name_el: name_el || name_en, slug, start_time: start_time || null, end_time: end_time || null, sort, is_active };
+        if (id) body.id = Number(id);
+
+        const res = await api("/api/admin/menu/menus", id ? "PUT" : "POST", body);
+        btn.disabled = false; btn.textContent = i18n.save;
+
+        if (res.error) { toast(res.error, "error"); return; }
+
+        if (id) {
+          const idx = menus.findIndex(m => m.id === Number(id));
+          if (idx !== -1) menus[idx] = res.menu;
+        } else {
+          menus.push(res.menu);
+          if (activeMenuId == null) activeMenuId = res.menu.id;
+        }
+        renderMenus(); syncCatSelects();
+        closeModal("menuModal");
+        toast(id ? L("Menu updated", "Το μενού ενημερώθηκε") : L("Menu created", "Το μενού δημιουργήθηκε"));
+      });
+
       // ── Category filter ─────────────────────────────────
       document.getElementById("catFilter")!.addEventListener("change", (e) => {
         const val = (e.target as HTMLSelectElement).value;
@@ -386,8 +575,12 @@ const { categories, items } = await getMenuAdmin();
       });
 
       // ── Render helpers ──────────────────────────────────
+      function visibleCats() {
+        return activeMenuId == null ? cats : cats.filter(c => c.menu_id === activeMenuId);
+      }
+
       function renderCats() {
-        document.getElementById("catList")!.innerHTML = cats.map(c => `
+        document.getElementById("catList")!.innerHTML = visibleCats().map(c => `
           <li class="cat-row rounded-xl border border-white/10 bg-black/20 px-3 py-2.5" data-id="${c.id}">
             <div class="flex items-start justify-between gap-2">
               <div class="min-w-0 flex-1">
@@ -406,7 +599,8 @@ const { categories, items } = await getMenuAdmin();
       }
 
       function renderItems() {
-        document.getElementById("itemsBody")!.innerHTML = items.map(it => {
+        const catIds = new Set(visibleCats().map(c => c.id));
+        document.getElementById("itemsBody")!.innerHTML = items.filter(it => catIds.has(it.category_id)).map(it => {
           const cat = cats.find(c => c.id === it.category_id);
           const vis = it.is_visible
             ? `<span class="inline-flex items-center gap-1 text-xs text-green-400"><span class="w-1.5 h-1.5 rounded-full bg-green-400 inline-block"></span>${i18n.yes}</span>`
@@ -438,18 +632,25 @@ const { categories, items } = await getMenuAdmin();
       }
 
       function syncCatSelects() {
-        // update category filter
+        const scopedCats = visibleCats();
         const filter = document.getElementById("catFilter") as HTMLSelectElement;
         const curFilter = filter.value;
         filter.innerHTML = `<option value="">${i18n.allCategories}</option>` +
-          cats.map(c => `<option value="${c.id}"${String(c.id) === curFilter ? " selected" : ""}>${esc(c.title_en)}</option>`).join("");
+          scopedCats.map(c => `<option value="${c.id}"${String(c.id) === curFilter ? " selected" : ""}>${esc(c.title_en)}</option>`).join("");
 
-        // update item modal select
         const itemSel = document.getElementById("itemCatId") as HTMLSelectElement;
         const curItem = itemSel.value;
-        itemSel.innerHTML = cats.map(c =>
+        itemSel.innerHTML = scopedCats.map(c =>
           `<option value="${c.id}"${String(c.id) === curItem ? " selected" : ""}>${esc(c.title_en)}</option>`
         ).join("");
+
+        const catMenuSel = document.getElementById("catMenuId") as HTMLSelectElement;
+        if (catMenuSel) {
+          const cur = catMenuSel.value;
+          catMenuSel.innerHTML = menus.map(m =>
+            `<option value="${m.id}"${String(m.id) === cur ? " selected" : ""}>${esc(menuName(m))}</option>`
+          ).join("");
+        }
       }
 
       // ── Category CRUD ───────────────────────────────────
@@ -462,6 +663,8 @@ const { categories, items } = await getMenuAdmin();
         (document.getElementById("catSlug")  as HTMLInputElement).value  = c?.slug ?? "";
         (document.getElementById("catSort")  as HTMLInputElement).value  = c?.sort ?? "";
         (document.getElementById("catVisible") as HTMLInputElement).checked = c ? !!c.is_visible : true;
+        const catMenuSel = document.getElementById("catMenuId") as HTMLSelectElement | null;
+        if (catMenuSel) catMenuSel.value = String(c?.menu_id ?? activeMenuId ?? menus[0]?.id ?? "");
         openModal("catModal");
       }
 
@@ -484,7 +687,8 @@ const { categories, items } = await getMenuAdmin();
         const btn = document.getElementById("catSaveBtn") as HTMLButtonElement;
         btn.disabled = true; btn.textContent = i18n.saving;
 
-        const body: any = { title_en, title_el: title_el || title_en, slug, sort, is_visible: visible };
+        const menu_id = Number((document.getElementById("catMenuId") as HTMLSelectElement)?.value) || null;
+        const body: any = { title_en, title_el: title_el || title_en, slug, sort, is_visible: visible, menu_id };
         if (id) body.id = id;
 
         const res = await api("/api/admin/menu/categories", id ? "PUT" : "POST", body);
@@ -779,6 +983,10 @@ const { categories, items } = await getMenuAdmin();
       });
 
       // ── Init ────────────────────────────────────────────
+      renderMenus();
+      renderCats();
+      renderItems();
+      syncCatSelects();
       bindCatEvents();
       bindItemEvents();
     </script>

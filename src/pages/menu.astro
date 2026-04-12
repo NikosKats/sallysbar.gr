@@ -10,7 +10,15 @@ import { getMenu, formatPriceEUR } from "../lib/menuService";
 const title = `Menu • ${site.name}`;
 const desc = `Cocktails, beer, wine and spirits at ${site.name} in Skala, Kefalonia.`;
 
-const { categories, items } = await getMenu("en");
+const menuSlug = new URL(Astro.request.url).searchParams.get("menu") ?? undefined;
+const { menu: currentMenu, menus: activeMenus, categories, items } = await (async () => {
+  const all = await getMenu("en");
+  if (menuSlug) {
+    const pick = all.menus?.find(m => m.slug === menuSlug);
+    if (pick && pick.id !== all.menu?.id) return await getMenu("en", pick.id);
+  }
+  return all;
+})();
 // Group items by category
 const byCategory = new Map<number, typeof items>();
 for (const it of items) {
@@ -49,7 +57,18 @@ const allTags = Array.from(tagSet).sort((a, b) => a.localeCompare(b));
       <!-- Header -->
       <div class="flex flex-col gap-4">
         <div class="text-xs uppercase tracking-[0.28em] text-amber-200/80">Drinks & Bites</div>
-        <h1 class="font-heading text-5xl md:text-6xl font-bold leading-[0.95] bg-gradient-to-br from-white via-amber-50 to-amber-200/80 bg-clip-text text-transparent">Our Menu</h1>
+        <h1 class="font-heading text-5xl md:text-6xl font-bold leading-[0.95] bg-gradient-to-br from-white via-amber-50 to-amber-200/80 bg-clip-text text-transparent">{currentMenu?.name_en ?? "Our Menu"}</h1>
+
+        {activeMenus && activeMenus.length > 1 && (
+          <div class="mt-4 flex flex-wrap gap-2">
+            {activeMenus.map((m) => (
+              <a href={`/menu?menu=${m.slug}`}
+                class={`rounded-full px-4 py-1.5 text-sm border transition ${currentMenu?.id === m.id ? "bg-amber-300/20 border-amber-300/50 text-amber-200" : "border-white/15 bg-white/5 text-white/70 hover:bg-white/10"}`}>
+                {m.name_en}
+              </a>
+            ))}
+          </div>
+        )}
 
         <div class="flex flex-col gap-3 text-white/70">
           <p class="text-white/70">🍸 Cocktails €5–10 · {site.hours.text}</p>

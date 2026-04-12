@@ -13,7 +13,15 @@ const t = el;
 const title = `${t.meta.menuTitle} • ${site.name}`;
 const desc = `Κοκτέιλ, μπύρα, κρασί και ποτά στο ${site.name} στη Σκάλα, Κεφαλονιά.`;
 
-const { categories, items } = await getMenu("el");
+const menuSlug = new URL(Astro.request.url).searchParams.get("menu") ?? undefined;
+const { menu: currentMenu, menus: activeMenus, categories, items } = await (async () => {
+  const all = await getMenu("el");
+  if (menuSlug) {
+    const pick = all.menus?.find(m => m.slug === menuSlug);
+    if (pick && pick.id !== all.menu?.id) return await getMenu("el", pick.id);
+  }
+  return all;
+})();
 
 const byCategory = new Map<number, typeof items>();
 for (const it of items) {
@@ -44,7 +52,18 @@ const allTags = Array.from(tagSet).sort((a, b) => a.localeCompare(b));
 
     <main class="mx-auto max-w-3xl px-6 py-10 pt-28">
       <div class="flex flex-col gap-3">
-        <h1 class="text-4xl font-semibold md:text-5xl">{t.meta.menuTitle}</h1>
+        <h1 class="text-4xl font-semibold md:text-5xl">{currentMenu?.name_el ?? t.meta.menuTitle}</h1>
+
+        {activeMenus && activeMenus.length > 1 && (
+          <div class="mt-4 flex flex-wrap gap-2">
+            {activeMenus.map((m) => (
+              <a href={`/el/menu?menu=${m.slug}`}
+                class={`rounded-full px-4 py-1.5 text-sm border transition ${currentMenu?.id === m.id ? "bg-amber-300/20 border-amber-300/50 text-amber-200" : "border-white/15 bg-white/5 text-white/70 hover:bg-white/10"}`}>
+                {m.name_el}
+              </a>
+            ))}
+          </div>
+        )}
 
         <div class="flex flex-col gap-2 text-white/70">
           <p>

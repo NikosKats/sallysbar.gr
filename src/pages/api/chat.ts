@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
 import Anthropic from "@anthropic-ai/sdk";
-import { getMenu, formatPriceEUR } from "../../lib/menuService";
+import { getMenuAll as getMenu, formatPriceEUR } from "../../lib/menuService";
 import { verifyTableToken } from "../../lib/tableToken";
 
 export const POST: APIRoute = async ({ request }) => {

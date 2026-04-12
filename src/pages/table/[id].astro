@@ -37,7 +37,15 @@ const t = {
   reviewBtn:    isEl ? "Γράψε κριτική στο Google"          : "Leave a Google review",
 };
 
-const { categories, items } = await getMenu(lang);
+const menuSlug = new URL(Astro.request.url).searchParams.get("menu") ?? undefined;
+const { menu: currentMenu, menus: activeMenus, categories, items } = await (async () => {
+  const all = await getMenu(lang);
+  if (menuSlug) {
+    const pick = all.menus?.find(m => m.slug === menuSlug);
+    if (pick && pick.id !== all.menu?.id) return await getMenu(lang, pick.id);
+  }
+  return all;
+})();
 const byCategory = new Map<number, typeof items>();
 for (const it of items) {
   const list = byCategory.get(it.category_id) ?? [];
@@ -105,6 +113,17 @@ for (const c of categories) {
           </a>
         ))}
       </div>
+
+      {activeMenus && activeMenus.length > 1 && (
+        <div class="mb-6 flex flex-wrap gap-2">
+          {activeMenus.map((m) => (
+            <a href={`?menu=${m.slug}`}
+              class={`rounded-full px-4 py-1.5 text-sm border transition ${currentMenu?.id === m.id ? "bg-amber-300/20 border-amber-300/50 text-amber-200" : "border-white/15 bg-white/5 text-white/70 hover:bg-white/10"}`}>
+              {isEl ? m.name_el : m.name_en}
+            </a>
+          ))}
+        </div>
+      )}
 
       <!-- Menu sections -->
       <div class="space-y-10">

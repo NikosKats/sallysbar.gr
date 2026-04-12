@@ -23,6 +23,13 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   const body = await request.json().catch(() => null);
   if (!body?.title_en || !body?.slug) return json({ error: "title_en and slug are required" }, 400);
 
+  let menu_id = body.menu_id ? Number(body.menu_id) : null;
+  if (!menu_id) {
+    const { data: firstMenu } = await supabaseAdmin.from("menus").select("id").order("sort").limit(1).single();
+    menu_id = firstMenu?.id ?? null;
+  }
+  if (!menu_id) return json({ error: "No menu exists — create a menu first" }, 400);
+
   const { data, error } = await supabaseAdmin
     .from("menu_categories")
     .insert({
@@ -31,6 +38,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       slug: body.slug,
       sort: body.sort ?? 0,
       is_visible: body.is_visible ?? true,
+      menu_id,
     })
     .select()
     .single();
@@ -46,7 +54,7 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
   if (!body?.id) return json({ error: "id required" }, 400);
 
   const { id, ...fields } = body;
-  const allowed = ["title_en", "title_el", "slug", "sort", "is_visible"];
+  const allowed = ["title_en", "title_el", "slug", "sort", "is_visible", "menu_id"];
   const update = Object.fromEntries(Object.entries(fields).filter(([k]) => allowed.includes(k)));
 
   const { data, error } = await supabaseAdmin
