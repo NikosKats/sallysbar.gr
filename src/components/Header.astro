@@ -30,11 +30,13 @@ const adminLabel = "Admin";
 const staffLabel = isEl ? "Παραγγελίες" : "Orders";
 
 // IMPORTANT: build links WITH language prefix
+const loyaltyLabel = isEl ? "Πόντοι" : "Rewards";
 const nav = [
   { label: t.nav.home, href: withLangPrefix(lang, "/") },
   { label: t.nav.menu, href: withLangPrefix(lang, "/menu") },
   { label: bookLabel, href: withLangPrefix(lang, "/book") },
   { label: eventsLabel, href: withLangPrefix(lang, "/events") },
+  { label: loyaltyLabel, href: withLangPrefix(lang, "/loyalty") },
   { label: t.nav.careers, href: withLangPrefix(lang, "/careers") },
 ];
 

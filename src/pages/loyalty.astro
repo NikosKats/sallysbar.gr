@@ -1,0 +1,250 @@
+---
+import "../styles/global.css";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+import { withLangPrefix } from "../i18n";
+import { getLoyaltySettings, getTiers, getRewards } from "../lib/loyalty";
+
+const lang = Astro.locals.lang ?? "en";
+const user = Astro.locals.user;
+const isEl = lang === "el";
+
+const settings = await getLoyaltySettings();
+const tiers    = await getTiers();
+const rewards  = await getRewards(true);
+
+const registerHref = withLangPrefix(lang, user ? "/account" : "/register");
+const loginHref    = withLangPrefix(lang, "/login");
+
+const t = {
+  eyebrow:     isEl ? "Πρόγραμμα Πιστότητας"          : "Loyalty Program",
+  title:       isEl ? "Κερδίζεις με κάθε ποτήρι"       : "Earn with every sip",
+  subtitle:    isEl ? "Η κάρτα μέλους της Sally's — δωρεάν, ψηφιακή, στο κινητό σου. Μάζεψε πόντους, ξεκλείδωσε ανταμοιβές, γίνε VIP."
+                   : "Sally's member card — free, digital, in your pocket. Earn points, unlock rewards, become VIP.",
+  ctaJoin:     isEl ? (user ? "Η κάρτα μου" : "Γίνε μέλος — Δωρεάν")    : (user ? "My card" : "Join free — 30 seconds"),
+  ctaLogin:    isEl ? "Έχω ήδη λογαριασμό"             : "I already have an account",
+  howItWorks:  isEl ? "Πώς λειτουργεί"                  : "How it works",
+  step1Title:  isEl ? "1. Εγγράψου δωρεάν"              : "1. Sign up free",
+  step1Body:   isEl ? "30 δευτερόλεπτα. Παίρνεις ψηφιακή κάρτα με QR στο κινητό." : "30 seconds. You get a digital card with a QR code in your pocket.",
+  step2Title:  isEl ? "2. Δείξε τον σερβιτόρο"          : "2. Show your waiter",
+  step2Body:   isEl ? "Πριν πληρώσεις, δείξε το QR. Απλώς μία φορά."  : "Before paying, flash the QR. One tap and you're linked.",
+  step3Title:  isEl ? "3. Μάζεψε πόντους"                : "3. Rack up points",
+  step3Body:   isEl ? `${settings.points_per_euro} πόντος/€ σε κάθε παραγγελία. Αυτόματα.` : `${settings.points_per_euro} point per €1 spent. Automatic.`,
+  step4Title:  isEl ? "4. Εξαργύρωσε"                    : "4. Redeem",
+  step4Body:   isEl ? "Δωρεάν ποτά, cocktails, bar credit — εσύ διαλέγεις."      : "Free drinks, cocktails, bar credit — you choose.",
+  perksTitle:  isEl ? "Τα προνόμιά σου"                  : "Your perks",
+  perk1Title:  isEl ? "Μπόνους γενεθλίων"                : "Birthday bonus",
+  perk1Body:   isEl ? `${settings.birthday_multiplier}× πόντους σε όλο τον μήνα των γενεθλίων σου.` : `${settings.birthday_multiplier}× points all month on your birthday month.`,
+  perk2Title:  isEl ? "Προτεραιότητα κρατήσεων"          : "Priority bookings",
+  perk2Body:   isEl ? "VIP μέλη κλείνουν πρώτοι σε busy βραδιές."                : "VIPs get first dibs on busy nights.",
+  perk3Title:  isEl ? "Early access σε events"           : "Early event access",
+  perk3Body:   isEl ? `+${settings.event_rsvp_points} πόντοι για κάθε event RSVP.` : `+${settings.event_rsvp_points} points per event RSVP.`,
+  perk4Title:  isEl ? "Φέρε φίλο"                         : "Bring a friend",
+  perk4Body:   isEl ? `+${settings.referral_points} πόντοι όταν γράφεται ο φίλος σου.` : `+${settings.referral_points} points when your friend joins.`,
+  tiersTitle:  isEl ? "Ανέβα επίπεδα"                    : "Climb the tiers",
+  rewardsTitle:isEl ? "Τι μπορείς να εξαργυρώσεις"       : "What you can redeem",
+  rewardsSub:  isEl ? "Πραγματικές ανταμοιβές. Άμεσα στο κινητό σου." : "Real rewards. Instant on your phone.",
+  faqTitle:    isEl ? "Συχνές ερωτήσεις"                 : "Common questions",
+  finalCta:    isEl ? "Έτοιμος; 30 δευτερόλεπτα."        : "Ready? 30 seconds.",
+  finalSub:    isEl ? "Δωρεάν. Καμία πιστωτική."          : "Free. No credit card.",
+};
+
+const faqs = isEl ? [
+  { q: "Κοστίζει τίποτα;", a: "Όχι. Η κάρτα είναι 100% δωρεάν, χωρίς συνδρομή." },
+  { q: "Χρειάζομαι app;", a: "Όχι. Η κάρτα ζει στο account σου — απλά άνοιξε τη σελίδα και δείξε το QR." },
+  { q: "Πώς μαζεύω πόντους;", a: `Κάθε € στο λογαριασμό σου = ${settings.points_per_euro} πόντος. Δείχνεις το QR πριν πληρώσεις, οι πόντοι μπαίνουν αυτόματα.` },
+  { q: "Λήγουν οι πόντοι;", a: "Όχι, όσο ο λογαριασμός σου είναι ενεργός." },
+  { q: "Πώς εξαργυρώνω;", a: "Διάλεξε ανταμοιβή στο /account, παίρνεις κωδικό, δείχνεις στον σερβιτόρο." },
+] : [
+  { q: "Does it cost anything?", a: "No. The card is 100% free, no subscription." },
+  { q: "Do I need an app?", a: "No. Your card lives in your account — open the page and show the QR." },
+  { q: "How do I earn points?", a: `Every €1 on your tab = ${settings.points_per_euro} point. Flash the QR before paying, points post automatically.` },
+  { q: "Do points expire?", a: "No, as long as your account stays active." },
+  { q: "How do I redeem?", a: "Pick a reward on /account, get a code, show it to your waiter." },
+];
+
+const title = isEl ? "Κάρτα Μέλους — Sally's Bar Loyalty" : "Loyalty Card — Sally's Bar Rewards";
+const desc  = isEl
+  ? "Κέρδισε πόντους σε κάθε επίσκεψη. Δωρεάν cocktails, εκπτώσεις, VIP προνόμια στη Sally's Bar."
+  : "Earn points on every visit. Free cocktails, discounts, VIP perks at Sally's Bar.";
+---
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+    <meta name="description" content={desc} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={desc} />
+    <meta property="og:image" content="https://sallysbar.gr/photos/1.sallys-bar-cocktails-skala.webp" />
+    <link rel="icon" href="/favicon/favicon.ico" />
+    <link rel="canonical" href={`https://sallysbar.gr${withLangPrefix(lang, "/loyalty")}`} />
+  </head>
+  <body class="min-h-screen bg-[#0a0a0f] text-white antialiased overflow-x-hidden">
+    <Header />
+
+    <!-- HERO -->
+    <section class="relative pt-32 pb-16 md:pt-40 md:pb-24">
+      <div class="absolute inset-0 -z-10 hidden md:block opacity-60">
+        <div class="absolute -top-20 left-1/3 h-[420px] w-[420px] rounded-full bg-amber-400/15 blur-[120px]"></div>
+        <div class="absolute top-[30%] -right-40 h-[380px] w-[380px] rounded-full bg-fuchsia-500/15 blur-[120px]"></div>
+      </div>
+      <div class="mx-auto max-w-4xl px-6 text-center">
+        <div class="inline-flex items-center gap-2 rounded-full border border-amber-300/30 bg-amber-300/5 px-3 py-1 text-[11px] uppercase tracking-[0.28em] text-amber-200/90">
+          <span class="h-1.5 w-1.5 rounded-full bg-amber-300 animate-pulse"></span>
+          {t.eyebrow}
+        </div>
+        <h1 class="mt-6 font-heading text-5xl md:text-7xl font-bold leading-[0.95] tracking-tight bg-gradient-to-br from-white via-amber-50 to-amber-200/80 bg-clip-text text-transparent">
+          {t.title}
+        </h1>
+        <p class="mt-6 text-lg md:text-xl text-white/70 leading-relaxed max-w-2xl mx-auto">{t.subtitle}</p>
+        <div class="mt-8 flex flex-wrap gap-3 justify-center">
+          <a href={registerHref} class="rounded-2xl bg-gradient-to-br from-amber-200 to-amber-400 px-7 py-3.5 font-semibold text-black shadow-lg shadow-amber-500/20 hover:scale-[1.02] active:scale-[0.98] transition">
+            🎁 {t.ctaJoin}
+          </a>
+          {!user && (
+            <a href={loginHref} class="rounded-2xl border border-white/25 bg-white/5 px-7 py-3.5 font-semibold hover:bg-white/10 transition">
+              {t.ctaLogin}
+            </a>
+          )}
+        </div>
+        <p class="mt-4 text-xs text-white/30">{t.finalSub}</p>
+      </div>
+    </section>
+
+    <!-- HOW IT WORKS -->
+    <section class="mx-auto max-w-6xl px-6 py-16">
+      <h2 class="text-center font-heading text-3xl md:text-4xl font-bold mb-10">{t.howItWorks}</h2>
+      <div class="grid gap-4 md:grid-cols-4">
+        {[
+          [t.step1Title, t.step1Body, "📱"],
+          [t.step2Title, t.step2Body, "📸"],
+          [t.step3Title, t.step3Body, "⭐"],
+          [t.step4Title, t.step4Body, "🎉"],
+        ].map(([title, body, icon]) => (
+          <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+            <div class="text-3xl mb-3">{icon}</div>
+            <h3 class="font-semibold text-white mb-1.5">{title}</h3>
+            <p class="text-sm text-white/60 leading-relaxed">{body}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <!-- PERKS -->
+    <section class="mx-auto max-w-6xl px-6 py-16">
+      <h2 class="text-center font-heading text-3xl md:text-4xl font-bold mb-10">{t.perksTitle}</h2>
+      <div class="grid gap-4 md:grid-cols-2">
+        {[
+          [t.perk1Title, t.perk1Body, "🎂", "amber"],
+          [t.perk2Title, t.perk2Body, "👑", "fuchsia"],
+          [t.perk3Title, t.perk3Body, "🎵", "sky"],
+          [t.perk4Title, t.perk4Body, "🤝", "emerald"],
+        ].map(([title, body, icon, _color]) => (
+          <div class="flex items-start gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+            <div class="text-3xl shrink-0">{icon}</div>
+            <div>
+              <h3 class="font-semibold text-white">{title}</h3>
+              <p class="text-sm text-white/60 leading-relaxed mt-1">{body}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <!-- TIERS -->
+    {tiers.length > 0 && (
+      <section class="mx-auto max-w-6xl px-6 py-16">
+        <h2 class="text-center font-heading text-3xl md:text-4xl font-bold mb-10">{t.tiersTitle}</h2>
+        <div class="grid gap-3 md:gap-4 md:grid-cols-3 lg:grid-cols-5">
+          {tiers.map(tr => {
+            const label = isEl ? tr.label_el : tr.label_en;
+            const perk  = isEl ? tr.perk_el  : tr.perk_en;
+            return (
+              <div class="rounded-2xl border bg-white/[0.03] p-5 text-center" style={`border-color:${tr.color}4d`}>
+                <div class="text-4xl mb-2">{tr.icon}</div>
+                <p class="text-lg font-bold" style={`color:${tr.color}`}>{label}</p>
+                <p class="text-xs text-white/40 mt-0.5">{tr.threshold}+ {isEl ? "πόντοι" : "pts"}</p>
+                {perk && <p class="text-xs text-white/60 mt-3 leading-relaxed">{perk}</p>}
+              </div>
+            );
+          })}
+        </div>
+      </section>
+    )}
+
+    <!-- REWARDS CATALOG -->
+    {rewards.length > 0 && (
+      <section class="mx-auto max-w-5xl px-6 py-16">
+        <div class="text-center mb-10">
+          <h2 class="font-heading text-3xl md:text-4xl font-bold">{t.rewardsTitle}</h2>
+          <p class="mt-2 text-white/50 text-sm">{t.rewardsSub}</p>
+        </div>
+        <div class="grid gap-3 sm:grid-cols-2">
+          {rewards.map(rw => {
+            const name = isEl ? rw.name_el : rw.name_en;
+            const desc = isEl ? rw.description_el : rw.description_en;
+            return (
+              <div class="flex items-center justify-between gap-4 rounded-2xl border border-amber-400/20 bg-gradient-to-br from-amber-500/5 to-transparent p-5">
+                <div class="min-w-0">
+                  <p class="font-semibold text-white">{name}</p>
+                  {desc && <p class="text-xs text-white/50 mt-1">{desc}</p>}
+                </div>
+                <div class="shrink-0 text-center">
+                  <p class="text-2xl font-bold text-amber-400">{rw.cost}</p>
+                  <p class="text-[10px] text-white/40 uppercase tracking-wider">{isEl ? "πόντοι" : "pts"}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div class="mt-8 text-center">
+          <a href={registerHref} class="inline-block rounded-2xl bg-gradient-to-br from-amber-200 to-amber-400 px-7 py-3.5 font-semibold text-black shadow-lg shadow-amber-500/20 hover:scale-[1.02] active:scale-[0.98] transition">
+            {t.ctaJoin} →
+          </a>
+        </div>
+      </section>
+    )}
+
+    <!-- FAQ -->
+    <section class="mx-auto max-w-3xl px-6 py-16">
+      <h2 class="text-center font-heading text-3xl md:text-4xl font-bold mb-8">{t.faqTitle}</h2>
+      <div class="space-y-3">
+        {faqs.map(({ q, a }) => (
+          <details class="group rounded-2xl border border-white/10 bg-white/[0.03] hover:border-white/20 transition">
+            <summary class="px-5 py-4 cursor-pointer text-[15px] font-semibold text-white list-none flex justify-between items-center gap-4">
+              <span>{q}</span>
+              <span class="shrink-0 text-white/40 group-open:rotate-180 transition-transform">▾</span>
+            </summary>
+            <p class="px-5 pb-4 text-sm text-white/70 leading-relaxed">{a}</p>
+          </details>
+        ))}
+      </div>
+    </section>
+
+    <!-- FINAL CTA -->
+    <section class="mx-auto max-w-3xl px-6 py-20 text-center">
+      <h2 class="font-heading text-4xl md:text-5xl font-bold">{t.finalCta}</h2>
+      <p class="mt-3 text-white/50">{t.finalSub}</p>
+      <div class="mt-8">
+        <a href={registerHref} class="inline-block rounded-2xl bg-gradient-to-br from-amber-200 to-amber-400 px-10 py-4 font-bold text-black text-lg shadow-lg shadow-amber-500/20 hover:scale-[1.02] active:scale-[0.98] transition">
+          🎁 {t.ctaJoin}
+        </a>
+      </div>
+    </section>
+
+    <Footer />
+
+    <script
+      type="application/ld+json"
+      set:html={JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "LoyaltyProgram",
+        name: "Sally's Bar Loyalty",
+        url: `https://sallysbar.gr${withLangPrefix(lang, "/loyalty")}`,
+        description: desc,
+        provider: { "@type": "BarOrPub", name: "Sally's Bar", url: "https://sallysbar.gr" },
+      })}
+    />
+  </body>
+</html>
