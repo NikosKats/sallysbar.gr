@@ -1,5 +1,6 @@
-// Service worker for Sally's Bar staff PWA
-const CACHE = "sallys-staff-v1";
+// Service worker for Sally's Bar PWA
+// Bump this string on any SW-behavior change to force all clients to update.
+const CACHE = "sallys-v2-2026-04-13";
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
