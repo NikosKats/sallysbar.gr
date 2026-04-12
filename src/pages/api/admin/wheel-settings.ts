@@ -15,6 +15,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
     enabled:         Boolean(body.enabled),
     max_distance_m:  Math.max(10, Math.min(5000, Number(body.max_distance_m ?? 250) | 0)),
     require_country: Boolean(body.require_country),
+    allow_remote:    Boolean(body.allow_remote),
     updated_at: new Date().toISOString(),
   };
 

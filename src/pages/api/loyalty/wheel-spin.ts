@@ -9,6 +9,7 @@ async function getWheelSettings() {
     enabled:         data?.enabled         ?? true,
     max_distance_m:  data?.max_distance_m  ?? DEFAULT_DISTANCE,
     require_country: data?.require_country ?? false,
+    allow_remote:    data?.allow_remote    ?? false,
   };
 }
 import { verifyTableToken } from "../../../lib/tableToken";
@@ -61,20 +62,24 @@ export const POST: APIRoute = async ({ request, locals, clientAddress }) => {
   const table_number = body.table != null ? Number(body.table) : null;
   const table_token  = body.token ? String(body.token) : "";
 
-  if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
-    return json({ error: "location_required", message: "Enable location to spin — verifies you're at the bar." }, 400);
-  }
+  // Compute distance if coords were supplied — used later for the audit row regardless of mode.
+  const distM = (Number.isFinite(lat) && Number.isFinite(lon))
+    ? distanceMeters(lat, lon, BAR_LAT, BAR_LON)
+    : null;
 
-  // 1) Proximity to bar (admin-tunable)
-  const distM = distanceMeters(lat, lon, BAR_LAT, BAR_LON);
-  if (distM > settings.max_distance_m) {
-    return json({ error: "too_far", message: "Come to Sally's Bar to spin — we don't spin remotely.", distance_m: Math.round(distM) }, 403);
-  }
-
-  // 2) Country sanity check via Cloudflare edge header (admin-tunable)
-  const cc = request.headers.get("cf-ipcountry") ?? "";
-  if (settings.require_country && cc && cc !== "GR" && cc !== "T1" /* Tor */ && cc !== "XX") {
-    return json({ error: "country_mismatch", message: "Must be in Greece to spin." }, 403);
+  // Remote-test mode: admin can toggle this on to let anyone spin regardless of location.
+  // Skips the location-required + distance + country checks entirely.
+  if (!settings.allow_remote) {
+    if (distM == null) {
+      return json({ error: "location_required", message: "Enable location to spin — verifies you're at the bar." }, 400);
+    }
+    if (distM > settings.max_distance_m) {
+      return json({ error: "too_far", message: "Come to Sally's Bar to spin — we don't spin remotely.", distance_m: Math.round(distM) }, 403);
+    }
+    const cc = request.headers.get("cf-ipcountry") ?? "";
+    if (settings.require_country && cc && cc !== "GR" && cc !== "T1" && cc !== "XX") {
+      return json({ error: "country_mismatch", message: "Must be in Greece to spin." }, 403);
+    }
   }
 
   // 3) Optional: verify the table token so a user can't just POST from home even with faked geo
@@ -107,7 +112,8 @@ export const POST: APIRoute = async ({ request, locals, clientAddress }) => {
   const { error: insErr } = await supabaseAdmin.from("wheel_spins").insert({
     user_id: locals.user.id,
     table_number,
-    lat, lon,
+    lat: Number.isFinite(lat) ? lat : null,
+    lon: Number.isFinite(lon) ? lon : null,
     distance_m: distM,
     reward_type: reward.type,
     reward_value: reward.value,

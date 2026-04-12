@@ -120,6 +120,16 @@ function fmtDateTime(s: string) {
           </div>
         </label>
 
+        <label class="flex items-start gap-3 rounded-xl border border-fuchsia-400/30 bg-fuchsia-400/5 p-4 cursor-pointer">
+          <input id="wAllowRemote" type="checkbox" checked={!!settings?.allow_remote} class="mt-1 h-4 w-4" />
+          <div>
+            <div class="font-semibold text-fuchsia-200">🧪 {isEl ? "Απομακρυσμένη πρόσβαση (testing)" : "Remote access (testing)"}</div>
+            <p class="text-xs text-white/55 mt-1">{isEl
+              ? "ΜΟΝΟ ΓΙΑ ΔΟΚΙΜΗ: παρακάμπτει τον έλεγχο τοποθεσίας για να μπορείς να γυρίσεις τη ρόδα από οπουδήποτε. Απενεργοποίησέ το πριν την παραγωγή."
+              : "TESTING ONLY: bypasses the location guard so you can spin from anywhere. Turn OFF before production use."}</p>
+          </div>
+        </label>
+
         <p id="wMsg" class="text-xs hidden"></p>
       </section>
 
@@ -191,6 +201,7 @@ function fmtDateTime(s: string) {
             enabled: document.getElementById("wEnabled").checked,
             max_distance_m: Number(document.getElementById("wDistance").value) || 250,
             require_country: document.getElementById("wRequireCountry").checked,
+            allow_remote: document.getElementById("wAllowRemote").checked,
           };
           const r = await fetch("/api/admin/wheel-settings", {
             method: "POST", headers: { "Content-Type": "application/json" },

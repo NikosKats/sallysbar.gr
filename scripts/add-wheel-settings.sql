@@ -4,8 +4,12 @@ create table if not exists public.wheel_settings (
   enabled           boolean not null default true,
   max_distance_m    integer not null default 250,
   require_country   boolean not null default false,   -- when true, reject non-GR cf-ipcountry
+  allow_remote      boolean not null default false,   -- DEV ONLY: bypass geo-guard so you can test from home
   updated_at        timestamptz not null default now(),
   constraint wheel_settings_singleton check (id = 1)
 );
 
 insert into public.wheel_settings (id) values (1) on conflict (id) do nothing;
+
+-- Idempotent upgrade for existing installs.
+alter table public.wheel_settings add column if not exists allow_remote boolean not null default false;

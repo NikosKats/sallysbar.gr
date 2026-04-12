@@ -115,24 +115,18 @@ for (const c of categories) {
           const tableNum = tableNumMatch ? Number(tableNumMatch[1]) : null;
           const token = new URLSearchParams(window.location.search).get("t") || "";
 
-          // Ask for geolocation
-          let coords;
+          // Ask for geolocation (server will tell us if it's actually required)
+          let coords = { lat: null, lon: null };
           try {
-            coords = await new Promise((res, rej) => {
-              if (!navigator.geolocation) { rej(new Error("no_geo")); return; }
+            coords = await new Promise((res) => {
+              if (!navigator.geolocation) { res({ lat: null, lon: null }); return; }
               navigator.geolocation.getCurrentPosition(
                 p => res({ lat: p.coords.latitude, lon: p.coords.longitude }),
-                e => rej(e),
+                () => res({ lat: null, lon: null }),
                 { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
               );
             });
-          } catch {
-            btn.disabled = false;
-            btn.textContent = "🎡 " + (isEl ? "Γύρνα τη ρόδα" : "Spin the wheel");
-            msg.textContent = isEl ? "Ενεργοποίησε την τοποθεσία. Η ρόδα δουλεύει μόνο στο bar." : "Enable location. The wheel only works at the bar.";
-            msg.style.color = "#f87171";
-            return;
-          }
+          } catch {}
 
           btn.textContent = "⏳ " + (isEl ? "Γυρίζει…" : "Spinning…");
           msg.textContent = "";
