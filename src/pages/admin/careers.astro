@@ -79,9 +79,14 @@ const { data: jobs } = await supabaseAdmin
     <!-- Editor modal -->
     <div id="jobModal" class="fixed inset-0 z-50 hidden bg-black/70 backdrop-blur-sm p-0 sm:p-4">
       <div class="relative mx-auto w-full max-w-2xl h-full sm:h-auto sm:max-h-[calc(100vh-2rem)] sm:my-4 rounded-none sm:rounded-2xl border border-white/10 bg-[#141420] flex flex-col">
-        <div class="flex items-start justify-between p-5 border-b border-white/10 shrink-0">
+        <div class="flex items-start justify-between p-5 border-b border-white/10 shrink-0 gap-3">
           <h3 id="modalTitle" class="text-lg font-bold text-amber-200">{isEl ? "Αγγελία" : "Job"}</h3>
-          <button id="closeJobBtn" class="text-white/40 hover:text-white text-3xl leading-none px-2 -mt-1">×</button>
+          <div class="flex items-center gap-2">
+            <button id="aiGenBtn" type="button" class="text-xs px-3 py-1.5 rounded-lg bg-gradient-to-br from-fuchsia-500/30 to-amber-400/30 border border-white/15 text-white hover:from-fuchsia-500/50 hover:to-amber-400/50 transition">
+              ✨ {isEl ? "AI δημιουργία" : "AI Generate"}
+            </button>
+            <button id="closeJobBtn" class="text-white/40 hover:text-white text-3xl leading-none px-2 -mt-1">×</button>
+          </div>
         </div>
         <form id="jobForm" class="flex-1 overflow-y-auto p-5 space-y-3">
           <input type="hidden" name="id" />
@@ -162,6 +167,46 @@ const { data: jobs } = await supabaseAdmin
       document.getElementById("closeJobBtn").addEventListener("click", closeModal);
       document.getElementById("cancelJobBtn").addEventListener("click", closeModal);
       document.getElementById("saveJobBtn").addEventListener("click", () => form.requestSubmit());
+
+      const aiBtn = document.getElementById("aiGenBtn");
+      aiBtn.addEventListener("click", async () => {
+        const seed = form.elements.title_en.value.trim() || form.elements.title_el.value.trim();
+        const role = prompt(
+          isEl
+            ? "Περιγράψτε τη θέση (π.χ. 'Barman', 'Σερβιτόρος για σεζόν', 'Βοηθός κουζίνας')"
+            : "Describe the role (e.g. 'Head bartender', 'Seasonal waiter', 'Kitchen helper')",
+          seed
+        );
+        if (!role || role.trim().length < 2) return;
+        const prevLabel = aiBtn.textContent;
+        aiBtn.disabled = true;
+        aiBtn.textContent = isEl ? "⏳ Δημιουργία…" : "⏳ Generating…";
+        try {
+          const res = await fetch("/api/admin/careers-ai-generate", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ role }),
+          });
+          const j = await res.json();
+          if (!res.ok || !j.job) {
+            alert((isEl ? "Σφάλμα AI: " : "AI error: ") + (j.error ?? "unknown"));
+            return;
+          }
+          const g = j.job;
+          for (const k of ["title_en","title_el","department","description_en","description_el","requirements_en","requirements_el"]) {
+            if (g[k] && form.elements[k] && !form.elements[k].value) form.elements[k].value = g[k];
+            else if (g[k] && form.elements[k]) form.elements[k].value = g[k];
+          }
+          if (g.employment_type && form.elements.employment_type) {
+            const valid = ["full_time","part_time","seasonal","contract"];
+            if (valid.includes(g.employment_type)) form.elements.employment_type.value = g.employment_type;
+          }
+        } catch (e) {
+          alert(isEl ? "Σφάλμα δικτύου" : "Network error");
+        } finally {
+          aiBtn.disabled = false;
+          aiBtn.textContent = prevLabel;
+        }
+      });
       modal.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
 
       document.querySelectorAll(".edit-btn").forEach(btn => {
