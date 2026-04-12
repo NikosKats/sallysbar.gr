@@ -1295,11 +1295,11 @@ function statusLabel(s: string) {
     shareBtn?.addEventListener("click", async () => {
       const url = shareBtn.dataset.shareUrl ?? "";
       if (!url) return;
-      const pitch = isEl
-        ? `Δείξε αυτόν τον κωδικό στο Sally's Bar — οι πόντοι πάνε στον λογαριασμό μου.`
-        : `Show this code at Sally's Bar — points go to my account.`;
+      // Important: pass ONLY the URL to navigator.share. Messenger apps like
+      // WhatsApp/Telegram concatenate text + url otherwise, which pastes the
+      // pitch *into* the link. The /card page itself already explains what it is.
       if (navigator.share) {
-        try { await navigator.share({ title: "Sally's Bar loyalty card", text: pitch, url }); return; } catch {}
+        try { await navigator.share({ title: "Sally's Bar loyalty card", url }); return; } catch {}
       }
       try {
         await navigator.clipboard.writeText(url);

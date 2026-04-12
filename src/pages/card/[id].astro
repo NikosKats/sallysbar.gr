@@ -5,10 +5,12 @@ import { supabaseAdmin } from "../../lib/supabase";
 const lang = Astro.locals.lang ?? "en";
 const isEl = lang === "el";
 
-const id = Astro.params.id;
-if (!id || !/^[0-9a-f-]{36}$/i.test(id)) {
-  return new Response("Not found", { status: 404 });
-}
+// Forgiving ID parsing: extract the first UUID-looking token from the path
+// even if a share target mashed extra text onto the URL.
+const raw = Astro.params.id ?? "";
+const match = raw.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+const id = match ? match[0] : null;
+if (!id) return new Response("Not found", { status: 404 });
 
 // We only render the card if the user exists AND has activated (card_issued_at set).
 // Raw user-id lookup is fine — knowing the id alone confers no extra power (the QR
