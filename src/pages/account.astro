@@ -734,7 +734,20 @@ function statusLabel(s: string) {
                   </select>
                   <input name="phone_num" id="phoneNum" required type="tel" inputmode="tel" placeholder="69..."
                     class="flex-1 min-w-0 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400/50" />
-                </div></label>
+                </div>
+                <div id="otpWrap" class="mt-2 flex items-stretch gap-2">
+                  <button id="sendOtpBtn" type="button" class="rounded-xl border border-amber-400/40 bg-amber-400/10 text-amber-200 px-3 py-2 text-xs font-semibold hover:bg-amber-400/20 transition whitespace-nowrap">
+                    {isEl ? "Αποστολή κωδικού SMS" : "Send SMS code"}
+                  </button>
+                  <input id="otpInput" type="text" inputmode="numeric" maxlength="6" placeholder="______" autocomplete="one-time-code"
+                    class="hidden flex-1 min-w-0 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white font-mono tracking-widest text-center focus:outline-none focus:border-amber-400/50" />
+                  <button id="verifyOtpBtn" type="button" class="hidden rounded-xl bg-amber-400 text-black px-3 py-2 text-xs font-bold hover:bg-amber-300 transition">
+                    {isEl ? "Επαλήθευση" : "Verify"}
+                  </button>
+                  <span id="otpOk" class="hidden self-center text-xs font-semibold text-emerald-400">✓ {isEl ? "Επαληθεύτηκε" : "Verified"}</span>
+                </div>
+                <p id="otpMsg" class="mt-1 text-[11px] text-white/40"></p>
+              </label>
               <label class="block"><span class="text-xs text-white/50">{isEl ? "Ημ. Γέννησης" : "Date of birth"}</span>
                 <input name="birthday" required type="date" value={profile?.birthday ?? ""}
                   class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400/50" /></label>
@@ -934,7 +947,112 @@ function statusLabel(s: string) {
   </script>
 
   <script>
+    import { createBrowserClient } from "@supabase/ssr";
     import QRCode from "qrcode";
+
+    // ── Phone OTP verification for Loyalty Card activation ─────────────
+    (function () {
+      const isEl = document.documentElement.lang === "el";
+      const sendBtn   = document.getElementById("sendOtpBtn");
+      const verifyBtn = document.getElementById("verifyOtpBtn");
+      const otpInput  = document.getElementById("otpInput") as HTMLInputElement | null;
+      const okPill    = document.getElementById("otpOk");
+      const msg       = document.getElementById("otpMsg");
+      const ccEl      = document.getElementById("phoneCc") as HTMLSelectElement | null;
+      const numEl     = document.getElementById("phoneNum") as HTMLInputElement | null;
+      const submitBtn = document.getElementById("cardFormSubmit") as HTMLButtonElement | null;
+      const form      = document.getElementById("cardForm") as HTMLFormElement | null;
+      if (!sendBtn || !verifyBtn || !otpInput || !ccEl || !numEl || !submitBtn || !form) return;
+
+      const supabase = createBrowserClient(
+        import.meta.env.PUBLIC_SUPABASE_URL,
+        import.meta.env.PUBLIC_SUPABASE_ANON_KEY,
+      );
+
+      let verifiedPhone = "";
+
+      function setMsg(text: string, ok = false) {
+        if (!msg) return;
+        msg.textContent = text;
+        msg.className = `mt-1 text-[11px] ${ok ? "text-emerald-400" : "text-white/50"}`;
+      }
+
+      function currentPhone() {
+        const cc = ccEl!.value;
+        const num = numEl!.value.replace(/^0+/, "").replace(/\D/g, "");
+        return `${cc}${num}`;
+      }
+
+      function lockSubmit() {
+        submitBtn!.disabled = true;
+        submitBtn!.title = isEl ? "Ολοκλήρωσε την επαλήθευση τηλεφώνου." : "Complete phone verification first.";
+      }
+      function unlockSubmit() {
+        submitBtn!.disabled = false;
+        submitBtn!.title = "";
+      }
+      lockSubmit();
+
+      // If user edits phone after verifying → invalidate the state
+      [ccEl, numEl].forEach(el => el.addEventListener("input", () => {
+        if (verifiedPhone && currentPhone() !== verifiedPhone) {
+          verifiedPhone = "";
+          okPill!.classList.add("hidden");
+          otpInput!.classList.add("hidden");
+          verifyBtn!.classList.add("hidden");
+          sendBtn!.classList.remove("hidden");
+          sendBtn!.textContent = isEl ? "Αποστολή κωδικού SMS" : "Send SMS code";
+          lockSubmit();
+          setMsg(isEl ? "Το τηλέφωνο άλλαξε — επιβεβαίωσε ξανά." : "Phone changed — verify again.");
+        }
+      }));
+
+      sendBtn.addEventListener("click", async () => {
+        const phone = currentPhone();
+        if (phone.replace(/\D/g, "").length < 8) { setMsg(isEl ? "Εισήγαγε έγκυρο τηλέφωνο." : "Enter a valid phone number."); return; }
+        sendBtn.disabled = true;
+        const orig = sendBtn.textContent;
+        sendBtn.textContent = "⏳";
+        setMsg(isEl ? "Αποστολή…" : "Sending…");
+
+        const { error } = await supabase.auth.updateUser({ phone });
+        sendBtn.disabled = false;
+        sendBtn.textContent = orig!;
+        if (error) {
+          setMsg((isEl ? "Σφάλμα: " : "Error: ") + error.message);
+          return;
+        }
+        // Hide Send, show OTP input + Verify
+        sendBtn.classList.add("hidden");
+        otpInput.classList.remove("hidden");
+        verifyBtn.classList.remove("hidden");
+        setMsg(isEl ? `Στείλαμε 6ψήφιο κωδικό στο ${phone}.` : `We sent a 6-digit code to ${phone}.`, true);
+        setTimeout(() => otpInput.focus(), 50);
+      });
+
+      verifyBtn.addEventListener("click", async () => {
+        const token = otpInput.value.replace(/\D/g, "").slice(0, 6);
+        if (token.length !== 6) { setMsg(isEl ? "Εισήγαγε 6ψήφιο κωδικό." : "Enter the 6-digit code."); return; }
+        const phone = currentPhone();
+        verifyBtn.disabled = true;
+        const orig = verifyBtn.textContent;
+        verifyBtn.textContent = "⏳";
+        // `phone_change` is the OTP type used when phone is attached to an existing session via updateUser
+        const { error } = await supabase.auth.verifyOtp({ phone, token, type: "phone_change" });
+        verifyBtn.disabled = false;
+        verifyBtn.textContent = orig!;
+        if (error) {
+          setMsg((isEl ? "Λάθος κωδικός: " : "Wrong code: ") + error.message);
+          return;
+        }
+        verifiedPhone = phone;
+        otpInput.classList.add("hidden");
+        verifyBtn.classList.add("hidden");
+        okPill!.classList.remove("hidden");
+        setMsg(isEl ? "Επαληθεύτηκε. Μπορείς να ολοκληρώσεις την ενεργοποίηση." : "Verified. You can activate your card.", true);
+        unlockSubmit();
+      });
+    })();
     const loyaltyCanvas = document.getElementById("loyaltyQr") as HTMLCanvasElement | null;
     const loyaltyCode = (loyaltyCanvas?.dataset.code) || "";
     if (loyaltyCanvas && loyaltyCode) {

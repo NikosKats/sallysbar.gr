@@ -36,6 +36,24 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
   if (existing?.card_issued_at) return json({ error: "card_already_issued" }, 409);
 
+  // Require phone to be verified (Supabase Phone Auth via Vonage).
+  // After the user completes OTP, `auth.users.phone` is set and `phone_confirmed_at` is populated.
+  try {
+    const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(locals.user.id);
+    const verifiedPhone = authUser?.user?.phone ?? "";
+    const confirmedAt   = authUser?.user?.phone_confirmed_at ?? null;
+    const submitted     = phone.replace(/\D/g, "");
+    const verified      = verifiedPhone.replace(/\D/g, "");
+    if (!verifiedPhone || !confirmedAt) {
+      return json({ error: "phone_not_verified", message: "Verify your phone via the OTP step first." }, 403);
+    }
+    if (submitted !== verified) {
+      return json({ error: "phone_mismatch", message: "Submitted phone doesn't match the verified one." }, 403);
+    }
+  } catch {
+    return json({ error: "phone_check_failed" }, 500);
+  }
+
   const now = new Date().toISOString();
   const { error } = await supabaseAdmin.from("profiles").update({
     full_name, phone, birthday, country, gender, address, city, postal_code,
