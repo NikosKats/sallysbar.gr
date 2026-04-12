@@ -2,132 +2,248 @@
 import { dict, withLangPrefix } from "../i18n";
 
 interface Props {
-  /** Key identifying the active page: overview, analytics, calendar, reservations, events, loyalty, users, orders, tips, editMenu, qrcodes, help */
   active: string;
 }
 
 const { active } = Astro.props;
-// redeploy trigger 2026-04-12T18:07
 const lang = Astro.locals.lang ?? "en";
 const t = dict[lang];
 const isEl = lang === "el";
 
-const qrLabel   = isEl ? "QR Codes" : "QR Codes";
-const helpLabel = isEl ? "Οδηγός" : "Help & Guide";
+type Item = {
+  key: string;
+  label: string;
+  href: string;
+  icon: string;
+  desc: string;
+};
+type Group = { title: string; items: Item[] };
 
-const items = [
-  { key: "overview",     label: t.admin.nav.overview,     href: withLangPrefix(lang, "/admin") },
-  { key: "analytics",    label: t.admin.nav.analytics,    href: withLangPrefix(lang, "/admin/analytics") },
-  { key: "calendar",     label: t.admin.nav.calendar,     href: withLangPrefix(lang, "/admin/calendar") },
-  { key: "reservations", label: t.admin.nav.reservations, href: withLangPrefix(lang, "/admin/reservations") },
-  { key: "events",       label: t.admin.nav.events,       href: withLangPrefix(lang, "/admin/events") },
-  { key: "loyalty",      label: t.admin.nav.loyalty,      href: withLangPrefix(lang, "/admin/loyalty") },
-  { key: "users",        label: t.admin.nav.users,        href: withLangPrefix(lang, "/admin/users") },
-  { key: "orders",       label: t.admin.nav.orders,       href: withLangPrefix(lang, "/admin/orders") },
-  { key: "tips",         label: t.admin.nav.tips,         href: withLangPrefix(lang, "/admin/tips") },
-  { key: "editMenu",     label: t.admin.nav.editMenu,     href: withLangPrefix(lang, "/admin/menu") },
-  { key: "careers",      label: isEl ? "Καριέρα" : "Careers", href: withLangPrefix(lang, "/admin/careers") },
-  { key: "qrcodes",      label: qrLabel,                  href: withLangPrefix(lang, "/admin/qrcodes") },
-  { key: "help",         label: helpLabel,                href: withLangPrefix(lang, "/admin/help") },
+const I = {
+  overview:     `<path d="M3 12L12 4l9 8M5 10v10h14V10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>`,
+  analytics:    `<path d="M4 20V10M10 20V4M16 20v-8M22 20H2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>`,
+  calendar:     `<rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M3 9h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>`,
+  reservations: `<path d="M4 7h16M4 12h16M4 17h10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>`,
+  events:       `<path d="M12 2l2.5 5 5.5.8-4 3.9.9 5.5L12 14.8 7.1 17.2 8 11.7 4 7.8 9.5 7 12 2z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>`,
+  loyalty:      `<path d="M12 21s-7-4.5-7-11a5 5 0 0 1 9-3 5 5 0 0 1 9 3c0 6.5-7 11-7 11h-4z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>`,
+  orders:       `<path d="M3 6h18l-2 12H5L3 6zM3 6l-1-3H0" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/><circle cx="9" cy="21" r="1" fill="currentColor"/><circle cx="17" cy="21" r="1" fill="currentColor"/>`,
+  tips:         `<path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>`,
+  editMenu:     `<path d="M4 4h16v4H4zM4 12h16v4H4zM4 20h10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>`,
+  careers:      `<rect x="3" y="7" width="18" height="13" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="1.6"/>`,
+  users:        `<circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.6"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>`,
+  qrcodes:      `<rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.6"/><rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.6"/><path d="M14 14h3v3M20 14v7M14 20h3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>`,
+  help:         `<circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M9 9a3 3 0 1 1 4.5 2.6c-.9.6-1.5 1.2-1.5 2.4M12 17h.01" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>`,
+};
+
+const groups: Group[] = [
+  {
+    title: isEl ? "Πίνακας" : "Dashboard",
+    items: [
+      { key: "overview",  label: t.admin.nav.overview,  href: withLangPrefix(lang, "/admin"),          icon: I.overview,  desc: isEl ? "Γενική εικόνα" : "At-a-glance summary" },
+      { key: "analytics", label: t.admin.nav.analytics, href: withLangPrefix(lang, "/admin/analytics"), icon: I.analytics, desc: isEl ? "Στατιστικά & αναφορές" : "Stats & reports" },
+      { key: "calendar",  label: t.admin.nav.calendar,  href: withLangPrefix(lang, "/admin/calendar"),  icon: I.calendar,  desc: isEl ? "Ημερολόγιο" : "Bookings calendar" },
+    ],
+  },
+  {
+    title: isEl ? "Λειτουργία" : "Operations",
+    items: [
+      { key: "reservations", label: t.admin.nav.reservations, href: withLangPrefix(lang, "/admin/reservations"), icon: I.reservations, desc: isEl ? "Κρατήσεις" : "Table bookings" },
+      { key: "events",       label: t.admin.nav.events,       href: withLangPrefix(lang, "/admin/events"),       icon: I.events,       desc: isEl ? "Εκδηλώσεις & RSVP" : "Events & RSVPs" },
+      { key: "orders",       label: t.admin.nav.orders,       href: withLangPrefix(lang, "/admin/orders"),       icon: I.orders,       desc: isEl ? "Παραγγελίες" : "Active orders" },
+      { key: "tips",         label: t.admin.nav.tips,         href: withLangPrefix(lang, "/admin/tips"),         icon: I.tips,         desc: isEl ? "Φιλοδωρήματα" : "Tips & earnings" },
+    ],
+  },
+  {
+    title: isEl ? "Περιεχόμενο" : "Content",
+    items: [
+      { key: "editMenu", label: t.admin.nav.editMenu,         href: withLangPrefix(lang, "/admin/menu"),    icon: I.editMenu, desc: isEl ? "Κατάλογος" : "Menu editor" },
+      { key: "loyalty",  label: t.admin.nav.loyalty,          href: withLangPrefix(lang, "/admin/loyalty"), icon: I.loyalty,  desc: isEl ? "Πρόγραμμα επιβράβευσης" : "Rewards program" },
+      { key: "careers",  label: isEl ? "Καριέρα" : "Careers", href: withLangPrefix(lang, "/admin/careers"), icon: I.careers,  desc: isEl ? "Αγγελίες & αιτήσεις" : "Jobs & applications" },
+    ],
+  },
+  {
+    title: isEl ? "Σύστημα" : "System",
+    items: [
+      { key: "users",   label: t.admin.nav.users,              href: withLangPrefix(lang, "/admin/users"),   icon: I.users,   desc: isEl ? "Χρήστες & ρόλοι" : "Users & roles" },
+      { key: "qrcodes", label: isEl ? "QR Codes" : "QR Codes", href: withLangPrefix(lang, "/admin/qrcodes"), icon: I.qrcodes, desc: isEl ? "QR codes τραπεζιών" : "Table QR codes" },
+      { key: "help",    label: isEl ? "Οδηγός" : "Help & Guide", href: withLangPrefix(lang, "/admin/help"),  icon: I.help,    desc: isEl ? "Βοήθεια & οδηγίες" : "Docs & how-to" },
+    ],
+  },
 ];
 
-const activeItem = items.find(i => i.key === active) ?? items[0];
+const allItems = groups.flatMap(g => g.items);
+const activeItem = allItems.find(i => i.key === active) ?? allItems[0];
+const activeGroup = groups.find(g => g.items.some(i => i.key === active));
 ---
 
-<div class="sticky top-20 z-40 border-b border-amber-400/20 bg-[#0b0b10]/95 backdrop-blur">
-  <div class="mx-auto max-w-7xl px-3 sm:px-4">
+<div class="sticky top-20 z-40 border-b border-amber-400/20 bg-[#0b0b10]/95 backdrop-blur-md">
+  <div class="mx-auto max-w-7xl px-3 sm:px-5">
+    <div class="flex items-center gap-3 py-3">
+      <!-- Brand -->
+      <div class="flex items-center gap-2 shrink-0">
+        <div class="h-8 w-8 rounded-lg bg-gradient-to-br from-amber-300 to-amber-500 text-black grid place-items-center font-bold text-sm shadow-lg shadow-amber-500/20">S</div>
+        <div class="hidden md:block leading-tight">
+          <p class="text-[10px] uppercase tracking-[0.2em] text-amber-300/70">{isEl ? "Πίνακας Διαχείρισης" : "Admin Panel"}</p>
+          <p class="text-xs text-white/50">Sally's Bar</p>
+        </div>
+      </div>
 
-    <!-- Mobile: current page pill + dropdown selector -->
-    <div class="sm:hidden py-2 flex items-center gap-2">
-      <span class="shrink-0 rounded-lg bg-amber-400/15 border border-amber-400/20 text-amber-400 font-medium text-xs px-2.5 py-1.5 whitespace-nowrap">
-        {activeItem.label}
-      </span>
-      <div class="relative flex-1">
-        <select
-          id="adminNavSelect"
-          class="appearance-none w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 pr-8 text-sm text-white/85 focus:border-amber-300/50 focus:outline-none"
-          aria-label="Admin navigation"
+      <!-- Breadcrumb: active group → active page -->
+      <div class="hidden md:flex items-center gap-2 text-xs text-white/40 ml-2 pl-4 border-l border-white/10 min-w-0">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-50 shrink-0">
+          <path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        {activeGroup && <span class="truncate">{activeGroup.title}</span>}
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-50 shrink-0">
+          <path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="text-amber-300 font-medium truncate">{activeItem.label}</span>
+      </div>
+
+      <!-- Trigger pushed right -->
+      <div class="ml-auto relative">
+        <button
+          id="adminNavBtn"
+          type="button"
+          aria-haspopup="true"
+          aria-expanded="false"
+          class="flex items-center gap-2 rounded-xl border border-amber-400/30 bg-amber-400/10 hover:bg-amber-400/15 text-amber-200 px-3 sm:px-4 py-2 text-sm font-medium transition"
         >
-          <option value="" disabled selected>Go to…</option>
-          {items.map(i => (
-            <option value={i.href} selected={i.key === active}>{i.label}</option>
-          ))}
-        </select>
-        <svg class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 opacity-60" width="14" height="14" viewBox="0 0 12 12" fill="none">
-          <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
+          <span set:html={activeItem.icon} class="w-[18px] h-[18px] inline-flex items-center justify-center"></span>
+          <span class="truncate max-w-[140px] sm:max-w-none">{activeItem.label}</span>
+          <svg id="adminNavChevron" width="14" height="14" viewBox="0 0 12 12" fill="none" class="transition-transform opacity-70">
+            <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+
+        <!-- Dropdown panel -->
+        <div
+          id="adminNavMenu"
+          role="menu"
+          aria-labelledby="adminNavBtn"
+          class="hidden absolute right-0 top-full mt-2 w-[min(94vw,340px)] rounded-2xl border border-white/10 bg-[#141420]/98 backdrop-blur-xl shadow-2xl shadow-black/60 z-50 overflow-hidden"
+        >
+          <div class="p-2 border-b border-white/10">
+            <div class="relative">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none">
+                <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/>
+                <path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+              </svg>
+              <input
+                id="adminNavSearch"
+                type="search"
+                placeholder={isEl ? "Αναζήτηση…" : "Search…"}
+                autocomplete="off"
+                class="w-full rounded-lg border border-white/10 bg-white/5 pl-8 pr-3 py-1.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-amber-400/50"
+              />
+            </div>
+          </div>
+
+          <div id="adminNavGroups" class="max-h-[70vh] overflow-y-auto p-2 space-y-3">
+            {groups.map((g) => (
+              <div class="admin-nav-group" data-group-title={g.title.toLowerCase()}>
+                <p class="px-2 pt-1 pb-1 text-[10px] uppercase tracking-[0.18em] text-white/40 font-semibold">{g.title}</p>
+                <div class="space-y-0.5">
+                  {g.items.map((i) => {
+                    const isActive = i.key === active;
+                    return (
+                      <a
+                        href={i.href}
+                        role="menuitem"
+                        class={`admin-nav-item flex items-center gap-2.5 px-2 py-2 rounded-lg transition group ${isActive ? "bg-amber-400/15 text-amber-200" : "text-white/75 hover:bg-white/5 hover:text-amber-200"}`}
+                        data-search={`${i.label.toLowerCase()} ${i.desc.toLowerCase()} ${i.key}`}
+                      >
+                        <span class={`shrink-0 w-8 h-8 rounded-lg grid place-items-center ${isActive ? "bg-amber-400/20 text-amber-300" : "bg-white/5 text-white/50 group-hover:text-amber-300"}`}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" set:html={i.icon}></svg>
+                        </span>
+                        <span class="flex-1 min-w-0">
+                          <span class="block text-sm font-medium truncate">{i.label}</span>
+                          <span class="block text-[11px] text-white/40 truncate">{i.desc}</span>
+                        </span>
+                        {isActive && (
+                          <span class="text-amber-400 text-xs">●</span>
+                        )}
+                      </a>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+            <div id="adminNavEmpty" class="hidden text-center text-white/40 text-sm py-6">
+              {isEl ? "Δεν βρέθηκε κάτι." : "No matches."}
+            </div>
+          </div>
+
+          <div class="border-t border-white/10 p-2 flex items-center justify-between text-[11px] text-white/40">
+            <span>{isEl ? "↑↓ μετακίνηση · Enter άνοιγμα · Esc κλείσιμο" : "↑↓ navigate · Enter open · Esc close"}</span>
+            <a href={withLangPrefix(lang, "/")} class="hover:text-amber-300 transition">{isEl ? "← Δημόσιος ιστότοπος" : "← Public site"}</a>
+          </div>
+        </div>
       </div>
     </div>
-
-    <!-- Desktop: dropdown menu with all sections -->
-    <div class="hidden sm:flex items-center py-2 relative">
-      <button
-        id="adminNavBtn"
-        type="button"
-        aria-haspopup="true"
-        aria-expanded="false"
-        class="flex items-center gap-2 rounded-lg border border-amber-400/20 bg-amber-400/10 hover:bg-amber-400/15 text-amber-300 px-4 py-2 text-sm font-medium transition"
-      >
-        <span>{activeItem.label}</span>
-        <svg id="adminNavChevron" width="14" height="14" viewBox="0 0 12 12" fill="none" class="transition-transform">
-          <path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
-      <div
-        id="adminNavMenu"
-        role="menu"
-        aria-labelledby="adminNavBtn"
-        class="hidden absolute left-0 top-full mt-2 w-64 rounded-xl border border-white/10 bg-[#141420] shadow-2xl shadow-black/60 p-1.5 z-50 max-h-[70vh] overflow-y-auto"
-      >
-        {items.map((i, idx) => {
-          const isActive = i.key === active;
-          const base = "flex items-center gap-2 w-full px-3 py-2 rounded-lg text-sm transition";
-          const cls = isActive
-            ? `${base} bg-amber-400/15 text-amber-300 font-medium`
-            : `${base} text-white/75 hover:bg-white/5 hover:text-amber-300`;
-          return (
-            <>
-              {(idx === 3 || idx === 7 || idx === 10) && (
-                <div class="my-1 border-t border-white/10"></div>
-              )}
-              <a href={i.href} role="menuitem" class={cls}>
-                {isActive && <span class="text-amber-400">●</span>}
-                <span>{i.label}</span>
-              </a>
-            </>
-          );
-        })}
-      </div>
-    </div>
-
   </div>
 </div>
 
 <script is:inline>
-  document.getElementById("adminNavSelect")?.addEventListener("change", (e) => {
-    const v = e.target.value;
-    if (v) window.location.href = v;
-  });
-
   (function () {
     const btn = document.getElementById("adminNavBtn");
     const menu = document.getElementById("adminNavMenu");
     const chev = document.getElementById("adminNavChevron");
+    const search = document.getElementById("adminNavSearch");
+    const empty = document.getElementById("adminNavEmpty");
     if (!btn || !menu) return;
+
     function setOpen(open) {
       menu.classList.toggle("hidden", !open);
       btn.setAttribute("aria-expanded", open ? "true" : "false");
       if (chev) chev.style.transform = open ? "rotate(180deg)" : "";
+      if (open && search) {
+        search.value = "";
+        applyFilter("");
+        setTimeout(() => search.focus(), 30);
+      }
     }
+
+    function applyFilter(q) {
+      q = q.trim().toLowerCase();
+      let anyVisible = false;
+      document.querySelectorAll(".admin-nav-group").forEach((g) => {
+        let groupHas = false;
+        g.querySelectorAll(".admin-nav-item").forEach((it) => {
+          const hay = it.getAttribute("data-search") || "";
+          const match = !q || hay.includes(q);
+          it.classList.toggle("hidden", !match);
+          if (match) groupHas = true;
+        });
+        g.classList.toggle("hidden", !groupHas);
+        if (groupHas) anyVisible = true;
+      });
+      if (empty) empty.classList.toggle("hidden", anyVisible);
+    }
+
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
       setOpen(menu.classList.contains("hidden"));
     });
     document.addEventListener("click", (e) => {
-      if (!menu.contains(e.target) && e.target !== btn) setOpen(false);
+      if (!menu.contains(e.target) && e.target !== btn && !btn.contains(e.target)) setOpen(false);
     });
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") setOpen(false);
+      if ((e.key === "k" || e.key === "K") && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setOpen(true);
+      }
     });
+
+    if (search) {
+      search.addEventListener("input", (e) => applyFilter(e.target.value || ""));
+      search.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          const first = menu.querySelector(".admin-nav-item:not(.hidden)");
+          if (first && first.href) window.location.href = first.href;
+        }
+      });
+    }
   })();
 </script>
