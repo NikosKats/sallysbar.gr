@@ -169,6 +169,7 @@ function itemSummary(items: any[]) {
           <a href={withLangPrefix(lang, "/admin/orders")}       class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.orders}</a>
           <a href={withLangPrefix(lang, "/admin/tips")}         class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.tips}</a>
           <a href={withLangPrefix(lang, "/admin/menu")}         class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">{t.admin.nav.editMenu}</a>
+          <a href={withLangPrefix(lang, "/admin/qrcodes")}      class="px-3 py-1.5 rounded-lg text-white/50 hover:text-amber-400 hover:bg-amber-400/5 transition whitespace-nowrap">QR Codes</a>
         </nav>
       </div>
     </div>
@@ -320,6 +321,7 @@ function itemSummary(items: any[]) {
             <p class="text-sm font-semibold text-amber-400 mb-3">{t.admin.quickActions}</p>
             <div class="flex flex-col gap-2">
               <a href={withLangPrefix(lang, "/admin/menu")} class="text-sm text-white/70 hover:text-white transition">{t.admin.editMenuLink}</a>
+              <a href={withLangPrefix(lang, "/admin/qrcodes")} class="text-sm text-white/70 hover:text-white transition">Generate table QR codes →</a>
             </div>
           </div>
         </div>
