@@ -861,7 +861,14 @@ function statusLabel(s: string) {
               body: JSON.stringify({ id }),
             });
             const j = await res.json();
-            if (!res.ok || !j.reward) { card.dataset.done = ""; alert((isEl ? "Σφάλμα: " : "Error: ") + (j.error ?? "unknown")); return; }
+            if (!res.ok || !j.reward) {
+              card.dataset.done = "";
+              const msg = j.message
+                || (j.error === "activate_card_first"   ? (isEl ? "Ενεργοποίησε πρώτα την κάρτα πιστότητας." : "Activate your loyalty card first.") :
+                    j.error === "phone_already_claimed" ? (isEl ? "Αυτό το τηλέφωνο έχει ήδη χρησιμοποιηθεί." : "This phone number already claimed a signup bonus.") :
+                    (isEl ? "Σφάλμα: " : "Error: ") + (j.error ?? "unknown"));
+              alert(msg); return;
+            }
             const r = j.reward;
             const emojiMap = { points: "🏆", free_shot: "🥃", free_drink: "🍸", discount: "💸", merch: "🎁", custom: "✨" };
             emoji.textContent = emojiMap[r.type] ?? "🎁";

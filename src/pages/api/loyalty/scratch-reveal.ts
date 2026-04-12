@@ -1,11 +1,17 @@
 import type { APIRoute } from "astro";
 import { supabaseAdmin } from "../../../lib/supabase";
+import { hashIp } from "../../../lib/ua";
 
 function json(obj: unknown, status = 200) {
   return new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json" } });
 }
 
-export const POST: APIRoute = async ({ request, locals }) => {
+async function sha256Hex(s: string): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+export const POST: APIRoute = async ({ request, locals, clientAddress }) => {
   if (!locals.user) return json({ error: "auth_required" }, 401);
 
   let body: any;
@@ -16,7 +22,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
   const { data: card } = await supabaseAdmin
     .from("scratch_cards")
-    .select("id, user_id, reward_type, reward_value, reward_label, revealed_at, claimed_at, expires_at")
+    .select("id, user_id, reward_type, reward_value, reward_label, revealed_at, claimed_at, expires_at, trigger")
     .eq("id", id)
     .maybeSingle();
 
@@ -25,9 +31,76 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
   const now = new Date().toISOString();
 
-  // Reveal (if not already) + auto-claim points immediately
+  // ── Anti-abuse guard for signup cards ─────────────────────────────────
+  // A signup card can only be revealed once per phone number, forever.
+  // This stops the delete-and-recreate exploit: a new auth.users id is free,
+  // but the phone is shared and gets locked on first successful reveal.
+  if (!card.revealed_at && card.trigger === "signup") {
+    const { data: profile } = await supabaseAdmin
+      .from("profiles").select("phone").eq("id", locals.user.id).maybeSingle();
+    const phoneRaw = profile?.phone ? String(profile.phone).trim() : "";
+    const phoneDigits = phoneRaw.replace(/\D/g, "");
+
+    if (phoneDigits.length < 6) {
+      return json({
+        error: "activate_card_first",
+        message: "Activate your loyalty card first (we need your phone to issue the signup bonus).",
+      }, 403);
+    }
+    const phone_hash = await sha256Hex(phoneDigits);
+
+    // Has this phone already revealed a signup card (on any user)?
+    const { data: prior } = await supabaseAdmin
+      .from("scratch_cards")
+      .select("id, user_id")
+      .eq("trigger", "signup")
+      .eq("phone_hash", phone_hash)
+      .not("revealed_at", "is", null)
+      .neq("id", card.id)
+      .maybeSingle();
+
+    // Capture IP for audit (hashed, not stored raw)
+    let ip = "";
+    try { ip = clientAddress || request.headers.get("cf-connecting-ip") || ""; } catch {}
+    const ip_hash = ip ? await hashIp(ip) : null;
+
+    if (prior) {
+      await supabaseAdmin.from("signup_abuse_log").insert({
+        user_id: locals.user.id,
+        email: locals.user.email ?? null,
+        phone_hash,
+        ip_hash,
+        reason: "duplicate_phone_signup_reveal",
+        action: "blocked",
+      });
+      return json({
+        error: "phone_already_claimed",
+        message: "This phone number has already claimed a signup bonus.",
+      }, 409);
+    }
+
+    // Bind phone + IP to the card (before reveal, so the unique index wins the race)
+    const { error: bindErr } = await supabaseAdmin
+      .from("scratch_cards")
+      .update({ phone_hash, ip_hash })
+      .eq("id", card.id);
+    if (bindErr) {
+      // Likely a concurrent reveal beat us — treat as duplicate
+      await supabaseAdmin.from("signup_abuse_log").insert({
+        user_id: locals.user.id, email: locals.user.email ?? null,
+        phone_hash, ip_hash, reason: "phone_bind_race", action: "blocked",
+      });
+      return json({ error: "phone_already_claimed" }, 409);
+    }
+  }
+
   if (!card.revealed_at) {
-    await supabaseAdmin.from("scratch_cards").update({ revealed_at: now }).eq("id", id);
+    const { error: revErr } = await supabaseAdmin.from("scratch_cards").update({ revealed_at: now }).eq("id", id);
+    // The unique index on (phone_hash) where trigger='signup' and revealed_at is not null
+    // will throw 23505 here if two tabs race. Handle cleanly.
+    if (revErr && (revErr as any).code === "23505") {
+      return json({ error: "phone_already_claimed" }, 409);
+    }
 
     if (card.reward_type === "points" && Number(card.reward_value) > 0) {
       const { error: insErr } = await supabaseAdmin.from("loyalty_events").insert({
