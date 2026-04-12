@@ -29,7 +29,8 @@
       "Bash(grep -l \"qrcode\" /Users/nikolaoskatsilidis/Desktop/sallysbar.gr/src/pages/admin/*.astro)",
       "Bash(grep -l \"supabaseAdmin\" /Users/nikolaoskatsilidis/Desktop/sallysbar.gr/src/pages/r/*.ts)",
       "Bash(grep -E \"mapLink|mapUrl|maps\\\\.google|instagram|whatsapp|phoneE164\" /Users/nikolaoskatsilidis/Desktop/sallysbar.gr/src/data/site.*)",
-      "Bash(ls /Users/nikolaoskatsilidis/Desktop/sallysbar.gr/src/*.d.ts)"
+      "Bash(ls /Users/nikolaoskatsilidis/Desktop/sallysbar.gr/src/*.d.ts)",
+      "Bash(grep -n \"redirect\\\\|Location\\\\|account\" /Users/nikolaoskatsilidis/Desktop/sallysbar.gr/src/pages/auth/callback.*)"
     ],
     "additionalDirectories": [
       "/Users/nikolaoskatsilidis/Desktop/sallysbar.gr/public/photos"
