@@ -153,11 +153,8 @@ const origin = new URL(Astro.request.url).origin;
               <label class="block text-xs uppercase tracking-wider text-white/50 mb-2" for="perPageSelect">Per page</label>
               <select id="perPageSelect"
                 class="w-full rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-white outline-none focus:border-amber-300/50 transition">
-                <option value="1">1 (full A4)</option>
                 <option value="2" selected>2 (half A4)</option>
                 <option value="4">4 (quarter A4)</option>
-                <option value="6">6 per page</option>
-                <option value="8">8 per page</option>
               </select>
             </div>
             <div class="flex gap-2">
