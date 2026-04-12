@@ -81,19 +81,22 @@ const shortUrl = `https://sallysbar.gr/r/${c.slug}`;
         <div class="brand">Sally's Bar · Skala · Kefalonia</div>
         <h1 class="title">{c.name}</h1>
         {c.description && <p class="subtitle">{c.description}</p>}
-        <div class="qr-wrap"><canvas id="qr"></canvas></div>
+        <div class="qr-wrap"><canvas id="qr" data-url={shortUrl}></canvas></div>
         <p class="scan-cta">{isEl ? "Σκάναρε & ανοίξει" : "Scan to open"}</p>
         <p class="url-line">{shortUrl.replace(/^https?:\/\//, "")}</p>
         <div class="footer">sallysbar.gr</div>
       </div>
     </div>
 
-    <script define:vars={{ shortUrl }}>
-      import("qrcode").then(({ default: QRCode }) => {
-        QRCode.toCanvas(document.getElementById("qr"), shortUrl, {
+    <script>
+      import QRCode from "qrcode";
+      const canvas = document.getElementById("qr") as HTMLCanvasElement;
+      const url = canvas?.dataset.url ?? "";
+      if (canvas && url) {
+        QRCode.toCanvas(canvas, url, {
           width: 420, margin: 1, color: { dark: "#0a0a0f", light: "#ffffff" }, errorCorrectionLevel: "H",
-        });
-      });
+        }).catch((e: unknown) => console.error("QR render failed", e));
+      }
     </script>
   </body>
 </html>

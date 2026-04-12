@@ -1,5 +1,7 @@
 /// <reference types="astro/client" />
 
+declare module "qrcode";
+
 declare namespace App {
   interface Locals {
     user: import("@supabase/supabase-js").User | null;
