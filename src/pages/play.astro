@@ -50,8 +50,8 @@ const ctaMain = user
 
 const refPts = settings.referral_points;
 const referralCopy = isEl
-  ? "Στείλε το link σου. Μόλις γραφτεί ο φίλος σου, παίρνεις +" + refPts + " πόντους ΚΑΙ μια scratch card. Χωρίς όριο."
-  : "Share your link. The moment your friend signs up, you get +" + refPts + " points AND a scratch card. Unlimited.";
+  ? "Στείλε το link σου. Ο φίλος σου παίρνει scratch card καλωσορίσματος. Εσύ παίρνεις +" + refPts + " πόντους. Χωρίς όριο."
+  : "Share your link. Your friend gets a welcome scratch card. You get +" + refPts + " points. Unlimited.";
 ---
 
 <html lang={lang}>
@@ -154,8 +154,8 @@ const referralCopy = isEl
           <h3 class="mt-5 font-heading text-2xl font-bold">{isEl ? "Συστάσεις" : "Referrals"}</h3>
           <p class="mt-2 text-white/70 leading-relaxed">{referralCopy}</p>
           <div class="mt-5 flex flex-wrap gap-2 text-xs">
-            <span class="px-2.5 py-1 rounded-full bg-emerald-400/15 text-emerald-300 border border-emerald-400/25">+{settings.referral_points} pts</span>
-            <span class="px-2.5 py-1 rounded-full bg-emerald-400/15 text-emerald-300 border border-emerald-400/25">+ scratch 🎫</span>
+            <span class="px-2.5 py-1 rounded-full bg-emerald-400/15 text-emerald-300 border border-emerald-400/25">{isEl ? "Εσύ" : "You"}: +{settings.referral_points} pts</span>
+            <span class="px-2.5 py-1 rounded-full bg-amber-400/15 text-amber-300 border border-amber-400/25">{isEl ? "Φίλος" : "Friend"}: 🎫 scratch</span>
             <span class="px-2.5 py-1 rounded-full bg-emerald-400/15 text-emerald-300 border border-emerald-400/25">{isEl ? "Χωρίς όριο" : "Unlimited"}</span>
           </div>
         </div>

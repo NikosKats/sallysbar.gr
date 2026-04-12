@@ -131,13 +131,17 @@ const memberCount = (members ?? []).length;
             </div>
           </label>
 
-          <label class="rounded-xl border border-white/10 bg-white/[0.03] p-4 flex items-start gap-3 cursor-pointer">
-            <input type="checkbox" id="sReferral" checked={settings.auto_on_referral} class="mt-1 h-4 w-4" />
-            <div>
-              <div class="font-semibold text-white">4. {isEl ? "Σε σύσταση φίλου" : "On referral"}</div>
-              <p class="text-xs text-white/55 mt-1">{isEl ? "Κάρτα στον συστήνοντα όταν εγγράφεται ο φίλος." : "Card to the referrer when the friend signs up."}</p>
+          <div class="rounded-xl border border-white/10 bg-white/[0.03] p-4 opacity-60">
+            <div class="flex items-start gap-3">
+              <input type="checkbox" id="sReferral" checked={false} disabled class="mt-1 h-4 w-4" />
+              <div>
+                <div class="font-semibold text-white">4. {isEl ? "Σε σύσταση φίλου" : "On referral"} <span class="text-[10px] uppercase tracking-wider text-white/40">({isEl ? "απενεργοποιημένο" : "disabled"})</span></div>
+                <p class="text-xs text-white/55 mt-1">{isEl
+                  ? "Ο νέος χρήστης παίρνει την κάρτα μέσω του signup bonus. Ο συστήνων παίρνει μόνο πόντους (όχι scratch card)."
+                  : "The new user gets the card via the signup bonus. The referrer receives only points (no scratch card)."}</p>
+              </div>
             </div>
-          </label>
+          </div>
 
           <label class="rounded-xl border border-fuchsia-400/25 bg-fuchsia-400/5 p-4 flex items-start gap-3 cursor-pointer md:col-span-2">
             <input type="checkbox" id="sSignup" checked={settings.auto_on_signup} class="mt-1 h-4 w-4" />

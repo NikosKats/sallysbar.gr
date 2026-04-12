@@ -178,13 +178,8 @@ export async function awardReferralPoints(referrerId: string, newUserId: string)
   });
   if (error && !error.message?.includes("duplicate")) return 0;
 
-  try {
-    const { getScratchSettings, issueScratchCard, expiresAt } = await import("./scratch");
-    const s = await getScratchSettings();
-    if (s.auto_on_referral) {
-      await issueScratchCard(referrerId, "referral", { expires_at: expiresAt(s.default_expires_hours) });
-    }
-  } catch {}
+  // Note: the referred new user automatically gets a scratch card via the signup bonus flow.
+  // Referrer only gets points — no scratch card — by design.
 
   return settings.referral_points;
 }
