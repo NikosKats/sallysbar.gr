@@ -129,7 +129,7 @@ const origin = new URL(Astro.request.url).origin;
 
         <!-- Controls card -->
         <div class="mt-8 rounded-3xl border border-white/10 bg-white/[0.03] backdrop-blur p-6">
-          <div class="grid gap-4 md:grid-cols-[1fr_1fr_1fr_1fr_auto] items-end">
+          <div class="grid gap-4 md:grid-cols-[1fr_1fr_1fr_auto] items-end">
             <div>
               <label class="block text-xs uppercase tracking-wider text-white/50 mb-2" for="fromInput">From table #</label>
               <input id="fromInput" type="number" min="1" max="999" value="1"
@@ -147,14 +147,6 @@ const origin = new URL(Astro.request.url).origin;
                 <option value="">Auto (device)</option>
                 <option value="en">English</option>
                 <option value="el">Ελληνικά</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-xs uppercase tracking-wider text-white/50 mb-2" for="perPageSelect">Per page</label>
-              <select id="perPageSelect"
-                class="w-full rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-white outline-none focus:border-amber-300/50 transition">
-                <option value="2" selected>2 (half A4)</option>
-                <option value="4">4 (quarter A4)</option>
               </select>
             </div>
             <div class="flex gap-2">
@@ -189,15 +181,7 @@ const origin = new URL(Astro.request.url).origin;
       const langSelect   = document.getElementById("langSelect") as HTMLSelectElement;
       const generateBtn  = document.getElementById("generateBtn")!;
       const printBtn     = document.getElementById("printBtn")!;
-      const perPageSelect= document.getElementById("perPageSelect") as HTMLSelectElement;
-
-      function applyLayout() {
-        const n = perPageSelect.value || "2";
-        grid.classList.remove("layout-1","layout-2","layout-4","layout-6","layout-8");
-        grid.classList.add(`layout-${n}`);
-      }
-      perPageSelect.addEventListener("change", applyLayout);
-      applyLayout();
+      grid.classList.add("layout-4");
 
       function qrUrl(tableNum: number) {
         const langParam = langSelect.value ? `?lang=${langSelect.value}` : "";
