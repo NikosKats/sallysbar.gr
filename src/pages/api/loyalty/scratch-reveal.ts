@@ -30,13 +30,16 @@ export const POST: APIRoute = async ({ request, locals }) => {
     await supabaseAdmin.from("scratch_cards").update({ revealed_at: now }).eq("id", id);
 
     if (card.reward_type === "points" && Number(card.reward_value) > 0) {
-      await supabaseAdmin.from("loyalty_events").insert({
+      const { error: insErr } = await supabaseAdmin.from("loyalty_events").insert({
         user_id: locals.user.id,
         points: Number(card.reward_value),
-        reason: "scratch_card",
-        meta: { scratch_id: card.id, label: card.reward_label },
+        reason: `scratch:${card.id}`,
       });
-      await supabaseAdmin.from("scratch_cards").update({ claimed_at: now }).eq("id", id);
+      if (insErr && !insErr.message?.includes("duplicate")) {
+        console.error("[scratch-reveal] loyalty insert failed:", insErr.message);
+      } else {
+        await supabaseAdmin.from("scratch_cards").update({ claimed_at: now }).eq("id", id);
+      }
     }
   }
 

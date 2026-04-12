@@ -34,12 +34,14 @@ export const POST: APIRoute = async ({ request, locals }) => {
   }
 
   if (q.reward_points > 0) {
-    await supabaseAdmin.from("loyalty_events").insert({
+    const { error: insErr } = await supabaseAdmin.from("loyalty_events").insert({
       user_id: locals.user.id,
       points: q.reward_points,
-      reason: "quest",
-      meta: { quest_id: q.id, label: q.reward_label_en },
+      reason: `quest:${q.id}`,
     });
+    if (insErr && !insErr.message?.includes("duplicate")) {
+      console.error("[quest/claim] loyalty insert failed:", insErr.message);
+    }
   }
 
   return json({ ok: true, points: q.reward_points });
