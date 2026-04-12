@@ -327,11 +327,18 @@ const L = {
         <li>Άλλαξε ρόλο: <strong>customer</strong> / <strong>employee</strong> (πρόσβαση /staff) / <strong>admin</strong> (όλα).</li>
         <li>Προήγαγε νέο υπάλληλο ψάχνοντας το email του και αλλάζοντας το dropdown.</li>
       </ul>
-      <p><a href="${withLangPrefix(lang, "/admin/loyalty")}"><code>/admin/loyalty</code></a>:</p>
+      <p><a href="${withLangPrefix(lang, "/admin/loyalty")}"><code>/admin/loyalty</code></a> — πλήρες πρόγραμμα πιστότητας:</p>
       <ul>
-        <li>Δες πόντους πελατών και επίπεδα.</li>
-        <li>Πρόσθεσε/ρύθμισε πόντους χειροκίνητα (π.χ. promo credit).</li>
+        <li><strong>Κανόνες κέρδους:</strong> ρύθμισε πόντους ανά €, ελάχιστη παραγγελία, πολλαπλασιαστή γενεθλίων, πόντους σύστασης (referral), πόντους RSVP σε events, και μέρες με διπλούς πόντους (Δευ–Κυρ toggle).</li>
+        <li><strong>Επίπεδα Μελών:</strong> CRUD για tiers (key, label EN/EL, emoji, χρώμα, όριο πόντων, προνόμιο). Τα tiers εμφανίζονται αυτόματα στο <code>/loyalty</code> και στο <code>/account</code>.</li>
+        <li><strong>Κατάλογος Δώρων:</strong> CRUD για rewards (όνομα EN/EL, περιγραφή, κόστος σε πόντους, ενεργό ναι/όχι). Οι πελάτες τα εξαργυρώνουν από το <code>/account</code> — παίρνουν κωδικό 8 χαρακτήρων που δείχνουν στον σερβιτόρο.</li>
+        <li><strong>Εξαργύρωση κωδικού:</strong> το προσωπικό σκανάρει/εισάγει τον κωδικό από <code>/staff</code> και οι πόντοι αφαιρούνται αυτόματα.</li>
+        <li><strong>Μέλη & πόντοι:</strong> δες leaderboard πελατών με σύνολο πόντων, επίπεδο, τελευταία δραστηριότητα. Πρόσθεσε/αφαίρεσε πόντους χειροκίνητα (promo credit, αποζημίωση κ.λπ.).</li>
+        <li><strong>🖨️ Αφίσα Μάρκετινγκ:</strong> κουμπί "Αφίσα για εκτύπωση" → <code>/admin/loyalty-poster</code>. A4 αφίσα με QR code που παραπέμπει στο <code>/loyalty</code>. Εκτύπωσε και κόλλησε σε μπαρ/τραπέζια/είσοδο.</li>
       </ul>
+      <p><strong>Ροή πελάτη:</strong> Εγγραφή → το <code>/account</code> εμφανίζει CTA "Δημιουργία κάρτας" → φόρμα (τηλέφωνο με κωδικό χώρας, ημ. γέννησης, φύλο, διεύθυνση, πόλη, Τ.Κ., χώρα, συγκατάθεση marketing) → ενεργοποίηση → εμφανίζεται QR κάρτα πιστότητας + Apple/Google Wallet + επίπεδο + rewards.</p>
+      <p><strong>Δημόσια σελίδα:</strong> Το <a href="${withLangPrefix(lang, "/loyalty")}"><code>/loyalty</code></a> είναι η δημόσια καμπάνια — δείχνει tiers & rewards ζωντανά από τη βάση, με CTA εγγραφής. Referral links: <code>?ref=&lt;user_id&gt;</code>.</p>
+      <p><strong>Προστασία γενεθλίων:</strong> η ημ. γέννησης μπορεί να αλλάξει μόνο κάθε 30 ημέρες για αποφυγή abuse του bonus γενεθλίων.</p>
     ` : `
       <p><a href="${withLangPrefix(lang, "/admin/users")}"><code>/admin/users</code></a>:</p>
       <ul>
@@ -339,11 +346,18 @@ const L = {
         <li>Change role: <strong>customer</strong> / <strong>employee</strong> (can access /staff) / <strong>admin</strong> (everything).</li>
         <li>Promote a new hire by searching their email and changing the role dropdown.</li>
       </ul>
-      <p><a href="${withLangPrefix(lang, "/admin/loyalty")}"><code>/admin/loyalty</code></a>:</p>
+      <p><a href="${withLangPrefix(lang, "/admin/loyalty")}"><code>/admin/loyalty</code></a> — full loyalty program:</p>
       <ul>
-        <li>View customer points and tier levels.</li>
-        <li>Add/adjust points manually (e.g. promo credit).</li>
+        <li><strong>Earn rules:</strong> configure points-per-€, min order, birthday multiplier, referral points, event-RSVP points, and double-point days (Mon–Sun toggles).</li>
+        <li><strong>Membership Tiers:</strong> CRUD tiers (key, EN/EL label, emoji, color, threshold, perk). Tiers render live on <code>/loyalty</code> and <code>/account</code>.</li>
+        <li><strong>Reward Catalog:</strong> CRUD rewards (EN/EL name, description, cost in points, active flag). Customers redeem from <code>/account</code> — they get an 8-char code to show the waiter.</li>
+        <li><strong>Redeem a code:</strong> staff scans/enters the code from <code>/staff</code> and points are deducted automatically.</li>
+        <li><strong>Members & points:</strong> leaderboard with totals, tier, last activity. Manually add/subtract points (promo credit, compensation, etc.).</li>
+        <li><strong>🖨️ Marketing Poster:</strong> "Print Marketing Poster" button → <code>/admin/loyalty-poster</code>. A4 branded poster with a QR code linking to <code>/loyalty</code>. Print & stick on bar/tables/entrance.</li>
       </ul>
+      <p><strong>Customer flow:</strong> Sign up → <code>/account</code> shows "Create my card" CTA → form (phone with country dial-code, DOB, gender, address, city, postal code, country, marketing consent) → activate → loyalty QR card + Apple/Google Wallet + tier + rewards appear.</p>
+      <p><strong>Public page:</strong> <a href="${withLangPrefix(lang, "/loyalty")}"><code>/loyalty</code></a> is the marketing landing — shows tiers & rewards live from the DB with a sign-up CTA. Referral links: <code>?ref=&lt;user_id&gt;</code>.</p>
+      <p><strong>Birthday protection:</strong> DOB can only be changed once every 30 days to prevent abuse of the birthday-month bonus.</p>
     `,
   },
   s12: {
