@@ -420,8 +420,172 @@ const L = {
       <p>Button taps in any channel update the database instantly and fire a PWA push to everyone. Telegram + PWA run in parallel — use whichever is in front of you.</p>
     `,
   },
+  s15: {
+    head: isEl ? "15. Marketing & Καμπάνιες QR" : "15. Marketing & QR Campaigns",
+    body: isEl ? `
+      <p>Στο <a href="${withLangPrefix(lang, "/admin/marketing")}"><code>/admin/marketing</code></a> δημιουργείς trackable QR codes για έντυπη διαφήμιση (flyers, σουβέρ, καρτελάκια, cruise-terminal ads).</p>
+      <p><strong>Πώς λειτουργεί:</strong></p>
+      <ol>
+        <li>Πάτα ένα από τα 11 <strong>presets</strong> (Get Directions, Book a Table, Join Loyalty, Tonight's Events, Menu, Google Review, WhatsApp, Instagram, Cruise/Port, UK Visitors, Download App) — ή «+ Νέα καμπάνια» για ελεύθερο URL.</li>
+        <li>Η φόρμα πρε-γεμίζει με όνομα, slug, target URL και UTM tags (source/medium/campaign/content). Αν δεν είσαι σίγουρος για τα UTM, πάτα <strong>✨ AI Generate</strong> — η AI διαλέγει τον καλύτερο στόχο και tags από ένα brief μιας γραμμής.</li>
+        <li>Αποθηκεύεις → παράγεται σύντομο URL <code>sallysbar.gr/r/&lt;slug&gt;</code>. Αυτό βάζεις στο QR.</li>
+      </ol>
+      <p><strong>Τι κάνεις με το QR:</strong></p>
+      <ul>
+        <li><strong>🔗 Copy</strong> — αντιγραφή σύντομου URL στο clipboard.</li>
+        <li><strong>⬇ PNG</strong> — κατέβασμα QR 800×800 για ψηφιακή χρήση.</li>
+        <li><strong>🖨 Poster</strong> — ανοίγει A4 εκτυπώσιμη αφίσα με μεγάλο QR, τίτλο και περιγραφή. Πάτα Print A4 ή αποθήκευση ως PDF.</li>
+      </ul>
+      <p>Κάθε σκανάρισμα περνά από το <code>/r/&lt;slug&gt;</code>, αυξάνει τον scan counter, και κάνει redirect στο target URL με τα UTM tags προσαρτημένα — οπότε τα analytics (Google/Cloudflare) φαίνουν ακριβώς από ποια καμπάνια ήρθε ο χρήστης.</p>
+      <p><strong>Setup μία φορά:</strong> τρέξε το <code>scripts/add-marketing-campaigns.sql</code> στο Supabase.</p>
+    ` : `
+      <p><a href="${withLangPrefix(lang, "/admin/marketing")}"><code>/admin/marketing</code></a> is where you create trackable QR codes for print ads (flyers, coasters, rack-cards, cruise-terminal placements).</p>
+      <p><strong>How it works:</strong></p>
+      <ol>
+        <li>Click one of the 11 <strong>presets</strong> (Get Directions, Book a Table, Join Loyalty, Tonight's Events, Menu, Google Review, WhatsApp, Instagram, Cruise/Port, UK Visitors, Download App) — or <em>+ New campaign</em> for a free URL.</li>
+        <li>The form pre-fills name, slug, target URL, and UTM tags (source/medium/campaign/content). Not sure what to use? Hit <strong>✨ AI Generate</strong> — the AI picks the best landing page + tags from a one-line brief.</li>
+        <li>Save → a short URL <code>sallysbar.gr/r/&lt;slug&gt;</code> is generated. That's what goes on the QR.</li>
+      </ol>
+      <p><strong>Per-campaign actions:</strong></p>
+      <ul>
+        <li><strong>🔗 Copy</strong> — copy the short URL to clipboard.</li>
+        <li><strong>⬇ PNG</strong> — download a 800×800 QR for digital use.</li>
+        <li><strong>🖨 Poster</strong> — opens an A4 printable poster with a big QR, headline, and description. Click Print A4 or save as PDF.</li>
+      </ul>
+      <p>Every scan goes through <code>/r/&lt;slug&gt;</code>, increments the scan counter, and redirects to the target URL with UTM tags appended — so downstream analytics (Google/Cloudflare) see exactly which campaign sent the visitor.</p>
+      <p><strong>One-time setup:</strong> run <code>scripts/add-marketing-campaigns.sql</code> in Supabase.</p>
+    `,
+  },
+  s16: {
+    head: isEl ? "16. Marketing Analytics" : "16. Marketing Analytics",
+    body: isEl ? `
+      <p>Στο <a href="${withLangPrefix(lang, "/admin/marketing-analytics")}"><code>/admin/marketing-analytics</code></a> βλέπεις κάθε σκανάρισμα κάθε QR — από πού, τι συσκευή, πότε, και από ποια καμπάνια.</p>
+      <p><strong>Τι παρακολουθείται σε κάθε scan:</strong></p>
+      <ul>
+        <li>Χρονοσφραγίδα, χώρα, περιοχή, πόλη, ζώνη ώρας (από Cloudflare edge headers).</li>
+        <li>Συσκευή (mobile/desktop/tablet/bot), browser, λειτουργικό (από user-agent).</li>
+        <li>Παραπομπή (referrer), γλώσσα περιηγητή, hashed IP (χωρίς να αποθηκεύεται η αρχική IP).</li>
+      </ul>
+      <p><strong>Τι εμφανίζει η σελίδα:</strong></p>
+      <ul>
+        <li>Φίλτρα: χρονικό διάστημα (7/30/90/365 ημέρες) + συγκεκριμένη καμπάνια.</li>
+        <li>KPI κάρτες: συνολικά scans, μοναδικές χώρες, ενεργές καμπάνιες, μέσος όρος/ημέρα.</li>
+        <li>Daily bar chart.</li>
+        <li>Breakdowns (top 10): χώρες 🇬🇧🇬🇷, ανά καμπάνια, συσκευές, browsers, OS, πόλεις, γλώσσες, referrers.</li>
+        <li>Πίνακας 50 πιο πρόσφατων scans με όλες τις λεπτομέρειες.</li>
+      </ul>
+      <p><strong>Setup μία φορά:</strong> τρέξε το <code>scripts/add-campaign-scans.sql</code> στο Supabase.</p>
+    ` : `
+      <p><a href="${withLangPrefix(lang, "/admin/marketing-analytics")}"><code>/admin/marketing-analytics</code></a> shows every QR scan — who, what device, when, and from which campaign.</p>
+      <p><strong>What we capture per scan:</strong></p>
+      <ul>
+        <li>Timestamp, country, region, city, timezone (from Cloudflare edge headers).</li>
+        <li>Device (mobile/desktop/tablet/bot), browser, OS (parsed from user-agent).</li>
+        <li>Referrer, browser language, hashed IP (raw IP never stored).</li>
+      </ul>
+      <p><strong>What the dashboard shows:</strong></p>
+      <ul>
+        <li>Filters: date range (7/30/90/365 days) + specific campaign.</li>
+        <li>KPI cards: total scans, unique countries, active campaigns, avg/day.</li>
+        <li>Daily bar chart.</li>
+        <li>Breakdowns (top 10): countries 🇬🇧🇬🇷, by campaign, devices, browsers, OS, cities, languages, referrers.</li>
+        <li>Table of the 50 most recent scans with every detail.</li>
+      </ul>
+      <p><strong>One-time setup:</strong> run <code>scripts/add-campaign-scans.sql</code> in Supabase.</p>
+    `,
+  },
+  s17: {
+    head: isEl ? "17. Gamification: Scratch Cards & Αποστολές" : "17. Gamification: Scratch Cards & Quests",
+    body: isEl ? `
+      <p>Δύο addictive mechanics που αυξάνουν επιστροφές και τιπ χωρίς να προωθούν υπερκατανάλωση.</p>
+      <p><strong>🎫 Scratch Cards</strong> — ένα ψηφιακό «ξυστό» που ο χρήστης αποκαλύπτει στο <code>/loyalty</code>. Η ανταμοιβή τραβιέται τυχαία από weighted pool (πόντοι, free shot, 10% off, free cocktail, skip-the-line). Τυπικά ~94% μικρές ανταμοιβές, ~6% μεγάλες — οπότε κάθε άνοιγμα νιώθει win.</p>
+      <ul>
+        <li><strong>Πώς δίνεις κάρτες:</strong> το API <code>/api/admin/scratch-issue</code> υποστηρίζει δύο modes:
+          <ul>
+            <li><code>single</code> — μία κάρτα σε έναν user (user_id).</li>
+            <li><code>all-members</code> — μία κάρτα σε όλους τους loyalty members (μαζικό drop, π.χ. «happy-hour Τρίτη, ανοίξτε στις 22:00»).</li>
+          </ul>
+        </li>
+        <li>Οι κάρτες τύπου <strong>points</strong> αυτο-εξαργυρώνονται (οι πόντοι μπαίνουν άμεσα). Οι υπόλοιπες (shot/drink/discount/pass) εμφανίζουν μήνυμα «δείξε στον σερβιτόρο για εξαργύρωση».</li>
+        <li>Το reward pool βρίσκεται στο <code>src/pages/api/admin/scratch-issue.ts</code> (σταθμισμένο με weights). Ρύθμισε τα βάρη για να ελέγξεις το κόστος.</li>
+      </ul>
+      <p><strong>⚡ Αποψινή Αποστολή</strong> — μια ημερήσια «quest» που εμφανίζεται σαν hero banner στο <code>/loyalty</code> και μπορεί να stein push notification σε όλους τους opted-in χρήστες.</p>
+      <ul>
+        <li>Διαχείριση: <a href="${withLangPrefix(lang, "/admin/quests")}"><code>/admin/quests</code></a>. Φτιάξε τίτλο EN/EL, περιγραφή, reward points, reward label («+ free shot»), CTA URL (π.χ. <code>/book</code>), ημερομηνία ισχύος.</li>
+        <li><strong>🔔 Send push</strong> στέλνει push notification σε όλους τους εγγεγραμμένους συνδρομητές (customers + staff). Πρέπει να έχει ρυθμιστεί VAPID.</li>
+        <li>Κάθε χρήστης μπορεί να «Claim» μία φορά την αποστολή της ημέρας. Οι πόντοι προστίθενται αυτόματα.</li>
+        <li>Claims και στατιστικά ανά αποστολή φαίνονται στη λίστα.</li>
+      </ul>
+      <p><strong>Νομικό σημείωμα:</strong> scratch & quests είναι <em>δωρεάν</em> (no purchase required) — ΔΕΝ είναι τυχερό παιχνίδι υπό τον ν. 4002/2011. Αυτό αναφέρεται ρητά στους Όρους Χρήσης (§6).</p>
+      <p><strong>Setup μία φορά:</strong> τρέξε το <code>scripts/add-scratch-quests.sql</code> στο Supabase.</p>
+    ` : `
+      <p>Two addictive engagement loops that drive return visits + tipping without pushing over-consumption.</p>
+      <p><strong>🎫 Scratch Cards</strong> — a digital scratch-to-reveal that users open on <code>/loyalty</code>. The reward is drawn randomly from a weighted pool (points, free shot, 10% off, free cocktail, skip-the-line). Typical weights: ~94% small wins, ~6% big — so every reveal feels like a win.</p>
+      <ul>
+        <li><strong>How to issue cards:</strong> the <code>/api/admin/scratch-issue</code> endpoint supports two modes:
+          <ul>
+            <li><code>single</code> — one card to one user (user_id).</li>
+            <li><code>all-members</code> — one card to every loyalty member (mass drop — e.g. "Tuesday happy hour, reveal at 22:00").</li>
+          </ul>
+        </li>
+        <li><strong>Points</strong>-type cards auto-claim (points land immediately). All others (shot/drink/discount/pass) display "show a waiter to redeem".</li>
+        <li>Reward pool lives in <code>src/pages/api/admin/scratch-issue.ts</code> (weighted). Tweak the weights to control cost.</li>
+      </ul>
+      <p><strong>⚡ Tonight's Quest</strong> — a daily quest shown as a hero banner on <code>/loyalty</code> that can fire a push notification to every opted-in user.</p>
+      <ul>
+        <li>Manage at <a href="${withLangPrefix(lang, "/admin/quests")}"><code>/admin/quests</code></a>. Set title EN/EL, description, reward points, reward label ("+ free shot"), CTA URL (e.g. <code>/book</code>), active date.</li>
+        <li><strong>🔔 Send push</strong> blasts a push notification to every subscriber (customers + staff). Requires VAPID env vars.</li>
+        <li>Each user can <em>Claim</em> once per quest per day. Points credit automatically.</li>
+        <li>Claim counts and push-sent timestamp are visible per quest.</li>
+      </ul>
+      <p><strong>Legal note:</strong> scratch & quests are <em>free</em> (no purchase required) — these are NOT games of chance under Greek Law 4002/2011. This is stated explicitly in §6 of the Terms & Conditions.</p>
+      <p><strong>One-time setup:</strong> run <code>scripts/add-scratch-quests.sql</code> in Supabase.</p>
+    `,
+  },
+  s18: {
+    head: isEl ? "18. Customer PWA & σελίδα /app" : "18. Customer PWA & /app page",
+    body: isEl ? `
+      <p>Οι πελάτες μπορούν πλέον να «εγκαταστήσουν» το Sally's Bar στο κινητό σαν app — χωρίς κατέβασμα από store.</p>
+      <ul>
+        <li>Το <code>CustomerPwa</code> φορτώνεται αυτόματα μέσω του Header σε κάθε δημόσια σελίδα (manifest, theme, SW, install prompt).</li>
+        <li>Η σελίδα <a href="${withLangPrefix(lang, "/app")}"><code>/app</code></a> έχει ένα μεγάλο κουμπί «Install App» (Chrome/Android) + οδηγίες για iOS (Safari → Share → Add to Home Screen).</li>
+        <li>Στο <code>/admin/marketing</code> υπάρχει preset «📲 Download our App» που δημιουργεί QR απευθείας για το <code>/app</code> — ιδανικό για σουβέρ/καρτελάκια.</li>
+        <li>Οι εγκαταστημένοι χρήστες λαμβάνουν push notifications από τις Αποστολές (<strong>17</strong>) και μελλοντικά drops.</li>
+      </ul>
+      <p>Το manifest είναι στο <code>public/customer-manifest.webmanifest</code> και ο ίδιος service worker (<code>/sw.js</code>) χρησιμοποιείται με το admin PWA.</p>
+    ` : `
+      <p>Customers can now "install" Sally's Bar to their phone like a native app — no app store.</p>
+      <ul>
+        <li><code>CustomerPwa</code> auto-loads via the Header on every public page (manifest, theme, SW, install prompt).</li>
+        <li>The <a href="${withLangPrefix(lang, "/app")}"><code>/app</code></a> page has a big "Install App" button (Chrome/Android) + iOS instructions (Safari → Share → Add to Home Screen).</li>
+        <li><code>/admin/marketing</code> has a "📲 Download our App" preset that generates a QR pointing at <code>/app</code> — perfect for coasters / rack-cards.</li>
+        <li>Installed users receive push notifications from Tonight's Quests (§17) and any future drops.</li>
+      </ul>
+      <p>Manifest at <code>public/customer-manifest.webmanifest</code>; same service worker (<code>/sw.js</code>) used with the admin PWA.</p>
+    `,
+  },
+  s19: {
+    head: isEl ? "19. Πολιτική Απορρήτου & Όροι" : "19. Privacy Policy & Terms",
+    body: isEl ? `
+      <p>Δημόσιες νομικές σελίδες, linked στο footer κάθε σελίδας:</p>
+      <ul>
+        <li><a href="${withLangPrefix(lang, "/privacy")}"><code>/privacy</code></a> — GDPR-compliant, covers data categories, subprocessors (Supabase/Cloudflare/Resend/Anthropic/Telegram), διατήρηση, δικαιώματα.</li>
+        <li><a href="${withLangPrefix(lang, "/terms")}"><code>/terms</code></a> — 18+ age gate, responsible drinking, loyalty rules, scratch/quest ΔΕΝ τυχερά παιχνίδια υπό ν.4002/2011, €100 liability cap, ελληνικό δίκαιο, δικαιοδοσία Κεφαλονιάς.</li>
+      </ul>
+      <p><strong>⚠️ ΠΡΕΠΕΙ ΝΑ ΣΥΜΠΛΗΡΩΘΟΥΝ:</strong> τα placeholder πεδία <code>[Legal Name]</code>, <code>[VAT]</code>, <code>[GEMI No.]</code>, <code>[Address]</code> στα frontmatters των δύο σελίδων. Επίσης ρύθμισε <code>privacy@sallysbar.gr</code> και <code>info@sallysbar.gr</code>.</p>
+      <p>Συνιστάται 1-ωρη επιθεώρηση από δικηγόρο για τελικές προσαρμογές.</p>
+    ` : `
+      <p>Public legal pages, linked from every page footer:</p>
+      <ul>
+        <li><a href="${withLangPrefix(lang, "/privacy")}"><code>/privacy</code></a> — GDPR-compliant: data categories, legal-basis table, subprocessors (Supabase/Cloudflare/Resend/Anthropic/Telegram), retention, rights.</li>
+        <li><a href="${withLangPrefix(lang, "/terms")}"><code>/terms</code></a> — 18+ age gate, responsible drinking, loyalty rules, explicit "scratch & quests are NOT games of chance under Greek Law 4002/2011", €100 liability cap, Greek law, Kefalonia jurisdiction, EU ODR link.</li>
+      </ul>
+      <p><strong>⚠️ MUST FILL IN:</strong> the placeholder fields <code>[Legal Name]</code>, <code>[VAT]</code>, <code>[GEMI No.]</code>, <code>[Address]</code> in both pages' frontmatter. Also set up <code>privacy@sallysbar.gr</code> and <code>info@sallysbar.gr</code>.</p>
+      <p>A one-hour legal review is recommended for final tightening.</p>
+    `,
+  },
   s14: {
-    head: isEl ? "14. Επίλυση προβλημάτων" : "14. Troubleshooting",
+    head: isEl ? "20. Επίλυση προβλημάτων" : "20. Troubleshooting",
     body: isEl ? `
       <ul>
         <li><strong>Δεν λαμβάνω push σε iPhone</strong> — βεβαιώσου ότι άνοιξες από το εικονίδιο της αρχικής οθόνης, όχι από Safari. Απαιτείται iOS 16.4+.</li>
@@ -460,10 +624,15 @@ const sections = [
   { id: "admin-users",    icon: "👥", tint: "bg-sky-300/15",     ...L.s11 },
   { id: "admin-tips",     icon: "💸", tint: "bg-green-300/15",   ...L.s12 },
   { id: "telegram",       icon: "✈️", tint: "bg-sky-300/15",     ...L.s13 },
+  { id: "marketing",      icon: "📣", tint: "bg-amber-300/15",   ...L.s15 },
+  { id: "mkt-analytics",  icon: "📊", tint: "bg-amber-300/15",   ...L.s16 },
+  { id: "gamification",   icon: "🎫", tint: "bg-fuchsia-300/15", ...L.s17 },
+  { id: "customer-pwa",   icon: "📲", tint: "bg-sky-300/15",     ...L.s18 },
+  { id: "legal",          icon: "⚖️", tint: "bg-white/10",       ...L.s19 },
   { id: "troubleshoot",   icon: "🩹", tint: "bg-red-300/15",     ...L.s14 },
 ];
 
-const tocIds = ["install","push","customer","waiter","barman","deliver","admin-overview","admin-menu","admin-qr","admin-events","admin-users","admin-tips","telegram","troubleshoot"];
+const tocIds = ["install","push","customer","waiter","barman","deliver","admin-overview","admin-menu","admin-qr","admin-events","admin-users","admin-tips","telegram","marketing","mkt-analytics","gamification","customer-pwa","legal","troubleshoot"];
 ---
 
 <html lang={lang}>
