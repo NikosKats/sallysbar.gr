@@ -1,17 +1,52 @@
 ---
-import { createSupabaseServerClient } from "../../lib/supabase";
+import { createSupabaseServerClient, supabaseAdmin } from "../../lib/supabase";
+import { issueScratchCard, getScratchSettings, expiresAt } from "../../lib/scratch";
 
 const url = new URL(Astro.request.url);
 const code = url.searchParams.get("code");
-const next = url.searchParams.get("next") ?? "/";
+const next = url.searchParams.get("next") ?? "/account";
+
+let isFreshSignup = false;
 
 if (code) {
   const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
-  if (error) {
-    return Astro.redirect("/login?error=oauth");
+  const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+  if (error) return Astro.redirect("/login?error=oauth");
+
+  const user = data?.user ?? data?.session?.user;
+  if (user) {
+    // Heuristic: treat "created_at within the last 2 minutes" as a fresh signup.
+    try {
+      const createdAt = user.created_at ? new Date(user.created_at).getTime() : 0;
+      const ageMs = Date.now() - createdAt;
+      if (ageMs > 0 && ageMs < 2 * 60 * 1000) isFreshSignup = true;
+    } catch {}
+
+    // Fire-and-forget: ensure profile exists (in case no DB trigger is set up) and issue signup card.
+    try {
+      // Upsert a minimal profile row so the /account page always has one.
+      await supabaseAdmin.from("profiles").upsert(
+        {
+          id: user.id,
+          full_name: (user.user_metadata as any)?.full_name ?? user.email?.split("@")[0] ?? null,
+        },
+        { onConflict: "id", ignoreDuplicates: true },
+      );
+    } catch {}
+
+    // Issue signup scratch card (idempotent via unique index on user_id where trigger='signup').
+    if (isFreshSignup) {
+      try {
+        const s = await getScratchSettings();
+        if (s.auto_on_signup) {
+          await issueScratchCard(user.id, "signup", { expires_at: expiresAt(s.default_expires_hours) });
+        }
+      } catch {}
+    }
   }
 }
 
-return Astro.redirect(next);
+// Always route fresh signups to /account with the welcome flag so the toast + scroll fires.
+const dest = isFreshSignup ? "/account?signup=1" : next;
+return Astro.redirect(dest);
 ---
