@@ -65,6 +65,46 @@ const { data: loyaltyEvents } = await supabaseAdmin
 const loyaltyBalance = (loyaltyEvents ?? []).reduce((s, e) => s + e.points, 0);
 const hasCard = !!profile?.card_issued_at;
 
+const COUNTRIES: Array<{ code: string; en: string; el: string }> = [
+  { code: "GR", en: "Greece", el: "Ελλάδα" },
+  { code: "CY", en: "Cyprus", el: "Κύπρος" },
+  { code: "GB", en: "United Kingdom", el: "Ηνωμένο Βασίλειο" },
+  { code: "US", en: "United States", el: "Η.Π.Α." },
+  { code: "DE", en: "Germany", el: "Γερμανία" },
+  { code: "FR", en: "France", el: "Γαλλία" },
+  { code: "IT", en: "Italy", el: "Ιταλία" },
+  { code: "ES", en: "Spain", el: "Ισπανία" },
+  { code: "NL", en: "Netherlands", el: "Ολλανδία" },
+  { code: "BE", en: "Belgium", el: "Βέλγιο" },
+  { code: "CH", en: "Switzerland", el: "Ελβετία" },
+  { code: "AT", en: "Austria", el: "Αυστρία" },
+  { code: "DK", en: "Denmark", el: "Δανία" },
+  { code: "SE", en: "Sweden", el: "Σουηδία" },
+  { code: "NO", en: "Norway", el: "Νορβηγία" },
+  { code: "FI", en: "Finland", el: "Φινλανδία" },
+  { code: "PL", en: "Poland", el: "Πολωνία" },
+  { code: "PT", en: "Portugal", el: "Πορτογαλία" },
+  { code: "IE", en: "Ireland", el: "Ιρλανδία" },
+  { code: "CZ", en: "Czechia", el: "Τσεχία" },
+  { code: "SK", en: "Slovakia", el: "Σλοβακία" },
+  { code: "HU", en: "Hungary", el: "Ουγγαρία" },
+  { code: "RO", en: "Romania", el: "Ρουμανία" },
+  { code: "BG", en: "Bulgaria", el: "Βουλγαρία" },
+  { code: "HR", en: "Croatia", el: "Κροατία" },
+  { code: "SI", en: "Slovenia", el: "Σλοβενία" },
+  { code: "LT", en: "Lithuania", el: "Λιθουανία" },
+  { code: "LV", en: "Latvia", el: "Λετονία" },
+  { code: "EE", en: "Estonia", el: "Εσθονία" },
+  { code: "TR", en: "Turkey", el: "Τουρκία" },
+  { code: "RU", en: "Russia", el: "Ρωσία" },
+  { code: "UA", en: "Ukraine", el: "Ουκρανία" },
+  { code: "IL", en: "Israel", el: "Ισραήλ" },
+  { code: "AE", en: "UAE", el: "Η.Α.Ε." },
+  { code: "AU", en: "Australia", el: "Αυστραλία" },
+  { code: "NZ", en: "New Zealand", el: "Νέα Ζηλανδία" },
+  { code: "CA", en: "Canada", el: "Καναδάς" },
+];
+
 // Dynamic tier logic (configurable from admin)
 const tiers     = await getTiers();
 const rewards   = await getRewards(true);
@@ -448,14 +488,55 @@ function statusLabel(s: string) {
             <button id="closeCardFormBtn" class="text-white/40 hover:text-white text-2xl leading-none">×</button>
           </div>
 
-          <form id="cardForm" class="space-y-3">
+          <form id="cardForm" class="space-y-3" data-phone={profile?.phone ?? ""}>
             <div class="grid sm:grid-cols-2 gap-3">
               <label class="block"><span class="text-xs text-white/50">{isEl ? "Ονοματεπώνυμο" : "Full name"}</span>
                 <input name="full_name" required minlength="2" maxlength="120" value={profile?.full_name ?? ""}
                   class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400/50" /></label>
               <label class="block"><span class="text-xs text-white/50">{isEl ? "Τηλέφωνο" : "Phone"}</span>
-                <input name="phone" required type="tel" placeholder="+30 69..." value={profile?.phone ?? ""}
-                  class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400/50" /></label>
+                <div class="mt-1 flex gap-2">
+                  <select name="phone_cc" id="phoneCc"
+                    class="shrink-0 rounded-xl border border-white/10 bg-white/5 px-2 py-2 text-sm text-white focus:outline-none focus:border-amber-400/50">
+                    <option value="+30">🇬🇷 +30</option>
+                    <option value="+357">🇨🇾 +357</option>
+                    <option value="+44">🇬🇧 +44</option>
+                    <option value="+1">🇺🇸 +1</option>
+                    <option value="+49">🇩🇪 +49</option>
+                    <option value="+33">🇫🇷 +33</option>
+                    <option value="+39">🇮🇹 +39</option>
+                    <option value="+34">🇪🇸 +34</option>
+                    <option value="+31">🇳🇱 +31</option>
+                    <option value="+32">🇧🇪 +32</option>
+                    <option value="+41">🇨🇭 +41</option>
+                    <option value="+43">🇦🇹 +43</option>
+                    <option value="+45">🇩🇰 +45</option>
+                    <option value="+46">🇸🇪 +46</option>
+                    <option value="+47">🇳🇴 +47</option>
+                    <option value="+48">🇵🇱 +48</option>
+                    <option value="+351">🇵🇹 +351</option>
+                    <option value="+353">🇮🇪 +353</option>
+                    <option value="+358">🇫🇮 +358</option>
+                    <option value="+359">🇧🇬 +359</option>
+                    <option value="+36">🇭🇺 +36</option>
+                    <option value="+370">🇱🇹 +370</option>
+                    <option value="+371">🇱🇻 +371</option>
+                    <option value="+372">🇪🇪 +372</option>
+                    <option value="+385">🇭🇷 +385</option>
+                    <option value="+386">🇸🇮 +386</option>
+                    <option value="+40">🇷🇴 +40</option>
+                    <option value="+420">🇨🇿 +420</option>
+                    <option value="+421">🇸🇰 +421</option>
+                    <option value="+90">🇹🇷 +90</option>
+                    <option value="+7">🇷🇺 +7</option>
+                    <option value="+380">🇺🇦 +380</option>
+                    <option value="+972">🇮🇱 +972</option>
+                    <option value="+971">🇦🇪 +971</option>
+                    <option value="+61">🇦🇺 +61</option>
+                    <option value="+64">🇳🇿 +64</option>
+                  </select>
+                  <input name="phone_num" id="phoneNum" required type="tel" inputmode="tel" placeholder="69..."
+                    class="flex-1 min-w-0 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400/50" />
+                </div></label>
               <label class="block"><span class="text-xs text-white/50">{isEl ? "Ημ. Γέννησης" : "Date of birth"}</span>
                 <input name="birthday" required type="date" value={profile?.birthday ?? ""}
                   class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400/50" /></label>
@@ -478,8 +559,15 @@ function statusLabel(s: string) {
                 <input name="postal_code" required minlength="2" maxlength="20" value={profile?.postal_code ?? ""}
                   class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400/50" /></label>
               <label class="block sm:col-span-2"><span class="text-xs text-white/50">{isEl ? "Χώρα" : "Country"}</span>
-                <input name="country" required minlength="2" maxlength="60" placeholder={isEl ? "Ελλάδα" : "Greece"} value={profile?.country ?? ""}
-                  class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400/50" /></label>
+                <select name="country" required
+                  class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400/50">
+                  <option value="">{isEl ? "Επιλέξτε χώρα…" : "Select country…"}</option>
+                  {COUNTRIES.map(c => (
+                    <option value={isEl ? c.el : c.en} selected={profile?.country === (isEl ? c.el : c.en) || profile?.country === c.en || profile?.country === c.el}>
+                      {isEl ? c.el : c.en}
+                    </option>
+                  ))}
+                </select></label>
             </div>
             <label class="flex items-start gap-2 text-xs text-white/60">
               <input type="checkbox" name="marketing_consent" class="mt-0.5" />
@@ -669,11 +757,29 @@ function statusLabel(s: string) {
     openCardBtn?.addEventListener("click", openCardModal);
     closeCardBtn?.addEventListener("click", closeCardModal);
     cardModal?.addEventListener("click", (e) => { if (e.target === cardModal) closeCardModal(); });
+    // Prefill phone split if existing value starts with + and matches a known code
+    const ccEl = document.getElementById("phoneCc") as HTMLSelectElement | null;
+    const numEl = document.getElementById("phoneNum") as HTMLInputElement | null;
+    if (ccEl && numEl && cardForm) {
+      const rawPhone = (cardForm.dataset.phone ?? "").trim();
+      if (rawPhone.startsWith("+")) {
+        const options = Array.from(ccEl.options).map(o => o.value).sort((a, b) => b.length - a.length);
+        const hit = options.find(v => rawPhone.startsWith(v));
+        if (hit) { ccEl.value = hit; numEl.value = rawPhone.slice(hit.length).trim(); }
+      } else if (rawPhone) {
+        numEl.value = rawPhone;
+      }
+    }
+
     cardForm?.addEventListener("submit", async (e) => {
       e.preventDefault();
       const fd = new FormData(cardForm);
       const payload = Object.fromEntries(fd.entries()) as Record<string, unknown>;
       payload.marketing_consent = fd.get("marketing_consent") === "on";
+      const cc = String(fd.get("phone_cc") ?? "");
+      const num = String(fd.get("phone_num") ?? "").replace(/^0+/, "").trim();
+      payload.phone = `${cc}${num}`;
+      delete payload.phone_cc; delete payload.phone_num;
       const submitBtn = document.getElementById("cardFormSubmit") as HTMLButtonElement;
       const msg = document.getElementById("cardFormMsg")!;
       submitBtn.disabled = true;
