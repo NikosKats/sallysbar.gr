@@ -70,7 +70,12 @@ function fmtDate(d: string) {
 
       <!-- Event form (hidden by default) -->
       <div id="eventFormWrap" class="hidden rounded-2xl border border-amber-400/20 bg-white/3 p-5">
-        <h2 id="formTitle" class="text-sm font-semibold text-white/50 uppercase tracking-widest mb-4">{isEl ? "Νέο Event" : "New Event"}</h2>
+        <div class="flex items-center justify-between mb-4 gap-3 flex-wrap">
+          <h2 id="formTitle" class="text-sm font-semibold text-white/50 uppercase tracking-widest">{isEl ? "Νέο Event" : "New Event"}</h2>
+          <button id="aiGenEventBtn" type="button" class="text-xs px-3 py-1.5 rounded-lg bg-gradient-to-br from-fuchsia-500/30 to-amber-400/30 border border-white/15 text-white hover:from-fuchsia-500/50 hover:to-amber-400/50 transition">
+            ✨ {isEl ? "AI δημιουργία" : "AI Generate"}
+          </button>
+        </div>
         <form id="eventForm" class="space-y-3">
           <input type="hidden" id="editId" value="" />
 
@@ -338,6 +343,49 @@ function fmtDate(d: string) {
       });
 
       document.getElementById("formCancelBtn").addEventListener("click", hideForm);
+
+      const aiEvBtn = document.getElementById("aiGenEventBtn");
+      aiEvBtn?.addEventListener("click", async () => {
+        const seed = (document.getElementById("fTitle") as HTMLInputElement).value.trim();
+        const theme = prompt(
+          isEl
+            ? "Θέμα event (π.χ. 'Latin night', 'Live jazz', 'Halloween party', 'Καραόκε Ελληνικό')"
+            : "Event theme (e.g. 'Latin night', 'Live jazz', 'Halloween party', 'Greek karaoke')",
+          seed
+        );
+        if (!theme || theme.trim().length < 2) return;
+        const prev = aiEvBtn.textContent;
+        (aiEvBtn as HTMLButtonElement).disabled = true;
+        aiEvBtn.textContent = isEl ? "⏳ Δημιουργία…" : "⏳ Generating…";
+        try {
+          const res = await fetch("/api/admin/events-ai-generate", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ theme }),
+          });
+          const j = await res.json();
+          if (!res.ok || !j.event) {
+            alert((isEl ? "Σφάλμα AI: " : "AI error: ") + (j.error ?? "unknown"));
+            return;
+          }
+          const g = j.event;
+          const set = (id: string, v: any) => {
+            const el = document.getElementById(id) as HTMLInputElement | HTMLTextAreaElement | null;
+            if (el && v != null && v !== "") el.value = String(v);
+          };
+          set("fTitle", g.title_en);
+          set("fTitleEl", g.title_el);
+          set("fDesc", g.description_en);
+          set("fDescEl", g.description_el);
+          if (g.suggested_time) set("fTime", g.suggested_time);
+          if (g.suggested_capacity && Number(g.suggested_capacity) > 0) set("fCapacity", g.suggested_capacity);
+          if (g.suggested_price != null) set("fPrice", g.suggested_price);
+        } catch {
+          alert(isEl ? "Σφάλμα δικτύου" : "Network error");
+        } finally {
+          (aiEvBtn as HTMLButtonElement).disabled = false;
+          aiEvBtn.textContent = prev;
+        }
+      });
 
       // Edit button — fill form
       document.querySelectorAll(".edit-evt-btn").forEach(btn => {
