@@ -17,3 +17,12 @@
   Cache-Control: public, max-age=2592000
 /favicon.svg
   Cache-Control: public, max-age=2592000
+
+# Security headers for all HTML responses.
+# CSP is permissive enough to run Astro's bundled scripts, our inline scripts,
+# and libs (qrcode / push-worker) that internally use `new Function`.
+/*
+  Content-Security-Policy: default-src 'self' https: data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https:; font-src 'self' data: https:; connect-src 'self' https: wss: blob:; frame-src 'self' https:; media-src 'self' https: blob:; worker-src 'self' blob:; manifest-src 'self';
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Content-Type-Options: nosniff
+  Permissions-Policy: geolocation=(self), camera=(), microphone=()
