@@ -207,7 +207,7 @@ function statusLabel(s: string) {
   <body class="min-h-screen bg-[#0b0b10] text-white">
     <Header />
 
-    <main class="mx-auto max-w-3xl px-4 pt-28 pb-10 space-y-6">
+    <main class="mx-auto max-w-3xl px-4 pt-28 pb-10 flex flex-col gap-6">
 
       <!-- Welcome -->
       <div>
@@ -215,8 +215,36 @@ function statusLabel(s: string) {
         <p class="mt-1 text-sm text-white/40">{ta.subtitle}</p>
       </div>
 
+      <!-- Notifications + Install (TOP — highest-priority actions) -->
+      <section class="order-1 grid md:grid-cols-2 gap-3">
+        <div id="notifCard" class="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <div class="flex items-center justify-between gap-2">
+            <div>
+              <p class="text-[10px] uppercase tracking-[0.22em] text-white/50 font-bold">🔔 {isEl ? "Ειδοποιήσεις" : "Notifications"}</p>
+              <p class="text-sm text-white/70 mt-1">{isEl ? "Αποψινές αποστολές, secret drops, events." : "Tonight's quests, secret drops, events."}</p>
+            </div>
+            <button id="notifToggle" type="button" class="shrink-0 rounded-xl bg-amber-400 text-black text-xs font-bold px-4 py-2 transition hover:bg-amber-300">
+              {isEl ? "Ενεργοποίησε" : "Enable"}
+            </button>
+          </div>
+          <p id="notifMsg" class="text-xs text-white/40 mt-2"></p>
+        </div>
+
+        <div id="installCard" class="rounded-2xl border border-white/10 bg-white/5 p-5 hidden">
+          <div class="flex items-center justify-between gap-2">
+            <div>
+              <p class="text-[10px] uppercase tracking-[0.22em] text-white/50 font-bold">📲 {isEl ? "Εφαρμογή" : "App"}</p>
+              <p id="installLabel" class="text-sm text-white/70 mt-1">{isEl ? "Κατέβασε το Sally's στο κινητό σου." : "Install Sally's on your phone."}</p>
+            </div>
+            <button id="installBtn" type="button" class="shrink-0 rounded-xl bg-gradient-to-br from-amber-300 to-amber-500 text-black text-xs font-bold px-4 py-2 transition hover:scale-[1.02]">
+              {isEl ? "Εγκατάσταση" : "Install"}
+            </button>
+          </div>
+        </div>
+      </section>
+
       {!hasCard && (
-        <div class="rounded-2xl border border-amber-400/40 bg-gradient-to-br from-amber-500/10 via-amber-400/5 to-transparent p-6 space-y-4">
+        <div class="order-2 rounded-2xl border border-amber-400/40 bg-gradient-to-br from-amber-500/10 via-amber-400/5 to-transparent p-6 space-y-4">
           <div class="flex items-start gap-4">
             <div class="text-4xl">🎁</div>
             <div class="flex-1">
@@ -384,34 +412,6 @@ function statusLabel(s: string) {
         </section>
       )}
 
-      <!-- Notifications + Install -->
-      <section class="grid md:grid-cols-2 gap-3">
-        <div id="notifCard" class="rounded-2xl border border-white/10 bg-white/5 p-5">
-          <div class="flex items-center justify-between gap-2">
-            <div>
-              <p class="text-[10px] uppercase tracking-[0.22em] text-white/50 font-bold">🔔 {isEl ? "Ειδοποιήσεις" : "Notifications"}</p>
-              <p class="text-sm text-white/70 mt-1">{isEl ? "Αποψινές αποστολές, secret drops, events." : "Tonight's quests, secret drops, events."}</p>
-            </div>
-            <button id="notifToggle" type="button" class="shrink-0 rounded-xl bg-amber-400 text-black text-xs font-bold px-4 py-2 transition hover:bg-amber-300">
-              {isEl ? "Ενεργοποίησε" : "Enable"}
-            </button>
-          </div>
-          <p id="notifMsg" class="text-xs text-white/40 mt-2"></p>
-        </div>
-
-        <div id="installCard" class="rounded-2xl border border-white/10 bg-white/5 p-5 hidden">
-          <div class="flex items-center justify-between gap-2">
-            <div>
-              <p class="text-[10px] uppercase tracking-[0.22em] text-white/50 font-bold">📲 {isEl ? "Εφαρμογή" : "App"}</p>
-              <p id="installLabel" class="text-sm text-white/70 mt-1">{isEl ? "Κατέβασε το Sally's στο κινητό σου." : "Install Sally's on your phone."}</p>
-            </div>
-            <button id="installBtn" type="button" class="shrink-0 rounded-xl bg-gradient-to-br from-amber-300 to-amber-500 text-black text-xs font-bold px-4 py-2 transition hover:scale-[1.02]">
-              {isEl ? "Εγκατάσταση" : "Install"}
-            </button>
-          </div>
-        </div>
-      </section>
-
       <!-- Profile card (editable) -->
       <div class="rounded-2xl border border-white/10 bg-white/5 p-6 space-y-4">
         <h2 class="text-sm font-semibold text-white/50 uppercase tracking-widest">{ta.profileSection}</h2>
@@ -488,7 +488,7 @@ function statusLabel(s: string) {
 
       <!-- Loyalty Points -->
       {hasCard && (
-      <div class="rounded-2xl border bg-white/5 p-6 space-y-4" style={`border-color:${tierBorder}`}>
+      <div class="order-2 rounded-2xl border bg-white/5 p-6 space-y-4" style={`border-color:${tierBorder}`}>
         <!-- Header row: section label + balance -->
         <div class="flex items-center justify-between gap-3">
           <h2 class="text-sm font-semibold text-white/50 uppercase tracking-widest">{ta.loyaltySection}</h2>
