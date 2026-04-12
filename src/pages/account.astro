@@ -132,6 +132,48 @@ const { data: activeRedemptions } = await supabaseAdmin
   .eq("status", "pending")
   .order("created_at", { ascending: false });
 
+// ─── Dashboard extras ─────────────────────────────────────────
+const referralLink = `https://sallysbar.gr/register?ref=${user.id}`;
+
+const { count: friendsReferredCount } = await supabaseAdmin
+  .from("profiles").select("id", { count: "exact", head: true })
+  .eq("referred_by", user.id);
+
+const referralPoints = (loyaltyEvents ?? [])
+  .filter(e => String(e.reason || "").startsWith("referral:"))
+  .reduce((s, e) => s + (e.points ?? 0), 0);
+
+const { data: unrevealedCards } = await supabaseAdmin
+  .from("scratch_cards")
+  .select("id, reward_label, created_at, expires_at")
+  .eq("user_id", user.id)
+  .is("revealed_at", null)
+  .order("created_at", { ascending: false })
+  .limit(10);
+
+const { data: claimedQuests } = await supabaseAdmin
+  .from("quest_claims")
+  .select("claimed_at, quests(title_en, title_el, reward_points)")
+  .eq("user_id", user.id)
+  .order("claimed_at", { ascending: false })
+  .limit(5);
+
+const { count: visitsCount } = await supabaseAdmin
+  .from("orders").select("id", { count: "exact", head: true })
+  .eq("customer_user_id", user.id);
+
+const vapidPublicKey = import.meta.env.VAPID_PUBLIC_KEY ?? "";
+
+function reasonLabel(r: string | null): string {
+  if (!r) return isEl ? "Πόντοι" : "Points";
+  if (r.startsWith("order:"))    return isEl ? "Παραγγελία" : "Order";
+  if (r.startsWith("rsvp:"))     return isEl ? "Κράτηση event" : "Event RSVP";
+  if (r.startsWith("referral:")) return isEl ? "Σύσταση φίλου" : "Friend referral";
+  if (r === "scratch_card")      return isEl ? "Scratch card" : "Scratch card";
+  if (r === "quest")             return isEl ? "Αποστολή" : "Quest";
+  return r;
+}
+
 function fmtDate(d: string) {
   return new Date(d + "T00:00:00").toLocaleDateString(isEl ? "el-GR" : "en-GB", {
     weekday: "short", day: "numeric", month: "short",
@@ -147,7 +189,7 @@ function statusLabel(s: string) {
 }
 ---
 
-<html lang={lang}>
+<html lang={lang} data-vapid={vapidPublicKey}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -164,6 +206,113 @@ function statusLabel(s: string) {
         <h1 class="text-2xl font-bold text-white">Hi, {displayName}</h1>
         <p class="mt-1 text-sm text-white/40">{ta.subtitle}</p>
       </div>
+
+      <!-- Dashboard KPIs -->
+      <section class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div class="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4">
+          <p class="text-[10px] uppercase tracking-[0.2em] text-amber-300/70">{isEl ? "Πόντοι" : "Points"}</p>
+          <p class="text-2xl font-bold text-amber-300 mt-1">{loyaltyBalance}</p>
+        </div>
+        <div class="rounded-2xl border p-4" style={`border-color:${tierBorder};background:${tierBg}`}>
+          <p class="text-[10px] uppercase tracking-[0.2em]" style={`color:${tierColor}`}>{isEl ? "Επίπεδο" : "Tier"}</p>
+          <p class="text-2xl font-bold mt-1" style={`color:${tierColor}`}>{tierIcon} {tierLabel}</p>
+        </div>
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+          <p class="text-[10px] uppercase tracking-[0.2em] text-white/40">{isEl ? "Επισκέψεις" : "Visits"}</p>
+          <p class="text-2xl font-bold text-white mt-1">{visitsCount ?? 0}</p>
+        </div>
+        <div class="rounded-2xl border border-fuchsia-400/20 bg-fuchsia-400/5 p-4">
+          <p class="text-[10px] uppercase tracking-[0.2em] text-fuchsia-300/70">{isEl ? "Συστάσεις" : "Referred"}</p>
+          <p class="text-2xl font-bold text-fuchsia-300 mt-1">{friendsReferredCount ?? 0} <span class="text-xs font-normal text-fuchsia-300/60">{isEl ? "φίλοι" : "friends"}</span></p>
+        </div>
+      </section>
+
+      <!-- Quick actions -->
+      <section class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <a href={withLangPrefix(lang, "/menu")}    class="flex flex-col items-center gap-2 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 p-4 text-center transition group"><span class="text-2xl">📜</span><span class="text-xs font-semibold text-white/70 group-hover:text-amber-300">{isEl ? "Μενού" : "Menu"}</span></a>
+        <a href={withLangPrefix(lang, "/book")}    class="flex flex-col items-center gap-2 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 p-4 text-center transition group"><span class="text-2xl">📅</span><span class="text-xs font-semibold text-white/70 group-hover:text-amber-300">{isEl ? "Κράτηση" : "Book"}</span></a>
+        <a href={withLangPrefix(lang, "/events")}  class="flex flex-col items-center gap-2 rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 p-4 text-center transition group"><span class="text-2xl">🎵</span><span class="text-xs font-semibold text-white/70 group-hover:text-amber-300">{isEl ? "Events" : "Events"}</span></a>
+        <a href={withLangPrefix(lang, "/loyalty")} class="flex flex-col items-center gap-2 rounded-2xl border border-amber-400/30 bg-amber-400/10 hover:bg-amber-400/20 p-4 text-center transition group"><span class="text-2xl">🎁</span><span class="text-xs font-semibold text-amber-200">{isEl ? "Επιβραβεύσεις" : "Rewards"}</span></a>
+      </section>
+
+      <!-- Invite friends (referrals) -->
+      <section class="rounded-2xl border border-fuchsia-400/30 bg-gradient-to-br from-fuchsia-500/10 to-amber-400/10 p-5 relative overflow-hidden">
+        <div class="absolute -top-10 -right-10 h-36 w-36 rounded-full bg-fuchsia-400/20 blur-3xl"></div>
+        <div class="relative">
+          <p class="text-[10px] uppercase tracking-[0.24em] text-fuchsia-300 font-bold">🤝 {isEl ? "Πρόσκαλεσε φίλους" : "Invite friends"}</p>
+          <h2 class="font-heading text-2xl font-bold mt-1">
+            {isEl ? "Κέρδισε πόντους & scratch cards" : "Earn points & scratch cards"}
+          </h2>
+          <p class="text-sm text-white/70 mt-2 leading-relaxed">
+            {isEl
+              ? "Στείλε αυτό το link. Μόλις γραφτεί ο φίλος σου, παίρνεις πόντους αυτόματα. Κάθε σύσταση μετράει."
+              : "Share your link. The moment your friend signs up, points land in your account. Every referral counts."}
+          </p>
+
+          <div class="mt-4 flex items-center gap-2 rounded-xl border border-white/10 bg-black/30 p-2">
+            <code id="refLink" class="flex-1 text-xs text-amber-200 font-mono truncate px-2">{referralLink}</code>
+            <button id="copyRefBtn" type="button" class="shrink-0 rounded-lg bg-white/10 hover:bg-white/15 text-white text-xs font-semibold px-3 py-2 transition">📋 {isEl ? "Αντιγραφή" : "Copy"}</button>
+          </div>
+
+          <div class="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <a id="shareWa" target="_blank" rel="noopener" class="rounded-lg bg-[#25d366]/15 hover:bg-[#25d366]/25 text-[#25d366] text-xs font-semibold px-3 py-2 text-center transition">💬 WhatsApp</a>
+            <a id="shareTg" target="_blank" rel="noopener" class="rounded-lg bg-[#229ED9]/15 hover:bg-[#229ED9]/25 text-[#229ED9] text-xs font-semibold px-3 py-2 text-center transition">✈️ Telegram</a>
+            <a id="shareEmail" class="rounded-lg bg-white/10 hover:bg-white/15 text-white text-xs font-semibold px-3 py-2 text-center transition">✉️ Email</a>
+            <button id="shareNative" type="button" class="rounded-lg bg-amber-400 text-black text-xs font-bold px-3 py-2 transition hover:bg-amber-300">📤 {isEl ? "Κοινοποίηση" : "Share"}</button>
+          </div>
+
+          <div class="mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-xs text-white/60">
+            <span>{isEl ? "Σύνολο συστάσεων" : "Total referrals"}: <strong class="text-fuchsia-200">{friendsReferredCount ?? 0}</strong></span>
+            <span>{isEl ? "Πόντοι από συστάσεις" : "Points from referrals"}: <strong class="text-amber-200">{referralPoints}</strong></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Unrevealed scratch cards teaser -->
+      {(unrevealedCards ?? []).length > 0 && (
+        <section class="rounded-2xl border border-amber-400/30 bg-gradient-to-br from-amber-500/10 to-fuchsia-500/10 p-5">
+          <div class="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <p class="text-[10px] uppercase tracking-[0.24em] text-amber-300 font-bold">🎫 {isEl ? "Σε περιμένουν" : "Waiting for you"}</p>
+              <h2 class="font-heading text-2xl font-bold mt-1">
+                {(unrevealedCards ?? []).length} {isEl ? "κάρτες προς αποκάλυψη" : "scratch cards to reveal"}
+              </h2>
+              <p class="text-sm text-white/70 mt-1">{isEl ? "Πάτα για να δεις τι κέρδισες." : "Tap to see what you won."}</p>
+            </div>
+            <a href={withLangPrefix(lang, "/loyalty")} class="rounded-xl bg-amber-400 text-black px-5 py-3 text-sm font-bold hover:bg-amber-300 transition">
+              {isEl ? "Αποκάλυψη →" : "Reveal →"}
+            </a>
+          </div>
+        </section>
+      )}
+
+      <!-- Notifications + Install -->
+      <section class="grid md:grid-cols-2 gap-3">
+        <div id="notifCard" class="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <div class="flex items-center justify-between gap-2">
+            <div>
+              <p class="text-[10px] uppercase tracking-[0.22em] text-white/50 font-bold">🔔 {isEl ? "Ειδοποιήσεις" : "Notifications"}</p>
+              <p class="text-sm text-white/70 mt-1">{isEl ? "Αποψινές αποστολές, secret drops, events." : "Tonight's quests, secret drops, events."}</p>
+            </div>
+            <button id="notifToggle" type="button" class="shrink-0 rounded-xl bg-amber-400 text-black text-xs font-bold px-4 py-2 transition hover:bg-amber-300">
+              {isEl ? "Ενεργοποίησε" : "Enable"}
+            </button>
+          </div>
+          <p id="notifMsg" class="text-xs text-white/40 mt-2"></p>
+        </div>
+
+        <div id="installCard" class="rounded-2xl border border-white/10 bg-white/5 p-5 hidden">
+          <div class="flex items-center justify-between gap-2">
+            <div>
+              <p class="text-[10px] uppercase tracking-[0.22em] text-white/50 font-bold">📲 {isEl ? "Εφαρμογή" : "App"}</p>
+              <p class="text-sm text-white/70 mt-1">{isEl ? "Κατέβασε το Sally's στο κινητό σου." : "Install Sally's on your phone."}</p>
+            </div>
+            <a href={withLangPrefix(lang, "/app")} class="shrink-0 rounded-xl bg-gradient-to-br from-amber-300 to-amber-500 text-black text-xs font-bold px-4 py-2 transition hover:scale-[1.02]">
+              {isEl ? "Εγκατάσταση" : "Install"}
+            </a>
+          </div>
+        </div>
+      </section>
 
       <!-- Profile card (editable) -->
       <div class="rounded-2xl border border-white/10 bg-white/5 p-6 space-y-4">
@@ -475,6 +624,42 @@ function statusLabel(s: string) {
         )}
       </div>
 
+      <!-- Points history -->
+      {(loyaltyEvents ?? []).length > 0 && (
+        <section class="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <h2 class="text-sm font-semibold text-white/50 uppercase tracking-widest mb-3">{isEl ? "Ιστορικό Πόντων" : "Points History"}</h2>
+          <div class="divide-y divide-white/5">
+            {(loyaltyEvents ?? []).slice(0, 15).map(e => (
+              <div class="flex items-center justify-between py-2.5 gap-3 text-sm">
+                <div class="min-w-0">
+                  <p class="text-white truncate">{reasonLabel(e.reason)}</p>
+                  <p class="text-[11px] text-white/40 mt-0.5">{new Date(e.created_at).toLocaleDateString(isEl ? "el-GR" : "en-GB", { day: "2-digit", month: "short", year: "numeric" })}</p>
+                </div>
+                <span class={`font-mono font-semibold shrink-0 ${e.points >= 0 ? "text-emerald-400" : "text-red-400"}`}>{e.points >= 0 ? "+" : ""}{e.points}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <!-- Claimed quests -->
+      {(claimedQuests ?? []).length > 0 && (
+        <section class="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <h2 class="text-sm font-semibold text-white/50 uppercase tracking-widest mb-3">⚡ {isEl ? "Αποστολές" : "Quests"}</h2>
+          <div class="space-y-2">
+            {(claimedQuests ?? []).map((q: any) => (
+              <div class="flex items-center justify-between gap-3 text-sm">
+                <div class="min-w-0">
+                  <p class="text-white truncate">{isEl ? (q.quests?.title_el || q.quests?.title_en) : q.quests?.title_en}</p>
+                  <p class="text-[11px] text-white/40 mt-0.5">{new Date(q.claimed_at).toLocaleDateString(isEl ? "el-GR" : "en-GB", { day: "2-digit", month: "short" })}</p>
+                </div>
+                <span class="font-mono text-amber-300 text-xs shrink-0">+{q.quests?.reward_points ?? 0}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
     </main>
 
     {!hasCard && (
@@ -582,6 +767,87 @@ function statusLabel(s: string) {
         </div>
       </div>
     )}
+
+  <script is:inline>
+    (function () {
+      const isEl = document.documentElement.lang === "el";
+      const link = document.getElementById("refLink")?.textContent?.trim() || "";
+      const pitch = isEl
+        ? `Γράψου στο Sally's Bar με το link μου και παίρνω μπόνους. Τσέκαρέ το: ${link}`
+        : `Sign up to Sally's Bar through my link so I get bonus points — check it out: ${link}`;
+
+      document.getElementById("copyRefBtn")?.addEventListener("click", async (e) => {
+        try { await navigator.clipboard.writeText(link); const b = e.currentTarget; const orig = b.textContent; b.textContent = "✓"; setTimeout(() => b.textContent = orig, 1200); } catch {}
+      });
+      const wa = document.getElementById("shareWa");
+      if (wa) wa.href = `https://wa.me/?text=${encodeURIComponent(pitch)}`;
+      const tg = document.getElementById("shareTg");
+      if (tg) tg.href = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(pitch)}`;
+      const em = document.getElementById("shareEmail");
+      if (em) em.href = `mailto:?subject=${encodeURIComponent("Sally's Bar")}&body=${encodeURIComponent(pitch)}`;
+
+      const nativeBtn = document.getElementById("shareNative");
+      if (nativeBtn) {
+        if (!navigator.share) nativeBtn.style.display = "none";
+        else nativeBtn.addEventListener("click", async () => {
+          try { await navigator.share({ title: "Sally's Bar", text: pitch, url: link }); } catch {}
+        });
+      }
+
+      // Install card — show only if beforeinstallprompt already fired and not standalone
+      const installCard = document.getElementById("installCard");
+      const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+      if (installCard && !isStandalone) installCard.classList.remove("hidden");
+
+      // Notifications
+      const notifBtn = document.getElementById("notifToggle");
+      const notifMsg = document.getElementById("notifMsg");
+      function setNotifState() {
+        if (!("Notification" in window) || !("serviceWorker" in navigator)) {
+          notifBtn.textContent = isEl ? "Μη υποστηρίζεται" : "Not supported";
+          notifBtn.disabled = true;
+          return;
+        }
+        if (Notification.permission === "granted") {
+          notifBtn.textContent = isEl ? "✓ Ενεργές" : "✓ Enabled";
+          notifBtn.className = "shrink-0 rounded-xl bg-emerald-400/15 text-emerald-300 text-xs font-bold px-4 py-2";
+          notifMsg.textContent = isEl ? "Θα λαμβάνεις ειδοποιήσεις για αποστολές και drops." : "You'll receive alerts for quests and drops.";
+        } else if (Notification.permission === "denied") {
+          notifBtn.textContent = isEl ? "Μπλοκαρισμένες" : "Blocked";
+          notifBtn.disabled = true;
+          notifMsg.textContent = isEl ? "Ενεργοποίησέ τις από τις ρυθμίσεις του browser." : "Re-enable in your browser settings.";
+        } else {
+          notifBtn.textContent = isEl ? "Ενεργοποίησε" : "Enable";
+        }
+      }
+      setNotifState();
+
+      async function urlB64ToUint8(b64) {
+        const pad = "=".repeat((4 - (b64.length % 4)) % 4);
+        const s = (b64 + pad).replace(/-/g, "+").replace(/_/g, "/");
+        const raw = atob(s);
+        const out = new Uint8Array(raw.length);
+        for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+        return out;
+      }
+
+      notifBtn?.addEventListener("click", async () => {
+        const perm = await Notification.requestPermission();
+        if (perm !== "granted") { setNotifState(); return; }
+        try {
+          const reg = await navigator.serviceWorker.ready;
+          const vapidPub = document.documentElement.dataset.vapid || "";
+          if (!vapidPub) { notifMsg.textContent = "VAPID key missing"; return; }
+          const sub = await reg.pushManager.getSubscription()
+                   ?? await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: await urlB64ToUint8(vapidPub) });
+          await fetch("/api/push/subscribe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(sub.toJSON()) });
+          setNotifState();
+        } catch (e) {
+          notifMsg.textContent = isEl ? "Σφάλμα εγγραφής" : "Subscribe failed";
+        }
+      });
+    })();
+  </script>
 
   <script>
     import QRCode from "qrcode";
