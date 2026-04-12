@@ -254,14 +254,14 @@ const sectLabels = isEl ? {
             target="_blank"
             class="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-200 to-amber-400 px-7 py-3.5 font-semibold text-black shadow-lg shadow-amber-500/20 hover:shadow-amber-500/40 hover:scale-[1.02] active:scale-[0.98] transition"
           >
-            <span class="relative z-10 flex items-center gap-2">📍 {t.home.ctaDirections}</span>
+            <span class="relative z-10 flex items-center gap-2">{t.home.ctaDirections}</span>
             <span class="absolute inset-0 bg-gradient-to-br from-white/40 to-transparent opacity-0 group-hover:opacity-100 transition"></span>
           </a>
           <a
             href={`tel:${site.phoneE164}`}
             class="rounded-2xl border border-white/25 bg-white/5 md:backdrop-blur px-7 py-3.5 font-semibold hover:bg-white/10 hover:border-white/40 transition"
           >
-            📞 {t.home.ctaCall}
+            {t.home.ctaCall}
           </a>
         </div>
 

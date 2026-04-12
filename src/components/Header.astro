@@ -31,16 +31,16 @@ const staffLabel = isEl ? "Παραγγελίες" : "Orders";
 
 // IMPORTANT: build links WITH language prefix
 const loyaltyLabel = isEl ? "Πόντοι" : "Rewards";
-const playLabel = lang === "el" ? "🎁 Παίξε" : "🎁 Play";
+const playLabel = lang === "el" ? "Παίξε" : "Play";
 
 const nav = [
-  { label: t.nav.home, href: withLangPrefix(lang, "/") },
-  { label: t.nav.menu, href: withLangPrefix(lang, "/menu") },
-  { label: bookLabel, href: withLangPrefix(lang, "/book") },
-  { label: eventsLabel, href: withLangPrefix(lang, "/events") },
-  { label: playLabel, href: withLangPrefix(lang, "/play") },
-  { label: loyaltyLabel, href: withLangPrefix(lang, "/loyalty") },
-  { label: t.nav.careers, href: withLangPrefix(lang, "/careers") },
+  { label: t.nav.home,    icon: "🏠",  href: withLangPrefix(lang, "/") },
+  { label: t.nav.menu,    icon: "📜",  href: withLangPrefix(lang, "/menu") },
+  { label: bookLabel,     icon: "📅",  href: withLangPrefix(lang, "/book") },
+  { label: eventsLabel,   icon: "🎵",  href: withLangPrefix(lang, "/events") },
+  { label: playLabel,     icon: "🎁",  href: withLangPrefix(lang, "/play") },
+  { label: loyaltyLabel,  icon: "👑",  href: withLangPrefix(lang, "/loyalty") },
+  { label: t.nav.careers, icon: "💼",  href: withLangPrefix(lang, "/careers") },
 ];
 
 function isActive(href: string) {
@@ -116,10 +116,10 @@ import CustomerPwa from "./CustomerPwa.astro";
             <a
               href={i.href}
               class={isActive(i.href)
-                ? "text-white font-medium relative after:absolute after:bottom-[-2px] after:left-0 after:right-0 after:h-[2px] after:rounded-full after:bg-amber-400"
-                : "text-white/55 hover:text-white transition"}
+                ? "text-white font-medium relative after:absolute after:bottom-[-2px] after:left-0 after:right-0 after:h-[2px] after:rounded-full after:bg-amber-400 flex items-center gap-1.5"
+                : "text-white/55 hover:text-white transition flex items-center gap-1.5"}
             >
-              {i.label}
+              <span>{i.icon}</span><span>{i.label}</span>
             </a>
           ))}
         </nav>
@@ -309,7 +309,8 @@ import CustomerPwa from "./CustomerPwa.astro";
                   ? "flex flex-col items-center justify-center gap-1 rounded-xl border border-amber-400/30 bg-amber-400/10 px-2 py-3 text-xs text-amber-400 font-medium transition text-center leading-tight"
                   : "flex flex-col items-center justify-center gap-1 rounded-xl border border-white/10 bg-white/5 px-2 py-3 text-xs text-white/70 hover:bg-white/10 hover:text-white transition text-center leading-tight"}
               >
-                {i.label}
+                <span class="text-lg leading-none">{i.icon}</span>
+                <span>{i.label}</span>
               </a>
             ))}
           </div>
