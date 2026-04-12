@@ -16,7 +16,7 @@ const isEl = lang === "el";
 const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
 const { data: profile } = await supabase
   .from("profiles")
-  .select("full_name, role, created_at, birthday, birthday_updated_at")
+  .select("full_name, role, created_at, birthday, birthday_updated_at, card_issued_at, phone, country, gender, address, city, postal_code")
   .eq("id", user.id)
   .single();
 
@@ -63,6 +63,7 @@ const { data: loyaltyEvents } = await supabaseAdmin
   .limit(20);
 
 const loyaltyBalance = (loyaltyEvents ?? []).reduce((s, e) => s + e.points, 0);
+const hasCard = !!profile?.card_issued_at;
 
 // Dynamic tier logic (configurable from admin)
 const tiers     = await getTiers();
@@ -198,7 +199,28 @@ function statusLabel(s: string) {
         </div>
       </div>
 
+      {!hasCard && (
+        <div class="rounded-2xl border border-amber-400/40 bg-gradient-to-br from-amber-500/10 via-amber-400/5 to-transparent p-6 space-y-4">
+          <div class="flex items-start gap-4">
+            <div class="text-4xl">🎁</div>
+            <div class="flex-1">
+              <h2 class="text-lg font-bold text-amber-200">{isEl ? "Δημιουργήστε την Κάρτα Πιστότητάς σας" : "Get Your Loyalty Card"}</h2>
+              <p class="text-sm text-white/70 mt-1">
+                {isEl
+                  ? "Συμπληρώστε τα στοιχεία σας για να ενεργοποιήσετε την κάρτα πιστότητας και να αρχίσετε να κερδίζετε πόντους, δώρα & εκπτώσεις."
+                  : "Fill in your details to activate your loyalty card and start earning points, rewards & discounts."}
+              </p>
+            </div>
+          </div>
+          <button id="openCardFormBtn"
+            class="w-full rounded-xl bg-amber-400 text-black px-4 py-3 text-sm font-semibold hover:bg-amber-300 transition">
+            ✨ {isEl ? "Δημιουργία κάρτας τώρα" : "Create my card now"}
+          </button>
+        </div>
+      )}
+
       <!-- Loyalty Points -->
+      {hasCard && (
       <div class="rounded-2xl border bg-white/5 p-6 space-y-4" style={`border-color:${tierBorder}`}>
         <!-- Header row: section label + balance -->
         <div class="flex items-center justify-between gap-3">
@@ -325,6 +347,7 @@ function statusLabel(s: string) {
           </div>
         )}
       </div>
+      )}
 
       <!-- Reservations -->
       <div class="rounded-2xl border border-white/10 bg-white/5 p-6 space-y-4">
@@ -413,6 +436,64 @@ function statusLabel(s: string) {
       </div>
 
     </main>
+
+    {!hasCard && (
+      <div id="cardFormModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
+        <div class="relative w-full max-w-lg my-8 rounded-2xl border border-white/10 bg-[#141420] p-6 space-y-4">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <h3 class="text-lg font-bold text-amber-200">{isEl ? "Ενεργοποίηση Κάρτας Πιστότητας" : "Activate Loyalty Card"}</h3>
+              <p class="text-xs text-white/50 mt-1">{isEl ? "Όλα τα πεδία είναι υποχρεωτικά." : "All fields are required."}</p>
+            </div>
+            <button id="closeCardFormBtn" class="text-white/40 hover:text-white text-2xl leading-none">×</button>
+          </div>
+
+          <form id="cardForm" class="space-y-3">
+            <div class="grid sm:grid-cols-2 gap-3">
+              <label class="block"><span class="text-xs text-white/50">{isEl ? "Ονοματεπώνυμο" : "Full name"}</span>
+                <input name="full_name" required minlength="2" maxlength="120" value={profile?.full_name ?? ""}
+                  class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400/50" /></label>
+              <label class="block"><span class="text-xs text-white/50">{isEl ? "Τηλέφωνο" : "Phone"}</span>
+                <input name="phone" required type="tel" placeholder="+30 69..." value={profile?.phone ?? ""}
+                  class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400/50" /></label>
+              <label class="block"><span class="text-xs text-white/50">{isEl ? "Ημ. Γέννησης" : "Date of birth"}</span>
+                <input name="birthday" required type="date" value={profile?.birthday ?? ""}
+                  class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400/50" /></label>
+              <label class="block"><span class="text-xs text-white/50">{isEl ? "Φύλο" : "Gender"}</span>
+                <select name="gender" required
+                  class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400/50">
+                  <option value="">{isEl ? "Επιλέξτε…" : "Select…"}</option>
+                  <option value="female" selected={profile?.gender === "female"}>{isEl ? "Γυναίκα" : "Female"}</option>
+                  <option value="male"   selected={profile?.gender === "male"}>{isEl ? "Άνδρας" : "Male"}</option>
+                  <option value="non_binary" selected={profile?.gender === "non_binary"}>{isEl ? "Μη δυαδικό" : "Non-binary"}</option>
+                  <option value="prefer_not_to_say" selected={profile?.gender === "prefer_not_to_say"}>{isEl ? "Προτιμώ να μην απαντήσω" : "Prefer not to say"}</option>
+                </select></label>
+              <label class="block sm:col-span-2"><span class="text-xs text-white/50">{isEl ? "Διεύθυνση" : "Address"}</span>
+                <input name="address" required minlength="2" maxlength="200" value={profile?.address ?? ""}
+                  class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400/50" /></label>
+              <label class="block"><span class="text-xs text-white/50">{isEl ? "Πόλη" : "City"}</span>
+                <input name="city" required minlength="2" maxlength="80" value={profile?.city ?? ""}
+                  class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400/50" /></label>
+              <label class="block"><span class="text-xs text-white/50">{isEl ? "Τ.Κ." : "Postal code"}</span>
+                <input name="postal_code" required minlength="2" maxlength="20" value={profile?.postal_code ?? ""}
+                  class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400/50" /></label>
+              <label class="block sm:col-span-2"><span class="text-xs text-white/50">{isEl ? "Χώρα" : "Country"}</span>
+                <input name="country" required minlength="2" maxlength="60" placeholder={isEl ? "Ελλάδα" : "Greece"} value={profile?.country ?? ""}
+                  class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400/50" /></label>
+            </div>
+            <label class="flex items-start gap-2 text-xs text-white/60">
+              <input type="checkbox" name="marketing_consent" class="mt-0.5" />
+              <span>{isEl ? "Θέλω να λαμβάνω προσφορές & εκπτώσεις από το Sally's Bar." : "I want to receive offers & discounts from Sally's Bar."}</span>
+            </label>
+            <p id="cardFormMsg" class="text-xs hidden"></p>
+            <button type="submit" id="cardFormSubmit"
+              class="w-full rounded-xl bg-amber-400 text-black px-4 py-3 text-sm font-semibold hover:bg-amber-300 transition disabled:opacity-40">
+              ✨ {isEl ? "Ενεργοποίηση κάρτας" : "Activate my card"}
+            </button>
+          </form>
+        </div>
+      </div>
+    )}
 
   <script>
     import QRCode from "qrcode";
@@ -576,6 +657,41 @@ function statusLabel(s: string) {
         badge.style.color = "#f87171";
       }
       btn.remove();
+    });
+
+    // Loyalty card activation modal
+    const openCardBtn = document.getElementById("openCardFormBtn");
+    const cardModal   = document.getElementById("cardFormModal");
+    const closeCardBtn= document.getElementById("closeCardFormBtn");
+    const cardForm    = document.getElementById("cardForm") as HTMLFormElement | null;
+    function openCardModal() { cardModal?.classList.remove("hidden"); cardModal?.classList.add("flex"); }
+    function closeCardModal(){ cardModal?.classList.add("hidden"); cardModal?.classList.remove("flex"); }
+    openCardBtn?.addEventListener("click", openCardModal);
+    closeCardBtn?.addEventListener("click", closeCardModal);
+    cardModal?.addEventListener("click", (e) => { if (e.target === cardModal) closeCardModal(); });
+    cardForm?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const fd = new FormData(cardForm);
+      const payload = Object.fromEntries(fd.entries()) as Record<string, unknown>;
+      payload.marketing_consent = fd.get("marketing_consent") === "on";
+      const submitBtn = document.getElementById("cardFormSubmit") as HTMLButtonElement;
+      const msg = document.getElementById("cardFormMsg")!;
+      submitBtn.disabled = true;
+      msg.className = "text-xs hidden";
+      const res = await fetch("/api/account/create-card", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        msg.textContent = isEl ? "✓ Ενεργοποιήθηκε! Φόρτωση κάρτας…" : "✓ Activated! Loading your card…";
+        msg.className = "text-xs text-green-400 block";
+        setTimeout(() => window.location.reload(), 800);
+      } else {
+        const j = await res.json().catch(() => ({}));
+        msg.textContent = (isEl ? "Σφάλμα: " : "Error: ") + (j.error ?? "unknown");
+        msg.className = "text-xs text-red-400 block";
+        submitBtn.disabled = false;
+      }
     });
   </script>
 
