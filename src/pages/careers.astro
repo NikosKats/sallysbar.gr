@@ -103,13 +103,10 @@ const perks = isEl ? {
               const jt    = isEl ? j.title_el : j.title_en;
               const jdesc = isEl ? j.description_el : j.description_en;
               const jreq  = (isEl ? j.requirements_el : j.requirements_en) ?? "";
-              const reqs  = jreq.split("\n").map(s => s.trim()).filter(Boolean);
+              const reqs  = jreq.split("\n").map((s: string) => s.trim()).filter(Boolean);
               const jobUrl = `${canonical}#job-${j.id}`;
               const shareText = encodeURIComponent(`${jt} — ${site.name}`);
               const shareUrl  = encodeURIComponent(jobUrl);
-              const applyHref = j.apply_email
-                ? `mailto:${j.apply_email}?subject=${encodeURIComponent("Application: " + jt)}`
-                : site.socials.instagram;
               return (
                 <article id={`job-${j.id}`} class="rounded-3xl border border-white/10 bg-white/[0.03] p-6 scroll-mt-32">
                   <div class="flex items-start justify-between gap-3 flex-wrap">
@@ -122,15 +119,15 @@ const perks = isEl ? {
                         {j.salary_range && <span class="ml-2">· 💰 {j.salary_range}</span>}
                       </p>
                     </div>
-                    <a href={applyHref} target={applyHref.startsWith("http") ? "_blank" : undefined}
-                      class="shrink-0 rounded-xl bg-amber-400 text-black px-4 py-2 text-sm font-semibold hover:bg-amber-300 transition">
+                    <button type="button" class="apply-btn shrink-0 rounded-xl bg-amber-400 text-black px-4 py-2 text-sm font-semibold hover:bg-amber-300 transition"
+                      data-job-id={j.id} data-job-title={jt}>
                       {isEl ? "Αίτηση" : "Apply"}
-                    </a>
+                    </button>
                   </div>
                   {jdesc && <p class="mt-3 text-sm text-white/75 leading-relaxed whitespace-pre-line">{jdesc}</p>}
                   {reqs.length > 0 && (
                     <ul class="mt-3 space-y-1 text-sm text-white/70">
-                      {reqs.map(r => <li class="flex items-start gap-2"><span class="text-amber-300">•</span><span>{r}</span></li>)}
+                      {reqs.map((r: string) => <li class="flex items-start gap-2"><span class="text-amber-300">•</span><span>{r}</span></li>)}
                     </ul>
                   )}
 
@@ -183,7 +180,46 @@ const perks = isEl ? {
 
     <Footer />
 
+    <!-- Apply modal -->
+    <div id="applyModal" class="fixed inset-0 z-50 hidden bg-black/70 backdrop-blur-sm p-0 sm:p-4">
+      <div class="relative mx-auto w-full max-w-lg h-full sm:h-auto sm:max-h-[calc(100vh-2rem)] sm:my-4 rounded-none sm:rounded-2xl border border-white/10 bg-[#141420] flex flex-col">
+        <div class="flex items-start justify-between p-5 border-b border-white/10 shrink-0">
+          <div>
+            <h3 class="text-lg font-bold text-amber-200">{isEl ? "Αίτηση Εργασίας" : "Apply for the role"}</h3>
+            <p id="applyJobLabel" class="text-xs text-white/50 mt-1"></p>
+          </div>
+          <button id="applyCloseBtn" type="button" class="text-white/40 hover:text-white text-3xl leading-none px-2 -mt-1">×</button>
+        </div>
+        <form id="applyForm" class="flex-1 overflow-y-auto p-5 space-y-3">
+          <input type="hidden" name="job_id" />
+          <label class="block"><span class="text-xs text-white/50">{isEl ? "Ονοματεπώνυμο" : "Full name"} *</span>
+            <input name="full_name" required minlength="2" maxlength="120"
+              class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400/50" /></label>
+          <label class="block"><span class="text-xs text-white/50">{isEl ? "Email" : "Email"} *</span>
+            <input name="email" type="email" required
+              class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400/50" /></label>
+          <label class="block"><span class="text-xs text-white/50">{isEl ? "Τηλέφωνο (προαιρ.)" : "Phone (optional)"}</span>
+            <input name="phone" type="tel" placeholder="+30..."
+              class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400/50" /></label>
+          <label class="block"><span class="text-xs text-white/50">{isEl ? "Μήνυμα / Εμπειρία" : "Message / Experience"}</span>
+            <textarea name="message" rows="5" maxlength="2000" placeholder={isEl ? "Πείτε μας λίγα λόγια για εσάς…" : "Tell us a bit about yourself…"}
+              class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400/50"></textarea></label>
+          <p id="applyMsg" class="text-xs hidden"></p>
+        </form>
+        <div class="shrink-0 border-t border-white/10 p-4 bg-[#141420] flex gap-3">
+          <button id="applyCancelBtn" type="button" class="flex-1 rounded-xl border border-white/15 text-white/70 px-4 py-3 text-sm font-semibold hover:bg-white/5 transition">
+            {isEl ? "Άκυρο" : "Cancel"}
+          </button>
+          <button id="applySubmitBtn" type="button" class="flex-[2] rounded-xl bg-amber-400 text-black px-4 py-3 text-sm font-semibold hover:bg-amber-300 transition disabled:opacity-40">
+            {isEl ? "Υποβολή αίτησης" : "Submit application"}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <script is:inline>
+      const isEl = document.documentElement.lang === "el";
+
       document.querySelectorAll(".copy-btn").forEach((btn) => {
         btn.addEventListener("click", async () => {
           const url = btn.getAttribute("data-share-url") || window.location.href;
@@ -194,6 +230,59 @@ const perks = isEl ? {
             setTimeout(() => toast.classList.add("hidden"), 1800);
           }
         });
+      });
+
+      const modal = document.getElementById("applyModal");
+      const form  = document.getElementById("applyForm");
+      const label = document.getElementById("applyJobLabel");
+      const msg   = document.getElementById("applyMsg");
+      const submitBtn = document.getElementById("applySubmitBtn");
+      function openApply(jobId, jobTitle) {
+        form.reset();
+        form.elements.job_id.value = jobId || "";
+        label.textContent = jobTitle || "";
+        msg.className = "text-xs hidden";
+        submitBtn.disabled = false;
+        submitBtn.textContent = isEl ? "Υποβολή αίτησης" : "Submit application";
+        modal.classList.remove("hidden"); modal.classList.add("flex");
+      }
+      function closeApply() { modal.classList.add("hidden"); modal.classList.remove("flex"); }
+      document.querySelectorAll(".apply-btn").forEach((b) => {
+        b.addEventListener("click", () => openApply(b.getAttribute("data-job-id"), b.getAttribute("data-job-title")));
+      });
+      document.getElementById("applyCloseBtn").addEventListener("click", closeApply);
+      document.getElementById("applyCancelBtn").addEventListener("click", closeApply);
+      modal.addEventListener("click", (e) => { if (e.target === modal) closeApply(); });
+
+      submitBtn.addEventListener("click", async () => {
+        if (!form.reportValidity()) return;
+        const fd = new FormData(form);
+        const payload = Object.fromEntries(fd.entries());
+        submitBtn.disabled = true;
+        submitBtn.textContent = isEl ? "⏳ Αποστολή…" : "⏳ Sending…";
+        msg.className = "text-xs hidden";
+        try {
+          const res = await fetch("/api/careers/apply", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          if (res.ok) {
+            form.innerHTML = `<div class="py-10 text-center"><div class="text-4xl mb-3">✅</div><p class="text-lg font-semibold text-amber-200">${isEl ? "Η αίτησή σας στάλθηκε!" : "Your application was sent!"}</p><p class="text-sm text-white/60 mt-2">${isEl ? "Θα επικοινωνήσουμε σύντομα." : "We'll be in touch soon."}</p></div>`;
+            submitBtn.style.display = "none";
+            document.getElementById("applyCancelBtn").textContent = isEl ? "Κλείσιμο" : "Close";
+          } else {
+            const j = await res.json().catch(() => ({}));
+            msg.textContent = (isEl ? "Σφάλμα: " : "Error: ") + (j.error ?? "unknown");
+            msg.className = "text-xs text-red-400 block";
+            submitBtn.disabled = false;
+            submitBtn.textContent = isEl ? "Υποβολή αίτησης" : "Submit application";
+          }
+        } catch {
+          msg.textContent = isEl ? "Σφάλμα δικτύου" : "Network error";
+          msg.className = "text-xs text-red-400 block";
+          submitBtn.disabled = false;
+          submitBtn.textContent = isEl ? "Υποβολή αίτησης" : "Submit application";
+        }
       });
     </script>
   </body>
