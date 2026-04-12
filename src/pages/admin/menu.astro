@@ -99,6 +99,7 @@ const { categories, items } = await getMenuAdmin();
               <option value="">{t.admin.menu.allCategories}</option>
               {categories.map((c) => <option value={c.id}>{c.title_en}</option>)}
             </select>
+            <button id="importPhotoBtn" type="button" class="rounded-xl border border-amber-400/40 bg-amber-400/10 px-3 py-1.5 text-sm font-semibold text-amber-300 hover:bg-amber-400/20 transition">📷 {lang === "el" ? "Εισαγωγή από φωτογραφία" : "Import from photo"}</button>
             <button id="newItemBtn" class="rounded-xl bg-white px-3 py-1.5 text-sm font-semibold text-black hover:bg-white/90 transition">{t.admin.menu.newItem}</button>
           </div>
         </div>
@@ -278,6 +279,57 @@ const { categories, items } = await getMenuAdmin();
       <div class="modal-footer">
         <button class="btn-ghost" data-close="deleteModal">{t.admin.menu.cancel}</button>
         <button class="btn-danger" id="confirmDeleteBtn">{t.admin.menu.delete}</button>
+      </div>
+    </dialog>
+
+    <!-- Import from photo modal -->
+    <dialog id="importModal" style="width: min(980px, 98vw);">
+      <div class="modal-header">
+        <h3 class="font-semibold">📷 {lang === "el" ? "Εισαγωγή μενού από φωτογραφία" : "Import menu from photo"}</h3>
+        <button class="close-btn" data-close="importModal">✕</button>
+      </div>
+      <div class="modal-body" style="max-height: 78vh;">
+        <div id="importStep1">
+          <p class="text-sm text-white/60 mb-4">{lang === "el" ? "Ανέβασε μια φωτογραφία του μενού σου. Η AI θα εξάγει αυτόματα τα προϊόντα, τις τιμές και την κατηγορία τους." : "Upload a photo of your menu. The AI will extract items, prices and suggested categories. You'll review before saving."}</p>
+          <div class="field">
+            <label>{lang === "el" ? "Φωτογραφία μενού" : "Menu photo"}</label>
+            <input id="importFile" type="file" accept="image/*" />
+          </div>
+          <div id="importPreviewImg" class="mt-3"></div>
+        </div>
+
+        <div id="importStep2" style="display:none;">
+          <div class="flex items-center justify-between mb-3">
+            <p class="text-sm text-white/70"><span id="importCount">0</span> {lang === "el" ? "προϊόντα βρέθηκαν. Επεξεργάσου και επιβεβαίωσε." : "items detected. Edit and confirm."}</p>
+            <button id="importAddRowBtn" type="button" class="btn-ghost" style="padding:.4rem .75rem;font-size:.8rem;">+ {lang === "el" ? "Σειρά" : "Row"}</button>
+          </div>
+          <div style="overflow-x:auto;border:1px solid rgba(255,255,255,.1);border-radius:.75rem;">
+            <table class="w-full text-xs" id="importTable">
+              <thead>
+                <tr style="background:rgba(0,0,0,.3);">
+                  <th class="px-2 py-2 text-left text-white/50 font-medium">Name EN</th>
+                  <th class="px-2 py-2 text-left text-white/50 font-medium">Name EL</th>
+                  <th class="px-2 py-2 text-left text-white/50 font-medium">€</th>
+                  <th class="px-2 py-2 text-left text-white/50 font-medium">{lang === "el" ? "Κατηγορία" : "Category"}</th>
+                  <th class="px-2 py-2 text-left text-white/50 font-medium">VAT</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="importTbody"></tbody>
+            </table>
+          </div>
+          <p class="text-xs text-white/40 mt-3">{lang === "el" ? "Μόνο σειρές με όνομα και κατηγορία θα αποθηκευτούν." : "Only rows with a name and category will be saved."}</p>
+        </div>
+
+        <div id="importLoading" style="display:none;" class="text-center py-8">
+          <div class="inline-block h-8 w-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
+          <p class="mt-3 text-sm text-white/60">{lang === "el" ? "Ανάλυση φωτογραφίας…" : "Analysing photo…"}</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-ghost" data-close="importModal">{t.admin.menu.cancel}</button>
+        <button id="importAnalyzeBtn" class="btn-primary">{lang === "el" ? "Ανάλυση" : "Analyse"}</button>
+        <button id="importSaveBtn" class="btn-primary" style="display:none;background:#fbbf24;">{lang === "el" ? "Αποθήκευση όλων" : "Save all"}</button>
       </div>
     </dialog>
 
@@ -591,6 +643,140 @@ const { categories, items } = await getMenuAdmin();
       // ── New buttons ─────────────────────────────────────
       document.getElementById("newCatBtn")!.addEventListener("click",  () => openCatModal());
       document.getElementById("newItemBtn")!.addEventListener("click", () => openItemModal());
+
+      // ── Import from photo ───────────────────────────────
+      const importFile = document.getElementById("importFile") as HTMLInputElement;
+      const importAnalyzeBtn = document.getElementById("importAnalyzeBtn") as HTMLButtonElement;
+      const importSaveBtn    = document.getElementById("importSaveBtn") as HTMLButtonElement;
+      const importStep1      = document.getElementById("importStep1") as HTMLElement;
+      const importStep2      = document.getElementById("importStep2") as HTMLElement;
+      const importLoading    = document.getElementById("importLoading") as HTMLElement;
+      const importTbody      = document.getElementById("importTbody") as HTMLElement;
+      const importPreviewImg = document.getElementById("importPreviewImg") as HTMLElement;
+
+      function resetImport() {
+        importFile.value = "";
+        importPreviewImg.innerHTML = "";
+        importTbody.innerHTML = "";
+        importStep1.style.display = "";
+        importStep2.style.display = "none";
+        importLoading.style.display = "none";
+        importAnalyzeBtn.style.display = "";
+        importSaveBtn.style.display = "none";
+      }
+
+      document.getElementById("importPhotoBtn")!.addEventListener("click", () => {
+        resetImport();
+        openModal("importModal");
+      });
+
+      importFile.addEventListener("change", () => {
+        const f = importFile.files?.[0];
+        if (!f) { importPreviewImg.innerHTML = ""; return; }
+        const url = URL.createObjectURL(f);
+        importPreviewImg.innerHTML = `<img src="${url}" style="max-height:260px;border-radius:.5rem;border:1px solid rgba(255,255,255,.1);" />`;
+      });
+
+      function catOptionsHtml(selectedId: number | null) {
+        let out = `<option value="">—</option>`;
+        for (const c of cats) {
+          out += `<option value="${c.id}"${c.id === selectedId ? " selected" : ""}>${c.title_en}</option>`;
+        }
+        return out;
+      }
+
+      function addImportRow(row: any = {}) {
+        const tr = document.createElement("tr");
+        tr.style.borderTop = "1px solid rgba(255,255,255,.06)";
+        tr.innerHTML = `
+          <td class="px-2 py-1.5"><input class="imp-name-en" value="${(row.name_en ?? "").replace(/"/g,"&quot;")}" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:.375rem;padding:.3rem .5rem;color:#fff;font-size:.8rem;" /></td>
+          <td class="px-2 py-1.5"><input class="imp-name-el" value="${(row.name_el ?? "").replace(/"/g,"&quot;")}" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:.375rem;padding:.3rem .5rem;color:#fff;font-size:.8rem;" /></td>
+          <td class="px-2 py-1.5"><input class="imp-price" type="number" min="0" step="0.5" value="${row.price_cents != null ? (row.price_cents / 100).toFixed(2) : ""}" style="width:70px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:.375rem;padding:.3rem .5rem;color:#fff;font-size:.8rem;" /></td>
+          <td class="px-2 py-1.5"><select class="imp-cat" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:.375rem;padding:.3rem .5rem;color:#fff;font-size:.8rem;">${catOptionsHtml(row.category_id ?? null)}</select></td>
+          <td class="px-2 py-1.5"><select class="imp-vat" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:.375rem;padding:.3rem .5rem;color:#fff;font-size:.8rem;"><option value="non_alcoholic"${row.vat_category !== "alcoholic" ? " selected" : ""}>13%</option><option value="alcoholic"${row.vat_category === "alcoholic" ? " selected" : ""}>24%</option></select></td>
+          <td class="px-2 py-1.5 text-right"><button class="imp-del" type="button" style="color:#f87171;background:none;border:none;cursor:pointer;">✕</button></td>
+        `;
+        tr.querySelector(".imp-del")!.addEventListener("click", () => tr.remove());
+        importTbody.appendChild(tr);
+      }
+
+      document.getElementById("importAddRowBtn")!.addEventListener("click", () => addImportRow());
+
+      importAnalyzeBtn.addEventListener("click", async () => {
+        const f = importFile.files?.[0];
+        if (!f) { toast(i18n.chooseFile ?? "Choose a photo first", "error"); return; }
+        if (f.size > 10 * 1024 * 1024) { toast("Image too large (max 10MB)", "error"); return; }
+
+        importStep1.style.display = "none";
+        importLoading.style.display = "";
+        importAnalyzeBtn.disabled = true;
+
+        const b64 = await new Promise<string>((resolve, reject) => {
+          const r = new FileReader();
+          r.onload = () => resolve((r.result as string).split(",")[1]);
+          r.onerror = reject;
+          r.readAsDataURL(f);
+        });
+
+        const res = await api("/api/admin/menu/import-photo", "POST", {
+          image_base64: b64,
+          image_mime_type: f.type || "image/jpeg",
+        });
+
+        importLoading.style.display = "none";
+        importAnalyzeBtn.disabled = false;
+
+        if (res.error) {
+          importStep1.style.display = "";
+          toast(res.error, "error");
+          return;
+        }
+
+        importTbody.innerHTML = "";
+        const detected = Array.isArray(res.items) ? res.items : [];
+        detected.forEach((r: any) => addImportRow(r));
+        document.getElementById("importCount")!.textContent = String(detected.length);
+        importStep2.style.display = "";
+        importAnalyzeBtn.style.display = "none";
+        importSaveBtn.style.display = "";
+      });
+
+      importSaveBtn.addEventListener("click", async () => {
+        const rows = Array.from(importTbody.querySelectorAll("tr"));
+        const toCreate: any[] = [];
+        for (const tr of rows) {
+          const name_en = (tr.querySelector(".imp-name-en") as HTMLInputElement).value.trim();
+          const name_el = (tr.querySelector(".imp-name-el") as HTMLInputElement).value.trim();
+          const priceEur = Number((tr.querySelector(".imp-price") as HTMLInputElement).value || "0");
+          const cat = (tr.querySelector(".imp-cat") as HTMLSelectElement).value;
+          const vat = (tr.querySelector(".imp-vat") as HTMLSelectElement).value;
+          if (!name_en || !cat) continue;
+          toCreate.push({
+            name_en, name_el: name_el || name_en,
+            slug: slugify(name_en) + "-" + Math.random().toString(36).slice(2, 6),
+            category_id: Number(cat),
+            price_cents: Math.round(priceEur * 100),
+            vat_category: vat,
+            is_visible: true,
+            sort: 0,
+          });
+        }
+
+        if (!toCreate.length) { toast("No valid rows", "error"); return; }
+
+        importSaveBtn.disabled = true;
+        let ok = 0, fail = 0;
+        for (const payload of toCreate) {
+          const r = await api("/api/admin/menu/items", "POST", payload);
+          if (r.error) fail++;
+          else { ok++; items.push(r.item); }
+        }
+        importSaveBtn.disabled = false;
+
+        renderItems();
+        closeModal("importModal");
+        toast(`Saved ${ok}${fail ? " (" + fail + " failed)" : ""}`, fail ? "error" : "success");
+      });
 
       // ── Init ────────────────────────────────────────────
       bindCatEvents();
