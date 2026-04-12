@@ -1,7 +1,16 @@
 import type { APIRoute } from "astro";
 import { supabaseAdmin } from "../../../lib/supabase";
 import { hashIp } from "../../../lib/ua";
-import { WHEEL_POOL, pickWheelReward, distanceMeters, BAR_LAT, BAR_LON, MAX_DISTANCE_M } from "../../../lib/wheel";
+import { WHEEL_POOL, pickWheelReward, distanceMeters, BAR_LAT, BAR_LON, MAX_DISTANCE_M as DEFAULT_DISTANCE } from "../../../lib/wheel";
+
+async function getWheelSettings() {
+  const { data } = await supabaseAdmin.from("wheel_settings").select("*").eq("id", 1).maybeSingle();
+  return {
+    enabled:         data?.enabled         ?? true,
+    max_distance_m:  data?.max_distance_m  ?? DEFAULT_DISTANCE,
+    require_country: data?.require_country ?? false,
+  };
+}
 import { verifyTableToken } from "../../../lib/tableToken";
 
 function json(obj: unknown, status = 200) {
@@ -12,6 +21,9 @@ function json(obj: unknown, status = 200) {
 // Used by /table/[id] to decide whether to show the wheel.
 export const GET: APIRoute = async ({ locals }) => {
   if (!locals.user) return json({ canSpin: false, reason: "auth_required" });
+
+  const settings = await getWheelSettings();
+  if (!settings.enabled) return json({ canSpin: false, reason: "disabled" });
 
   // Check today's spin
   const { data: existing } = await supabaseAdmin
@@ -38,6 +50,9 @@ export const GET: APIRoute = async ({ locals }) => {
 export const POST: APIRoute = async ({ request, locals, clientAddress }) => {
   if (!locals.user) return json({ error: "auth_required" }, 401);
 
+  const settings = await getWheelSettings();
+  if (!settings.enabled) return json({ error: "disabled", message: "The wheel is temporarily disabled." }, 403);
+
   let body: any;
   try { body = await request.json(); } catch { return json({ error: "bad_json" }, 400); }
 
@@ -50,18 +65,16 @@ export const POST: APIRoute = async ({ request, locals, clientAddress }) => {
     return json({ error: "location_required", message: "Enable location to spin — verifies you're at the bar." }, 400);
   }
 
-  // 1) Proximity to bar
+  // 1) Proximity to bar (admin-tunable)
   const distM = distanceMeters(lat, lon, BAR_LAT, BAR_LON);
-  if (distM > MAX_DISTANCE_M) {
+  if (distM > settings.max_distance_m) {
     return json({ error: "too_far", message: "Come to Sally's Bar to spin — we don't spin remotely.", distance_m: Math.round(distM) }, 403);
   }
 
-  // 2) Country sanity check via Cloudflare edge header (extra layer vs geo spoofing)
+  // 2) Country sanity check via Cloudflare edge header (admin-tunable)
   const cc = request.headers.get("cf-ipcountry") ?? "";
-  if (cc && cc !== "GR" && cc !== "T1" /* Tor */ && cc !== "XX") {
-    // Soft-block: allow but flag (don't reject outright; GR users abroad via VPN could trip this)
-    // If you want stricter behavior, uncomment:
-    // return json({ error: "country_mismatch", message: "Must be in Greece." }, 403);
+  if (settings.require_country && cc && cc !== "GR" && cc !== "T1" /* Tor */ && cc !== "XX") {
+    return json({ error: "country_mismatch", message: "Must be in Greece to spin." }, 403);
   }
 
   // 3) Optional: verify the table token so a user can't just POST from home even with faked geo

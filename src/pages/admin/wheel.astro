@@ -1,0 +1,206 @@
+---
+import "../../styles/global.css";
+import AdminNav from "../../components/AdminNav.astro";
+import { supabaseAdmin } from "../../lib/supabase";
+import { withLangPrefix } from "../../i18n";
+import { WHEEL_POOL } from "../../lib/wheel";
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+
+if (Astro.locals.role !== "admin") {
+  return Astro.redirect(withLangPrefix(lang, "/admin"));
+}
+
+const { data: settings } = await supabaseAdmin
+  .from("wheel_settings").select("*").eq("id", 1).maybeSingle();
+
+const { data: spins } = await supabaseAdmin
+  .from("wheel_spins")
+  .select("id, user_id, spun_at, table_number, distance_m, reward_type, reward_value, reward_label, ip_hash")
+  .order("spun_at", { ascending: false })
+  .limit(100);
+
+// Enrich with user names
+const userIds = Array.from(new Set((spins ?? []).map(s => s.user_id)));
+const nameById = new Map<string, string>();
+const emailById = new Map<string, string>();
+if (userIds.length) {
+  const { data: profiles } = await supabaseAdmin
+    .from("profiles").select("id, full_name").in("id", userIds);
+  for (const p of profiles ?? []) nameById.set(p.id, p.full_name ?? "");
+
+  const { data: authList } = await supabaseAdmin.auth.admin.listUsers({ perPage: 500 });
+  for (const u of authList?.users ?? []) emailById.set(u.id, u.email ?? "");
+}
+
+// KPIs
+const todayAthens = new Date().toLocaleDateString("en-GB", { timeZone: "Europe/Athens" });
+const spinsToday = (spins ?? []).filter(s => new Date(s.spun_at).toLocaleDateString("en-GB", { timeZone: "Europe/Athens" }) === todayAthens).length;
+const uniqueUsers = new Set((spins ?? []).map(s => s.user_id)).size;
+const rewardCounts = new Map<string, number>();
+for (const s of spins ?? []) rewardCounts.set(s.reward_label, (rewardCounts.get(s.reward_label) ?? 0) + 1);
+const topReward = [...rewardCounts.entries()].sort((a, b) => b[1] - a[1])[0];
+
+function fmtDateTime(s: string) {
+  return new Date(s).toLocaleString(isEl ? "el-GR" : "en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+}
+---
+
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{isEl ? "🎡 Ρόδα Τύχης" : "🎡 Wheel of Luck"} — Admin</title>
+    <meta name="robots" content="noindex,nofollow" />
+  </head>
+  <body class="min-h-screen bg-[#0b0b10] text-white">
+    <AdminNav active="wheel" />
+
+    <main class="mx-auto max-w-5xl px-4 py-6 space-y-6">
+      <div>
+        <h1 class="text-2xl font-bold">🎡 {isEl ? "Ρόδα Τύχης" : "Wheel of Luck"}</h1>
+        <p class="text-sm text-white/50 mt-1">
+          {isEl ? "Ημερήσιο spin για συνδεδεμένους πελάτες, μόνο στο bar." : "Daily spin for logged-in customers, bar-only."}
+        </p>
+      </div>
+
+      <!-- KPI -->
+      <section class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div class="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4">
+          <p class="text-[10px] uppercase tracking-wider text-amber-300/70">{isEl ? "Σήμερα" : "Today"}</p>
+          <p class="text-3xl font-bold text-amber-300 mt-1">{spinsToday}</p>
+        </div>
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+          <p class="text-[10px] uppercase tracking-wider text-white/40">{isEl ? "Σύνολο 100" : "Last 100"}</p>
+          <p class="text-3xl font-bold text-white mt-1">{(spins ?? []).length}</p>
+        </div>
+        <div class="rounded-2xl border border-fuchsia-400/20 bg-fuchsia-400/5 p-4">
+          <p class="text-[10px] uppercase tracking-wider text-fuchsia-300/70">{isEl ? "Μοναδικοί παίκτες" : "Unique players"}</p>
+          <p class="text-3xl font-bold text-fuchsia-300 mt-1">{uniqueUsers}</p>
+        </div>
+        <div class="rounded-2xl border border-emerald-400/20 bg-emerald-400/5 p-4">
+          <p class="text-[10px] uppercase tracking-wider text-emerald-300/70">{isEl ? "Πιο κοινό έπαθλο" : "Top prize"}</p>
+          <p class="text-sm font-semibold text-emerald-300 mt-1 truncate">{topReward ? topReward[0] : "—"}</p>
+          <p class="text-[11px] text-emerald-300/60">{topReward ? `${topReward[1]} ${isEl ? "φορές" : "times"}` : ""}</p>
+        </div>
+      </section>
+
+      <!-- Settings -->
+      <section class="rounded-2xl border border-white/10 bg-white/5 p-5 space-y-4">
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <h2 class="text-sm font-semibold uppercase tracking-widest text-white/50">{isEl ? "Ρυθμίσεις" : "Settings"}</h2>
+          <button id="saveWheelBtn" type="button" class="rounded-xl bg-amber-400 text-black px-4 py-2 text-sm font-semibold hover:bg-amber-300 transition">
+            {isEl ? "Αποθήκευση" : "Save"}
+          </button>
+        </div>
+
+        <label class="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4 cursor-pointer">
+          <input id="wEnabled" type="checkbox" checked={settings?.enabled !== false} class="mt-1 h-4 w-4" />
+          <div>
+            <div class="font-semibold text-white">{isEl ? "Ενεργή ρόδα" : "Wheel enabled"}</div>
+            <p class="text-xs text-white/55 mt-1">{isEl ? "Αν απενεργοποιηθεί, η ρόδα δεν φαίνεται σε κανέναν πελάτη." : "Off-switch: hides the wheel from every customer instantly."}</p>
+          </div>
+        </label>
+
+        <label class="block rounded-xl border border-white/10 bg-white/[0.03] p-4">
+          <span class="text-xs text-white/50">{isEl ? "Μέγιστη απόσταση από το bar (μέτρα)" : "Max distance from bar (meters)"}</span>
+          <input id="wDistance" type="number" min="10" max="5000" step="10" value={settings?.max_distance_m ?? 250}
+            class="w-full mt-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" />
+          <p class="text-xs text-white/40 mt-2">{isEl
+            ? "Συνιστώμενο 150-300m. Πολύ χαμηλά θα απορρίπτει έγκυρους πελάτες· πολύ ψηλά αχρηστεύει το geo-guard."
+            : "Recommended 150-300m. Too low rejects valid guests; too high defeats the geo-guard."}</p>
+        </label>
+
+        <label class="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4 cursor-pointer">
+          <input id="wRequireCountry" type="checkbox" checked={!!settings?.require_country} class="mt-1 h-4 w-4" />
+          <div>
+            <div class="font-semibold text-white">{isEl ? "Απαίτηση Ελλάδας (Cloudflare IP)" : "Require Greece (Cloudflare IP)"}</div>
+            <p class="text-xs text-white/55 mt-1">{isEl ? "Επιπλέον φίλτρο IP. Μπορεί να μπλοκάρει Έλληνες με VPN — συστήνω off." : "Extra IP filter. Can block Greeks on VPNs — leave off for best UX."}</p>
+          </div>
+        </label>
+
+        <p id="wMsg" class="text-xs hidden"></p>
+      </section>
+
+      <!-- Reward pool display (read-only for now) -->
+      <section class="rounded-2xl border border-white/10 bg-white/5 p-5 space-y-3">
+        <h2 class="text-sm font-semibold uppercase tracking-widest text-white/50">{isEl ? "Έπαθλα (weighted pool)" : "Reward pool (weighted)"}</h2>
+        <p class="text-xs text-white/40">{isEl ? "Όλα τα βάρη αθροίζουν σε 100. Επεξεργασία στο src/lib/wheel.ts." : "All weights sum to 100. Edit in src/lib/wheel.ts."}</p>
+        <div class="grid sm:grid-cols-2 gap-2 text-xs">
+          {WHEEL_POOL.map(r => (
+            <div class="flex items-center gap-3 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
+              <div class="shrink-0 h-6 w-6 rounded" style={`background:${r.color}`}></div>
+              <div class="flex-1 min-w-0">
+                <p class="font-semibold truncate">{r.label_en}</p>
+                <p class="text-white/40">{r.type}{r.value ? ` · ${r.value}` : ""}</p>
+              </div>
+              <span class="font-mono text-amber-300">{r.weight}%</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <!-- Recent spins -->
+      <section class="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
+        <div class="px-5 py-3 border-b border-white/10">
+          <h2 class="text-sm font-semibold uppercase tracking-widest text-white/50">{isEl ? "Πρόσφατες περιστροφές" : "Recent spins"} ({(spins ?? []).length})</h2>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs">
+            <thead class="bg-white/5">
+              <tr class="text-white/40 text-[10px] uppercase tracking-wider">
+                <th class="text-left px-3 py-2">{isEl ? "Ώρα" : "Time"}</th>
+                <th class="text-left px-3 py-2">{isEl ? "Παίκτης" : "Player"}</th>
+                <th class="text-left px-3 py-2">{isEl ? "Έπαθλο" : "Prize"}</th>
+                <th class="text-left px-3 py-2">{isEl ? "Τραπέζι" : "Table"}</th>
+                <th class="text-right px-3 py-2">{isEl ? "Απόσταση" : "Distance"}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(spins ?? []).map(s => (
+                <tr class="border-t border-white/5 hover:bg-white/[0.03]">
+                  <td class="px-3 py-2 text-white/60 whitespace-nowrap">{fmtDateTime(s.spun_at)}</td>
+                  <td class="px-3 py-2 text-white/80 truncate max-w-[180px]">
+                    <a href={`/admin/users/${s.user_id}`} class="hover:text-amber-300 underline">
+                      {nameById.get(s.user_id) || emailById.get(s.user_id) || s.user_id.slice(0, 8)}
+                    </a>
+                  </td>
+                  <td class="px-3 py-2 text-white font-medium">{s.reward_label}</td>
+                  <td class="px-3 py-2 text-white/60">{s.table_number ?? "—"}</td>
+                  <td class="px-3 py-2 text-right text-white/50 whitespace-nowrap">{s.distance_m ? `${Math.round(s.distance_m)}m` : "—"}</td>
+                </tr>
+              ))}
+              {(spins ?? []).length === 0 && (
+                <tr><td colspan="5" class="py-8 text-center text-white/40 italic">{isEl ? "Καμία περιστροφή ακόμα." : "No spins yet."}</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script is:inline>
+      (function () {
+        const isEl = document.documentElement.lang === "el";
+        const btn = document.getElementById("saveWheelBtn");
+        const msg = document.getElementById("wMsg");
+        btn.addEventListener("click", async () => {
+          btn.disabled = true;
+          const payload = {
+            enabled: document.getElementById("wEnabled").checked,
+            max_distance_m: Number(document.getElementById("wDistance").value) || 250,
+            require_country: document.getElementById("wRequireCountry").checked,
+          };
+          const r = await fetch("/api/admin/wheel-settings", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          btn.disabled = false;
+          if (r.ok) { msg.textContent = "✓ " + (isEl ? "Αποθηκεύτηκε" : "Saved"); msg.className = "text-xs text-emerald-400 block"; }
+          else { const j = await r.json().catch(() => ({})); msg.textContent = "Error: " + (j.error ?? "?"); msg.className = "text-xs text-red-400 block"; }
+        });
+      })();
+    </script>
+  </body>
+</html>
