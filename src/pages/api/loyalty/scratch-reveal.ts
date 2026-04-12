@@ -73,16 +73,25 @@ export const POST: APIRoute = async ({ request, locals, clientAddress }) => {
         reason: "duplicate_phone_signup_reveal",
         action: "blocked",
       });
-      // Alert admins — duplicate-phone signup attempt is a potential fraud signal
+      // Alert admins — duplicate-phone signup attempt. Batch-suppress spam:
+      // only push on the 1st attempt, and again if ≥5 attempts in the last 60 minutes.
       try {
         const { pushToAdmins } = await import("../../../lib/adminPush");
-        await pushToAdmins({
-          title: "⚠️ Blocked duplicate signup",
-          body: `${locals.user.email ?? "unknown"} tried to claim a signup bonus on an already-used phone.`,
-          url: `/admin/users/${locals.user.id}`,
-          tag: "abuse",
-          urgent: true,
-        });
+        const sinceHour = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+        const { count: hourly } = await supabaseAdmin
+          .from("signup_abuse_log").select("id", { count: "exact", head: true })
+          .gte("created_at", sinceHour);
+        const n = hourly ?? 0;
+        const shouldPing = n === 1 || n === 5 || n === 20 || (n > 0 && n % 50 === 0);
+        if (shouldPing) {
+          await pushToAdmins({
+            title: n >= 5 ? `⚠️ ${n} abuse attempts this hour` : "⚠️ Blocked duplicate signup",
+            body: `${locals.user.email ?? "unknown"} · phone already used`,
+            url: `/admin/users/${locals.user.id}`,
+            tag: `abuse-${Math.floor(Date.now() / 3600000)}`,
+            urgent: n >= 5,
+          });
+        }
       } catch {}
       return json({
         error: "phone_already_claimed",

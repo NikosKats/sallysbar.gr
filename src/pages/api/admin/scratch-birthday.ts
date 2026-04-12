@@ -37,5 +37,23 @@ export const POST: APIRoute = async ({ request, locals }) => {
   for (const m of matches) {
     issued += await issueScratchCard(m.id, "birthday", { expires_at: exp });
   }
+
+  // Admin digest push — one notification with the full list
+  if (matches.length > 0) {
+    try {
+      const { pushToAdmins } = await import("../../../lib/adminPush");
+      const { data: fullProfiles } = await supabaseAdmin
+        .from("profiles").select("id, full_name").in("id", matches.map(m => m.id));
+      const names = (fullProfiles ?? []).map(p => p.full_name || "a member").slice(0, 5).join(", ");
+      const extra = (fullProfiles ?? []).length > 5 ? ` +${(fullProfiles ?? []).length - 5} more` : "";
+      await pushToAdmins({
+        title: `🎂 ${matches.length} birthday${matches.length > 1 ? "s" : ""} today`,
+        body: names + extra,
+        url: "/admin/users",
+        tag: `bday-${todayMMDD}`,
+      });
+    } catch {}
+  }
+
   return json({ ok: true, issued, birthdays: matches.length });
 };

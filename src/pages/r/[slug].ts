@@ -56,6 +56,20 @@ export const GET: APIRoute = async ({ params, request, clientAddress }) => {
       }),
       supabaseAdmin.rpc("increment_campaign_scan", { p_id: c.id }),
     ]);
+
+    // Milestone alert to admins: 1st, 10, 50, 100, 500, 1k, 5k, 10k
+    const MILESTONES = new Set([1, 10, 50, 100, 500, 1000, 5000, 10000]);
+    const { data: updated } = await supabaseAdmin
+      .from("campaigns").select("scan_count, name").eq("id", c.id).maybeSingle();
+    if (updated && MILESTONES.has(updated.scan_count)) {
+      const { pushToAdmins } = await import("../../lib/adminPush");
+      await pushToAdmins({
+        title: updated.scan_count === 1 ? "📣 First scan!" : `📣 ${updated.scan_count} scans`,
+        body: `${updated.name}${h.get("cf-ipcountry") ? " · " + h.get("cf-ipcountry") : ""}`,
+        url: "/admin/marketing-analytics",
+        tag: `campaign-milestone-${c.id}-${updated.scan_count}`,
+      });
+    }
   } catch (e) {
     console.error("[r/slug] scan log failed", e);
   }

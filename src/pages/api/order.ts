@@ -140,6 +140,17 @@ export const POST: APIRoute = async ({ request, locals }) => {
     round_number: roundNumber,
   });
 
+  // Admin push (separate from staff push) — summary view
+  try {
+    const { pushToAdmins } = await import("../../lib/adminPush");
+    await pushToAdmins({
+      title: `🍸 New order · Table ${table}`,
+      body: `${totalFormatted} · ${items.reduce((s, i) => s + i.qty, 0)} items${roundLabel}`,
+      url: "/admin/orders",
+      tag: `order-${order.id}`,
+    });
+  } catch {}
+
   return json({ ok: true, order_id: order.id, session_id: finalSessionId });
 };
 
