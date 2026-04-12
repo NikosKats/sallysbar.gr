@@ -192,8 +192,14 @@ function fmtDate(d: string) {
                         data-name={u.name}
                         data-email={u.email}
                         data-role={u.role}>
-                        <td class="px-4 py-3 font-medium text-white" data-col="name">{u.name || "—"}</td>
-                        <td class="px-4 py-3 text-white/60" data-col="email">{u.email}</td>
+                        <td class="px-4 py-3 font-medium text-white" data-col="name">
+                          <a href={`/admin/users/${u.id}`} class="text-white hover:text-amber-300 hover:underline underline-offset-2 transition">
+                            {u.name || "—"}
+                          </a>
+                        </td>
+                        <td class="px-4 py-3 text-white/60" data-col="email">
+                          <a href={`/admin/users/${u.id}`} class="hover:text-amber-300 transition">{u.email}</a>
+                        </td>
                         <td class="px-4 py-3 text-white/40 text-xs">{u.provider}</td>
                         <td class="px-4 py-3">
                           {u.status === "invite_pending" ? (

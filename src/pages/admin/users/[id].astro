@@ -1,0 +1,380 @@
+---
+import "../../../styles/global.css";
+import AdminNav from "../../../components/AdminNav.astro";
+import { supabaseAdmin } from "../../../lib/supabase";
+import { withLangPrefix } from "../../../i18n";
+import { getTiers, currentTier, nextTier } from "../../../lib/loyalty";
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+
+if (Astro.locals.role !== "admin") {
+  return Astro.redirect(withLangPrefix(lang, "/admin"));
+}
+
+const id = Astro.params.id;
+if (!id) return Astro.redirect(withLangPrefix(lang, "/admin/users"));
+
+// ── Auth user ────────────────────────────────────────────────────────
+let authUser: any = null;
+try {
+  const res = await supabaseAdmin.auth.admin.getUserById(id);
+  authUser = res.data?.user ?? null;
+} catch {}
+if (!authUser) return Astro.redirect(withLangPrefix(lang, "/admin/users"));
+
+// ── Profile ──────────────────────────────────────────────────────────
+const { data: profile } = await supabaseAdmin
+  .from("profiles")
+  .select("*")
+  .eq("id", id)
+  .maybeSingle();
+
+// ── Loyalty ──────────────────────────────────────────────────────────
+const { data: loyaltyEvents } = await supabaseAdmin
+  .from("loyalty_events")
+  .select("id, points, reason, created_at")
+  .eq("user_id", id)
+  .order("created_at", { ascending: false })
+  .limit(100);
+
+const balance = (loyaltyEvents ?? []).reduce((s, e) => s + (e.points ?? 0), 0);
+const tiers = await getTiers();
+const tRow = currentTier(tiers, balance);
+const nRow = nextTier(tiers, balance);
+
+// ── Orders ───────────────────────────────────────────────────────────
+const { data: orders } = await supabaseAdmin
+  .from("orders")
+  .select("id, total_cents, status, created_at, table_id")
+  .eq("customer_user_id", id)
+  .order("created_at", { ascending: false })
+  .limit(50);
+
+const totalSpentCents = (orders ?? []).reduce((s, o) => s + (o.total_cents ?? 0), 0);
+const orderCount = (orders ?? []).length;
+
+// ── Reservations ─────────────────────────────────────────────────────
+const { data: reservations } = await supabaseAdmin
+  .from("reservations")
+  .select("id, date, time, party_size, status, notes, created_at")
+  .eq("user_id", id)
+  .order("date", { ascending: false })
+  .limit(30);
+
+// ── Event RSVPs ──────────────────────────────────────────────────────
+const { data: rsvps } = await supabaseAdmin
+  .from("event_rsvps")
+  .select("id, guests, status, created_at, events(id, title, event_date)")
+  .eq("user_id", id)
+  .order("created_at", { ascending: false })
+  .limit(30);
+
+// ── Scratch cards ────────────────────────────────────────────────────
+const { data: scratchCards } = await supabaseAdmin
+  .from("scratch_cards")
+  .select("*")
+  .eq("user_id", id)
+  .order("created_at", { ascending: false });
+
+const scratchTotals = {
+  total: (scratchCards ?? []).length,
+  revealed: (scratchCards ?? []).filter(c => c.revealed_at).length,
+  claimed: (scratchCards ?? []).filter(c => c.claimed_at).length,
+};
+
+// ── Quest claims ─────────────────────────────────────────────────────
+const { data: questClaims } = await supabaseAdmin
+  .from("quest_claims")
+  .select("id, claimed_at, quests(id, title_en, reward_points)")
+  .eq("user_id", id)
+  .order("claimed_at", { ascending: false })
+  .limit(30);
+
+// ── Referrals ────────────────────────────────────────────────────────
+const { data: referredUsers } = await supabaseAdmin
+  .from("profiles").select("id, full_name, created_at")
+  .eq("referred_by", id);
+
+let referredBy: any = null;
+if (profile?.referred_by) {
+  const { data: r } = await supabaseAdmin.from("profiles").select("id, full_name").eq("id", profile.referred_by).maybeSingle();
+  referredBy = r;
+}
+
+// ── Push subscriptions ───────────────────────────────────────────────
+const { data: pushSubs } = await supabaseAdmin
+  .from("push_subscriptions")
+  .select("endpoint, user_agent, created_at")
+  .eq("user_id", id)
+  .order("created_at", { ascending: false });
+
+// ── Job applications (if any) ───────────────────────────────────────
+const { data: jobApps } = await supabaseAdmin
+  .from("job_applications")
+  .select("id, full_name, email, status, created_at, job_listings(title_en)")
+  .eq("email", authUser.email ?? "")
+  .order("created_at", { ascending: false });
+
+// ── Abuse log ────────────────────────────────────────────────────────
+const { data: abuseEvents } = await supabaseAdmin
+  .from("signup_abuse_log")
+  .select("*")
+  .eq("user_id", id)
+  .order("created_at", { ascending: false })
+  .limit(20);
+
+// ── Helpers ─────────────────────────────────────────────────────────
+function fmtDateTime(s: string | null | undefined) {
+  if (!s) return "—";
+  return new Date(s).toLocaleString(isEl ? "el-GR" : "en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+function fmtDate(s: string | null | undefined) {
+  if (!s) return "—";
+  return new Date(s + (s.length === 10 ? "T00:00:00" : "")).toLocaleDateString(isEl ? "el-GR" : "en-GB", { day: "2-digit", month: "short", year: "numeric" });
+}
+function fmtEur(cents: number) { return "€" + (cents / 100).toFixed(2); }
+
+const displayName = profile?.full_name ?? authUser.user_metadata?.full_name ?? authUser.email?.split("@")[0] ?? "—";
+const role = Astro.locals.role;
+const provider = authUser.app_metadata?.provider ?? "email";
+---
+
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{displayName} — Admin</title>
+    <meta name="robots" content="noindex,nofollow" />
+  </head>
+  <body class="min-h-screen bg-[#0b0b10] text-white">
+    <AdminNav active="users" />
+
+    <main class="mx-auto max-w-6xl px-4 py-6 space-y-6">
+      <!-- Header -->
+      <div class="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <a href="/admin/users" class="text-xs text-white/40 hover:text-amber-300 transition">← {isEl ? "Πίσω στους χρήστες" : "Back to users"}</a>
+          <h1 class="text-2xl font-bold mt-1">{displayName}</h1>
+          <p class="text-sm text-white/50">{authUser.email}</p>
+          <p class="text-[11px] text-white/30 font-mono mt-1">{authUser.id}</p>
+        </div>
+        <div class="flex flex-col items-end gap-1 text-xs">
+          <span class={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider ${
+            role === "admin" ? "bg-fuchsia-400/15 text-fuchsia-300 border border-fuchsia-400/30" :
+            role === "employee" ? "bg-sky-400/15 text-sky-300 border border-sky-400/30" :
+            "bg-white/10 text-white/60 border border-white/15"
+          }`}>{profile?.role ?? "customer"}</span>
+          <span class="text-white/40">Provider: {provider}</span>
+          <span class="text-white/40">{isEl ? "Μέλος από" : "Joined"}: {fmtDate(authUser.created_at)}</span>
+        </div>
+      </div>
+
+      <!-- KPI grid -->
+      <section class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div class="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4">
+          <p class="text-[10px] uppercase tracking-[0.2em] text-amber-300/70">{isEl ? "Πόντοι" : "Points"}</p>
+          <p class="text-3xl font-bold text-amber-300 mt-1">{balance}</p>
+          {tRow && <p class="text-[11px] text-amber-300/60 mt-1">{tRow.icon} {isEl ? tRow.label_el : tRow.label_en}{nRow && <span class="text-white/40"> · {nRow.threshold - balance} {isEl ? "για" : "to"} {isEl ? nRow.label_el : nRow.label_en}</span>}</p>}
+        </div>
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+          <p class="text-[10px] uppercase tracking-[0.2em] text-white/40">{isEl ? "Παραγγελίες" : "Orders"}</p>
+          <p class="text-3xl font-bold text-white mt-1">{orderCount}</p>
+          <p class="text-[11px] text-white/40 mt-1">{fmtEur(totalSpentCents)} {isEl ? "σύνολο" : "total"}</p>
+        </div>
+        <div class="rounded-2xl border border-fuchsia-400/20 bg-fuchsia-400/5 p-4">
+          <p class="text-[10px] uppercase tracking-[0.2em] text-fuchsia-300/70">🎫 Scratch</p>
+          <p class="text-3xl font-bold text-fuchsia-300 mt-1">{scratchTotals.total}</p>
+          <p class="text-[11px] text-fuchsia-300/60 mt-1">{scratchTotals.revealed} {isEl ? "revealed" : "revealed"} · {scratchTotals.claimed} {isEl ? "εξαργ." : "claimed"}</p>
+        </div>
+        <div class="rounded-2xl border border-emerald-400/20 bg-emerald-400/5 p-4">
+          <p class="text-[10px] uppercase tracking-[0.2em] text-emerald-300/70">{isEl ? "Συστάσεις" : "Referred"}</p>
+          <p class="text-3xl font-bold text-emerald-300 mt-1">{(referredUsers ?? []).length}</p>
+          {referredBy && <p class="text-[11px] text-emerald-300/60 mt-1">{isEl ? "από" : "by"} <a href={`/admin/users/${referredBy.id}`} class="hover:text-amber-300 underline">{referredBy.full_name ?? referredBy.id.slice(0,8)}</a></p>}
+        </div>
+      </section>
+
+      <!-- Profile details -->
+      <section class="rounded-2xl border border-white/10 bg-white/5 p-5">
+        <h2 class="text-xs font-semibold uppercase tracking-widest text-white/50 mb-3">{isEl ? "Στοιχεία λογαριασμού" : "Account details"}</h2>
+        {profile ? (
+          <div class="grid sm:grid-cols-2 gap-x-6 gap-y-2 text-sm">
+            <div class="flex justify-between py-1 border-b border-white/5"><span class="text-white/50">Full name</span><span class="text-white">{profile.full_name ?? "—"}</span></div>
+            <div class="flex justify-between py-1 border-b border-white/5"><span class="text-white/50">Phone</span><span class="text-white font-mono">{profile.phone ?? "—"}</span></div>
+            <div class="flex justify-between py-1 border-b border-white/5"><span class="text-white/50">Phone verified</span><span class="text-white">{authUser.phone_confirmed_at ? `✓ ${fmtDateTime(authUser.phone_confirmed_at)}` : "—"}</span></div>
+            <div class="flex justify-between py-1 border-b border-white/5"><span class="text-white/50">Birthday</span><span class="text-white">{fmtDate(profile.birthday)}</span></div>
+            <div class="flex justify-between py-1 border-b border-white/5"><span class="text-white/50">Gender</span><span class="text-white">{profile.gender ?? "—"}</span></div>
+            <div class="flex justify-between py-1 border-b border-white/5"><span class="text-white/50">Country</span><span class="text-white">{profile.country ?? "—"}</span></div>
+            <div class="flex justify-between py-1 border-b border-white/5"><span class="text-white/50">City</span><span class="text-white">{profile.city ?? "—"}</span></div>
+            <div class="flex justify-between py-1 border-b border-white/5"><span class="text-white/50">Postal code</span><span class="text-white">{profile.postal_code ?? "—"}</span></div>
+            <div class="flex justify-between py-1 border-b border-white/5 sm:col-span-2"><span class="text-white/50">Address</span><span class="text-white">{profile.address ?? "—"}</span></div>
+            <div class="flex justify-between py-1 border-b border-white/5"><span class="text-white/50">Marketing consent</span><span class="text-white">{profile.marketing_consent ? "✓" : "—"}</span></div>
+            <div class="flex justify-between py-1 border-b border-white/5"><span class="text-white/50">Card issued</span><span class="text-white">{fmtDateTime(profile.card_issued_at)}</span></div>
+            <div class="flex justify-between py-1 border-b border-white/5"><span class="text-white/50">Birthday last changed</span><span class="text-white">{fmtDateTime(profile.birthday_updated_at)}</span></div>
+            <div class="flex justify-between py-1 border-b border-white/5"><span class="text-white/50">Last sign-in</span><span class="text-white">{fmtDateTime(authUser.last_sign_in_at)}</span></div>
+          </div>
+        ) : (
+          <p class="text-white/40 text-sm italic">{isEl ? "Δεν υπάρχει προφίλ (ο χρήστης δεν ενεργοποίησε κάρτα)." : "No profile row (user hasn't activated a card yet)."}</p>
+        )}
+      </section>
+
+      <!-- Two-column: Points history + Orders -->
+      <section class="grid md:grid-cols-2 gap-4">
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <h2 class="text-xs font-semibold uppercase tracking-widest text-white/50 mb-3">{isEl ? "Πόντοι" : "Points history"} ({(loyaltyEvents ?? []).length})</h2>
+          <div class="max-h-80 overflow-y-auto divide-y divide-white/5">
+            {(loyaltyEvents ?? []).length === 0 && <p class="text-white/40 text-sm italic">—</p>}
+            {(loyaltyEvents ?? []).map(e => (
+              <div class="flex items-center justify-between py-2 text-xs">
+                <div class="min-w-0">
+                  <p class="text-white/80 truncate">{e.reason}</p>
+                  <p class="text-white/40">{fmtDateTime(e.created_at)}</p>
+                </div>
+                <span class={`font-mono font-semibold ${e.points >= 0 ? "text-emerald-400" : "text-red-400"}`}>{e.points >= 0 ? "+" : ""}{e.points}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <h2 class="text-xs font-semibold uppercase tracking-widest text-white/50 mb-3">{isEl ? "Παραγγελίες" : "Orders"} ({orderCount})</h2>
+          <div class="max-h-80 overflow-y-auto divide-y divide-white/5">
+            {(orders ?? []).length === 0 && <p class="text-white/40 text-sm italic">—</p>}
+            {(orders ?? []).map(o => (
+              <div class="flex items-center justify-between py-2 text-xs">
+                <div class="min-w-0">
+                  <p class="text-white/80 truncate">{fmtEur(o.total_cents ?? 0)} · <span class="text-white/50">{o.status}</span></p>
+                  <p class="text-white/40">{fmtDateTime(o.created_at)}{o.table_id && <span> · table {o.table_id}</span>}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <!-- Reservations + RSVPs -->
+      <section class="grid md:grid-cols-2 gap-4">
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <h2 class="text-xs font-semibold uppercase tracking-widest text-white/50 mb-3">{isEl ? "Κρατήσεις" : "Reservations"} ({(reservations ?? []).length})</h2>
+          <div class="max-h-72 overflow-y-auto divide-y divide-white/5">
+            {(reservations ?? []).length === 0 && <p class="text-white/40 text-sm italic">—</p>}
+            {(reservations ?? []).map(r => (
+              <div class="py-2 text-xs">
+                <p class="text-white/80">{fmtDate(r.date)} · {r.time} · {r.party_size} {isEl ? "άτομα" : "pax"} · <span class="text-white/50">{r.status}</span></p>
+                {r.notes && <p class="text-white/40 mt-0.5">{r.notes}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <h2 class="text-xs font-semibold uppercase tracking-widest text-white/50 mb-3">{isEl ? "Event RSVPs" : "Event RSVPs"} ({(rsvps ?? []).length})</h2>
+          <div class="max-h-72 overflow-y-auto divide-y divide-white/5">
+            {(rsvps ?? []).length === 0 && <p class="text-white/40 text-sm italic">—</p>}
+            {(rsvps ?? []).map((r: any) => (
+              <div class="py-2 text-xs">
+                <p class="text-white/80">{r.events?.title ?? "(deleted event)"}</p>
+                <p class="text-white/40">{fmtDate(r.events?.event_date)} · {r.guests} {isEl ? "άτομα" : "guests"} · {r.status}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <!-- Scratch cards full list -->
+      <section class="rounded-2xl border border-white/10 bg-white/5 p-5">
+        <h2 class="text-xs font-semibold uppercase tracking-widest text-white/50 mb-3">🎫 Scratch Cards ({scratchTotals.total})</h2>
+        <div class="max-h-72 overflow-y-auto">
+          <table class="w-full text-xs">
+            <thead class="text-white/40 text-[10px] uppercase tracking-wider">
+              <tr><th class="text-left py-1 pr-3">When</th><th class="text-left py-1 pr-3">Reward</th><th class="text-left py-1 pr-3">Trigger</th><th class="text-left py-1 pr-3">Status</th><th class="text-left py-1">Expires</th></tr>
+            </thead>
+            <tbody>
+              {(scratchCards ?? []).map(c => {
+                const status = c.claimed_at ? "claimed" : c.revealed_at ? "revealed" : "unrevealed";
+                return (
+                  <tr class="border-t border-white/5">
+                    <td class="py-1.5 pr-3 text-white/60 whitespace-nowrap">{fmtDateTime(c.created_at)}</td>
+                    <td class="py-1.5 pr-3 text-white font-medium">{c.reward_label}</td>
+                    <td class="py-1.5 pr-3 text-white/50">{c.trigger}</td>
+                    <td class="py-1.5 pr-3"><span class={`px-1.5 py-0.5 rounded text-[10px] ${status === "claimed" ? "bg-emerald-400/15 text-emerald-300" : status === "revealed" ? "bg-amber-400/15 text-amber-300" : "bg-white/10 text-white/50"}`}>{status}</span></td>
+                    <td class="py-1.5 text-white/40 whitespace-nowrap">{fmtDate(c.expires_at)}</td>
+                  </tr>
+                );
+              })}
+              {scratchTotals.total === 0 && <tr><td colspan="5" class="py-4 text-center text-white/40 italic">—</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Quests + Job apps + Referrals + Push + Abuse (four small cards) -->
+      <section class="grid md:grid-cols-2 gap-4">
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <h2 class="text-xs font-semibold uppercase tracking-widest text-white/50 mb-3">⚡ {isEl ? "Αποστολές" : "Quests"} ({(questClaims ?? []).length})</h2>
+          <div class="max-h-60 overflow-y-auto divide-y divide-white/5">
+            {(questClaims ?? []).length === 0 && <p class="text-white/40 text-sm italic">—</p>}
+            {(questClaims ?? []).map((q: any) => (
+              <div class="flex items-center justify-between py-2 text-xs">
+                <div class="min-w-0"><p class="text-white/80 truncate">{q.quests?.title_en ?? "(deleted)"}</p><p class="text-white/40">{fmtDateTime(q.claimed_at)}</p></div>
+                <span class="font-mono text-amber-300">+{q.quests?.reward_points ?? 0}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <h2 class="text-xs font-semibold uppercase tracking-widest text-white/50 mb-3">🤝 {isEl ? "Συστάσεις" : "Referrals"} ({(referredUsers ?? []).length})</h2>
+          <div class="max-h-60 overflow-y-auto divide-y divide-white/5">
+            {(referredUsers ?? []).length === 0 && <p class="text-white/40 text-sm italic">—</p>}
+            {(referredUsers ?? []).map(r => (
+              <div class="flex items-center justify-between py-2 text-xs">
+                <a href={`/admin/users/${r.id}`} class="text-white hover:text-amber-300 underline truncate">{r.full_name ?? r.id.slice(0,8)}</a>
+                <span class="text-white/40">{fmtDate(r.created_at)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <h2 class="text-xs font-semibold uppercase tracking-widest text-white/50 mb-3">🔔 {isEl ? "Συνδρομές push" : "Push subscriptions"} ({(pushSubs ?? []).length})</h2>
+          <div class="max-h-60 overflow-y-auto divide-y divide-white/5">
+            {(pushSubs ?? []).length === 0 && <p class="text-white/40 text-sm italic">—</p>}
+            {(pushSubs ?? []).map(s => (
+              <div class="py-2 text-xs">
+                <p class="text-white/60 truncate" title={s.user_agent ?? ""}>{(s.user_agent ?? "—").slice(0, 60)}</p>
+                <p class="text-white/40">{fmtDateTime(s.created_at)}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <h2 class="text-xs font-semibold uppercase tracking-widest text-white/50 mb-3">💼 {isEl ? "Αιτήσεις εργασίας" : "Job applications"} ({(jobApps ?? []).length})</h2>
+          <div class="max-h-60 overflow-y-auto divide-y divide-white/5">
+            {(jobApps ?? []).length === 0 && <p class="text-white/40 text-sm italic">—</p>}
+            {(jobApps ?? []).map((a: any) => (
+              <div class="py-2 text-xs">
+                <p class="text-white/80 truncate">{a.job_listings?.title_en ?? "(deleted)"} · <span class="text-white/50">{a.status}</span></p>
+                <p class="text-white/40">{fmtDateTime(a.created_at)}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {(abuseEvents ?? []).length > 0 && (
+        <section class="rounded-2xl border border-red-400/30 bg-red-400/5 p-5">
+          <h2 class="text-xs font-semibold uppercase tracking-widest text-red-300 mb-3">⚠️ {isEl ? "Καταγραφές κατάχρησης" : "Abuse log"} ({(abuseEvents ?? []).length})</h2>
+          <div class="divide-y divide-red-400/10 text-xs">
+            {(abuseEvents ?? []).map(e => (
+              <div class="py-2 flex items-center justify-between">
+                <div><p class="text-red-200 font-semibold">{e.reason}</p><p class="text-red-300/60">{fmtDateTime(e.created_at)}</p></div>
+                <span class="text-red-300/80 uppercase text-[10px] tracking-wider">{e.action}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+    </main>
+  </body>
+</html>
