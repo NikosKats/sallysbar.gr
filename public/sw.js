@@ -13,8 +13,9 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-// Network-only — we only need the SW for push, not offline caching.
-self.addEventListener("fetch", () => {});
+// Intentionally no fetch handler — Chrome warns about no-op fetch listeners
+// because they route every navigation through the worker for no reason.
+// The SW is only needed for push + notificationclick below.
 
 self.addEventListener("push", (event) => {
   let data = {};
