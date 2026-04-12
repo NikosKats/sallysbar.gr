@@ -27,21 +27,23 @@ const origin = new URL(Astro.request.url).origin;
           box-sizing: border-box !important;
           break-inside: avoid !important;
           page-break-inside: avoid !important;
+          -webkit-region-break-inside: avoid !important;
           border: none !important;
           border-radius: 0 !important;
           background: white !important;
           box-shadow: none !important;
           width: 210mm !important;
-          height: 148.5mm !important;
+          height: 148mm !important;
           margin: 0 !important;
-          padding: 10mm !important;
-          display: flex !important;
-          flex-direction: column !important;
-          align-items: center !important;
-          justify-content: center !important;
-          gap: 3mm !important;
+          padding: 8mm 10mm !important;
+          display: block !important;
+          text-align: center !important;
           overflow: hidden !important;
         }
+        .qr-sheet > * { display: block !important; margin-left: auto !important; margin-right: auto !important; }
+        .qr-sheet .table-num { font-size: 22pt !important; margin: 2mm 0 3mm 0 !important; }
+        .qr-sheet > div:first-child { font-size: 8pt !important; margin-top: 0 !important; }
+        .qr-sheet p { margin: 2mm 0 0 0 !important; font-size: 9pt !important; line-height: 1.3 !important; }
         .qr-sheet:nth-child(2n) {
           break-after: page !important;
           page-break-after: always !important;
@@ -49,7 +51,7 @@ const origin = new URL(Astro.request.url).origin;
         }
         .qr-sheet:last-child { break-after: auto !important; page-break-after: auto !important; }
         .qr-sheet h3, .qr-sheet p, .qr-sheet .table-num, .qr-sheet div { color: black !important; }
-        .qr-sheet canvas, .qr-sheet img, .qr-sheet svg { width: 75mm !important; height: 75mm !important; max-width: 75mm !important; max-height: 75mm !important; }
+        .qr-sheet canvas, .qr-sheet img, .qr-sheet svg { width: 70mm !important; height: 70mm !important; max-width: 70mm !important; max-height: 70mm !important; margin: 2mm auto !important; }
       }
     </style>
   </head>
