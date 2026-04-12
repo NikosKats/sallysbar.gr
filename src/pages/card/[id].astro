@@ -1,0 +1,77 @@
+---
+import "../../styles/global.css";
+import { supabaseAdmin } from "../../lib/supabase";
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+
+const id = Astro.params.id;
+if (!id || !/^[0-9a-f-]{36}$/i.test(id)) {
+  return new Response("Not found", { status: 404 });
+}
+
+// We only render the card if the user exists AND has activated (card_issued_at set).
+// Raw user-id lookup is fine — knowing the id alone confers no extra power (the QR
+// encodes `loyalty:<uid>` which is the same value).
+const { data: profile } = await supabaseAdmin
+  .from("profiles")
+  .select("id, full_name, card_issued_at")
+  .eq("id", id)
+  .maybeSingle();
+
+if (!profile || !profile.card_issued_at) {
+  return new Response("Card not active", { status: 404 });
+}
+
+const name = profile.full_name ?? "Member";
+---
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{name} — Sally's Bar Loyalty Card</title>
+    <meta name="robots" content="noindex,nofollow" />
+    <meta name="theme-color" content="#0b0b10" />
+  </head>
+  <body class="min-h-screen bg-[#0b0b10] text-white font-body antialiased flex flex-col">
+    <main class="flex-1 flex flex-col items-center justify-center px-6 py-10 text-center gap-6">
+      <div class="text-[11px] uppercase tracking-[0.3em] text-amber-300/80">Sally's Bar · Skala · Kefalonia</div>
+      <h1 class="font-heading text-3xl font-bold bg-gradient-to-br from-white via-amber-50 to-amber-200/80 bg-clip-text text-transparent">
+        {name}
+      </h1>
+      <p class="text-sm text-white/60 max-w-sm">
+        {isEl
+          ? "Δείξε αυτό τον κωδικό στον σερβιτόρο. Οι πόντοι θα προστεθούν στον λογαριασμό μου."
+          : "Show this code to the waiter. Points land on my account."}
+      </p>
+
+      <div class="rounded-3xl bg-white p-6 shadow-2xl shadow-amber-500/10">
+        <canvas id="qr" data-code={`loyalty:${profile.id}`} width="280" height="280"></canvas>
+      </div>
+
+      <p class="text-xs text-white/35 max-w-sm">
+        {isEl
+          ? "Κοινοποιημένη κάρτα. Μόνο ο κάτοχος λαμβάνει τους πόντους. Δεν μπορεί να εξαργυρωθεί σε μετρητά."
+          : "Shared card — only the owner accrues points. Not redeemable for cash."}
+      </p>
+    </main>
+
+    <footer class="py-6 text-center text-[10px] text-white/25">
+      sallysbar.gr · {isEl ? "Όροι στο /terms" : "Terms at /terms"}
+    </footer>
+
+    <script>
+      import QRCode from "qrcode";
+      const canvas = document.getElementById("qr") as HTMLCanvasElement | null;
+      const code = canvas?.dataset.code ?? "";
+      if (canvas && code) {
+        QRCode.toCanvas(canvas, code, {
+          width: 280,
+          margin: 1,
+          color: { dark: "#0a0a0f", light: "#ffffff" },
+          errorCorrectionLevel: "H",
+        }).catch((e: unknown) => console.error(e));
+      }
+    </script>
+  </body>
+</html>

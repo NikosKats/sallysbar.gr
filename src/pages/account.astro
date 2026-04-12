@@ -518,6 +518,11 @@ function statusLabel(s: string) {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="18" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 10h18" stroke="currentColor" stroke-width="1.5"/></svg>
             {isEl ? "Google Wallet" : "Save to Google Wallet"}
           </button>
+          <button id="shareCardBtn" data-share-url={`https://sallysbar.gr/card/${user.id}`}
+            class="col-span-2 flex items-center justify-center gap-2 rounded-xl border border-amber-400/30 bg-amber-400/10 px-3 py-2.5 text-xs font-semibold text-amber-200 hover:bg-amber-400/15 transition">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            {isEl ? "Κοινοποίησε την κάρτα" : "Share my card"}
+          </button>
         </div>
 
         <!-- Tier badge + progress -->
@@ -1282,6 +1287,27 @@ function statusLabel(s: string) {
       } else {
         const j = await res.json().catch(() => ({}));
         alert(j.fallback ?? j.message ?? (isEl ? "Δεν είναι διαθέσιμο." : "Not available yet."));
+      }
+    });
+
+    // Share my loyalty card
+    const shareBtn = document.getElementById("shareCardBtn") as HTMLButtonElement | null;
+    shareBtn?.addEventListener("click", async () => {
+      const url = shareBtn.dataset.shareUrl ?? "";
+      if (!url) return;
+      const pitch = isEl
+        ? `Δείξε αυτόν τον κωδικό στο Sally's Bar — οι πόντοι πάνε στον λογαριασμό μου.`
+        : `Show this code at Sally's Bar — points go to my account.`;
+      if (navigator.share) {
+        try { await navigator.share({ title: "Sally's Bar loyalty card", text: pitch, url }); return; } catch {}
+      }
+      try {
+        await navigator.clipboard.writeText(url);
+        const orig = shareBtn.innerHTML;
+        shareBtn.innerHTML = (isEl ? "✓ Αντιγράφηκε" : "✓ Link copied");
+        setTimeout(() => { shareBtn.innerHTML = orig; }, 1500);
+      } catch {
+        prompt(isEl ? "Αντιγράψτε τον σύνδεσμο:" : "Copy the link:", url);
       }
     });
 
