@@ -68,13 +68,13 @@ const groups: Group[] = [
 const activeItem = groups.flatMap(g => g.items).find(i => i.key === active);
 ---
 
-<!-- Hide the public site Header + its spacer on admin pages, and push <main> right for the sidebar.
-     Uses :has() so it works even when the header is nested inside a wrapper (e.g. .no-print). -->
+<!-- Hide the public site Header + its spacer on admin pages, and shift ALL body content
+     right on desktop so the fixed sidebar never overlaps (main, pre-main <section>s, etc.). -->
 <style is:global>
   html:has(.admin-nav-root) header.fixed.top-0.inset-x-0,
   html:has(.admin-nav-root) header.fixed.top-0.inset-x-0 + div.h-20 { display: none !important; }
   @media (min-width: 1024px) {
-    html:has(.admin-nav-root) main { margin-left: 260px; }
+    html:has(.admin-nav-root) body { padding-left: 260px; }
   }
 </style>
 
