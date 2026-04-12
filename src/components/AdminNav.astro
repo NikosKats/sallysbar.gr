@@ -151,10 +151,18 @@ const activeItem = groups.flatMap(g => g.items).find(i => i.key === active);
           </div>
         ))}
       </nav>
-      <div class="border-t border-white/10 p-3">
-        <a href={withLangPrefix(lang, "/")} class="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-white/50 hover:text-amber-300 transition">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          {isEl ? "Δημόσιος ιστότοπος" : "Public site"}
+      <div class="border-t border-white/10 p-3 space-y-2" data-vapid={vapidPublicKey}>
+        <button id="adminEnableNotifMobile" type="button" class="flex items-center justify-center gap-2 w-full rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 hover:border-amber-400/40 text-white/80 hover:text-amber-200 px-3 py-2 text-sm font-medium transition">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M10 21a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span id="adminNotifLabelMobile">{isEl ? "Ενεργοποίηση ειδοποιήσεων" : "Enable notifications"}</span>
+        </button>
+        <a href={switchHref} class="flex items-center justify-center gap-2 w-full rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 hover:border-amber-400/40 text-white/80 hover:text-amber-200 px-3 py-2 text-sm font-medium transition">
+          <span class="text-base leading-none">{switchFlag}</span>
+          <span>{switchLabel}</span>
+        </a>
+        <a href={withLangPrefix(lang, "/")} target="_blank" rel="noopener" class="flex items-center justify-center gap-2 w-full rounded-xl bg-gradient-to-br from-amber-300 to-amber-500 text-black px-3 py-2.5 text-sm font-semibold shadow-lg shadow-amber-500/10 hover:shadow-amber-500/30 transition">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M14 3h7v7M10 14L21 3M19 14v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          {isEl ? "Επίσκεψη ιστότοπου" : "Visit site"}
         </a>
       </div>
     </aside>
@@ -182,12 +190,15 @@ const activeItem = groups.flatMap(g => g.items).find(i => i.key === active);
     navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {});
   })();
 
-  // Admin push notification subscribe flow
+  // Admin push notification subscribe flow — wires both desktop + mobile drawer buttons
   (function () {
-    const btn = document.getElementById("adminEnableNotif");
-    const label = document.getElementById("adminNotifLabel");
-    if (!btn || !label) return;
-    const vapidPub = (btn.parentElement && btn.parentElement.dataset.vapid) || "";
+    const pairs = [
+      { btn: document.getElementById("adminEnableNotif"),       label: document.getElementById("adminNotifLabel") },
+      { btn: document.getElementById("adminEnableNotifMobile"), label: document.getElementById("adminNotifLabelMobile") },
+    ].filter(p => p.btn && p.label);
+    if (pairs.length === 0) return;
+
+    const vapidPub = (pairs[0].btn.parentElement && pairs[0].btn.parentElement.dataset.vapid) || "";
 
     function urlB64ToUint8(b64) {
       const pad = "=".repeat((4 - (b64.length % 4)) % 4);
@@ -198,35 +209,28 @@ const activeItem = groups.flatMap(g => g.items).find(i => i.key === active);
       return out;
     }
 
-    function setOn() {
-      label.textContent = "✓ Notifications on";
-      btn.className = "flex items-center justify-center gap-2 w-full rounded-xl bg-emerald-400/15 border border-emerald-400/40 text-emerald-200 px-3 py-2 text-sm font-medium";
-      btn.disabled = true;
+    function setAll(text, cls, disabled) {
+      pairs.forEach(({ btn, label }) => {
+        label.textContent = text;
+        if (cls) btn.className = cls;
+        btn.disabled = !!disabled;
+      });
     }
-    function setBlocked() {
-      label.textContent = "Notifications blocked";
-      btn.disabled = true;
-    }
+    const onCls = "flex items-center justify-center gap-2 w-full rounded-xl bg-emerald-400/15 border border-emerald-400/40 text-emerald-200 px-3 py-2 text-sm font-medium";
+    function setOn()      { setAll("✓ Notifications on", onCls, true); }
+    function setBlocked() { setAll("Notifications blocked", null, true); }
 
     if (!("Notification" in window) || !("serviceWorker" in navigator) || !("PushManager" in window)) {
-      label.textContent = "Notifications not supported";
-      btn.disabled = true;
-      return;
+      setAll("Notifications not supported", null, true); return;
     }
-    if (!vapidPub) {
-      label.textContent = "VAPID key missing";
-      btn.disabled = true;
-      return;
-    }
+    if (!vapidPub) { setAll("VAPID key missing", null, true); return; }
+
     if (Notification.permission === "granted") {
-      // Silently sync subscription in case it's stale / expired
       (async () => {
         try {
           const reg = await navigator.serviceWorker.ready;
           let sub = await reg.pushManager.getSubscription();
-          if (!sub) {
-            sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8(vapidPub) });
-          }
+          if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8(vapidPub) });
           await fetch("/api/push/subscribe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(sub.toJSON()) });
           setOn();
         } catch {}
@@ -235,15 +239,12 @@ const activeItem = groups.flatMap(g => g.items).find(i => i.key === active);
     }
     if (Notification.permission === "denied") { setBlocked(); return; }
 
-    btn.addEventListener("click", async () => {
-      btn.disabled = true;
-      const prev = label.textContent;
-      label.textContent = "⏳";
+    async function handleClick() {
+      setAll("⏳", null, true);
       const perm = await Notification.requestPermission();
       if (perm !== "granted") {
-        label.textContent = prev;
-        btn.disabled = false;
         if (perm === "denied") setBlocked();
+        else setAll("Enable notifications", null, false);
         return;
       }
       try {
@@ -252,11 +253,11 @@ const activeItem = groups.flatMap(g => g.items).find(i => i.key === active);
           ?? await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8(vapidPub) });
         await fetch("/api/push/subscribe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(sub.toJSON()) });
         setOn();
-      } catch (e) {
-        label.textContent = "Subscribe failed";
-        btn.disabled = false;
+      } catch {
+        setAll("Subscribe failed", null, false);
       }
-    });
+    }
+    pairs.forEach(({ btn }) => btn.addEventListener("click", handleClick));
   })();
 
   // Install-to-home-screen prompt (Android / desktop Chrome)
