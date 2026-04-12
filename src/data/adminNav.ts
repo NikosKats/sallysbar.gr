@@ -25,6 +25,8 @@ export const I = {
   marketing:    `<path d="M3 11l18-7v16L3 13v-2z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M7 13v5a2 2 0 0 0 4 0v-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>`,
   quests:       `<path d="M12 2l2.5 5.5 6 .6-4.5 4.1 1.3 5.9L12 15.3 6.7 18.1 8 12.2 3.5 8.1l6-.6L12 2z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>`,
   scratch:      `<rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M7 9l3 3-3 3M13 15h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>`,
+  activeOrders: `<path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><rect x="9" y="3" width="6" height="4" rx="1" stroke="currentColor" stroke-width="1.6"/><path d="M9 12h6M9 16h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>`,
+  newOrder:     `<circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M12 8v8M8 12h8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>`,
 };
 
 export function getAdminNavGroups(lang: "en" | "el", t: any): AdminNavGroup[] {
@@ -49,6 +51,10 @@ export function getAdminNavGroups(lang: "en" | "el", t: any): AdminNavGroup[] {
       { key: "editMenu", label: t.admin.nav.editMenu,         href: withLangPrefix(lang, "/admin/menu"),    icon: I.editMenu },
       { key: "loyalty",  label: t.admin.nav.loyalty,          href: withLangPrefix(lang, "/admin/loyalty"), icon: I.loyalty },
       { key: "careers",  label: isEl ? "Καριέρα" : "Careers", href: withLangPrefix(lang, "/admin/careers"), icon: I.careers },
+    ]},
+    { title: isEl ? "Staff" : "Staff", items: [
+      { key: "staff-orders",    label: t.user?.activeOrders ?? (isEl ? "Ενεργές Παραγγελίες" : "Active Orders"), href: withLangPrefix(lang, "/staff"),       icon: I.activeOrders },
+      { key: "staff-new-order", label: t.user?.newOrder     ?? (isEl ? "Νέα Παραγγελία" : "New Order"),        href: withLangPrefix(lang, "/staff/order"), icon: I.newOrder },
     ]},
     { title: isEl ? "Σύστημα" : "System", items: [
       { key: "users",   label: t.admin.nav.users,                href: withLangPrefix(lang, "/admin/users"),   icon: I.users },
