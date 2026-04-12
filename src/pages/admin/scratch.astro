@@ -30,11 +30,12 @@ if (userIds.length > 0) {
   for (const p of profiles ?? []) emailMap.set(p.id, p.full_name || p.email || p.id.slice(0, 8));
 }
 
-// Eligible members for single-issue search
+// Eligible members for single-issue search — every registered user with a profile row.
+// (Using `.not("card_issued_at", "is", null)` was too strict — it excluded signed-up users
+// who hadn't yet completed the "Activate loyalty card" flow.)
 const { data: members } = await supabaseAdmin
   .from("profiles")
   .select("id, email, full_name")
-  .not("card_issued_at", "is", null)
   .order("full_name", { ascending: true })
   .limit(500);
 
