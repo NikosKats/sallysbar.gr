@@ -207,6 +207,26 @@ function statusLabel(s: string) {
         <p class="mt-1 text-sm text-white/40">{ta.subtitle}</p>
       </div>
 
+      {!hasCard && (
+        <div class="rounded-2xl border border-amber-400/40 bg-gradient-to-br from-amber-500/10 via-amber-400/5 to-transparent p-6 space-y-4">
+          <div class="flex items-start gap-4">
+            <div class="text-4xl">🎁</div>
+            <div class="flex-1">
+              <h2 class="text-lg font-bold text-amber-200">{isEl ? "Δημιουργήστε την Κάρτα Πιστότητάς σας" : "Get Your Loyalty Card"}</h2>
+              <p class="text-sm text-white/70 mt-1">
+                {isEl
+                  ? "Συμπληρώστε τα στοιχεία σας για να ενεργοποιήσετε την κάρτα πιστότητας και να αρχίσετε να κερδίζετε πόντους, δώρα & εκπτώσεις."
+                  : "Fill in your details to activate your loyalty card and start earning points, rewards & discounts."}
+              </p>
+            </div>
+          </div>
+          <button id="openCardFormBtn"
+            class="w-full rounded-xl bg-amber-400 text-black px-4 py-3 text-sm font-semibold hover:bg-amber-300 transition">
+            ✨ {isEl ? "Δημιουργία κάρτας τώρα" : "Create my card now"}
+          </button>
+        </div>
+      )}
+
       <!-- Dashboard KPIs -->
       <section class="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div class="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4">
@@ -387,26 +407,6 @@ function statusLabel(s: string) {
           </button>
         </div>
       </div>
-
-      {!hasCard && (
-        <div class="rounded-2xl border border-amber-400/40 bg-gradient-to-br from-amber-500/10 via-amber-400/5 to-transparent p-6 space-y-4">
-          <div class="flex items-start gap-4">
-            <div class="text-4xl">🎁</div>
-            <div class="flex-1">
-              <h2 class="text-lg font-bold text-amber-200">{isEl ? "Δημιουργήστε την Κάρτα Πιστότητάς σας" : "Get Your Loyalty Card"}</h2>
-              <p class="text-sm text-white/70 mt-1">
-                {isEl
-                  ? "Συμπληρώστε τα στοιχεία σας για να ενεργοποιήσετε την κάρτα πιστότητας και να αρχίσετε να κερδίζετε πόντους, δώρα & εκπτώσεις."
-                  : "Fill in your details to activate your loyalty card and start earning points, rewards & discounts."}
-              </p>
-            </div>
-          </div>
-          <button id="openCardFormBtn"
-            class="w-full rounded-xl bg-amber-400 text-black px-4 py-3 text-sm font-semibold hover:bg-amber-300 transition">
-            ✨ {isEl ? "Δημιουργία κάρτας τώρα" : "Create my card now"}
-          </button>
-        </div>
-      )}
 
       <!-- Loyalty Points -->
       {hasCard && (
