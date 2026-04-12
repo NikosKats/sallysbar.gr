@@ -2,6 +2,7 @@ import type { APIRoute } from "astro";
 import { sendMessage } from "../../lib/telegram";
 import { supabaseAdmin } from "../../lib/supabase";
 import { verifyTableToken } from "../../lib/tableToken";
+import { pushToAllStaff } from "../../lib/pushOrders";
 
 const RATE_LIMIT     = 5;
 const RATE_WINDOW_MS = 10 * 60 * 1000;
@@ -49,7 +50,20 @@ export const POST: APIRoute = async ({ request }) => {
     reason === "pay-cash" ? `💵 <b>Table ${table}</b> wants to pay by <b>cash</b>!` :
     `🔔 <b>Table ${table}</b> is calling for a waiter to order!`;
 
-  await sendMessage(import.meta.env.TELEGRAM_WAITER_CHAT_ID, msg);
+  // Fan out in parallel: Telegram + staff PWA push
+  await Promise.all([
+    sendMessage(import.meta.env.TELEGRAM_WAITER_CHAT_ID, msg),
+    pushToAllStaff({
+      title: reason === "pay-card" ? `💳 Table ${table} · Pay (card)`
+           : reason === "pay-cash" ? `💵 Table ${table} · Pay (cash)`
+           : `🔔 Table ${table} · Call waiter`,
+      body: reason.startsWith("pay")
+        ? "Customer requested the bill"
+        : "Customer is ready to order",
+      tag: `table-${table}-${reason}`,
+      url: "/staff",
+    }),
+  ]);
 
   return json({ ok: true });
 };
