@@ -87,17 +87,22 @@ for (const c of categories) {
         if (!section || !btn || !disk || !msg || !sub) return;
 
         // Probe server: can this user spin?
-        let state;
+        let state = null;
         try {
           const r = await fetch("/api/loyalty/wheel-spin");
           state = await r.json();
-        } catch { return; }
+        } catch {
+          console.error("[wheel] probe failed");
+        }
 
-        if (state.reason === "auth_required") return; // guest — hide wheel
+        if (state?.reason === "auth_required") return;    // guest — hide wheel entirely
+        if (state?.reason === "disabled") return;          // admin turned it off
 
+        // Show the section for logged-in users. If the probe failed (500 / table missing),
+        // we still show it so the user sees *something* and we log to console for debug.
         section.classList.remove("hidden");
 
-        if (!state.canSpin && state.reason === "already_spun_today") {
+        if (state?.reason === "already_spun_today") {
           btn.disabled = true;
           btn.textContent = "✓ " + (isEl ? "Έγινε σήμερα" : "Spun today");
           sub.textContent = (isEl ? "Νέα προσπάθεια αύριο. Τελευταίο έπαθλο: " : "Come back tomorrow. Last prize: ") + (state.lastReward ?? "—");
