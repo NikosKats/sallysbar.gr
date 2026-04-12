@@ -20,19 +20,29 @@ const { data: events } = await supabaseAdmin
   .select("id, title, title_el, event_date, event_time, capacity, price, is_published, image_url")
   .order("event_date", { ascending: false });
 
-// Count RSVPs per event
+// Fetch all RSVPs per event (full list for management)
 const eventIds = (events ?? []).map(e => e.id);
-const { data: rsvpCounts } = eventIds.length > 0
+const { data: allRsvps } = eventIds.length > 0
   ? await supabaseAdmin
       .from("event_rsvps")
-      .select("event_id, guests")
+      .select("id, event_id, name, email, guests, status, created_at, user_id")
       .in("event_id", eventIds)
-      .eq("status", "confirmed")
+      .order("created_at", { ascending: false })
   : { data: [] };
 
 const rsvpMap = new Map<string, number>();
-for (const r of rsvpCounts ?? []) {
-  rsvpMap.set(r.event_id, (rsvpMap.get(r.event_id) ?? 0) + r.guests);
+const rsvpsByEvent: Record<string, any[]> = {};
+for (const r of allRsvps ?? []) {
+  if (!rsvpsByEvent[r.event_id]) rsvpsByEvent[r.event_id] = [];
+  rsvpsByEvent[r.event_id].push(r);
+  if (r.status === "confirmed" || r.status === "attended") {
+    rsvpMap.set(r.event_id, (rsvpMap.get(r.event_id) ?? 0) + (r.guests ?? 1));
+  }
+}
+
+const eventTitleMap: Record<string, string> = {};
+for (const ev of events ?? []) {
+  eventTitleMap[ev.id] = (isEl ? ev.title_el : null) || ev.title;
 }
 
 function fmtDate(d: string) {
@@ -213,8 +223,10 @@ function fmtDate(d: string) {
                       {ev.price == null || ev.price === 0 ? (isEl ? "Ελεύθερη" : "Free") : `€${Number(ev.price).toFixed(0)}`}
                     </td>
                     <td class="px-4 py-3">
-                      <span class="text-white/70 font-medium">{rsvpMap.get(ev.id) ?? 0}</span>
-                      {ev.capacity && <span class="text-white/30 text-xs"> / {ev.capacity}</span>}
+                      <button type="button" class="rsvp-open-btn text-white/70 font-medium hover:text-amber-300 underline-offset-4 hover:underline transition" data-event-id={ev.id}>
+                        {rsvpMap.get(ev.id) ?? 0}
+                        {ev.capacity && <span class="text-white/30 text-xs"> / {ev.capacity}</span>}
+                      </button>
                     </td>
                     <td class="px-4 py-3">
                       {ev.is_published
@@ -246,7 +258,182 @@ function fmtDate(d: string) {
 
     </main>
 
-    <script define:vars={{ isEl }}>
+    <!-- RSVP management modal -->
+    <div id="rsvpModal" class="fixed inset-0 z-50 hidden bg-black/70 backdrop-blur-sm p-0 sm:p-4">
+      <div class="relative mx-auto w-full max-w-3xl h-full sm:h-auto sm:max-h-[calc(100vh-2rem)] sm:my-4 rounded-none sm:rounded-2xl border border-white/10 bg-[#141420] flex flex-col">
+        <div class="flex items-start justify-between p-5 border-b border-white/10 shrink-0 gap-3">
+          <div class="min-w-0">
+            <h3 class="text-lg font-bold text-amber-200">{isEl ? "Διαχείριση RSVP" : "RSVP Management"}</h3>
+            <p id="rsvpEventTitle" class="text-xs text-white/50 mt-1 truncate"></p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="rsvpExportBtn" type="button" class="text-xs px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 transition">
+              ⬇ CSV
+            </button>
+            <button id="rsvpCloseBtn" type="button" class="text-white/40 hover:text-white text-3xl leading-none px-2 -mt-1">×</button>
+          </div>
+        </div>
+        <div class="flex-1 overflow-y-auto p-5">
+          <div id="rsvpStats" class="mb-4 grid grid-cols-3 gap-2 text-xs"></div>
+          <div id="rsvpList" class="space-y-2"></div>
+        </div>
+      </div>
+    </div>
+
+    <script define:vars={{ isEl, rsvpsByEvent, eventTitleMap }}>
+      // ---------- RSVP management ----------
+      const rsvpModal = document.getElementById("rsvpModal");
+      const rsvpList  = document.getElementById("rsvpList");
+      const rsvpStats = document.getElementById("rsvpStats");
+      const rsvpTitle = document.getElementById("rsvpEventTitle");
+      let currentRsvpEventId = null;
+
+      const STATUS_LABELS = {
+        confirmed:  isEl ? "Επιβεβαιωμένο" : "Confirmed",
+        waitlist:   isEl ? "Αναμονή" : "Waitlist",
+        attended:   isEl ? "Παρών" : "Attended",
+        cancelled:  isEl ? "Ακυρώθηκε" : "Cancelled",
+        no_show:    isEl ? "Δεν ήρθε" : "No-show",
+      };
+      const STATUS_COLORS = {
+        confirmed:  "bg-emerald-400/15 text-emerald-300",
+        waitlist:   "bg-amber-400/15 text-amber-300",
+        attended:   "bg-sky-400/15 text-sky-300",
+        cancelled:  "bg-white/5 text-white/40",
+        no_show:    "bg-red-400/15 text-red-300",
+      };
+
+      function escapeHtml(s) {
+        return String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+      }
+
+      function renderRsvps(eventId) {
+        const list = rsvpsByEvent[eventId] ?? [];
+        rsvpTitle.textContent = eventTitleMap[eventId] ?? "";
+        const counts = { confirmed:0, waitlist:0, attended:0, cancelled:0, no_show:0 };
+        let totalGuests = 0;
+        for (const r of list) {
+          counts[r.status] = (counts[r.status] ?? 0) + 1;
+          if (r.status === "confirmed" || r.status === "attended") totalGuests += (r.guests ?? 1);
+        }
+        rsvpStats.innerHTML = `
+          <div class="rounded-xl bg-white/5 border border-white/10 p-3 text-center">
+            <p class="text-white/40 uppercase tracking-wider">${isEl ? "Σύνολο" : "Total"}</p>
+            <p class="text-white text-lg font-bold mt-0.5">${list.length}</p>
+          </div>
+          <div class="rounded-xl bg-emerald-400/10 border border-emerald-400/20 p-3 text-center">
+            <p class="text-emerald-300/80 uppercase tracking-wider">${isEl ? "Επισκέπτες" : "Guests"}</p>
+            <p class="text-emerald-200 text-lg font-bold mt-0.5">${totalGuests}</p>
+          </div>
+          <div class="rounded-xl bg-amber-400/10 border border-amber-400/20 p-3 text-center">
+            <p class="text-amber-300/80 uppercase tracking-wider">${isEl ? "Αναμονή" : "Waitlist"}</p>
+            <p class="text-amber-200 text-lg font-bold mt-0.5">${counts.waitlist ?? 0}</p>
+          </div>
+        `;
+        if (list.length === 0) {
+          rsvpList.innerHTML = `<div class="rounded-xl border border-white/10 bg-white/5 p-6 text-center text-white/50 text-sm">${isEl ? "Καμία εγγραφή." : "No RSVPs yet."}</div>`;
+          return;
+        }
+        rsvpList.innerHTML = list.map(r => {
+          const dt = new Date(r.created_at).toLocaleDateString(isEl ? "el-GR" : "en-GB", { day:"2-digit", month:"short" });
+          const opts = Object.keys(STATUS_LABELS).map(s =>
+            `<option value="${s}"${s === r.status ? " selected" : ""}>${STATUS_LABELS[s]}</option>`
+          ).join("");
+          const color = STATUS_COLORS[r.status] ?? "bg-white/10 text-white/60";
+          return `
+            <div class="rounded-xl border border-white/10 bg-white/5 p-3" data-rsvp-id="${r.id}">
+              <div class="flex items-start justify-between gap-3 flex-wrap">
+                <div class="min-w-0 flex-1">
+                  <p class="text-sm font-semibold text-white">${escapeHtml(r.name)} <span class="text-white/40 font-normal">· ${r.guests ?? 1} ${isEl ? "άτομα" : "guests"}</span></p>
+                  <p class="text-xs text-white/40 mt-0.5">
+                    <a href="mailto:${escapeHtml(r.email)}" class="hover:text-white/70">${escapeHtml(r.email)}</a>
+                    <span class="ml-2">· ${dt}</span>
+                    ${r.user_id ? `<span class="ml-2 text-emerald-400/70">· ${isEl ? "μέλος" : "member"}</span>` : ""}
+                  </p>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                  <span class="status-pill text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full ${color}">${STATUS_LABELS[r.status] ?? r.status}</span>
+                  <select class="rsvp-status-select rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-white text-xs focus:outline-none focus:border-amber-400/50">${opts}</select>
+                  <button type="button" class="rsvp-del-btn text-xs px-2 py-1 rounded-lg bg-red-500/15 text-red-300 hover:bg-red-500/25 transition">✕</button>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join("");
+
+        rsvpList.querySelectorAll(".rsvp-status-select").forEach(sel => {
+          sel.addEventListener("change", async () => {
+            const root = sel.closest("[data-rsvp-id]");
+            const id = root.dataset.rsvpId;
+            const status = sel.value;
+            sel.disabled = true;
+            const res = await fetch("/api/admin/event-rsvps", {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ id, status }),
+            });
+            sel.disabled = false;
+            if (res.ok) {
+              const row = (rsvpsByEvent[currentRsvpEventId] ?? []).find(x => x.id === id);
+              if (row) row.status = status;
+              renderRsvps(currentRsvpEventId);
+            } else {
+              alert(isEl ? "Σφάλμα" : "Error");
+            }
+          });
+        });
+
+        rsvpList.querySelectorAll(".rsvp-del-btn").forEach(btn => {
+          btn.addEventListener("click", async () => {
+            if (!confirm(isEl ? "Διαγραφή εγγραφής;" : "Delete this RSVP?")) return;
+            const root = btn.closest("[data-rsvp-id]");
+            const id = root.dataset.rsvpId;
+            const res = await fetch(`/api/admin/event-rsvps?id=${id}`, { method: "DELETE" });
+            if (res.ok) {
+              rsvpsByEvent[currentRsvpEventId] = (rsvpsByEvent[currentRsvpEventId] ?? []).filter(x => x.id !== id);
+              renderRsvps(currentRsvpEventId);
+            } else {
+              alert(isEl ? "Σφάλμα" : "Error");
+            }
+          });
+        });
+      }
+
+      function openRsvpModal(eventId) {
+        currentRsvpEventId = eventId;
+        renderRsvps(eventId);
+        rsvpModal.classList.remove("hidden");
+        rsvpModal.classList.add("flex");
+      }
+      function closeRsvpModal() {
+        rsvpModal.classList.add("hidden");
+        rsvpModal.classList.remove("flex");
+      }
+
+      document.querySelectorAll(".rsvp-open-btn").forEach(btn => {
+        btn.addEventListener("click", () => openRsvpModal(btn.dataset.eventId));
+      });
+      document.getElementById("rsvpCloseBtn").addEventListener("click", closeRsvpModal);
+      rsvpModal.addEventListener("click", (e) => { if (e.target === rsvpModal) closeRsvpModal(); });
+
+      document.getElementById("rsvpExportBtn").addEventListener("click", () => {
+        if (!currentRsvpEventId) return;
+        const list = rsvpsByEvent[currentRsvpEventId] ?? [];
+        const header = ["name","email","guests","status","created_at"];
+        const rows = list.map(r => header.map(k => {
+          const v = r[k] == null ? "" : String(r[k]);
+          return /[",\n]/.test(v) ? '"' + v.replace(/"/g,'""') + '"' : v;
+        }).join(","));
+        const csv = [header.join(","), ...rows].join("\n");
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+        const a = document.createElement("a");
+        const safeTitle = (eventTitleMap[currentRsvpEventId] ?? "event").replace(/[^a-z0-9-_]+/gi, "_").slice(0, 40);
+        a.href = URL.createObjectURL(blob);
+        a.download = `rsvps-${safeTitle}.csv`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      });
+
+      // ---------- existing event CRUD ----------
       const formWrap    = document.getElementById("eventFormWrap");
       const formTitle   = document.getElementById("formTitle");
       const eventForm   = document.getElementById("eventForm");

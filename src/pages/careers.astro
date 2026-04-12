@@ -201,8 +201,15 @@ const perks = isEl ? {
           <label class="block"><span class="text-xs text-white/50">{isEl ? "Τηλέφωνο (προαιρ.)" : "Phone (optional)"}</span>
             <input name="phone" type="tel" placeholder="+30..."
               class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400/50" /></label>
-          <label class="block"><span class="text-xs text-white/50">{isEl ? "Μήνυμα / Εμπειρία" : "Message / Experience"}</span>
-            <textarea name="message" rows="5" maxlength="2000" placeholder={isEl ? "Πείτε μας λίγα λόγια για εσάς…" : "Tell us a bit about yourself…"}
+          <label class="block"><span class="text-xs text-white/50">{isEl ? "Βιογραφικό / CV (PDF, DOC, DOCX, TXT, RTF — έως 8MB)" : "CV / Resume (PDF, DOC, DOCX, TXT, RTF — up to 8MB)"}</span>
+            <input id="cvFile" type="file" accept=".pdf,.doc,.docx,.txt,.rtf,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,application/rtf"
+              class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-amber-400 file:text-black file:text-xs file:font-semibold" />
+            <p id="cvStatus" class="text-xs text-white/40 mt-1"></p>
+            <input type="hidden" name="cv_url" />
+            <input type="hidden" name="cv_filename" />
+          </label>
+          <label class="block"><span class="text-xs text-white/50">{isEl ? "Βιογραφικό κειμένου / Μήνυμα (μπορείτε να κάνετε paste)" : "Bio / Message (paste your bio here)"}</span>
+            <textarea name="message" rows="6" maxlength="5000" placeholder={isEl ? "Επικολλήστε το βιογραφικό σας ή περιγράψτε την εμπειρία σας…" : "Paste your bio or describe your experience…"}
               class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400/50"></textarea></label>
           <p id="applyMsg" class="text-xs hidden"></p>
         </form>
@@ -237,15 +244,57 @@ const perks = isEl ? {
       const label = document.getElementById("applyJobLabel");
       const msg   = document.getElementById("applyMsg");
       const submitBtn = document.getElementById("applySubmitBtn");
+      const cvFile = document.getElementById("cvFile");
+      const cvStatus = document.getElementById("cvStatus");
       function openApply(jobId, jobTitle) {
         form.reset();
         form.elements.job_id.value = jobId || "";
+        form.elements.cv_url.value = "";
+        form.elements.cv_filename.value = "";
+        cvStatus.textContent = "";
+        cvStatus.className = "text-xs text-white/40 mt-1";
         label.textContent = jobTitle || "";
         msg.className = "text-xs hidden";
         submitBtn.disabled = false;
         submitBtn.textContent = isEl ? "Υποβολή αίτησης" : "Submit application";
         modal.classList.remove("hidden"); modal.classList.add("flex");
       }
+
+      cvFile.addEventListener("change", async () => {
+        const f = cvFile.files && cvFile.files[0];
+        if (!f) return;
+        if (f.size > 8 * 1024 * 1024) {
+          cvStatus.textContent = isEl ? "Πολύ μεγάλο (μεγ. 8MB)" : "Too large (max 8MB)";
+          cvStatus.className = "text-xs text-red-400 mt-1";
+          cvFile.value = "";
+          return;
+        }
+        cvStatus.textContent = isEl ? "⏳ Μεταφόρτωση…" : "⏳ Uploading…";
+        cvStatus.className = "text-xs text-white/60 mt-1";
+        submitBtn.disabled = true;
+        const fd = new FormData();
+        fd.append("file", f);
+        try {
+          const res = await fetch("/api/careers/upload-cv", { method: "POST", body: fd });
+          const j = await res.json();
+          if (res.ok && j.url) {
+            form.elements.cv_url.value = j.url;
+            form.elements.cv_filename.value = j.filename || f.name;
+            cvStatus.textContent = (isEl ? "✅ Ανέβηκε: " : "✅ Uploaded: ") + (j.filename || f.name);
+            cvStatus.className = "text-xs text-emerald-400 mt-1";
+          } else {
+            cvStatus.textContent = (isEl ? "Σφάλμα: " : "Error: ") + (j.message || j.error || "upload failed");
+            cvStatus.className = "text-xs text-red-400 mt-1";
+            cvFile.value = "";
+          }
+        } catch {
+          cvStatus.textContent = isEl ? "Σφάλμα δικτύου" : "Network error";
+          cvStatus.className = "text-xs text-red-400 mt-1";
+          cvFile.value = "";
+        } finally {
+          submitBtn.disabled = false;
+        }
+      });
       function closeApply() { modal.classList.add("hidden"); modal.classList.remove("flex"); }
       document.querySelectorAll(".apply-btn").forEach((b) => {
         b.addEventListener("click", () => openApply(b.getAttribute("data-job-id"), b.getAttribute("data-job-title")));
