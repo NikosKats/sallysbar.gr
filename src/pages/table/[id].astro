@@ -75,6 +75,102 @@ for (const c of categories) {
     <script is:inline>
       // Logged-in guests get a scratch card on first table QR scan of the day (server dedupes).
       fetch("/api/loyalty/check-in", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }).catch(() => {});
+
+      // ── Daily Wheel of Luck ─────────────────────────────────────────
+      (async function () {
+        const isEl = document.documentElement.lang === "el";
+        const section = document.getElementById("wheelSection");
+        const btn     = document.getElementById("wheelSpinBtn");
+        const disk    = document.getElementById("wheelDisk");
+        const msg     = document.getElementById("wheelMsg");
+        const sub     = document.getElementById("wheelSub");
+        if (!section || !btn || !disk || !msg || !sub) return;
+
+        // Probe server: can this user spin?
+        let state;
+        try {
+          const r = await fetch("/api/loyalty/wheel-spin");
+          state = await r.json();
+        } catch { return; }
+
+        if (state.reason === "auth_required") return; // guest — hide wheel
+
+        section.classList.remove("hidden");
+
+        if (!state.canSpin && state.reason === "already_spun_today") {
+          btn.disabled = true;
+          btn.textContent = "✓ " + (isEl ? "Έγινε σήμερα" : "Spun today");
+          sub.textContent = (isEl ? "Νέα προσπάθεια αύριο. Τελευταίο έπαθλο: " : "Come back tomorrow. Last prize: ") + (state.lastReward ?? "—");
+          return;
+        }
+
+        // segment size = 45deg each, pointer at top = 0deg mark between slices 0 and 7
+        // We'll land in center of segment i: rotation = full spins + (360 - (i*45 + 22.5))
+        btn.addEventListener("click", async () => {
+          btn.disabled = true;
+          btn.textContent = "📍 " + (isEl ? "Επαλήθευση τοποθεσίας…" : "Checking location…");
+          msg.textContent = "";
+
+          const tableNumMatch = window.location.pathname.match(/\/table\/(\d+)/);
+          const tableNum = tableNumMatch ? Number(tableNumMatch[1]) : null;
+          const token = new URLSearchParams(window.location.search).get("t") || "";
+
+          // Ask for geolocation
+          let coords;
+          try {
+            coords = await new Promise((res, rej) => {
+              if (!navigator.geolocation) { rej(new Error("no_geo")); return; }
+              navigator.geolocation.getCurrentPosition(
+                p => res({ lat: p.coords.latitude, lon: p.coords.longitude }),
+                e => rej(e),
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+              );
+            });
+          } catch {
+            btn.disabled = false;
+            btn.textContent = "🎡 " + (isEl ? "Γύρνα τη ρόδα" : "Spin the wheel");
+            msg.textContent = isEl ? "Ενεργοποίησε την τοποθεσία. Η ρόδα δουλεύει μόνο στο bar." : "Enable location. The wheel only works at the bar.";
+            msg.style.color = "#f87171";
+            return;
+          }
+
+          btn.textContent = "⏳ " + (isEl ? "Γυρίζει…" : "Spinning…");
+          msg.textContent = "";
+          msg.style.color = "";
+
+          const res = await fetch("/api/loyalty/wheel-spin", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ lat: coords.lat, lon: coords.lon, table: tableNum, token }),
+          });
+          const j = await res.json();
+
+          if (!res.ok || !j.reward) {
+            btn.disabled = false;
+            btn.textContent = "🎡 " + (isEl ? "Γύρνα τη ρόδα" : "Spin the wheel");
+            msg.textContent = j.message || (isEl ? "Σφάλμα" : "Error");
+            msg.style.color = "#f87171";
+            return;
+          }
+
+          const idx = j.reward.index ?? 0;
+          // Animation: rotate to the winning slice center. Total rotation includes 6 full turns for flourish.
+          const sliceAngle = 360 / 8;                    // 45
+          const center = idx * sliceAngle + sliceAngle / 2;  // center of winning slice (0..360)
+          // Pointer sits at top (0 deg clockwise = top). We need the center of the slice to be at the top.
+          const rotation = 360 * 6 + (360 - center);
+          disk.style.transform = "rotate(" + rotation + "deg)";
+
+          setTimeout(() => {
+            btn.textContent = "🎁 " + (isEl ? j.reward.label_el : j.reward.label_en);
+            btn.style.background = "linear-gradient(135deg, #34d399, #10b981)";
+            msg.style.color = "#34d399";
+            msg.textContent = j.reward.auto_claimed
+              ? (isEl ? "✓ Προστέθηκαν στο λογαριασμό σου" : "✓ Added to your account")
+              : (isEl ? "Δείξε την οθόνη στον σερβιτόρο για εξαργύρωση" : "Show this screen to a waiter to redeem");
+            sub.textContent = isEl ? "Τα λέμε αύριο για νέα περιστροφή." : "See you tomorrow for another spin.";
+          }, 4100);
+        });
+      })();
     </script>
     <!-- Header -->
     <div class="sticky top-0 z-50 border-b border-white/10 bg-[#0b0b10]/90 backdrop-blur px-4 py-3 flex items-center justify-between gap-2">
@@ -108,6 +204,57 @@ for (const c of categories) {
     </div>
 
     <main class="mx-auto max-w-2xl px-6 py-8">
+      <!-- Daily Wheel of Luck -->
+      <section id="wheelSection" class="mb-8 hidden rounded-3xl border border-amber-400/30 bg-gradient-to-br from-amber-500/10 via-fuchsia-500/10 to-cyan-500/10 p-5 relative overflow-hidden">
+        <div class="flex items-start justify-between gap-3 flex-wrap">
+          <div class="min-w-0">
+            <p class="text-[10px] uppercase tracking-[0.24em] text-amber-300 font-bold">🎡 {isEl ? "Ημερήσια Ρόδα Τύχης" : "Daily Wheel of Luck"}</p>
+            <h2 class="font-heading text-xl font-bold mt-1">{isEl ? "Μία περιστροφή την ημέρα" : "One spin per day"}</h2>
+            <p id="wheelSub" class="text-xs text-white/60 mt-1">{isEl ? "Πάτα το κουμπί για να γυρίσεις — κερδίζεις πάντα κάτι." : "Tap to spin — every spin wins something."}</p>
+          </div>
+        </div>
+
+        <div class="relative mt-4 mx-auto" style="width:240px;height:240px;">
+          <!-- Wheel -->
+          <div id="wheelDisk" class="absolute inset-0 rounded-full shadow-2xl shadow-amber-500/20 transition-transform" style="transform:rotate(0deg); transition-duration: 4000ms; transition-timing-function: cubic-bezier(.17,.67,.3,1);">
+            <svg viewBox="0 0 100 100" class="w-full h-full">
+              <!-- 8 pie segments; colors match WHEEL_POOL order -->
+              <g transform="translate(50 50)">
+                <path d="M0 0 L 47.55 -15.45 A 50 50 0 0 1 47.55 15.45 Z" fill="#64748b"/>
+                <path d="M0 0 L 47.55 15.45 A 50 50 0 0 1 15.45 47.55 Z" fill="#0ea5e9"/>
+                <path d="M0 0 L 15.45 47.55 A 50 50 0 0 1 -15.45 47.55 Z" fill="#10b981"/>
+                <path d="M0 0 L -15.45 47.55 A 50 50 0 0 1 -47.55 15.45 Z" fill="#f59e0b"/>
+                <path d="M0 0 L -47.55 15.45 A 50 50 0 0 1 -47.55 -15.45 Z" fill="#a855f7"/>
+                <path d="M0 0 L -47.55 -15.45 A 50 50 0 0 1 -15.45 -47.55 Z" fill="#ec4899"/>
+                <path d="M0 0 L -15.45 -47.55 A 50 50 0 0 1 15.45 -47.55 Z" fill="#ef4444"/>
+                <path d="M0 0 L 15.45 -47.55 A 50 50 0 0 1 47.55 -15.45 Z" fill="#fbbf24"/>
+                <!-- labels -->
+                <text x="33" y="2"   font-size="4" fill="white" text-anchor="middle">+10</text>
+                <text x="26" y="20"  font-size="4" fill="white" text-anchor="middle">+25</text>
+                <text x="0"  y="32"  font-size="4" fill="white" text-anchor="middle">+50</text>
+                <text x="-26" y="20" font-size="4" fill="black" text-anchor="middle">🥃</text>
+                <text x="-33" y="2"  font-size="4" fill="white" text-anchor="middle">+100</text>
+                <text x="-26" y="-15" font-size="4" fill="white" text-anchor="middle">10%</text>
+                <text x="0"  y="-24" font-size="4" fill="white" text-anchor="middle">🍸</text>
+                <text x="26" y="-15" font-size="4" fill="black" text-anchor="middle">🎉</text>
+              </g>
+              <circle cx="50" cy="50" r="50" fill="none" stroke="#fbbf24" stroke-width="1" opacity="0.6"/>
+              <circle cx="50" cy="50" r="7" fill="#0b0b10" stroke="#fbbf24" stroke-width="1"/>
+            </svg>
+          </div>
+          <!-- Pointer -->
+          <div class="absolute left-1/2 -translate-x-1/2 -top-3 w-0 h-0 z-10" style="border-left:12px solid transparent; border-right:12px solid transparent; border-top:20px solid #fbbf24; filter: drop-shadow(0 4px 6px rgba(0,0,0,.5));"></div>
+        </div>
+
+        <button id="wheelSpinBtn" type="button" class="mt-5 w-full rounded-xl bg-gradient-to-br from-amber-300 to-amber-500 text-black px-5 py-3 text-sm font-bold hover:scale-[1.02] active:scale-[0.99] transition disabled:opacity-40">
+          🎡 {isEl ? "Γύρνα τη ρόδα" : "Spin the wheel"}
+        </button>
+        <p id="wheelMsg" class="text-xs text-white/50 text-center mt-2"></p>
+        <p class="text-[10px] text-white/30 text-center mt-3">
+          {isEl ? "Χρειάζεται πρόσβαση τοποθεσίας. Μόνο μέσα στο bar." : "Location access required. Bar-only."}
+        </p>
+      </section>
+
       <!-- Category jump chips -->
       <div class="flex flex-wrap gap-2 mb-8">
         {categories.map((c) => (
