@@ -10,6 +10,18 @@ const lang = Astro.locals.lang ?? "en";
 const t = dict[lang];
 const isEl = lang === "el";
 
+// Language switch target: keep same pathname, swap prefix
+const origPath = new URL(Astro.request.url).pathname;
+const pathNoLang = origPath.startsWith("/el")
+  ? origPath.replace(/^\/el/, "") || "/"
+  : origPath;
+const otherLang = isEl ? "en" : "el";
+const switchHref = otherLang === "en"
+  ? `${withLangPrefix("en", pathNoLang)}?lang=en`
+  : withLangPrefix("el", pathNoLang);
+const switchLabel = isEl ? "English" : "Ελληνικά";
+const switchFlag  = isEl ? "🇬🇧" : "🇬🇷";
+
 type Item = { key: string; label: string; href: string; icon: string };
 type Group = { title: string; items: Item[] };
 
@@ -77,6 +89,9 @@ const activeItem = groups.flatMap(g => g.items).find(i => i.key === active);
         <p class="text-[10px] uppercase tracking-[0.2em] text-amber-300/70">{isEl ? "Πίνακας Διαχείρισης" : "Admin Panel"}</p>
         <p class="text-sm font-semibold text-amber-200 truncate">{activeItem?.label ?? ""}</p>
       </div>
+      <a href={switchHref} aria-label="Switch language" class="shrink-0 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 px-2.5 py-2 text-xs text-white/75 hover:text-amber-200 transition">
+        <span class="mr-1">{switchFlag}</span><span class="font-medium">{otherLang.toUpperCase()}</span>
+      </a>
     </div>
   </div>
 
@@ -113,7 +128,11 @@ const activeItem = groups.flatMap(g => g.items).find(i => i.key === active);
         </div>
       ))}
     </nav>
-    <div class="border-t border-white/10 p-3">
+    <div class="border-t border-white/10 p-3 space-y-2">
+      <a href={switchHref} class="flex items-center justify-center gap-2 w-full rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 hover:border-amber-400/40 text-white/80 hover:text-amber-200 px-3 py-2 text-sm font-medium transition">
+        <span class="text-base leading-none">{switchFlag}</span>
+        <span>{switchLabel}</span>
+      </a>
       <a href={withLangPrefix(lang, "/")} target="_blank" rel="noopener" class="flex items-center justify-center gap-2 w-full rounded-xl bg-gradient-to-br from-amber-300 to-amber-500 text-black px-3 py-2.5 text-sm font-semibold shadow-lg shadow-amber-500/10 hover:shadow-amber-500/30 hover:scale-[1.01] active:scale-[0.99] transition">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M14 3h7v7M10 14L21 3M19 14v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         {isEl ? "Επίσκεψη ιστότοπου" : "Visit site"}
