@@ -1,3 +1,4 @@
 ---
-return Astro.redirect("/login" + (Astro.url.search || ""));
+import { elRewrite } from "../../lib/elRewrite";
+return Astro.rewrite(elRewrite(Astro.request, "/login"));
 ---

@@ -5,18 +5,33 @@ import Footer from "../components/Footer.astro";
 
 import { site } from "../data/site";
 import en from "../i18n/en";
+import el from "../i18n/el";
 
-const t = en;
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+const t = isEl ? el : en;
 
 const title = `${t.careers.title} • ${site.name}`;
+const canonical = isEl ? "https://sallysbar.gr/el/careers" : "https://sallysbar.gr/careers";
+const perks = isEl ? {
+  join: "Έλα στην Ομάδα",
+  p1Title: "Καλοκαίρι στην Κεφαλονιά", p1Text: "Περάστε τη σεζόν σε ένα από τα πιο όμορφα νησιά της Ελλάδας.",
+  p2Title: "Φιλική ομάδα", p2Text: "Ντόπιοι, expats και ταξιδιώτες δουλεύουν μαζί κάθε βράδυ.",
+  p3Title: "Καλά φιλοδωρήματα", p3Text: "Πολυσύχναστο μπαρ, γενναιόδωροι επισκέπτες — η προσπάθεια ανταμείβεται.",
+} : {
+  join: "Join The Team",
+  p1Title: "Summer in Kefalonia", p1Text: "Spend the season on one of Greece's most beautiful islands.",
+  p2Title: "Friendly team", p2Text: "Locals, expats, and travellers working side-by-side every night.",
+  p3Title: "Great tips", p3Text: "Busy bar, generous guests — your hustle pays off.",
+};
 ---
 
-<html lang="en">
+<html lang={lang}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>{title}</title>
-    <link rel="canonical" href="https://sallysbar.gr/careers" />
+    <link rel="canonical" href={canonical} />
   </head>
 
   <body class="min-h-screen bg-[#0a0a0f] text-white font-body antialiased overflow-x-hidden">
@@ -28,7 +43,7 @@ const title = `${t.careers.title} • ${site.name}`;
     <Header />
 
     <main class="mx-auto max-w-3xl px-6 py-16 pt-32">
-      <div class="text-xs uppercase tracking-[0.28em] text-amber-200/80 mb-4">Join The Team</div>
+      <div class="text-xs uppercase tracking-[0.28em] text-amber-200/80 mb-4">{perks.join}</div>
       <h1 class="font-heading text-5xl md:text-6xl font-bold leading-[0.95] bg-gradient-to-br from-white via-amber-50 to-amber-200/80 bg-clip-text text-transparent">
         {t.careers.title}
       </h1>
@@ -58,24 +73,24 @@ const title = `${t.careers.title} • ${site.name}`;
           <div class="absolute inset-0 opacity-0 group-hover:opacity-100 bg-gradient-to-br from-amber-400/5 to-transparent transition"></div>
           <div class="relative">
             <div class="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-300/15 text-xl mb-4">🌊</div>
-            <h3 class="font-heading text-xl font-semibold">Summer in Kefalonia</h3>
-            <p class="mt-2 text-sm text-white/65 leading-relaxed">Spend the season on one of Greece's most beautiful islands.</p>
+            <h3 class="font-heading text-xl font-semibold">{perks.p1Title}</h3>
+            <p class="mt-2 text-sm text-white/65 leading-relaxed">{perks.p1Text}</p>
           </div>
         </div>
         <div class="group relative rounded-3xl border border-white/10 bg-white/[0.03] p-6 overflow-hidden hover:border-sky-300/30 hover:-translate-y-1 transition duration-300">
           <div class="absolute inset-0 opacity-0 group-hover:opacity-100 bg-gradient-to-br from-sky-400/5 to-transparent transition"></div>
           <div class="relative">
             <div class="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-sky-300/15 text-xl mb-4">🤝</div>
-            <h3 class="font-heading text-xl font-semibold">Friendly team</h3>
-            <p class="mt-2 text-sm text-white/65 leading-relaxed">Locals, expats, and travellers working side-by-side every night.</p>
+            <h3 class="font-heading text-xl font-semibold">{perks.p2Title}</h3>
+            <p class="mt-2 text-sm text-white/65 leading-relaxed">{perks.p2Text}</p>
           </div>
         </div>
         <div class="group relative rounded-3xl border border-white/10 bg-white/[0.03] p-6 overflow-hidden hover:border-fuchsia-300/30 hover:-translate-y-1 transition duration-300">
           <div class="absolute inset-0 opacity-0 group-hover:opacity-100 bg-gradient-to-br from-fuchsia-400/5 to-transparent transition"></div>
           <div class="relative">
             <div class="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-fuchsia-300/15 text-xl mb-4">💸</div>
-            <h3 class="font-heading text-xl font-semibold">Great tips</h3>
-            <p class="mt-2 text-sm text-white/65 leading-relaxed">Busy bar, generous guests — your hustle pays off.</p>
+            <h3 class="font-heading text-xl font-semibold">{perks.p3Title}</h3>
+            <p class="mt-2 text-sm text-white/65 leading-relaxed">{perks.p3Text}</p>
           </div>
         </div>
       </div>

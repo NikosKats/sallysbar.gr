@@ -1,8 +1,7 @@
 ---
-import { getLangFromPath, withLangPrefix } from "../i18n";
+import { withLangPrefix } from "../i18n";
 
-const url = new URL(Astro.request.url);
-const lang = getLangFromPath(url.pathname);
+const lang = Astro.locals.lang ?? "en";
 const redirectTo = withLangPrefix(lang, "/");
 const turnstileSitekey = import.meta.env.PUBLIC_TURNSTILE_SITEKEY ?? "";
 

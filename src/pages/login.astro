@@ -1,8 +1,8 @@
 ---
-import { getLangFromPath, withLangPrefix } from "../i18n";
+import { withLangPrefix } from "../i18n";
 
 const url = new URL(Astro.request.url);
-const lang = getLangFromPath(url.pathname);
+const lang = Astro.locals.lang ?? "en";
 const nextUrl = url.searchParams.get("next") ?? "/dashboard";
 const errorCode = url.searchParams.get("error");
 const errorDetail = url.searchParams.get("msg");

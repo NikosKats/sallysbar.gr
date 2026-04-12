@@ -9,7 +9,8 @@
       "Bash(npx wrangler:*)",
       "Bash(git commit:*)",
       "Bash(npm install:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(ls /Users/nikolaoskatsilidis/Desktop/sallysbar.gr/src/middleware*)"
     ]
   }
 }
