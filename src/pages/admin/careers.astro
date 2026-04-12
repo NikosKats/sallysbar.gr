@@ -1,0 +1,197 @@
+---
+import "../../styles/global.css";
+import Header from "../../components/Header.astro";
+import AdminNav from "../../components/AdminNav.astro";
+import { supabaseAdmin } from "../../lib/supabase";
+import { withLangPrefix } from "../../i18n";
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+
+if (Astro.locals.role !== "admin") {
+  return Astro.redirect(withLangPrefix(lang, "/admin"));
+}
+
+const { data: jobs } = await supabaseAdmin
+  .from("job_listings")
+  .select("*")
+  .order("sort_order", { ascending: true })
+  .order("created_at", { ascending: false });
+---
+
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{isEl ? "Καριέρα" : "Careers"} — Admin</title>
+    <meta name="robots" content="noindex,nofollow" />
+  </head>
+  <body class="min-h-screen bg-[#0b0b10] text-white">
+    <Header />
+    <div class="h-20"></div>
+    <AdminNav active="careers" />
+
+    <main class="mx-auto max-w-5xl px-4 py-6 space-y-6">
+      <div class="flex items-center justify-between flex-wrap gap-3">
+        <h1 class="text-xl font-bold">{isEl ? "Αγγελίες Εργασίας" : "Job Listings"}</h1>
+        <button id="newJobBtn" class="rounded-xl bg-amber-400 text-black px-4 py-2 text-sm font-semibold hover:bg-amber-300 transition">
+          + {isEl ? "Νέα αγγελία" : "New job"}
+        </button>
+      </div>
+
+      <p class="text-xs text-white/50">
+        {isEl
+          ? "Οι ενεργές αγγελίες εμφανίζονται δημόσια στο /careers με κουμπιά κοινοποίησης."
+          : "Active listings are shown publicly on /careers with share buttons."}
+      </p>
+
+      <div id="jobsList" class="space-y-3">
+        {(jobs ?? []).length === 0 && (
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-8 text-center text-white/50 text-sm">
+            {isEl ? "Δεν υπάρχουν αγγελίες ακόμα." : "No jobs yet."}
+          </div>
+        )}
+        {(jobs ?? []).map(j => (
+          <div class="rounded-2xl border border-white/10 bg-white/5 p-4" data-job-id={j.id}>
+            <div class="flex items-start justify-between gap-3 flex-wrap">
+              <div class="min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <h3 class="text-base font-semibold text-white">{isEl ? j.title_el : j.title_en}</h3>
+                  {!j.active && <span class="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/10 text-white/50">{isEl ? "Ανενεργή" : "Inactive"}</span>}
+                  {j.employment_type && <span class="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-400/15 text-amber-300">{j.employment_type}</span>}
+                </div>
+                <p class="text-xs text-white/40 mt-1">
+                  {j.department && <span>{j.department} · </span>}
+                  <span>{j.location ?? "—"}</span>
+                  {j.salary_range && <span> · {j.salary_range}</span>}
+                </p>
+              </div>
+              <div class="flex items-center gap-2">
+                <button class="edit-btn text-xs px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 transition">{isEl ? "Επεξεργασία" : "Edit"}</button>
+                <button class="del-btn text-xs px-3 py-1.5 rounded-lg bg-red-500/15 text-red-300 hover:bg-red-500/25 transition">{isEl ? "Διαγραφή" : "Delete"}</button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </main>
+
+    <!-- Editor modal -->
+    <div id="jobModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
+      <div class="relative w-full max-w-2xl my-8 rounded-2xl border border-white/10 bg-[#141420] p-6 space-y-4">
+        <div class="flex items-start justify-between">
+          <h3 id="modalTitle" class="text-lg font-bold text-amber-200">{isEl ? "Αγγελία" : "Job"}</h3>
+          <button id="closeJobBtn" class="text-white/40 hover:text-white text-2xl leading-none">×</button>
+        </div>
+        <form id="jobForm" class="space-y-3">
+          <input type="hidden" name="id" />
+          <div class="grid sm:grid-cols-2 gap-3">
+            <label class="block"><span class="text-xs text-white/50">Title EN</span>
+              <input name="title_en" required class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" /></label>
+            <label class="block"><span class="text-xs text-white/50">Title EL</span>
+              <input name="title_el" required class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" /></label>
+            <label class="block"><span class="text-xs text-white/50">{isEl ? "Τμήμα" : "Department"}</span>
+              <input name="department" placeholder="Bar / Kitchen / Floor" class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" /></label>
+            <label class="block"><span class="text-xs text-white/50">{isEl ? "Τύπος απασχόλησης" : "Employment type"}</span>
+              <select name="employment_type" class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white">
+                <option value="">—</option>
+                <option value="full_time">{isEl ? "Πλήρης" : "Full-time"}</option>
+                <option value="part_time">{isEl ? "Μερική" : "Part-time"}</option>
+                <option value="seasonal">{isEl ? "Εποχική" : "Seasonal"}</option>
+                <option value="contract">{isEl ? "Συμβόλαιο" : "Contract"}</option>
+              </select></label>
+            <label class="block"><span class="text-xs text-white/50">{isEl ? "Τοποθεσία" : "Location"}</span>
+              <input name="location" value="Skala, Kefalonia" class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" /></label>
+            <label class="block"><span class="text-xs text-white/50">{isEl ? "Αμοιβή (προαιρ.)" : "Salary range (optional)"}</span>
+              <input name="salary_range" placeholder="€900–1200 / month" class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" /></label>
+            <label class="block sm:col-span-2"><span class="text-xs text-white/50">{isEl ? "Email αίτησης (προαιρ.)" : "Apply email (optional)"}</span>
+              <input name="apply_email" type="email" placeholder="jobs@sallysbar.gr" class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" /></label>
+            <label class="block sm:col-span-2"><span class="text-xs text-white/50">{isEl ? "Περιγραφή (EN)" : "Description (EN)"}</span>
+              <textarea name="description_en" rows="3" class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"></textarea></label>
+            <label class="block sm:col-span-2"><span class="text-xs text-white/50">{isEl ? "Περιγραφή (EL)" : "Description (EL)"}</span>
+              <textarea name="description_el" rows="3" class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"></textarea></label>
+            <label class="block sm:col-span-2"><span class="text-xs text-white/50">{isEl ? "Απαιτήσεις (EN, μία ανά γραμμή)" : "Requirements (EN, one per line)"}</span>
+              <textarea name="requirements_en" rows="3" class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"></textarea></label>
+            <label class="block sm:col-span-2"><span class="text-xs text-white/50">{isEl ? "Απαιτήσεις (EL, μία ανά γραμμή)" : "Requirements (EL, one per line)"}</span>
+              <textarea name="requirements_el" rows="3" class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"></textarea></label>
+            <label class="block"><span class="text-xs text-white/50">{isEl ? "Σειρά" : "Sort order"}</span>
+              <input name="sort_order" type="number" value="0" class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" /></label>
+            <label class="flex items-center gap-2 text-sm text-white/70 sm:col-span-1 mt-6">
+              <input type="checkbox" name="active" checked /> {isEl ? "Ενεργή" : "Active"}
+            </label>
+          </div>
+          <p id="jobFormMsg" class="text-xs hidden"></p>
+          <button type="submit" class="w-full rounded-xl bg-amber-400 text-black px-4 py-3 text-sm font-semibold hover:bg-amber-300 transition">
+            {isEl ? "Αποθήκευση" : "Save"}
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <script define:vars={{ isEl, jobs: jobs ?? [] }}>
+      const modal = document.getElementById("jobModal");
+      const form  = document.getElementById("jobForm");
+      const titleEl = document.getElementById("modalTitle");
+
+      function openModal(job) {
+        form.reset();
+        form.elements.id.value = job?.id ?? "";
+        titleEl.textContent = job
+          ? (isEl ? "Επεξεργασία αγγελίας" : "Edit job")
+          : (isEl ? "Νέα αγγελία" : "New job");
+        if (job) {
+          for (const k of ["title_en","title_el","department","employment_type","location","description_en","description_el","requirements_en","requirements_el","salary_range","apply_email","sort_order"]) {
+            if (form.elements[k]) form.elements[k].value = job[k] ?? "";
+          }
+          form.elements.active.checked = !!job.active;
+        } else {
+          form.elements.location.value = "Skala, Kefalonia";
+        }
+        modal.classList.remove("hidden"); modal.classList.add("flex");
+      }
+      function closeModal() { modal.classList.add("hidden"); modal.classList.remove("flex"); }
+
+      document.getElementById("newJobBtn").addEventListener("click", () => openModal(null));
+      document.getElementById("closeJobBtn").addEventListener("click", closeModal);
+      modal.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
+
+      document.querySelectorAll(".edit-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const id = btn.closest("[data-job-id]").dataset.jobId;
+          openModal(jobs.find(j => j.id === id));
+        });
+      });
+
+      document.querySelectorAll(".del-btn").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          if (!confirm(isEl ? "Διαγραφή αγγελίας;" : "Delete this job?")) return;
+          const id = btn.closest("[data-job-id]").dataset.jobId;
+          const res = await fetch(`/api/admin/careers?id=${id}`, { method: "DELETE" });
+          if (res.ok) window.location.reload();
+          else alert("Error");
+        });
+      });
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const fd = new FormData(form);
+        const payload = Object.fromEntries(fd.entries());
+        payload.active = fd.get("active") === "on";
+        payload.sort_order = Number(payload.sort_order) || 0;
+        if (!payload.id) delete payload.id;
+        const msg = document.getElementById("jobFormMsg");
+        msg.className = "text-xs hidden";
+        const res = await fetch("/api/admin/careers", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (res.ok) { window.location.reload(); }
+        else {
+          const j = await res.json().catch(() => ({}));
+          msg.textContent = j.error ?? "Error";
+          msg.className = "text-xs text-red-400 block";
+        }
+      });
+    </script>
+  </body>
+</html>
