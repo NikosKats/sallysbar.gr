@@ -1,6 +1,7 @@
 import type { APIRoute } from "astro";
 import { supabaseAdmin } from "../../lib/supabase";
 import { sendMessage } from "../../lib/telegram";
+import { pushOrderCreated } from "../../lib/pushOrders";
 
 export type OrderItem = { name: string; qty: number; price_cents: number };
 
@@ -123,6 +124,13 @@ export const POST: APIRoute = async ({ request, locals }) => {
   if (Object.keys(updates).length) {
     await supabaseAdmin.from("orders").update(updates).eq("id", order.id);
   }
+
+  await pushOrderCreated({
+    id: order.id,
+    table_number: table,
+    total_cents,
+    round_number: roundNumber,
+  });
 
   return json({ ok: true, order_id: order.id, session_id: finalSessionId });
 };

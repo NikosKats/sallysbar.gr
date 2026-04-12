@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 import { createSupabaseServerClient, supabaseAdmin } from "../../../lib/supabase";
+import { pushOrderStatus, pushToAllStaff } from "../../../lib/pushOrders";
 
 async function requireAuth(request: Request, cookies: any) {
   const supabase = createSupabaseServerClient(request, cookies);
@@ -45,6 +46,18 @@ export const PATCH: APIRoute = async ({ request, cookies }) => {
       .from("table_sessions")
       .update({ status: "closed", closed_at: new Date().toISOString() })
       .eq("id", session_id);
+
+    const { data: sessionRow } = await supabaseAdmin
+      .from("table_sessions")
+      .select("table_number")
+      .eq("id", session_id)
+      .single();
+    await pushToAllStaff({
+      title: `💶 Session paid — Table ${sessionRow?.table_number ?? ""}`,
+      body: `All rounds closed`,
+      tag: `session-${session_id}`,
+      url: "/staff",
+    });
 
     const cents = Number(tip_amount_cents);
     if (cents > 0 && (tip_type === "cash" || tip_type === "card")) {
@@ -123,6 +136,13 @@ export const PATCH: APIRoute = async ({ request, cookies }) => {
 
       if (ordersToPay.length > 0) {
         await supabaseAdmin.from("orders").update({ status: "paid" }).in("id", ordersToPay);
+        const { data: paidRows } = await supabaseAdmin
+          .from("orders")
+          .select("id, table_number")
+          .in("id", ordersToPay);
+        for (const p of paidRows ?? []) {
+          await pushOrderStatus({ id: p.id, table_number: p.table_number, status: "paid" });
+        }
         // Close session only if all non-cancelled orders are now paid
         const { data: remaining } = await supabaseAdmin
           .from("orders")
@@ -159,6 +179,7 @@ export const PATCH: APIRoute = async ({ request, cookies }) => {
       return json({ error: "Only pending orders can be cancelled" }, 400);
     }
     await supabaseAdmin.from("orders").update({ status: "cancelled" }).eq("id", id);
+    await pushOrderStatus({ id: order.id, table_number: order.table_number, status: "cancelled" });
 
     // Auto-close session if all orders are now paid or cancelled
     if (order.session_id) {
@@ -185,6 +206,7 @@ export const PATCH: APIRoute = async ({ request, cookies }) => {
       return json({ error: "Only delivered orders can be marked as paid" }, 400);
     }
     await supabaseAdmin.from("orders").update({ status: "paid" }).eq("id", id);
+    await pushOrderStatus({ id: order.id, table_number: order.table_number, status: "paid" });
 
     const cents = Number(tip_amount_cents);
     if (cents > 0 && (tip_type === "cash" || tip_type === "card")) {

@@ -1,6 +1,7 @@
 ---
 import "../../styles/global.css";
 import Header from "../../components/Header.astro";
+import StaffPwa from "../../components/StaffPwa.astro";
 import { supabaseAdmin, createSupabaseServerClient } from "../../lib/supabase";
 import { dict, withLangPrefix } from "../../i18n";
 
@@ -194,6 +195,7 @@ function fmtEur(cents: number) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{t.staff.operations} — Sally's Bar</title>
     <meta name="robots" content="noindex,nofollow" />
+    <StaffPwa />
     <!-- Telegram Mini App SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>

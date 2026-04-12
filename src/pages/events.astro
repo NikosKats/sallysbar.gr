@@ -5,10 +5,9 @@ import Footer from "../components/Footer.astro";
 import StickyCta from "../components/StickyCta.astro";
 import { site } from "../data/site";
 import { supabaseAdmin } from "../lib/supabase";
-import { getLangFromPath, dict, withLangPrefix } from "../i18n";
+import { dict, withLangPrefix } from "../i18n";
 
-const url  = new URL(Astro.request.url);
-const lang = getLangFromPath(url.pathname);
+const lang = Astro.locals.lang ?? "en";
 const t    = dict[lang];
 const te   = t.events;
 const isEl = lang === "el";

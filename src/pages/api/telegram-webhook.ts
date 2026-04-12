@@ -5,6 +5,7 @@ import {
   editMessageText,
   answerCallbackQuery,
 } from "../../lib/telegram";
+import { pushOrderStatus } from "../../lib/pushOrders";
 
 type OrderItem = { name: string; qty: number; price_cents: number };
 
@@ -91,6 +92,7 @@ async function handleUpdate(body: Record<string, unknown>): Promise<Response> {
       );
     }
 
+    await pushOrderStatus({ id: orderId, table_number: order.table_number, status: "preparing" });
     await answerCallbackQuery(cb.id, "Marked as preparing.");
   }
 
@@ -126,6 +128,7 @@ async function handleUpdate(body: Record<string, unknown>): Promise<Response> {
         .eq("id", orderId);
     }
 
+    await pushOrderStatus({ id: orderId, table_number: order.table_number, status: "ready" });
     await answerCallbackQuery(cb.id, "Waiter notified! ✅");
   }
 
@@ -142,6 +145,7 @@ async function handleUpdate(body: Record<string, unknown>): Promise<Response> {
       { reply_markup: { inline_keyboard: [] } }
     );
 
+    await pushOrderStatus({ id: orderId, table_number: order.table_number, status: "delivered" });
     await answerCallbackQuery(cb.id, "Order delivered! ✅");
   }
 
@@ -179,6 +183,7 @@ async function handleUpdate(body: Record<string, unknown>): Promise<Response> {
       }
     }
 
+    await pushOrderStatus({ id: orderId, table_number: order.table_number, status: "cancelled" });
     await answerCallbackQuery(cb.id, "Order cancelled.");
   }
 
