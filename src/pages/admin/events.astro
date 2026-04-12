@@ -346,7 +346,7 @@ function fmtDate(d: string) {
 
       const aiEvBtn = document.getElementById("aiGenEventBtn");
       aiEvBtn?.addEventListener("click", async () => {
-        const seed = (document.getElementById("fTitle") as HTMLInputElement).value.trim();
+        const seed = document.getElementById("fTitle").value.trim();
         const theme = prompt(
           isEl
             ? "Θέμα event (π.χ. 'Latin night', 'Live jazz', 'Halloween party', 'Καραόκε Ελληνικό')"
@@ -355,7 +355,7 @@ function fmtDate(d: string) {
         );
         if (!theme || theme.trim().length < 2) return;
         const prev = aiEvBtn.textContent;
-        (aiEvBtn as HTMLButtonElement).disabled = true;
+        aiEvBtn.disabled = true;
         aiEvBtn.textContent = isEl ? "⏳ Δημιουργία…" : "⏳ Generating…";
         try {
           const res = await fetch("/api/admin/events-ai-generate", {
@@ -368,8 +368,8 @@ function fmtDate(d: string) {
             return;
           }
           const g = j.event;
-          const set = (id: string, v: any) => {
-            const el = document.getElementById(id) as HTMLInputElement | HTMLTextAreaElement | null;
+          const set = (id, v) => {
+            const el = document.getElementById(id);
             if (el && v != null && v !== "") el.value = String(v);
           };
           set("fTitle", g.title_en);
@@ -382,7 +382,7 @@ function fmtDate(d: string) {
         } catch {
           alert(isEl ? "Σφάλμα δικτύου" : "Network error");
         } finally {
-          (aiEvBtn as HTMLButtonElement).disabled = false;
+          aiEvBtn.disabled = false;
           aiEvBtn.textContent = prev;
         }
       });
