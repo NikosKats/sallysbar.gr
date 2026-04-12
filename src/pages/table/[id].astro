@@ -14,6 +14,11 @@ const url   = new URL(Astro.request.url);
 const lang  = url.searchParams.get("lang") === "el" ? "el" : "en";
 const isEl  = lang === "el";
 
+const user = Astro.locals.user;
+const userLabel = user
+  ? ((user.user_metadata as any)?.full_name ?? user.email?.split("@")[0] ?? "Member")
+  : null;
+
 const switchLang  = isEl ? "en" : "el";
 const switchLabel = isEl ? "English" : "Ελληνικά";
 
@@ -176,6 +181,17 @@ for (const c of categories) {
       <div>
         <div class="text-xs text-white/50 uppercase tracking-widest">{site.name}</div>
         <div class="text-sm font-semibold">{t.table}</div>
+        {user ? (
+          <a href={isEl ? "/el/account" : "/account"} class="mt-1 inline-flex items-center gap-1.5 rounded-full bg-emerald-400/15 border border-emerald-400/30 px-2 py-0.5 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-400/20 transition">
+            <span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+            {isEl ? "Συνδεδεμένος:" : "Signed in:"} {userLabel}
+          </a>
+        ) : (
+          <a href={`${isEl ? "/el/login" : "/login"}?next=${encodeURIComponent(`/table/${tableNumber}`)}`} class="mt-1 inline-flex items-center gap-1.5 rounded-full bg-amber-400/15 border border-amber-400/30 px-2 py-0.5 text-[10px] font-semibold text-amber-300 hover:bg-amber-400/20 transition">
+            <span class="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+            {isEl ? "Συνδέσου για πόντους & ρόδα τύχης" : "Sign in for points & wheel"}
+          </a>
+        )}
       </div>
       <div class="flex items-center gap-2">
         <a id="langBtn" href={`?lang=${switchLang}`}
