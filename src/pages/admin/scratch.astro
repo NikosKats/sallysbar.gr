@@ -1,0 +1,263 @@
+---
+import "../../styles/global.css";
+import AdminNav from "../../components/AdminNav.astro";
+import { supabaseAdmin } from "../../lib/supabase";
+import { withLangPrefix } from "../../i18n";
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+
+if (Astro.locals.role !== "admin") {
+  return Astro.redirect(withLangPrefix(lang, "/admin"));
+}
+
+// Latest 200 cards
+const { data: cards } = await supabaseAdmin
+  .from("scratch_cards")
+  .select("id, user_id, reward_type, reward_value, reward_label, revealed_at, claimed_at, expires_at, trigger, created_at")
+  .order("created_at", { ascending: false })
+  .limit(200);
+
+// Look up user emails for display
+const userIds = Array.from(new Set((cards ?? []).map(c => c.user_id)));
+const emailMap = new Map<string, string>();
+if (userIds.length > 0) {
+  const { data: profiles } = await supabaseAdmin
+    .from("profiles").select("id, email, full_name").in("id", userIds);
+  for (const p of profiles ?? []) emailMap.set(p.id, p.full_name || p.email || p.id.slice(0, 8));
+}
+
+// Eligible members for single-issue search
+const { data: members } = await supabaseAdmin
+  .from("profiles")
+  .select("id, email, full_name")
+  .not("card_issued_at", "is", null)
+  .order("full_name", { ascending: true })
+  .limit(500);
+
+// Stats
+const total = (cards ?? []).length;
+const revealed = (cards ?? []).filter(c => c.revealed_at).length;
+const claimed = (cards ?? []).filter(c => c.claimed_at).length;
+const unrevealedByUser = new Map<string, number>();
+for (const c of cards ?? []) {
+  if (!c.revealed_at) unrevealedByUser.set(c.user_id, (unrevealedByUser.get(c.user_id) ?? 0) + 1);
+}
+const revealRate = total > 0 ? Math.round((revealed / total) * 100) : 0;
+
+const memberCount = (members ?? []).length;
+---
+
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{isEl ? "Scratch Cards" : "Scratch Cards"} — Admin</title>
+    <meta name="robots" content="noindex,nofollow" />
+  </head>
+  <body class="min-h-screen bg-[#0b0b10] text-white">
+    <AdminNav active="scratch" />
+
+    <main class="mx-auto max-w-5xl px-4 py-6 space-y-6">
+      <div class="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h1 class="text-2xl font-bold">{isEl ? "🎫 Scratch Cards" : "🎫 Scratch Cards"}</h1>
+          <p class="text-sm text-white/50 mt-1">
+            {isEl ? "Έκδοση, εξαργύρωση και παρακολούθηση scratch cards." : "Issue, redeem, and track scratch cards."}
+          </p>
+        </div>
+      </div>
+
+      <!-- KPI -->
+      <section class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+          <p class="text-xs uppercase tracking-wider text-white/40">{isEl ? "Σύνολο" : "Total issued"}</p>
+          <p class="text-3xl font-bold text-white mt-1">{total}</p>
+        </div>
+        <div class="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4">
+          <p class="text-xs uppercase tracking-wider text-amber-300/70">{isEl ? "Αποκαλύφθηκαν" : "Revealed"}</p>
+          <p class="text-3xl font-bold text-amber-300 mt-1">{revealed} <span class="text-sm font-normal text-amber-300/60">· {revealRate}%</span></p>
+        </div>
+        <div class="rounded-2xl border border-emerald-400/20 bg-emerald-400/5 p-4">
+          <p class="text-xs uppercase tracking-wider text-emerald-300/70">{isEl ? "Εξαργυρώθηκαν" : "Claimed"}</p>
+          <p class="text-3xl font-bold text-emerald-300 mt-1">{claimed}</p>
+        </div>
+        <div class="rounded-2xl border border-fuchsia-400/20 bg-fuchsia-400/5 p-4">
+          <p class="text-xs uppercase tracking-wider text-fuchsia-300/70">{isEl ? "Εκκρεμούν" : "Unrevealed"}</p>
+          <p class="text-3xl font-bold text-fuchsia-300 mt-1">{total - revealed}</p>
+        </div>
+      </section>
+
+      <!-- Actions: mass drop + single issue -->
+      <section class="grid md:grid-cols-2 gap-4">
+        <div class="rounded-2xl border border-amber-400/30 bg-gradient-to-br from-amber-500/10 to-fuchsia-500/10 p-5">
+          <h2 class="text-sm font-semibold uppercase tracking-widest text-amber-300">{isEl ? "Μαζική διανομή" : "Mass drop"}</h2>
+          <p class="text-sm text-white/70 mt-2 leading-relaxed">
+            {isEl
+              ? `Στείλε μία scratch card σε κάθε μέλος του προγράμματος (${memberCount} μέλη). Ιδανικό πριν από ένα event ή για να γεμίσεις μια ήρεμη βραδιά.`
+              : `Issue one scratch card to every loyalty member (${memberCount} members). Great right before an event or to fill a slow night.`}
+          </p>
+          <label class="block mt-3">
+            <span class="text-xs text-white/50">{isEl ? "Λήξη (προαιρετικά)" : "Expires (optional)"}</span>
+            <input id="bulkExpires" type="datetime-local" class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" />
+          </label>
+          <button id="bulkIssueBtn" type="button" class="mt-4 w-full rounded-xl bg-amber-400 text-black px-4 py-3 text-sm font-bold hover:bg-amber-300 transition">
+            🎫 {isEl ? `Έκδοση σε όλα τα ${memberCount} μέλη` : `Issue to all ${memberCount} members`}
+          </button>
+          <p id="bulkMsg" class="mt-2 text-xs hidden"></p>
+        </div>
+
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <h2 class="text-sm font-semibold uppercase tracking-widest text-white/50">{isEl ? "Έκδοση σε συγκεκριμένο χρήστη" : "Issue to one user"}</h2>
+          <p class="text-sm text-white/60 mt-2 leading-relaxed">{isEl ? "Διάλεξε μέλος — κάρτα δημιουργείται άμεσα." : "Pick a member — card is created immediately."}</p>
+          <label class="block mt-3">
+            <span class="text-xs text-white/50">{isEl ? "Μέλος" : "Member"}</span>
+            <select id="singleUser" class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white">
+              <option value="">—</option>
+              {(members ?? []).map(m => (
+                <option value={m.id}>{m.full_name || m.email}</option>
+              ))}
+            </select>
+          </label>
+          <label class="block mt-3">
+            <span class="text-xs text-white/50">{isEl ? "Λήξη (προαιρετικά)" : "Expires (optional)"}</span>
+            <input id="singleExpires" type="datetime-local" class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" />
+          </label>
+          <button id="singleIssueBtn" type="button" class="mt-4 w-full rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-white px-4 py-3 text-sm font-semibold transition">
+            🎫 {isEl ? "Έκδοση κάρτας" : "Issue card"}
+          </button>
+          <p id="singleMsg" class="mt-2 text-xs hidden"></p>
+        </div>
+      </section>
+
+      <!-- Recent cards list -->
+      <section class="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
+        <div class="px-5 py-3 border-b border-white/10 flex items-center justify-between flex-wrap gap-2">
+          <h2 class="text-xs font-semibold uppercase tracking-widest text-white/50">{isEl ? "Πρόσφατες κάρτες" : "Recent cards"}</h2>
+          <div class="flex items-center gap-2 text-xs">
+            <label class="flex items-center gap-1 text-white/60"><input id="filterUnclaimed" type="checkbox" class="h-3.5 w-3.5" /> {isEl ? "Μόνο για εξαργύρωση (σερβιτόρος)" : "Awaiting staff redemption only"}</label>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs">
+            <thead class="bg-white/5">
+              <tr class="text-white/40 text-[10px] uppercase tracking-wider">
+                <th class="text-left px-3 py-2">{isEl ? "Όταν" : "When"}</th>
+                <th class="text-left px-3 py-2">{isEl ? "Χρήστης" : "User"}</th>
+                <th class="text-left px-3 py-2">{isEl ? "Ανταμοιβή" : "Reward"}</th>
+                <th class="text-left px-3 py-2">{isEl ? "Κατάσταση" : "Status"}</th>
+                <th class="text-left px-3 py-2">{isEl ? "Λήξη" : "Expires"}</th>
+                <th class="text-right px-3 py-2">{isEl ? "Ενέργειες" : "Actions"}</th>
+              </tr>
+            </thead>
+            <tbody id="cardsBody">
+              {(cards ?? []).map(c => {
+                const isPoints = c.reward_type === "points";
+                const status = c.claimed_at ? "claimed" : c.revealed_at ? "revealed" : "unrevealed";
+                const statusLabel = status === "claimed"   ? (isEl ? "✓ Εξαργυρώθηκε" : "✓ Claimed")
+                                  : status === "revealed"  ? (isEl ? "👁 Αποκαλύφθηκε — εκκρεμεί" : "👁 Revealed — awaiting")
+                                  : (isEl ? "🎫 Δεν αποκαλύφθηκε" : "🎫 Unrevealed");
+                const statusClr = status === "claimed"   ? "bg-emerald-400/15 text-emerald-300"
+                                : status === "revealed"  ? "bg-amber-400/15 text-amber-300"
+                                : "bg-white/10 text-white/50";
+                return (
+                  <tr class="border-t border-white/5 hover:bg-white/[0.03] scratch-row"
+                    data-id={c.id} data-status={status} data-type={c.reward_type}>
+                    <td class="px-3 py-2 text-white/60 whitespace-nowrap">{new Date(c.created_at).toLocaleString(isEl ? "el-GR" : "en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</td>
+                    <td class="px-3 py-2 text-white/80 truncate max-w-[180px]">{emailMap.get(c.user_id) ?? c.user_id.slice(0, 8)}</td>
+                    <td class="px-3 py-2 text-white"><span class="font-semibold">{c.reward_label}</span>{c.trigger && <span class="text-white/30 ml-1">· {c.trigger}</span>}</td>
+                    <td class="px-3 py-2"><span class={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full ${statusClr}`}>{statusLabel}</span></td>
+                    <td class="px-3 py-2 text-white/50 whitespace-nowrap">{c.expires_at ? new Date(c.expires_at).toLocaleDateString(isEl ? "el-GR" : "en-GB", { day: "2-digit", month: "short" }) : "—"}</td>
+                    <td class="px-3 py-2 text-right whitespace-nowrap">
+                      {status === "revealed" && !isPoints && (
+                        <button class="claim-btn text-[11px] px-2 py-1 rounded-lg bg-emerald-400/15 text-emerald-300 hover:bg-emerald-400/25 transition">
+                          {isEl ? "Εξαργύρωση ✓" : "Mark claimed ✓"}
+                        </button>
+                      )}
+                      {status === "claimed" && (
+                        <button class="unclaim-btn text-[11px] px-2 py-1 rounded-lg bg-white/10 hover:bg-white/15 transition">
+                          {isEl ? "Αναίρεση" : "Undo"}
+                        </button>
+                      )}
+                      <button class="void-btn text-[11px] ml-1 px-2 py-1 rounded-lg bg-red-500/15 text-red-300 hover:bg-red-500/25 transition">
+                        {isEl ? "Ακύρωση" : "Void"}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+              {(cards ?? []).length === 0 && (
+                <tr><td colspan="6" class="text-center text-white/40 py-8 text-sm">{isEl ? "Καμία κάρτα ακόμα." : "No cards issued yet."}</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script is:inline>
+      (function () {
+        const isEl = document.documentElement.lang === "el";
+
+        async function issueCards(payload, btn, msgEl) {
+          btn.disabled = true;
+          const orig = btn.textContent;
+          btn.textContent = "⏳";
+          msgEl.className = "text-xs hidden";
+          const res = await fetch("/api/admin/scratch-issue", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          const j = await res.json();
+          btn.disabled = false;
+          btn.textContent = orig;
+          if (res.ok) {
+            msgEl.textContent = (isEl ? "✓ Εκδόθηκαν: " : "✓ Issued: ") + j.issued;
+            msgEl.className = "text-xs text-emerald-400 block mt-2";
+            setTimeout(() => window.location.reload(), 1000);
+          } else {
+            msgEl.textContent = (isEl ? "Σφάλμα: " : "Error: ") + (j.error ?? "unknown");
+            msgEl.className = "text-xs text-red-400 block mt-2";
+          }
+        }
+
+        document.getElementById("bulkIssueBtn").addEventListener("click", () => {
+          const exp = document.getElementById("bulkExpires").value;
+          if (!confirm(isEl ? "Σίγουρα; Θα σταλεί κάρτα σε όλα τα μέλη." : "Are you sure? A card will be sent to every member.")) return;
+          issueCards({ mode: "all-members", trigger: "admin-bulk", expires_at: exp || null }, document.getElementById("bulkIssueBtn"), document.getElementById("bulkMsg"));
+        });
+
+        document.getElementById("singleIssueBtn").addEventListener("click", () => {
+          const user_id = document.getElementById("singleUser").value;
+          if (!user_id) { alert(isEl ? "Διάλεξε μέλος" : "Pick a member"); return; }
+          const exp = document.getElementById("singleExpires").value;
+          issueCards({ mode: "single", user_id, trigger: "admin", expires_at: exp || null }, document.getElementById("singleIssueBtn"), document.getElementById("singleMsg"));
+        });
+
+        async function rowAction(row, action) {
+          const id = row.dataset.id;
+          const res = await fetch("/api/admin/scratch-claim", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id, action }),
+          });
+          if (res.ok) window.location.reload();
+          else alert(isEl ? "Σφάλμα" : "Error");
+        }
+        document.querySelectorAll(".claim-btn").forEach(b => b.addEventListener("click", () => rowAction(b.closest(".scratch-row"), "claim")));
+        document.querySelectorAll(".unclaim-btn").forEach(b => b.addEventListener("click", () => rowAction(b.closest(".scratch-row"), "unclaim")));
+        document.querySelectorAll(".void-btn").forEach(b => b.addEventListener("click", () => {
+          if (!confirm(isEl ? "Διαγραφή κάρτας;" : "Void this card?")) return;
+          rowAction(b.closest(".scratch-row"), "void");
+        }));
+
+        document.getElementById("filterUnclaimed").addEventListener("change", (e) => {
+          const on = e.target.checked;
+          document.querySelectorAll(".scratch-row").forEach(r => {
+            const show = !on || (r.dataset.status === "revealed" && r.dataset.type !== "points");
+            r.style.display = show ? "" : "none";
+          });
+        });
+      })();
+    </script>
+  </body>
+</html>
