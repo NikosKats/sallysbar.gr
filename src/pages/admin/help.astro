@@ -584,8 +584,140 @@ const L = {
       <p>A one-hour legal review is recommended for final tightening.</p>
     `,
   },
+  s20: {
+    head: isEl ? "20. 🎡 Ρόδα Τύχης (Daily Wheel)" : "20. 🎡 Wheel of Luck (Daily Spin)",
+    body: isEl ? `
+      <p>Ημερήσιο spin για πελάτες — μία περιστροφή την ημέρα, μόνο στο bar. Δεν είναι τυχερό παιχνίδι με οικονομικό αντάλλαγμα (δωρεάν συμμετοχή), οπότε δεν εμπίπτει στον ν.4002/2011.</p>
+      <p><strong>Διαχείριση:</strong> <a href="${withLangPrefix(lang, "/admin/wheel")}"><code>/admin/wheel</code></a></p>
+      <ul>
+        <li><strong>Ενεργή ρόδα</strong> — master toggle. Κλείνει/ανοίγει τη ρόδα σε όλα τα <code>/table/N</code>.</li>
+        <li><strong>Μέγιστη απόσταση</strong> — 10-5000m από τις συντεταγμένες του bar. Συνιστώμενο 150-300m.</li>
+        <li><strong>Απαίτηση Ελλάδας</strong> — επιπλέον φίλτρο Cloudflare IP-country (μπλοκάρει VPN — άφησέ το off για καλύτερο UX).</li>
+        <li><strong>🧪 Απομακρυσμένη πρόσβαση</strong> — ΜΟΝΟ για δοκιμή. Παρακάμπτει τον έλεγχο τοποθεσίας. Απενεργοποίησέ το πριν την παραγωγή.</li>
+      </ul>
+      <p><strong>Anti-abuse:</strong> 3 επίπεδα — (1) haversine distance ≤ admin όριο, (2) Cloudflare IP-country (προαιρετικό), (3) μοναδικό index "ένα spin ανά χρήστη ανά μέρα Europe/Athens" στο DB.</p>
+      <p><strong>Reward pool:</strong> 8 τμήματα (+10/+25/+50 πόντοι, 🥃 shot, +100 πόντοι, 10% έκπτωση, 🍸 cocktail, 🎉 jackpot). Βάρη στο <code>src/lib/wheel.ts</code>.</p>
+      <p>Στο <code>/admin/wheel</code> υπάρχουν KPIs (spins σήμερα, unique players, πιο κοινό έπαθλο) και πίνακας πρόσφατων 100 spins με απόσταση σε μέτρα για κάθε ένα.</p>
+      <p><strong>Setup:</strong> τρέξε <code>scripts/add-wheel-spins.sql</code> + <code>scripts/add-wheel-settings.sql</code> στο Supabase.</p>
+    ` : `
+      <p>Daily spin for customers — one per day, bar-only. Free to enter (not a game of chance under Greek Law 4002/2011).</p>
+      <p><strong>Manage at:</strong> <a href="${withLangPrefix(lang, "/admin/wheel")}"><code>/admin/wheel</code></a></p>
+      <ul>
+        <li><strong>Wheel enabled</strong> — master toggle. Turns the wheel on/off instantly on every <code>/table/N</code>.</li>
+        <li><strong>Max distance</strong> — 10–5000m from bar coords. Recommended 150–300m.</li>
+        <li><strong>Require Greece</strong> — extra Cloudflare IP-country filter (blocks VPN users — leave off for best UX).</li>
+        <li><strong>🧪 Remote access (testing)</strong> — TESTING ONLY: bypasses the location guard. Turn OFF before going live.</li>
+      </ul>
+      <p><strong>Anti-abuse:</strong> 3 layers — (1) haversine distance ≤ admin limit, (2) Cloudflare IP-country (optional), (3) unique DB index enforcing "one spin per user per Europe/Athens day".</p>
+      <p><strong>Reward pool:</strong> 8 segments (+10/+25/+50 pts, 🥃 shot, +100 pts, 10% discount, 🍸 cocktail, 🎉 jackpot). Weights in <code>src/lib/wheel.ts</code>.</p>
+      <p>The admin page shows KPIs (spins today, unique players, top prize) plus a table of the last 100 spins with the distance from bar for each — easy to spot geolocation abuse.</p>
+      <p><strong>Setup:</strong> run <code>scripts/add-wheel-spins.sql</code> + <code>scripts/add-wheel-settings.sql</code> in Supabase.</p>
+    `,
+  },
+  s21: {
+    head: isEl ? "21. Customer Dashboard & Dέκλια στο /account" : "21. Customer Dashboard & /account deep-dive",
+    body: isEl ? `
+      <p>Το <a href="/account" target="_blank">/account</a> είναι το κεντρικό hub του πελάτη. Ενότητες (με σειρά CSS flex-order):</p>
+      <ol>
+        <li><strong>Welcome</strong> — όνομα χρήστη.</li>
+        <li><strong>🎫 Scratch cards σε αναμονή</strong> — εμφανίζεται μόνο αν έχει μη-αποκαλυμμένες κάρτες. Inline reveal animation.</li>
+        <li><strong>👑 Κάρτα Πιστότητας</strong> — QR + tier badge + wallet buttons (Apple/Google) + Share.</li>
+        <li><strong>🎁 Get Loyalty Card CTA</strong> — μόνο αν δεν έχει ενεργοποιήσει.</li>
+        <li><strong>KPIs</strong> — Points, Tier, Visits, Referred friends.</li>
+        <li><strong>Quick actions</strong> — Menu, Book, Events, Rewards.</li>
+        <li><strong>🤝 Invite Friends</strong> — link <code>/register?ref=&lt;uid&gt;</code>, WhatsApp/Telegram/Email/Native share, counter.</li>
+        <li><strong>🎯 My Tasks</strong> — 28 tasks σε 3 κατηγορίες (onboarding/achievement/social).</li>
+        <li><strong>🔔 Notifications + 📲 Install app</strong> — PWA install (Android native prompt / iOS instructions) + push subscribe.</li>
+        <li><strong>Reservations + Event RSVPs</strong>.</li>
+        <li><strong>Points history</strong> + <strong>⚡ Quests claimed</strong>.</li>
+        <li><strong>Profile form</strong> — settings, πάντα τελευταία.</li>
+      </ol>
+      <p><strong>Phone OTP verification:</strong> το activate-card modal ζητάει κωδικό SMS μέσω Supabase+Vonage πριν αποθηκεύσει το τηλέφωνο. Αποτρέπει ψεύτικους αριθμούς.</p>
+    ` : `
+      <p><a href="/account" target="_blank">/account</a> is the customer's central hub. Sections (in CSS flex-order):</p>
+      <ol>
+        <li><strong>Welcome</strong> — user name.</li>
+        <li><strong>🎫 Scratch cards waiting</strong> — only shows if they have unrevealed cards. Inline reveal animation.</li>
+        <li><strong>👑 Loyalty Card</strong> — QR + tier badge + wallet buttons (Apple/Google) + Share.</li>
+        <li><strong>🎁 Get Loyalty Card CTA</strong> — only if they haven't activated.</li>
+        <li><strong>KPIs</strong> — Points, Tier, Visits, Referred friends.</li>
+        <li><strong>Quick actions</strong> — Menu, Book, Events, Rewards.</li>
+        <li><strong>🤝 Invite Friends</strong> — <code>/register?ref=&lt;uid&gt;</code> link, WhatsApp/Telegram/Email/Native share, referral counter.</li>
+        <li><strong>🎯 My Tasks</strong> — 28 tasks across 3 categories (onboarding / achievement / social).</li>
+        <li><strong>🔔 Notifications + 📲 Install app</strong> — PWA install (Android native prompt / iOS instructions) + push subscribe.</li>
+        <li><strong>Reservations + Event RSVPs</strong>.</li>
+        <li><strong>Points history</strong> + <strong>⚡ Quests claimed</strong>.</li>
+        <li><strong>Profile form</strong> — settings, always last.</li>
+      </ol>
+      <p><strong>Phone OTP verification:</strong> the activate-card modal requires an SMS code via Supabase + Vonage before saving the phone. Prevents fake-number abuse.</p>
+    `,
+  },
+  s22: {
+    head: isEl ? "22. Wallet (Apple/Google) + Share κάρτας" : "22. Wallet (Apple/Google) + Card Sharing",
+    body: isEl ? `
+      <p><strong>Google Wallet</strong> — πλήρως λειτουργικό μόλις ρυθμιστούν 4 env vars (GOOGLE_WALLET_ISSUER_ID, GOOGLE_WALLET_CLASS_ID, GOOGLE_WALLET_SA_EMAIL, GOOGLE_WALLET_SA_PRIVATE_KEY). Η κάρτα περιέχει live points, tier, next-tier progress, hero image, geofence, και 4 deep-links (account, rewards, call, directions). Δωρεάν λειτουργία (μόνο Google Cloud service account).</p>
+      <p><strong>Apple Wallet</strong> — luxury template έτοιμο (μαύρο με χρυσό, QR, tier badge, back-fields) αλλά χρειάζεται Apple Developer Program (€99/έτος) για να υπογραφεί το .pkpass.</p>
+      <p><strong>Shared Loyalty Card</strong> — νέο κουμπί "Κοινοποίησε την κάρτα" στο <code>/account</code>. Στέλνει <code>sallysbar.gr/card/&lt;uid&gt;</code> — δημόσια σελίδα με QR που ο φίλος του πελάτη μπορεί να δείξει στον σερβιτόρο για να μπουν πόντοι στον λογαριασμό του πελάτη. Ίδιο trust model όπως μια φυσική κάρτα (δίνεις την κάρτα σου σε φίλο).</p>
+    ` : `
+      <p><strong>Google Wallet</strong> — fully functional once 4 env vars are set (GOOGLE_WALLET_ISSUER_ID, GOOGLE_WALLET_CLASS_ID, GOOGLE_WALLET_SA_EMAIL, GOOGLE_WALLET_SA_PRIVATE_KEY). Pass contains live points, tier, next-tier progress, hero image, geofence, and 4 deep-links (account, rewards, call, directions). Free (just a Google Cloud service account).</p>
+      <p><strong>Apple Wallet</strong> — luxury template ready (black + gold, QR, tier badge, back-fields) but requires Apple Developer Program (€99/year) to sign .pkpass files.</p>
+      <p><strong>Shared Loyalty Card</strong> — new "Share my card" button on <code>/account</code>. Sends <code>sallysbar.gr/card/&lt;uid&gt;</code> — a public page with the QR that a friend can show the waiter to credit points to the cardholder's account. Same trust model as a physical loyalty card you hand to a friend.</p>
+    `,
+  },
+  s23: {
+    head: isEl ? "23. /admin/users → user dossier" : "23. /admin/users → user dossier",
+    body: isEl ? `
+      <p>Στο <a href="${withLangPrefix(lang, "/admin/users")}"><code>/admin/users</code></a> κάθε όνομα και email είναι clickable και οδηγεί σε μια πλήρη σελίδα-dossier <code>/admin/users/&lt;uid&gt;</code>:</p>
+      <ul>
+        <li>KPI: πόντοι + tier, παραγγελίες + σύνολο spend, scratch cards, συστάσεις</li>
+        <li>Στοιχεία λογαριασμού (πλήρες προφίλ, phone_confirmed_at, dates)</li>
+        <li>Ιστορικό πόντων, παραγγελιών, κρατήσεων, RSVP, scratch cards, quests</li>
+        <li>Push subscriptions, αιτήσεις εργασίας (αν υπάρχουν), abuse log</li>
+        <li>Συστάσεις προς/από τον χρήστη (clickable links σε dossier άλλων users)</li>
+      </ul>
+    ` : `
+      <p>On <a href="${withLangPrefix(lang, "/admin/users")}"><code>/admin/users</code></a> every name and email is clickable → full dossier page at <code>/admin/users/&lt;uid&gt;</code>:</p>
+      <ul>
+        <li>KPIs: points + tier, orders + total spend, scratch cards, referrals</li>
+        <li>Account details (full profile, phone_confirmed_at, dates)</li>
+        <li>Points history, orders, reservations, RSVPs, scratch cards, quests</li>
+        <li>Push subscriptions, job applications (if any), abuse log</li>
+        <li>Referrals (each clickable to that user's dossier)</li>
+      </ul>
+    `,
+  },
+  s24: {
+    head: isEl ? "24. Notification audience scoping" : "24. Notification audience scoping",
+    body: isEl ? `
+      <p>Οι push notifications πλέον φιλτράρονται σωστά ανά ρόλο μέσω των 3 helpers:</p>
+      <ul>
+        <li><code>pushToAdmins</code> — μόνο σε <code>profiles.role='admin'</code>. 8 events: reservation, RSVP, job app, loyalty signup, abuse, order summary, campaign milestones, birthday digest.</li>
+        <li><code>pushToAllStaff</code> — σε employees + admins (8 events: order created + 6 status transitions). Δεν φτάνει σε πελάτες.</li>
+        <li><code>/api/admin/quest-push</code> — σε πελάτες ΜΟΝΟ (αποκλείει staff/admin). Για Tonight's Quest και μελλοντικά drops.</li>
+      </ul>
+      <p>Κάθε admin page ανανεώνει αυτόματα την συνδρομή push όταν ο admin ανοίγει <code>/admin</code> — δεν χρειάζεται να ξαναπατήσει το Enable Notifications.</p>
+    ` : `
+      <p>Push notifications are now correctly role-filtered via 3 helpers:</p>
+      <ul>
+        <li><code>pushToAdmins</code> — only <code>profiles.role='admin'</code>. 8 events: reservation, RSVP, job app, loyalty signup, abuse, order summary, campaign scan milestones, birthday digest.</li>
+        <li><code>pushToAllStaff</code> — staff + admins (8 events: order created + 6 status transitions). Never reaches customers.</li>
+        <li><code>/api/admin/quest-push</code> — customers ONLY (excludes staff/admin). For Tonight's Quests and future drops.</li>
+      </ul>
+      <p>Every admin page silently re-syncs your push subscription when you open <code>/admin</code> — no need to tap Enable Notifications again.</p>
+    `,
+  },
+  s25: {
+    head: isEl ? "25. Φιλοδωρήματα" : "25. Public Play page + cross-promo",
+    body: isEl ? `
+      <p><a href="/play" target="_blank"><code>/play</code></a> — dedicated landing για marketing του gamified experience. Δείχνει live τιμές: πόντους, tiers, reward-pool πιθανότητες scratch, referral points.</p>
+      <p><strong>Kefalonia BnB cross-promo</strong> — υπάρχει preset στο <code>/admin/marketing</code>: "🏠 Book a Stay (Kefalonia BnB)". Δημιουργεί QR που οδηγεί σε kefaloniabnb.com με UTM tracking. Βάλ' το σε λογαριασμούς/σουβέρ στο bar για affiliate flow.</p>
+    ` : `
+      <p><a href="/play" target="_blank"><code>/play</code></a> — dedicated landing that markets the gamified experience. Displays live values: point rates, tiers, reward-pool odds, referral points.</p>
+      <p><strong>Kefalonia BnB cross-promo</strong> — preset on <code>/admin/marketing</code>: "🏠 Book a Stay (Kefalonia BnB)". Generates a QR pointing to kefaloniabnb.com with UTM tracking. Put it on bar receipts/coasters for the affiliate flow.</p>
+    `,
+  },
   s14: {
-    head: isEl ? "20. Επίλυση προβλημάτων" : "20. Troubleshooting",
+    head: isEl ? "26. Επίλυση προβλημάτων" : "26. Troubleshooting",
     body: isEl ? `
       <ul>
         <li><strong>Δεν λαμβάνω push σε iPhone</strong> — βεβαιώσου ότι άνοιξες από το εικονίδιο της αρχικής οθόνης, όχι από Safari. Απαιτείται iOS 16.4+.</li>
@@ -629,10 +761,16 @@ const sections = [
   { id: "gamification",   icon: "🎫", tint: "bg-fuchsia-300/15", ...L.s17 },
   { id: "customer-pwa",   icon: "📲", tint: "bg-sky-300/15",     ...L.s18 },
   { id: "legal",          icon: "⚖️", tint: "bg-white/10",       ...L.s19 },
+  { id: "wheel",          icon: "🎡", tint: "bg-amber-300/15",   ...L.s20 },
+  { id: "customer-dash",  icon: "🎛️", tint: "bg-fuchsia-300/15", ...L.s21 },
+  { id: "wallet-share",   icon: "👛", tint: "bg-sky-300/15",     ...L.s22 },
+  { id: "user-dossier",   icon: "🗂️", tint: "bg-white/10",       ...L.s23 },
+  { id: "notif-scope",    icon: "🔔", tint: "bg-fuchsia-300/15", ...L.s24 },
+  { id: "play-crosspromo",icon: "🎁", tint: "bg-amber-300/15",   ...L.s25 },
   { id: "troubleshoot",   icon: "🩹", tint: "bg-red-300/15",     ...L.s14 },
 ];
 
-const tocIds = ["install","push","customer","waiter","barman","deliver","admin-overview","admin-menu","admin-qr","admin-events","admin-users","admin-tips","telegram","marketing","mkt-analytics","gamification","customer-pwa","legal","troubleshoot"];
+const tocIds = ["install","push","customer","waiter","barman","deliver","admin-overview","admin-menu","admin-qr","admin-events","admin-users","admin-tips","telegram","marketing","mkt-analytics","gamification","customer-pwa","legal","wheel","customer-dash","wallet-share","user-dossier","notif-scope","play-crosspromo","troubleshoot"];
 ---
 
 <html lang={lang}>

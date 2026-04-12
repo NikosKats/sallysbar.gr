@@ -33,7 +33,8 @@
       "Bash(grep -n \"redirect\\\\|Location\\\\|account\" /Users/nikolaoskatsilidis/Desktop/sallysbar.gr/src/pages/auth/callback.*)",
       "Bash(grep -n 'style={`' /Users/nikolaoskatsilidis/Desktop/sallysbar.gr/src/pages/play.astro)",
       "Bash(awk 'NR>=80 && NR<=90 {print NR\": \"$0}' /Users/nikolaoskatsilidis/Desktop/sallysbar.gr/src/pages/play.astro)",
-      "Bash(awk 'NR==489,/^      \\\\\\)\\\\}/' /Users/nikolaoskatsilidis/Desktop/sallysbar.gr/src/pages/account.astro)"
+      "Bash(awk 'NR==489,/^      \\\\\\)\\\\}/' /Users/nikolaoskatsilidis/Desktop/sallysbar.gr/src/pages/account.astro)",
+      "Bash(curl -s -H \"Cache-Control: no-cache\" https://sallysbar.gr/table/1)"
     ],
     "additionalDirectories": [
       "/Users/nikolaoskatsilidis/Desktop/sallysbar.gr/public/photos"
