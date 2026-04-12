@@ -18,6 +18,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
     auto_on_rsvp:          Boolean(body.auto_on_rsvp),
     auto_on_checkin:       Boolean(body.auto_on_checkin),
     auto_on_referral:      Boolean(body.auto_on_referral),
+    auto_on_signup:        Boolean(body.auto_on_signup),
     daily_drop_enabled:    Boolean(body.daily_drop_enabled),
     daily_drop_hour:       Math.max(0, Math.min(23, Number(body.daily_drop_hour ?? 21) | 0)),
     birthday_enabled:      Boolean(body.birthday_enabled),

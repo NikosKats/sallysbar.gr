@@ -139,6 +139,16 @@ const memberCount = (members ?? []).length;
             </div>
           </label>
 
+          <label class="rounded-xl border border-fuchsia-400/25 bg-fuchsia-400/5 p-4 flex items-start gap-3 cursor-pointer md:col-span-2">
+            <input type="checkbox" id="sSignup" checked={settings.auto_on_signup} class="mt-1 h-4 w-4" />
+            <div>
+              <div class="font-semibold text-fuchsia-200">⭐ {isEl ? "Bonus εγγραφής (νέος χρήστης)" : "Signup bonus (new user)"}</div>
+              <p class="text-xs text-white/55 mt-1">{isEl
+                ? "Κάθε νέα εγγραφή παίρνει αυτόματα μία scratch card. Συνδύασε με το preset QR «Signup Bonus» από το /admin/marketing για μαζική προώθηση."
+                : "Every new signup auto-receives one scratch card. Pair it with the \"Signup Bonus\" QR preset on /admin/marketing for mass promotion."}</p>
+            </div>
+          </label>
+
           <div class="rounded-xl border border-amber-400/25 bg-amber-400/5 p-4 space-y-3">
             <label class="flex items-start gap-3">
               <input type="checkbox" id="sDaily" checked={settings.daily_drop_enabled} class="mt-1 h-4 w-4" />
@@ -346,6 +356,7 @@ const memberCount = (members ?? []).length;
             auto_on_rsvp:     document.getElementById("sRsvp").checked,
             auto_on_checkin:  document.getElementById("sCheckin").checked,
             auto_on_referral: document.getElementById("sReferral").checked,
+            auto_on_signup:   document.getElementById("sSignup").checked,
             daily_drop_enabled: document.getElementById("sDaily").checked,
             daily_drop_hour:  Number(document.getElementById("sDailyHour").value) || 21,
             birthday_enabled: document.getElementById("sBirthday").checked,

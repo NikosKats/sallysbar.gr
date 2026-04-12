@@ -252,6 +252,9 @@ const loginHref = withLangPrefix(lang, "/login");
         const refId = new URLSearchParams(window.location.search).get("ref");
         if (refId) try { localStorage.setItem("pending_ref", refId); } catch {}
 
+        // Flag a pending signup-bonus claim (consumed on /account first-login if email-confirm flow).
+        try { localStorage.setItem("pending_signup_bonus", "1"); } catch {}
+
         // Email confirmation disabled — user is logged in immediately
         if (data.session) {
           if (refId) {
@@ -264,6 +267,10 @@ const loginHref = withLangPrefix(lang, "/login");
               localStorage.removeItem("pending_ref");
             } catch {}
           }
+          try {
+            await fetch("/api/loyalty/claim-signup-bonus", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+            localStorage.removeItem("pending_signup_bonus");
+          } catch {}
           window.location.href = redirectTo;
           return;
         }

@@ -22,6 +22,11 @@ const whatsapp = `https://wa.me/${site.phoneE164.replace(/\D/g, "")}`;
 const instaUrl = "https://www.instagram.com/sallys_bar/";
 
 const presets = [
+  { key: "signup-bonus", name: isEl ? "⭐ Bonus Εγγραφής (Scratch Card)" : "⭐ Signup Bonus (Scratch Card)", emoji: "⭐",
+    desc: isEl
+      ? "QR σε flyers/σουβέρ → εγγραφή στο /register → αυτόματη scratch card. Ενεργοποίησε το toggle «Bonus εγγραφής» στο /admin/scratch πρώτα."
+      : "QR on flyers/coasters → sign up at /register → auto scratch card. Enable the \"Signup bonus\" toggle in /admin/scratch first.",
+    target: `${origin}/register`, source: "flyer", medium: "qr", campaign: "signup-bonus" },
   { key: "install-app", name: isEl ? "📲 Κατέβασε την εφαρμογή" : "📲 Download our App", emoji: "📲",
     desc: isEl ? "QR σε σουβέρ / καρτελάκια → /app με 1-tap εγκατάσταση PWA." : "QR on coasters / cards → /app with 1-tap PWA install.",
     target: `${origin}/app`, source: "coaster", medium: "qr", campaign: "install-app" },

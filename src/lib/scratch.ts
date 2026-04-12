@@ -28,6 +28,7 @@ export type ScratchSettings = {
   auto_on_rsvp: boolean;
   auto_on_checkin: boolean;
   auto_on_referral: boolean;
+  auto_on_signup: boolean;
   daily_drop_enabled: boolean;
   daily_drop_hour: number;
   birthday_enabled: boolean;
@@ -37,6 +38,7 @@ export type ScratchSettings = {
 const DEFAULTS: ScratchSettings = {
   auto_on_order: false, order_min_cents: 500, cards_per_order: 1,
   auto_on_rsvp: false, auto_on_checkin: false, auto_on_referral: false,
+  auto_on_signup: false,
   daily_drop_enabled: false, daily_drop_hour: 21,
   birthday_enabled: false, default_expires_hours: null,
 };

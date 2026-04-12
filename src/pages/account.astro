@@ -874,6 +874,14 @@ function statusLabel(s: string) {
       }
     } catch {}
 
+    // Pending signup bonus (scratch card) for users confirming via email flow
+    try {
+      if (localStorage.getItem("pending_signup_bonus")) {
+        fetch("/api/loyalty/claim-signup-bonus", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" })
+          .finally(() => localStorage.removeItem("pending_signup_bonus"));
+      }
+    } catch {}
+
     // Profile update
     const profileForm = document.getElementById("profileForm") as HTMLFormElement | null;
     profileForm?.addEventListener("submit", async (e) => {
