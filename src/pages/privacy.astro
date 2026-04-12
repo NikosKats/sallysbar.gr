@@ -1,0 +1,144 @@
+---
+import "../styles/global.css";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+
+const title = (isEl ? "Πολιτική Απορρήτου" : "Privacy Policy") + " — Sally's Bar";
+const lastUpdated = "2026-04-12";
+---
+
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={isEl ? "Πολιτική Απορρήτου του Sally's Bar — GDPR, δεδομένα, cookies, δικαιώματα." : "Sally's Bar Privacy Policy — GDPR, data, cookies, your rights."} />
+    <meta name="robots" content="index,follow" />
+    <link rel="canonical" href={`https://sallysbar.gr${isEl ? "/el" : ""}/privacy`} />
+  </head>
+  <body class="min-h-screen bg-[#0a0a0f] text-white font-body antialiased">
+    <Header />
+
+    <main class="mx-auto max-w-3xl px-6 py-16 pt-32 prose-invert">
+      <p class="text-xs uppercase tracking-[0.28em] text-amber-200/80 mb-3">Sally's Bar · Skala · Kefalonia</p>
+      <h1 class="font-heading text-4xl md:text-5xl font-bold leading-tight bg-gradient-to-br from-white via-amber-50 to-amber-200/80 bg-clip-text text-transparent">
+        {isEl ? "Πολιτική Απορρήτου" : "Privacy Policy"}
+      </h1>
+      <p class="mt-4 text-sm text-white/50">{isEl ? "Τελευταία ενημέρωση" : "Last updated"}: {lastUpdated}</p>
+
+      <div class="mt-10 space-y-8 text-[15px] leading-relaxed text-white/80">
+
+        <section>
+          <h2 class="text-xl font-semibold text-amber-200 mb-2">{isEl ? "1. Ποιοι είμαστε (Υπεύθυνος Επεξεργασίας)" : "1. Who we are (Data Controller)"}</h2>
+          <p>{isEl
+            ? "Υπεύθυνος επεξεργασίας για τα προσωπικά δεδομένα που συλλέγονται μέσω αυτής της ιστοσελίδας είναι ο/η [Νόμιμη Επωνυμία], ΑΦΜ [ΑΦΜ], ΓΕΜΗ [ΓΕΜΗ], με έδρα [Διεύθυνση], Σκάλα Κεφαλονιάς, Ελλάδα («εμείς», «μας», «Sally's Bar»). Επικοινωνία για θέματα απορρήτου: privacy@sallysbar.gr."
+            : "The data controller for personal data collected through this website is [Legal Name], Tax ID [VAT], GEMI [GEMI No.], with registered address at [Address], Skala, Kefalonia, Greece (\"we\", \"us\", \"Sally's Bar\"). Privacy contact: privacy@sallysbar.gr."
+          }</p>
+        </section>
+
+        <section>
+          <h2 class="text-xl font-semibold text-amber-200 mb-2">{isEl ? "2. Τι δεδομένα συλλέγουμε" : "2. What data we collect"}</h2>
+          <p class="mb-2">{isEl ? "Συλλέγουμε τα παρακάτω δεδομένα, μόνο όσα χρειάζονται για κάθε σκοπό:" : "We collect only the data needed for each purpose:"}</p>
+          <ul class="list-disc pl-6 space-y-1.5">
+            <li><strong>{isEl ? "Λογαριασμός:" : "Account:"}</strong> {isEl ? "email, όνομα, κωδικός (κρυπτογραφημένος), τηλέφωνο, ημ. γέννησης, χώρα, φύλο, διεύθυνση, πόλη, τ.κ., συναίνεση marketing." : "email, name, hashed password, phone, date of birth, country, gender, address, city, postal code, marketing consent."}</li>
+            <li><strong>{isEl ? "Κρατήσεις & παραγγελίες:" : "Bookings & orders:"}</strong> {isEl ? "ημερομηνία, ώρα, αριθμός ατόμων, στοιχεία επικοινωνίας, περιεχόμενο παραγγελίας, ποσά, σημειώσεις." : "date, time, party size, contact details, order contents, amounts, notes."}</li>
+            <li><strong>{isEl ? "Πρόγραμμα πιστότητας & gamification:" : "Loyalty & gamification:"}</strong> {isEl ? "πόντοι, επίπεδο (tier), επισκέψεις, ιστορικό ανταμοιβών, scratch cards, συμμετοχή σε αποστολές." : "points, tier, visits, reward history, scratch cards, quest participation."}</li>
+            <li><strong>{isEl ? "QR / Καμπάνιες Marketing:" : "QR / Marketing campaigns:"}</strong> {isEl ? "χρονοσφραγίδα σκαναρίσματος, χώρα/περιοχή/πόλη (από τα headers του CDN), ζώνη ώρας, συντεταγμένες πόλης, συσκευή/browser/OS, UTM tags, παραπομπή (referrer), γλώσσα περιηγητή, hashed IP (SHA-256 — η αρχική IP δεν αποθηκεύεται)." : "scan timestamp, country/region/city (from CDN headers), timezone, city-level coordinates, device/browser/OS, UTM tags, referrer, browser language, hashed IP (SHA-256 — raw IP is not stored)."}</li>
+            <li><strong>{isEl ? "Αιτήσεις εργασίας:" : "Job applications:"}</strong> {isEl ? "ονοματεπώνυμο, email, τηλέφωνο, βιογραφικό (αρχείο + κείμενο), θέση." : "full name, email, phone, CV (file + text), role applied for."}</li>
+            <li><strong>{isEl ? "Push notifications:" : "Push notifications:"}</strong> {isEl ? "endpoint push, δημόσια κλειδιά κρυπτογράφησης, user-agent. Δεν στέλνουμε push χωρίς ρητή συναίνεσή σας." : "push endpoint, public crypto keys, user-agent. We never send pushes without your explicit consent."}</li>
+            <li><strong>{isEl ? "Τεχνικά logs:" : "Technical logs:"}</strong> {isEl ? "χρονικά logs σφαλμάτων, request IDs. Διατηρούνται έως 30 ημέρες." : "error/request logs, retained for up to 30 days."}</li>
+          </ul>
+          <p class="mt-2 text-sm text-white/60">{isEl ? "Δεν επεξεργαζόμαστε ειδικές κατηγορίες δεδομένων (υγεία, πεποιθήσεις κ.λπ.) και δεν τα ζητάμε." : "We do not process special-category data (health, beliefs, etc.) and will never ask you for it."}</p>
+        </section>
+
+        <section>
+          <h2 class="text-xl font-semibold text-amber-200 mb-2">{isEl ? "3. Νομική βάση & σκοποί επεξεργασίας" : "3. Legal basis & purpose"}</h2>
+          <table class="w-full text-sm border-collapse">
+            <thead><tr class="text-white/60 text-xs uppercase"><th class="text-left py-2 pr-2">{isEl ? "Σκοπός" : "Purpose"}</th><th class="text-left py-2 pr-2">{isEl ? "Νομική βάση (GDPR Άρθρο 6)" : "Legal basis (GDPR Art. 6)"}</th></tr></thead>
+            <tbody class="[&>tr]:border-t [&>tr]:border-white/10 [&>tr>td]:py-2 [&>tr>td]:pr-2">
+              <tr><td>{isEl ? "Λογαριασμός, κρατήσεις, παραγγελίες" : "Account, bookings, orders"}</td><td>{isEl ? "Εκτέλεση σύμβασης (6.1.β)" : "Contract (6.1.b)"}</td></tr>
+              <tr><td>{isEl ? "Πρόγραμμα πιστότητας & gamification" : "Loyalty & gamification"}</td><td>{isEl ? "Εκτέλεση σύμβασης (6.1.β)" : "Contract (6.1.b)"}</td></tr>
+              <tr><td>{isEl ? "Email/Push marketing, σκαναρίσματα QR" : "Email/Push marketing, QR scans"}</td><td>{isEl ? "Συναίνεση (6.1.α) · Έννομο συμφέρον (6.1.στ) για αγγλοποιημένα aggregated analytics" : "Consent (6.1.a) · Legitimate interest (6.1.f) for aggregated analytics"}</td></tr>
+              <tr><td>{isEl ? "Πρόληψη απάτης / ασφάλεια" : "Fraud prevention / security"}</td><td>{isEl ? "Έννομο συμφέρον (6.1.στ)" : "Legitimate interest (6.1.f)"}</td></tr>
+              <tr><td>{isEl ? "Λογιστικά / φορολογικά" : "Accounting / tax"}</td><td>{isEl ? "Νομική υποχρέωση (6.1.γ)" : "Legal obligation (6.1.c)"}</td></tr>
+              <tr><td>{isEl ? "Αιτήσεις εργασίας" : "Job applications"}</td><td>{isEl ? "Προσυμβατικά μέτρα (6.1.β) + συναίνεση για διατήρηση" : "Pre-contract steps (6.1.b) + consent for retention"}</td></tr>
+            </tbody>
+          </table>
+        </section>
+
+        <section>
+          <h2 class="text-xl font-semibold text-amber-200 mb-2">{isEl ? "4. Cookies & παρόμοιες τεχνολογίες" : "4. Cookies & similar technologies"}</h2>
+          <ul class="list-disc pl-6 space-y-1.5">
+            <li><strong>{isEl ? "Απαραίτητα cookies:" : "Essential cookies:"}</strong> {isEl ? "συνεδρία σύνδεσης (Supabase auth), προτίμηση γλώσσας, CSRF. Δεν απαιτούν συναίνεση." : "login session (Supabase auth), language preference, CSRF. No consent required."}</li>
+            <li><strong>{isEl ? "Τοπική αποθήκευση PWA:" : "PWA local storage:"}</strong> {isEl ? "service worker για offline + install. Διαγράφεται απεγκαθιστώντας την εφαρμογή." : "service worker for offline + install. Cleared by uninstalling the app."}</li>
+            <li><strong>{isEl ? "Marketing/analytics:" : "Marketing/analytics:"}</strong> {isEl ? "δεν χρησιμοποιούμε Google Analytics ή tracking pixels τρίτων στις δημόσιες σελίδες. Τα QR scan analytics συλλέγονται server-side μόνο όταν σκανάρετε ένα δικό μας QR." : "we do not use Google Analytics or third-party tracking pixels on public pages. QR scan analytics are collected server-side only when you scan one of our QR codes."}</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 class="text-xl font-semibold text-amber-200 mb-2">{isEl ? "5. Επεξεργαστές τρίτων (subprocessors)" : "5. Third-party subprocessors"}</h2>
+          <p class="mb-2">{isEl ? "Χρησιμοποιούμε τους παρακάτω πάροχους, που λειτουργούν ως εκτελούντες επεξεργασία σύμφωνα με το GDPR:" : "We use the following providers acting as data processors under GDPR:"}</p>
+          <ul class="list-disc pl-6 space-y-1.5">
+            <li><strong>Supabase</strong> (US/EU) — {isEl ? "βάση δεδομένων, auth, αποθήκευση αρχείων (CVs)." : "database, auth, file storage (CVs)."}</li>
+            <li><strong>Cloudflare</strong> (EU edge) — {isEl ? "hosting, CDN, DDoS, geo-IP headers για analytics." : "hosting, CDN, DDoS, geo-IP headers for analytics."}</li>
+            <li><strong>Resend</strong> (EU/US) — {isEl ? "transactional email (επιβεβαιώσεις, ειδοποιήσεις)." : "transactional email (confirmations, notifications)."}</li>
+            <li><strong>Anthropic (Claude)</strong> (US) — {isEl ? "δημιουργία περιεχομένου από διαχειριστή (events/jobs/campaigns). Δεν αποστέλλονται προσωπικά δεδομένα πελατών." : "admin content generation (events/jobs/campaigns). No customer personal data is sent."}</li>
+            <li><strong>Telegram</strong> — {isEl ? "εσωτερικές ειδοποιήσεις προσωπικού για παραγγελίες/κρατήσεις." : "internal staff notifications for orders/bookings."}</li>
+            <li><strong>Google Maps</strong> — {isEl ? "εμφάνιση χάρτη/διευθύνσεων (κατά την φόρτωση)." : "map/directions rendering (on page load)."}</li>
+          </ul>
+          <p class="mt-2 text-sm text-white/60">{isEl ? "Διεθνείς μεταφορές προς τις ΗΠΑ βασίζονται στο EU–US Data Privacy Framework ή Standard Contractual Clauses." : "International transfers to the US rely on the EU–US Data Privacy Framework or Standard Contractual Clauses."}</p>
+        </section>
+
+        <section>
+          <h2 class="text-xl font-semibold text-amber-200 mb-2">{isEl ? "6. Διατήρηση δεδομένων" : "6. Data retention"}</h2>
+          <ul class="list-disc pl-6 space-y-1.5">
+            <li>{isEl ? "Λογαριασμός: όσο είναι ενεργός + 12 μήνες μετά την αδράνεια." : "Account: while active + 12 months after inactivity."}</li>
+            <li>{isEl ? "Παραγγελίες / αποδείξεις: 10 έτη (φορολογική υποχρέωση)." : "Orders / receipts: 10 years (tax obligation)."}</li>
+            <li>{isEl ? "Κρατήσεις: 24 μήνες." : "Bookings: 24 months."}</li>
+            <li>{isEl ? "QR scan logs: 24 μήνες, aggregated analytics επ' αόριστον." : "QR scan logs: 24 months; aggregated analytics indefinitely."}</li>
+            <li>{isEl ? "Αιτήσεις εργασίας: 12 μήνες (ή λιγότερο αν ζητηθεί)." : "Job applications: 12 months (or sooner on request)."}</li>
+            <li>{isEl ? "Logs σφαλμάτων: 30 ημέρες." : "Error logs: 30 days."}</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 class="text-xl font-semibold text-amber-200 mb-2">{isEl ? "7. Τα δικαιώματά σας (GDPR)" : "7. Your rights (GDPR)"}</h2>
+          <p>{isEl ? "Έχετε δικαίωμα:" : "You have the right to:"}</p>
+          <ul class="list-disc pl-6 space-y-1">
+            <li>{isEl ? "πρόσβασης στα δεδομένα σας (Άρθρο 15)" : "access your data (Art. 15)"}</li>
+            <li>{isEl ? "διόρθωσης (Άρθρο 16)" : "rectification (Art. 16)"}</li>
+            <li>{isEl ? "διαγραφής / «δικαίωμα στη λήθη» (Άρθρο 17)" : "erasure / \"right to be forgotten\" (Art. 17)"}</li>
+            <li>{isEl ? "περιορισμού (Άρθρο 18)" : "restriction (Art. 18)"}</li>
+            <li>{isEl ? "φορητότητας (Άρθρο 20)" : "portability (Art. 20)"}</li>
+            <li>{isEl ? "εναντίωσης (Άρθρο 21)" : "objection (Art. 21)"}</li>
+            <li>{isEl ? "ανάκλησης συναίνεσης ανά πάσα στιγμή" : "withdraw consent at any time"}</li>
+          </ul>
+          <p class="mt-2">{isEl ? "Στείλτε email στο" : "Email us at"} <a class="text-amber-300 hover:underline" href="mailto:privacy@sallysbar.gr">privacy@sallysbar.gr</a>. {isEl ? "Απαντάμε εντός 30 ημερών." : "We reply within 30 days."}</p>
+          <p class="mt-2 text-sm text-white/60">{isEl ? "Μπορείτε επίσης να υποβάλετε καταγγελία στην Αρχή Προστασίας Δεδομένων Προσωπικού Χαρακτήρα (dpa.gr) ή στην αρμόδια αρχή της χώρας σας." : "You may also lodge a complaint with the Hellenic Data Protection Authority (dpa.gr) or your local supervisory authority."}</p>
+        </section>
+
+        <section>
+          <h2 class="text-xl font-semibold text-amber-200 mb-2">{isEl ? "8. Ασφάλεια" : "8. Security"}</h2>
+          <p>{isEl ? "Χρησιμοποιούμε HTTPS παντού, hashed passwords (bcrypt/argon), hashed IP για analytics, περιορισμένη πρόσβαση (role-based), encryption-in-transit και encryption-at-rest μέσω Supabase και Cloudflare. Σε περίπτωση παραβίασης δεδομένων, ειδοποιούμε την ΑΠΔΠΧ εντός 72 ωρών και εσάς αν η παραβίαση σας αφορά άμεσα." : "We use HTTPS everywhere, hashed passwords (bcrypt/argon), hashed IPs for analytics, role-based access, encryption in transit and at rest via Supabase and Cloudflare. In case of a breach, we notify the Hellenic DPA within 72 hours and you directly if materially affected."}</p>
+        </section>
+
+        <section>
+          <h2 class="text-xl font-semibold text-amber-200 mb-2">{isEl ? "9. Παιδιά" : "9. Children"}</h2>
+          <p>{isEl ? "Η υπηρεσία μας δεν απευθύνεται σε άτομα κάτω των 18 ετών. Αν πιστεύετε ότι παιδί παρείχε στοιχεία χωρίς γονική συναίνεση, επικοινωνήστε μαζί μας για άμεση διαγραφή." : "Our service is not directed to persons under 18. If you believe a child has provided us data without parental consent, contact us to delete it immediately."}</p>
+        </section>
+
+        <section>
+          <h2 class="text-xl font-semibold text-amber-200 mb-2">{isEl ? "10. Αλλαγές στην πολιτική" : "10. Changes to this policy"}</h2>
+          <p>{isEl ? "Ενδέχεται να ενημερώσουμε αυτή την πολιτική. Ουσιώδεις αλλαγές θα κοινοποιηθούν μέσω email ή banner στον ιστότοπο." : "We may update this policy. Material changes will be notified via email or an on-site banner."}</p>
+        </section>
+
+        <p class="text-sm text-white/50 pt-6 border-t border-white/10">{isEl ? "Για οποιαδήποτε ερώτηση:" : "For any question:"} <a class="text-amber-300 hover:underline" href="mailto:privacy@sallysbar.gr">privacy@sallysbar.gr</a></p>
+      </div>
+    </main>
+
+    <Footer />
+  </body>
+</html>

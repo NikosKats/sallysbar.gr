@@ -1,0 +1,175 @@
+---
+import "../styles/global.css";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+
+const title = (isEl ? "Όροι Χρήσης" : "Terms & Conditions") + " — Sally's Bar";
+const lastUpdated = "2026-04-12";
+---
+
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={isEl ? "Όροι Χρήσης του Sally's Bar — πρόγραμμα πιστότητας, gamification, κρατήσεις, αλκοόλ." : "Sally's Bar Terms & Conditions — loyalty, gamification, bookings, alcohol."} />
+    <meta name="robots" content="index,follow" />
+    <link rel="canonical" href={`https://sallysbar.gr${isEl ? "/el" : ""}/terms`} />
+  </head>
+  <body class="min-h-screen bg-[#0a0a0f] text-white font-body antialiased">
+    <Header />
+
+    <main class="mx-auto max-w-3xl px-6 py-16 pt-32">
+      <p class="text-xs uppercase tracking-[0.28em] text-amber-200/80 mb-3">Sally's Bar · Skala · Kefalonia</p>
+      <h1 class="font-heading text-4xl md:text-5xl font-bold leading-tight bg-gradient-to-br from-white via-amber-50 to-amber-200/80 bg-clip-text text-transparent">
+        {isEl ? "Όροι Χρήσης" : "Terms & Conditions"}
+      </h1>
+      <p class="mt-4 text-sm text-white/50">{isEl ? "Τελευταία ενημέρωση" : "Last updated"}: {lastUpdated}</p>
+
+      <div class="mt-10 space-y-8 text-[15px] leading-relaxed text-white/80">
+
+        <section>
+          <h2 class="text-xl font-semibold text-amber-200 mb-2">{isEl ? "1. Αποδοχή των όρων" : "1. Acceptance of terms"}</h2>
+          <p>{isEl
+            ? "Με την πρόσβαση ή χρήση της ιστοσελίδας sallysbar.gr, της εφαρμογής (PWA) ή οποιασδήποτε υπηρεσίας του Sally's Bar, συμφωνείτε ρητά με τους παρόντες Όρους Χρήσης και την Πολιτική Απορρήτου. Αν δεν συμφωνείτε, μη χρησιμοποιείτε την υπηρεσία."
+            : "By accessing or using sallysbar.gr, our installable app (PWA), or any Sally's Bar service, you expressly agree to these Terms and the Privacy Policy. If you do not agree, do not use the service."
+          }</p>
+        </section>
+
+        <section>
+          <h2 class="text-xl font-semibold text-amber-200 mb-2">{isEl ? "2. Καταλληλότητα — ηλικία" : "2. Eligibility — age"}</h2>
+          <p>{isEl
+            ? "Η υπηρεσία μας παρέχει πληροφορίες σε κατάστημα πώλησης αλκοολούχων ποτών. Πρέπει να είστε τουλάχιστον 18 ετών για να δημιουργήσετε λογαριασμό, να συμμετέχετε στο πρόγραμμα πιστότητας ή να καταναλώσετε αλκοόλ στο χώρο μας. Διατηρούμε το δικαίωμα να ζητήσουμε έγκυρο αποδεικτικό ηλικίας."
+            : "Our service provides information for an establishment that sells alcoholic beverages. You must be at least 18 years old to create an account, participate in the loyalty program, or consume alcohol on our premises. We reserve the right to request valid age verification."
+          }</p>
+        </section>
+
+        <section>
+          <h2 class="text-xl font-semibold text-amber-200 mb-2">{isEl ? "3. Υπεύθυνη κατανάλωση αλκοόλ" : "3. Responsible drinking"}</h2>
+          <p>{isEl
+            ? "Το Sally's Bar υποστηρίζει την υπεύθυνη κατανάλωση. Διατηρούμε το δικαίωμα να αρνηθούμε σερβίρισμα σε οποιονδήποτε εμφανίζει σημεία μέθης ή σε άτομα κάτω των 18 ετών, σύμφωνα με την ελληνική νομοθεσία. Ανταμοιβές και εκπτώσεις ΔΕΝ ενθαρρύνουν την υπέρμετρη κατανάλωση — εξαργυρώνονται κατά τη διακριτική μας ευχέρεια και μπορούν να αρνηθούν αν η εξαργύρωση θα συνιστούσε υπερκατανάλωση. Μη πίνετε και οδηγείτε. Έκτακτα: 100 (ΕΚΑΒ) / 112."
+            : "Sally's Bar supports responsible consumption. We reserve the right to refuse service to anyone showing signs of intoxication or to persons under 18, in accordance with Greek law. Rewards and discounts do NOT encourage over-consumption — they are redeemed at our reasonable discretion and may be refused if redemption would constitute over-serving. Don't drink and drive. Emergencies: 100 (EKAV) / 112."
+          }</p>
+        </section>
+
+        <section>
+          <h2 class="text-xl font-semibold text-amber-200 mb-2">{isEl ? "4. Λογαριασμοί χρηστών" : "4. User accounts"}</h2>
+          <ul class="list-disc pl-6 space-y-1.5">
+            <li>{isEl ? "Είστε υπεύθυνοι για τα στοιχεία σύνδεσής σας και για όλη τη δραστηριότητα στον λογαριασμό σας." : "You are responsible for your login credentials and all activity on your account."}</li>
+            <li>{isEl ? "Πρέπει να παρέχετε ακριβείς, ενημερωμένες πληροφορίες." : "You must provide accurate, up-to-date information."}</li>
+            <li>{isEl ? "Απαγορεύεται η κοινοποίηση του λογαριασμού σας και η εξαργύρωση πόντων που αποκτήθηκαν από άλλον." : "Sharing accounts and redeeming points earned by another person is prohibited."}</li>
+            <li>{isEl ? "Μπορείτε να διαγράψετε τον λογαριασμό σας ανά πάσα στιγμή από τη σελίδα λογαριασμού ή κατόπιν αιτήματος στο privacy@sallysbar.gr." : "You may delete your account any time from the account page or on request at privacy@sallysbar.gr."}</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 class="text-xl font-semibold text-amber-200 mb-2">{isEl ? "5. Πρόγραμμα πιστότητας" : "5. Loyalty program"}</h2>
+          <ul class="list-disc pl-6 space-y-1.5">
+            <li>{isEl ? "Δωρεάν συμμετοχή. Οι πόντοι απονέμονται αυτόματα με κάθε παραγγελία ή ενέργεια σύμφωνα με τους κανόνες που εμφανίζονται στο /loyalty." : "Free to join. Points are awarded automatically on orders or qualifying actions, per the rules shown on /loyalty."}</li>
+            <li>{isEl ? "Οι πόντοι δεν έχουν χρηματική αξία, δεν μεταβιβάζονται, δεν εξαργυρώνονται σε μετρητά και δεν αντικαθίστανται αν χαθούν λόγω παραβίασης του λογαριασμού σας." : "Points have no cash value, are non-transferable, cannot be redeemed for cash, and will not be replaced if lost due to a breach of your account."}</li>
+            <li>{isEl ? "Επιφυλασσόμαστε του δικαιώματος να διορθώσουμε υπόλοιπα ή να ακυρώσουμε πόντους που απονεμήθηκαν εσφαλμένα, με δόλο ή με κατάχρηση (π.χ. διπλές εξαργυρώσεις, συστηματική εξαπάτηση)." : "We reserve the right to correct balances or cancel points awarded in error, by fraud, or by abuse (e.g. duplicate redemptions, systematic gaming)."}</li>
+            <li>{isEl ? "Η ημ. γέννησης μπορεί να αλλάξει το μέγιστο μία φορά ανά 30 ημέρες για αποτροπή κατάχρησης του πολλαπλασιαστή γενεθλίων." : "Date of birth may be changed at most once per 30 days to prevent abuse of the birthday multiplier."}</li>
+            <li>{isEl ? "Τα επίπεδα (tiers) και τα όρια πόντων μπορεί να αλλάξουν. Τροποποιήσεις δεν είναι αναδρομικές για ήδη εξαργυρωμένα προνόμια." : "Tiers and point thresholds may change. Modifications are not retroactive for perks already redeemed."}</li>
+            <li>{isEl ? "Μπορούμε να τερματίσουμε το πρόγραμμα με 30 ημέρες προειδοποίηση. Σε τερματισμό, έχετε 60 ημέρες για να εξαργυρώσετε πόντους." : "We may terminate the program with 30 days' notice. Upon termination, you have 60 days to redeem points."}</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 class="text-xl font-semibold text-amber-200 mb-2">{isEl ? "6. Scratch cards, αποστολές & προωθητικές ενέργειες" : "6. Scratch cards, quests & promotions"}</h2>
+          <ul class="list-disc pl-6 space-y-1.5">
+            <li>{isEl ? "Τα scratch cards, οι αποστολές (quests) και άλλες προωθητικές ενέργειες είναι ΔΩΡΕΑΝ. Δεν απαιτείται αγορά. Δεν πρόκειται για τυχερό παιχνίδι σύμφωνα με τον ν. 4002/2011· είναι προωθητικές ενέργειες χωρίς οικονομικό αντάλλαγμα." : "Scratch cards, quests, and other promotions are FREE. No purchase is required. These are NOT games of chance under Greek Law 4002/2011; they are promotional activities with no paid entry."}</li>
+            <li>{isEl ? "Οι ανταμοιβές επιλέγονται τυχαία από συγκεκριμένο pool. Δεν έχουν χρηματική αξία ούτε εξαργυρώνονται σε μετρητά." : "Rewards are drawn randomly from a defined pool. They have no cash value and are not redeemable for cash."}</li>
+            <li>{isEl ? "Οι ανταμοιβές έχουν ημερομηνία λήξης (εμφανίζεται κατά την αποκάλυψη) και μπορούν να εξαργυρωθούν μόνο στο φυσικό κατάστημα του Sally's Bar." : "Rewards have an expiry date (shown on reveal) and may only be redeemed at Sally's Bar's physical premises."}</li>
+            <li>{isEl ? "Μία ανταμοιβή ανά χρήστη ανά αποστολή. Ένα scratch card = μία αποκάλυψη." : "One reward per user per quest. One scratch card = one reveal."}</li>
+            <li>{isEl ? "Διατηρούμε το δικαίωμα να ακυρώσουμε ανταμοιβές σε περίπτωση εξαπάτησης, πολλαπλών λογαριασμών, ή χρήσης bots/αυτοματισμών." : "We reserve the right to void rewards on fraud, multi-account abuse, or use of bots/automation."}</li>
+            <li>{isEl ? "Η εξαργύρωση ανταμοιβής «δωρεάν ποτού / σφηνακιού» προϋποθέτει ηλικία 18+ και καλή κατάσταση μέθης κατά την κρίση του προσωπικού." : "Redemption of \"free drink / shot\" rewards requires age 18+ and a sober-enough state at staff's reasonable judgment."}</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 class="text-xl font-semibold text-amber-200 mb-2">{isEl ? "7. Κρατήσεις" : "7. Bookings"}</h2>
+          <ul class="list-disc pl-6 space-y-1.5">
+            <li>{isEl ? "Οι κρατήσεις υπόκεινται σε διαθεσιμότητα και επιβεβαίωση μέσω email ή τηλεφώνου." : "Bookings are subject to availability and confirmation via email or phone."}</li>
+            <li>{isEl ? "Μπορείτε να ακυρώσετε ή να τροποποιήσετε χωρίς χρέωση έως 2 ώρες πριν την προγραμματισμένη ώρα. Επανειλημμένα no-show ενδέχεται να περιορίσουν τη δυνατότητα μελλοντικών κρατήσεων." : "You may cancel or change a booking free of charge up to 2 hours before the scheduled time. Repeated no-shows may limit future booking privileges."}</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 class="text-xl font-semibold text-amber-200 mb-2">{isEl ? "8. Παραγγελίες & πληρωμές" : "8. Orders & payments"}</h2>
+          <p>{isEl ? "Πληρωμές γίνονται αποκλειστικά στο φυσικό κατάστημα. Οι τιμές στο μενού ενδέχεται να αλλάξουν χωρίς προειδοποίηση. Ισχύουν οι τιμές κατά την ώρα της παραγγελίας." : "Payments are made only at the physical premises. Menu prices may change without notice. The price at the time of order applies."}</p>
+        </section>
+
+        <section>
+          <h2 class="text-xl font-semibold text-amber-200 mb-2">{isEl ? "9. Αποδεκτή χρήση" : "9. Acceptable use"}</h2>
+          <p class="mb-2">{isEl ? "Δεσμεύεστε να μη:" : "You agree not to:"}</p>
+          <ul class="list-disc pl-6 space-y-1">
+            <li>{isEl ? "παραβιάσετε την ασφάλεια ή να αποκτήσετε μη εξουσιοδοτημένη πρόσβαση" : "breach security or obtain unauthorized access"}</li>
+            <li>{isEl ? "χρησιμοποιήσετε bots, scrapers ή αυτοματοποιημένα μέσα" : "use bots, scrapers, or automated means"}</li>
+            <li>{isEl ? "πραγματοποιήσετε reverse-engineering ή να κλωνοποιήσετε την υπηρεσία" : "reverse-engineer or clone the service"}</li>
+            <li>{isEl ? "υποβάλετε ψευδείς ή παραπλανητικές πληροφορίες" : "submit false or misleading information"}</li>
+            <li>{isEl ? "δημιουργήσετε πολλαπλούς λογαριασμούς για να εκμεταλλευτείτε προσφορές" : "create multiple accounts to exploit promotions"}</li>
+            <li>{isEl ? "χρησιμοποιήσετε την υπηρεσία για παράνομο σκοπό" : "use the service for any unlawful purpose"}</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 class="text-xl font-semibold text-amber-200 mb-2">{isEl ? "10. Περιεχόμενο χρήστη" : "10. User content"}</h2>
+          <p>{isEl ? "Αν υποβάλετε περιεχόμενο (π.χ. βιογραφικό, μήνυμα αίτησης, κριτική), μας παρέχετε μη αποκλειστική, παγκόσμια άδεια για τη χρήση του εντός των σκοπών της υπηρεσίας. Εγγυάστε ότι έχετε τα δικαιώματα επί του περιεχομένου που υποβάλλετε και ότι δεν παραβιάζει δικαιώματα τρίτων ή τον νόμο." : "If you submit content (e.g. a CV, application message, review), you grant us a non-exclusive, worldwide license to use it within the scope of the service. You warrant that you hold the rights to the content and that it does not infringe third-party rights or law."}</p>
+        </section>
+
+        <section>
+          <h2 class="text-xl font-semibold text-amber-200 mb-2">{isEl ? "11. Πνευματική ιδιοκτησία" : "11. Intellectual property"}</h2>
+          <p>{isEl ? "Το όνομα «Sally's Bar», το λογότυπο, το σχεδιαστικό πλαίσιο, ο πηγαίος κώδικας και κάθε περιεχόμενο του ιστότοπου αποτελούν ιδιοκτησία μας ή των αδειοδοτών μας και προστατεύονται από τη νομοθεσία περί πνευματικής ιδιοκτησίας. Απαγορεύεται η αναπαραγωγή χωρίς έγγραφη άδεια." : "The \"Sally's Bar\" name, logo, visual design, source code, and all site content are our property or that of our licensors, protected by copyright and trademark law. Reproduction without written permission is prohibited."}</p>
+        </section>
+
+        <section>
+          <h2 class="text-xl font-semibold text-amber-200 mb-2">{isEl ? "12. Απώλεια εγγυήσεων" : "12. Disclaimer of warranties"}</h2>
+          <p>{isEl ? "Η υπηρεσία παρέχεται «ως έχει» και «ως διατίθεται», χωρίς ρητές ή σιωπηρές εγγυήσεις. Δεν εγγυόμαστε αδιάλειπτη, χωρίς σφάλματα λειτουργία, ούτε ότι τα αποτελέσματα θα είναι ακριβή ή αξιόπιστα. Ωστόσο, δεν αποκλείουμε ευθύνη για ζημιές από δόλο ή βαριά αμέλειά μας, ή για θάνατο/σωματική βλάβη που προκλήθηκε από αμέλειά μας — όπου δεν μπορούμε να αποκλείσουμε βάσει νόμου." : "The service is provided \"as is\" and \"as available\", without express or implied warranties. We do not guarantee uninterrupted, error-free operation, nor that results will be accurate or reliable. We do NOT, however, exclude liability for damages caused by our fraud or gross negligence, or for death/personal injury caused by our negligence — where such exclusion is not permitted by law."}</p>
+        </section>
+
+        <section>
+          <h2 class="text-xl font-semibold text-amber-200 mb-2">{isEl ? "13. Περιορισμός ευθύνης" : "13. Limitation of liability"}</h2>
+          <p>{isEl ? "Στον μέγιστο βαθμό που επιτρέπεται από το ελληνικό και ευρωπαϊκό δίκαιο, η συνολική μας ευθύνη για οποιαδήποτε απαίτηση σχετίζεται με την υπηρεσία περιορίζεται στο μεγαλύτερο ποσό μεταξύ (α) €100 ή (β) του ποσού που καταβάλατε σε εμάς τους τελευταίους 12 μήνες. Δεν ευθυνόμαστε για έμμεσες, παρεπόμενες, ειδικές ή συνεπακόλουθες ζημιές (π.χ. απώλεια κερδών, δεδομένων, φήμης)." : "To the maximum extent permitted by Greek and EU law, our total liability for any claim arising out of the service is limited to the greater of (a) €100 or (b) the amount you paid us in the preceding 12 months. We are not liable for indirect, incidental, special, or consequential damages (e.g. loss of profits, data, or goodwill)."}</p>
+        </section>
+
+        <section>
+          <h2 class="text-xl font-semibold text-amber-200 mb-2">{isEl ? "14. Αποζημίωση" : "14. Indemnification"}</h2>
+          <p>{isEl ? "Συμφωνείτε να μας αποζημιώσετε και να μας απαλλάξετε από κάθε αξίωση τρίτων που απορρέει από (α) παραβίαση αυτών των όρων από εσάς, (β) παραβίαση δικαιωμάτων τρίτων, ή (γ) παράνομη χρήση της υπηρεσίας." : "You agree to indemnify and hold us harmless from any third-party claim arising from (a) your breach of these terms, (b) your violation of third-party rights, or (c) your unlawful use of the service."}</p>
+        </section>
+
+        <section>
+          <h2 class="text-xl font-semibold text-amber-200 mb-2">{isEl ? "15. Τερματισμός" : "15. Termination"}</h2>
+          <p>{isEl ? "Μπορούμε να αναστείλουμε ή να τερματίσουμε τον λογαριασμό σας ανά πάσα στιγμή για παραβίαση των όρων, δόλο, ή προστασία της ασφάλειας άλλων χρηστών. Μπορείτε να τερματίσετε τη χρήση ανά πάσα στιγμή διαγράφοντας τον λογαριασμό σας." : "We may suspend or terminate your account at any time for a breach of these terms, fraud, or to protect the safety of other users. You may terminate your use at any time by deleting your account."}</p>
+        </section>
+
+        <section>
+          <h2 class="text-xl font-semibold text-amber-200 mb-2">{isEl ? "16. Εφαρμοστέο δίκαιο & δικαιοδοσία" : "16. Governing law & jurisdiction"}</h2>
+          <p>{isEl ? "Οι παρόντες όροι διέπονται από το ελληνικό δίκαιο. Αρμόδια δικαστήρια είναι αυτά της Κεφαλονιάς. Οι Ευρωπαίοι καταναλωτές μπορούν να προσφύγουν και στον τόπο της κατοικίας τους βάσει του Κανονισμού 1215/2012. Μπορείτε επίσης να χρησιμοποιήσετε την πλατφόρμα ODR της ΕΕ: https://ec.europa.eu/consumers/odr" : "These terms are governed by the laws of Greece. Exclusive jurisdiction lies with the courts of Kefalonia, Greece. EU consumers may also bring claims in their country of residence under Regulation 1215/2012. You may also use the EU ODR platform: https://ec.europa.eu/consumers/odr"}</p>
+        </section>
+
+        <section>
+          <h2 class="text-xl font-semibold text-amber-200 mb-2">{isEl ? "17. Αλλαγές στους όρους" : "17. Changes to terms"}</h2>
+          <p>{isEl ? "Μπορούμε να επικαιροποιήσουμε αυτούς τους όρους. Ουσιώδεις αλλαγές θα ανακοινωθούν στον ιστότοπο τουλάχιστον 14 ημέρες πριν την έναρξη ισχύος. Η συνεχής χρήση μετά τις αλλαγές σημαίνει αποδοχή." : "We may update these terms. Material changes will be posted on the site at least 14 days before they take effect. Continued use after changes means acceptance."}</p>
+        </section>
+
+        <section>
+          <h2 class="text-xl font-semibold text-amber-200 mb-2">{isEl ? "18. Διαχωρισιμότητα" : "18. Severability"}</h2>
+          <p>{isEl ? "Αν οποιαδήποτε διάταξη κριθεί άκυρη, οι υπόλοιπες παραμένουν σε ισχύ." : "If any provision is held invalid, the remaining provisions remain in effect."}</p>
+        </section>
+
+        <section>
+          <h2 class="text-xl font-semibold text-amber-200 mb-2">{isEl ? "19. Επικοινωνία" : "19. Contact"}</h2>
+          <p>Sally's Bar · Skala · Kefalonia · Greece<br/>
+          Email: <a class="text-amber-300 hover:underline" href="mailto:info@sallysbar.gr">info@sallysbar.gr</a><br/>
+          {isEl ? "Για θέματα απορρήτου:" : "Privacy matters:"} <a class="text-amber-300 hover:underline" href="mailto:privacy@sallysbar.gr">privacy@sallysbar.gr</a></p>
+        </section>
+
+      </div>
+    </main>
+
+    <Footer />
+  </body>
+</html>
