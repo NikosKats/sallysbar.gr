@@ -94,18 +94,18 @@ const origin = new URL(Astro.request.url).origin;
 
     </main>
 
-    <!-- QR library (client-side) -->
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js" is:inline></script>
+    <script>
+      import QRCode from "qrcode";
 
-    <script define:vars={{ origin }} is:inline>
-      const grid         = document.getElementById("qrGrid");
-      const fromInput    = document.getElementById("fromInput");
-      const toInput      = document.getElementById("toInput");
-      const langSelect   = document.getElementById("langSelect");
-      const generateBtn  = document.getElementById("generateBtn");
-      const printBtn     = document.getElementById("printBtn");
+      const origin = window.location.origin;
+      const grid         = document.getElementById("qrGrid")!;
+      const fromInput    = document.getElementById("fromInput") as HTMLInputElement;
+      const toInput      = document.getElementById("toInput") as HTMLInputElement;
+      const langSelect   = document.getElementById("langSelect") as HTMLSelectElement;
+      const generateBtn  = document.getElementById("generateBtn")!;
+      const printBtn     = document.getElementById("printBtn")!;
 
-      function qrUrl(tableNum) {
+      function qrUrl(tableNum: number) {
         const langParam = langSelect.value ? `?lang=${langSelect.value}` : "";
         return `${origin}/table/${tableNum}${langParam}`;
       }
@@ -127,7 +127,7 @@ const origin = new URL(Astro.request.url).origin;
             <p class="text-xs text-neutral-700 font-medium">📱 Scan to see menu</p>
           `;
           grid.appendChild(card);
-          const canvas = card.querySelector(".qr-canvas");
+          const canvas = card.querySelector(".qr-canvas") as HTMLCanvasElement;
           try {
             await QRCode.toCanvas(canvas, url, {
               width: 260,
@@ -144,7 +144,6 @@ const origin = new URL(Astro.request.url).origin;
       generateBtn.addEventListener("click", renderQRs);
       printBtn.addEventListener("click", () => window.print());
 
-      // Auto-render on load
       renderQRs();
     </script>
   </body>
