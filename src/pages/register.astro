@@ -2,7 +2,8 @@
 import { withLangPrefix } from "../i18n";
 
 const lang = Astro.locals.lang ?? "en";
-const redirectTo = withLangPrefix(lang, "/");
+// After a fresh signup, go straight to the dashboard so the user sees their signup-bonus scratch card + welcome state.
+const redirectTo = withLangPrefix(lang, "/account") + "?signup=1";
 const turnstileSitekey = import.meta.env.PUBLIC_TURNSTILE_SITEKEY ?? "";
 
 const isEl = lang === "el";

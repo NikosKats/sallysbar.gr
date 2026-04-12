@@ -288,20 +288,33 @@ function statusLabel(s: string) {
         </div>
       </section>
 
-      <!-- Unrevealed scratch cards teaser -->
+      <!-- Unrevealed scratch cards — interactive reveal -->
       {(unrevealedCards ?? []).length > 0 && (
-        <section class="rounded-2xl border border-amber-400/30 bg-gradient-to-br from-amber-500/10 to-fuchsia-500/10 p-5">
-          <div class="flex items-center justify-between gap-3 flex-wrap">
+        <section id="scratchSection" class="rounded-2xl border border-amber-400/30 bg-gradient-to-br from-amber-500/10 to-fuchsia-500/10 p-5">
+          <div class="flex items-center justify-between gap-3 flex-wrap mb-4">
             <div>
               <p class="text-[10px] uppercase tracking-[0.24em] text-amber-300 font-bold">🎫 {isEl ? "Σε περιμένουν" : "Waiting for you"}</p>
               <h2 class="font-heading text-2xl font-bold mt-1">
-                {(unrevealedCards ?? []).length} {isEl ? "κάρτες προς αποκάλυψη" : "scratch cards to reveal"}
+                <span id="scratchCount">{(unrevealedCards ?? []).length}</span> {isEl ? "κάρτες" : "cards"}
               </h2>
-              <p class="text-sm text-white/70 mt-1">{isEl ? "Πάτα για να δεις τι κέρδισες." : "Tap to see what you won."}</p>
+              <p class="text-sm text-white/70 mt-1">{isEl ? "Πάτα για να αποκαλύψεις." : "Tap any card to reveal."}</p>
             </div>
-            <a href={withLangPrefix(lang, "/loyalty")} class="rounded-xl bg-amber-400 text-black px-5 py-3 text-sm font-bold hover:bg-amber-300 transition">
-              {isEl ? "Αποκάλυψη →" : "Reveal →"}
-            </a>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {(unrevealedCards ?? []).map((c: any) => (
+              <button type="button" class="scratch-card group relative aspect-[4/3] rounded-2xl border border-white/10 bg-gradient-to-br from-fuchsia-500/20 via-amber-400/20 to-cyan-400/20 overflow-hidden hover:scale-[1.02] active:scale-[0.99] transition"
+                data-id={c.id}>
+                <div class="absolute inset-0 flex flex-col items-center justify-center text-center p-3 scratch-cover">
+                  <span class="text-3xl">🎫</span>
+                  <p class="mt-1 text-xs font-bold tracking-wider uppercase text-white/90">{isEl ? "Πάτα για αποκάλυψη" : "Tap to reveal"}</p>
+                </div>
+                <div class="absolute inset-0 flex flex-col items-center justify-center text-center p-3 bg-gradient-to-br from-amber-300 to-amber-500 text-black scratch-reveal opacity-0 pointer-events-none">
+                  <span class="text-2xl scratch-emoji">🎁</span>
+                  <p class="mt-1 text-base font-black scratch-label">—</p>
+                  <p class="mt-0.5 text-[10px] uppercase tracking-wider scratch-meta opacity-70"></p>
+                </div>
+              </button>
+            ))}
           </div>
         </section>
       )}
@@ -830,6 +843,70 @@ function statusLabel(s: string) {
         for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
         return out;
       }
+
+      // Inline scratch reveal (same animation as /loyalty)
+      document.querySelectorAll(".scratch-card").forEach((card) => {
+        card.addEventListener("click", async () => {
+          if (card.dataset.done) return;
+          card.dataset.done = "1";
+          const id = card.dataset.id;
+          const cover  = card.querySelector(".scratch-cover");
+          const reveal = card.querySelector(".scratch-reveal");
+          const label  = card.querySelector(".scratch-label");
+          const emoji  = card.querySelector(".scratch-emoji");
+          const meta   = card.querySelector(".scratch-meta");
+          try {
+            const res = await fetch("/api/loyalty/scratch-reveal", {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ id }),
+            });
+            const j = await res.json();
+            if (!res.ok || !j.reward) { card.dataset.done = ""; alert((isEl ? "Σφάλμα: " : "Error: ") + (j.error ?? "unknown")); return; }
+            const r = j.reward;
+            const emojiMap = { points: "🏆", free_shot: "🥃", free_drink: "🍸", discount: "💸", merch: "🎁", custom: "✨" };
+            emoji.textContent = emojiMap[r.type] ?? "🎁";
+            label.textContent = r.label;
+            meta.textContent = r.auto_claimed
+              ? (isEl ? "✓ προστέθηκε στο λογαριασμό σου" : "✓ added to your account")
+              : (isEl ? "Δείξε στον σερβιτόρο" : "Show a waiter to claim");
+            cover.style.transition = "opacity .35s, transform .35s";
+            cover.style.opacity = "0";
+            cover.style.transform = "scale(0.9)";
+            reveal.style.transition = "opacity .4s .15s";
+            reveal.style.opacity = "1";
+          } catch { card.dataset.done = ""; alert(isEl ? "Σφάλμα δικτύου" : "Network error"); }
+        });
+      });
+
+      // Welcome toast on fresh signup — auto-scrolls to scratch cards
+      (function () {
+        const qs = new URLSearchParams(window.location.search);
+        if (!qs.has("signup")) return;
+
+        // Strip the query param so reload doesn't re-show
+        const clean = window.location.pathname + (window.location.hash || "");
+        window.history.replaceState({}, "", clean);
+
+        const hasScratch = document.querySelectorAll(".scratch-card").length > 0;
+        const title = isEl ? "🎉 Καλωσήρθες!" : "🎉 Welcome!";
+        const body  = hasScratch
+          ? (isEl ? "Έχεις μια δωρεάν scratch card για να αποκαλύψεις." : "You have a free scratch card waiting to be revealed.")
+          : (isEl ? "Ο λογαριασμός σου δημιουργήθηκε." : "Your account is ready.");
+
+        const toast = document.createElement("div");
+        toast.style.cssText = "position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-20px);z-index:9999;background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#000;padding:14px 20px;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.5);max-width:90vw;text-align:center;opacity:0;transition:opacity .3s,transform .3s;font-weight:600;";
+        toast.innerHTML = `<div style="font-size:14px;font-weight:800">${title}</div><div style="font-size:13px;margin-top:2px;opacity:.85">${body}</div>`;
+        document.body.appendChild(toast);
+        requestAnimationFrame(() => { toast.style.opacity = "1"; toast.style.transform = "translateX(-50%) translateY(0)"; });
+        setTimeout(() => { toast.style.opacity = "0"; setTimeout(() => toast.remove(), 400); }, 4500);
+
+        if (hasScratch) {
+          setTimeout(() => {
+            const target = document.getElementById("scratchSection");
+            target?.scrollIntoView({ behavior: "smooth", block: "center" });
+          }, 900);
+        }
+      })();
 
       notifBtn?.addEventListener("click", async () => {
         const perm = await Notification.requestPermission();
