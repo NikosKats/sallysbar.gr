@@ -3,6 +3,9 @@ import "../../styles/global.css";
 import AdminNav from "../../components/AdminNav.astro";
 import { supabaseAdmin } from "../../lib/supabase";
 import { withLangPrefix } from "../../i18n";
+import { getScratchSettings } from "../../lib/scratch";
+
+const settings = await getScratchSettings();
 
 const lang = Astro.locals.lang ?? "en";
 const isEl = lang === "el";
@@ -86,6 +89,91 @@ const memberCount = (members ?? []).length;
           <p class="text-xs uppercase tracking-wider text-fuchsia-300/70">{isEl ? "Εκκρεμούν" : "Unrevealed"}</p>
           <p class="text-3xl font-bold text-fuchsia-300 mt-1">{total - revealed}</p>
         </div>
+      </section>
+
+      <!-- Auto-issue settings -->
+      <section class="rounded-2xl border border-white/10 bg-white/5 p-5 space-y-4">
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <h2 class="text-sm font-semibold uppercase tracking-widest text-white/50">{isEl ? "Αυτόματη έκδοση (toggles)" : "Auto-issue hooks"}</h2>
+          <button id="saveSettingsBtn" type="button" class="rounded-xl bg-amber-400 text-black px-4 py-2 text-sm font-semibold hover:bg-amber-300 transition">{isEl ? "Αποθήκευση" : "Save"}</button>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-3">
+          <div class="rounded-xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
+            <label class="flex items-start gap-3">
+              <input type="checkbox" id="sOrder" checked={settings.auto_on_order} class="mt-1 h-4 w-4" />
+              <div>
+                <div class="font-semibold text-white">1. {isEl ? "Σε κάθε παραγγελία" : "On every order"}</div>
+                <p class="text-xs text-white/55 mt-1">{isEl ? "Κάρτα όταν ο πελάτης πληρώνει μια παραγγελία ≥ ελάχιστου ποσού." : "Card when a customer pays an order ≥ minimum amount."}</p>
+              </div>
+            </label>
+            <div class="grid grid-cols-2 gap-3 pl-7">
+              <label class="block"><span class="text-[10px] uppercase tracking-wider text-white/40">{isEl ? "Ελάχιστο €" : "Min €"}</span>
+                <input id="sOrderMin" type="number" min="0" step="0.5" value={(settings.order_min_cents / 100).toFixed(2)} class="w-full mt-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white" /></label>
+              <label class="block"><span class="text-[10px] uppercase tracking-wider text-white/40">{isEl ? "Κάρτες/παραγγελία" : "Cards / order"}</span>
+                <input id="sOrderCards" type="number" min="1" max="10" value={settings.cards_per_order} class="w-full mt-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white" /></label>
+            </div>
+          </div>
+
+          <label class="rounded-xl border border-white/10 bg-white/[0.03] p-4 flex items-start gap-3 cursor-pointer">
+            <input type="checkbox" id="sRsvp" checked={settings.auto_on_rsvp} class="mt-1 h-4 w-4" />
+            <div>
+              <div class="font-semibold text-white">2. {isEl ? "Σε RSVP σε event" : "On event RSVP"}</div>
+              <p class="text-xs text-white/55 mt-1">{isEl ? "Κάρτα όταν κάποιος κάνει κράτηση για event." : "Card when someone RSVPs to an event."}</p>
+            </div>
+          </label>
+
+          <label class="rounded-xl border border-white/10 bg-white/[0.03] p-4 flex items-start gap-3 cursor-pointer">
+            <input type="checkbox" id="sCheckin" checked={settings.auto_on_checkin} class="mt-1 h-4 w-4" />
+            <div>
+              <div class="font-semibold text-white">3. {isEl ? "Check-in (σκανάρισμα τραπεζιού)" : "Table check-in (QR scan)"}</div>
+              <p class="text-xs text-white/55 mt-1">{isEl ? "Μία κάρτα/μέρα όταν συνδεδεμένος χρήστης σκανάρει QR τραπεζιού." : "One card/day when a logged-in user scans any table QR."}</p>
+            </div>
+          </label>
+
+          <label class="rounded-xl border border-white/10 bg-white/[0.03] p-4 flex items-start gap-3 cursor-pointer">
+            <input type="checkbox" id="sReferral" checked={settings.auto_on_referral} class="mt-1 h-4 w-4" />
+            <div>
+              <div class="font-semibold text-white">4. {isEl ? "Σε σύσταση φίλου" : "On referral"}</div>
+              <p class="text-xs text-white/55 mt-1">{isEl ? "Κάρτα στον συστήνοντα όταν εγγράφεται ο φίλος." : "Card to the referrer when the friend signs up."}</p>
+            </div>
+          </label>
+
+          <div class="rounded-xl border border-amber-400/25 bg-amber-400/5 p-4 space-y-3">
+            <label class="flex items-start gap-3">
+              <input type="checkbox" id="sDaily" checked={settings.daily_drop_enabled} class="mt-1 h-4 w-4" />
+              <div>
+                <div class="font-semibold text-amber-200">5. {isEl ? "Ημερήσιο drop" : "Daily drop"}</div>
+                <p class="text-xs text-white/55 mt-1">{isEl ? "Μία κάρτα σε κάθε μέλος, μία φορά τη μέρα. Συνδύασε με push στις HH:00." : "One card to every member, once per day. Combine with a push at HH:00."}</p>
+              </div>
+            </label>
+            <div class="flex items-end gap-2 pl-7">
+              <label class="block flex-1"><span class="text-[10px] uppercase tracking-wider text-white/40">{isEl ? "Ώρα" : "Hour"}</span>
+                <input id="sDailyHour" type="number" min="0" max="23" value={settings.daily_drop_hour} class="w-full mt-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-sm text-white" /></label>
+              <button id="runDailyBtn" type="button" class="rounded-lg bg-amber-400/20 hover:bg-amber-400/30 text-amber-200 text-xs font-semibold px-3 py-1.5">▶ {isEl ? "Τρέξε τώρα" : "Run now"}</button>
+            </div>
+          </div>
+
+          <div class="rounded-xl border border-fuchsia-400/25 bg-fuchsia-400/5 p-4 space-y-2">
+            <label class="flex items-start gap-3">
+              <input type="checkbox" id="sBirthday" checked={settings.birthday_enabled} class="mt-1 h-4 w-4" />
+              <div>
+                <div class="font-semibold text-fuchsia-200">6. {isEl ? "Γενέθλια" : "Birthday"}</div>
+                <p class="text-xs text-white/55 mt-1">{isEl ? "Μία κάρτα σε κάθε μέλος με γενέθλια σήμερα." : "One card to every member whose birthday is today."}</p>
+              </div>
+            </label>
+            <div class="pl-7">
+              <button id="runBirthdayBtn" type="button" class="rounded-lg bg-fuchsia-400/20 hover:bg-fuchsia-400/30 text-fuchsia-200 text-xs font-semibold px-3 py-1.5">▶ {isEl ? "Τρέξε τώρα" : "Run now"}</button>
+            </div>
+          </div>
+
+          <label class="block rounded-xl border border-white/10 bg-white/[0.03] p-4 md:col-span-2">
+            <span class="text-xs text-white/50">{isEl ? "Προκαθορισμένη λήξη για αυτόματες κάρτες (ώρες, κενό = ποτέ)" : "Default expiry for auto-issued cards (hours, blank = never)"}</span>
+            <input id="sExpiresHours" type="number" min="0" max="8760" value={settings.default_expires_hours ?? ""} class="w-full mt-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white" />
+          </label>
+        </div>
+
+        <p id="settingsMsg" class="text-xs hidden"></p>
       </section>
 
       <!-- Actions: mass drop + single issue -->
@@ -249,6 +337,38 @@ const memberCount = (members ?? []).length;
           if (!confirm(isEl ? "Διαγραφή κάρτας;" : "Void this card?")) return;
           rowAction(b.closest(".scratch-row"), "void");
         }));
+
+        document.getElementById("saveSettingsBtn").addEventListener("click", async () => {
+          const payload = {
+            auto_on_order:    document.getElementById("sOrder").checked,
+            order_min_cents:  Math.round(Number(document.getElementById("sOrderMin").value) * 100),
+            cards_per_order:  Number(document.getElementById("sOrderCards").value) || 1,
+            auto_on_rsvp:     document.getElementById("sRsvp").checked,
+            auto_on_checkin:  document.getElementById("sCheckin").checked,
+            auto_on_referral: document.getElementById("sReferral").checked,
+            daily_drop_enabled: document.getElementById("sDaily").checked,
+            daily_drop_hour:  Number(document.getElementById("sDailyHour").value) || 21,
+            birthday_enabled: document.getElementById("sBirthday").checked,
+            default_expires_hours: document.getElementById("sExpiresHours").value || null,
+          };
+          const msg = document.getElementById("settingsMsg");
+          msg.className = "text-xs hidden";
+          const r = await fetch("/api/admin/scratch-settings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+          if (r.ok) { msg.textContent = isEl ? "✓ Αποθηκεύτηκε" : "✓ Saved"; msg.className = "text-xs text-emerald-400 block"; }
+          else { const j = await r.json().catch(() => ({})); msg.textContent = (isEl ? "Σφάλμα: " : "Error: ") + (j.error ?? "unknown"); msg.className = "text-xs text-red-400 block"; }
+        });
+
+        async function runDrop(path, btn) {
+          const orig = btn.textContent; btn.disabled = true; btn.textContent = "⏳";
+          const r = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+          const j = await r.json();
+          btn.disabled = false; btn.textContent = orig;
+          if (r.ok) alert((isEl ? "✓ Εκδόθηκαν: " : "✓ Issued: ") + j.issued + (j.reason ? ` (${j.reason})` : ""));
+          else alert((isEl ? "Σφάλμα: " : "Error: ") + (j.error ?? "unknown"));
+          if (r.ok && j.issued > 0) window.location.reload();
+        }
+        document.getElementById("runDailyBtn").addEventListener("click", () => runDrop("/api/admin/scratch-daily-drop", document.getElementById("runDailyBtn")));
+        document.getElementById("runBirthdayBtn").addEventListener("click", () => runDrop("/api/admin/scratch-birthday", document.getElementById("runBirthdayBtn")));
 
         document.getElementById("filterUnclaimed").addEventListener("change", (e) => {
           const on = e.target.checked;

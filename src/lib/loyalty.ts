@@ -117,6 +117,19 @@ export async function awardOrderPoints(order: {
     console.error("[loyalty] award error:", error.message);
     return 0;
   }
+
+  // Auto-issue scratch card on qualifying order (admin-toggled)
+  try {
+    const { getScratchSettings, issueScratchCard, expiresAt } = await import("./scratch");
+    const s = await getScratchSettings();
+    if (s.auto_on_order && order.total_cents >= s.order_min_cents) {
+      await issueScratchCard(order.customer_user_id, "order", {
+        expires_at: expiresAt(s.default_expires_hours),
+        count: Math.max(1, s.cards_per_order ?? 1),
+      });
+    }
+  } catch {}
+
   return points;
 }
 
@@ -143,6 +156,15 @@ export async function awardEventRsvpPoints(userId: string, eventId: string): Pro
     console.error("[loyalty] rsvp award error:", error.message);
     return 0;
   }
+
+  try {
+    const { getScratchSettings, issueScratchCard, expiresAt } = await import("./scratch");
+    const s = await getScratchSettings();
+    if (s.auto_on_rsvp) {
+      await issueScratchCard(userId, "rsvp", { expires_at: expiresAt(s.default_expires_hours) });
+    }
+  } catch {}
+
   return settings.event_rsvp_points;
 }
 
@@ -155,6 +177,15 @@ export async function awardReferralPoints(referrerId: string, newUserId: string)
     reason: `referral:${newUserId}`,
   });
   if (error && !error.message?.includes("duplicate")) return 0;
+
+  try {
+    const { getScratchSettings, issueScratchCard, expiresAt } = await import("./scratch");
+    const s = await getScratchSettings();
+    if (s.auto_on_referral) {
+      await issueScratchCard(referrerId, "referral", { expires_at: expiresAt(s.default_expires_hours) });
+    }
+  } catch {}
+
   return settings.referral_points;
 }
 

@@ -72,6 +72,10 @@ for (const c of categories) {
   </head>
 
   <body class="min-h-screen bg-[#0b0b10] text-white font-body pb-32">
+    <script is:inline>
+      // Logged-in guests get a scratch card on first table QR scan of the day (server dedupes).
+      fetch("/api/loyalty/check-in", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }).catch(() => {});
+    </script>
     <!-- Header -->
     <div class="sticky top-0 z-50 border-b border-white/10 bg-[#0b0b10]/90 backdrop-blur px-4 py-3 flex items-center justify-between gap-2">
       <div>
