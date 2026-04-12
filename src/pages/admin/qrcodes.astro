@@ -23,22 +23,29 @@ const origin = new URL(Astro.request.url).origin;
         .no-print { display: none !important; }
         main { max-width: none !important; padding: 0 !important; }
         #qrGrid {
-          display: grid !important;
-          grid-template-columns: 1fr 1fr !important;
-          gap: 8mm !important;
+          display: block !important;
+          gap: 0 !important;
         }
         .qr-sheet {
           break-inside: avoid !important;
           page-break-inside: avoid !important;
-          -webkit-column-break-inside: avoid !important;
-          border-color: #00000022 !important;
+          break-after: page !important;
+          page-break-after: always !important;
+          border: none !important;
           background: white !important;
           box-shadow: none !important;
-          height: 130mm;
-          padding: 8mm !important;
+          width: 100% !important;
+          height: 260mm !important;
+          padding: 20mm !important;
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: center !important;
+          justify-content: center !important;
+          gap: 6mm !important;
         }
+        .qr-sheet:last-child { break-after: auto !important; page-break-after: auto !important; }
         .qr-sheet h3, .qr-sheet p, .qr-sheet .table-num { color: black !important; }
-        .qr-sheet canvas, .qr-sheet img, .qr-sheet svg { max-width: 70mm !important; max-height: 70mm !important; height: auto !important; }
+        .qr-sheet canvas, .qr-sheet img, .qr-sheet svg { width: 120mm !important; height: 120mm !important; max-width: 120mm !important; max-height: 120mm !important; }
       }
     </style>
   </head>
