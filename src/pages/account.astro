@@ -1285,13 +1285,27 @@ function statusLabel(s: string) {
       }
     });
 
-    document.getElementById("googleWalletBtn")?.addEventListener("click", async () => {
-      const res = await fetch("/api/wallet/google-pass", { method: "POST" });
-      const j = await res.json().catch(() => ({}));
-      if (res.ok && j.saveUrl) {
-        window.location.href = j.saveUrl;
-      } else {
-        alert(j.message ?? (isEl ? "Δεν είναι διαθέσιμο." : "Not available yet."));
+    const gwBtn = document.getElementById("googleWalletBtn") as HTMLButtonElement | null;
+    gwBtn?.addEventListener("click", async () => {
+      const orig = gwBtn.innerHTML;
+      gwBtn.disabled = true;
+      gwBtn.innerHTML = "⏳ " + (isEl ? "Φόρτωση…" : "Loading…");
+      try {
+        const res = await fetch("/api/wallet/google-pass", { method: "POST" });
+        const j = await res.json().catch(() => ({}));
+        if (res.ok && j.saveUrl) {
+          // Open in same tab on mobile (Wallet handoff), new tab on desktop
+          const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+          if (isMobile) window.location.href = j.saveUrl;
+          else window.open(j.saveUrl, "_blank", "noopener");
+        } else {
+          alert(j.message ?? (isEl ? "Δεν είναι διαθέσιμο ακόμα." : "Not available yet."));
+        }
+      } catch {
+        alert(isEl ? "Σφάλμα δικτύου" : "Network error");
+      } finally {
+        gwBtn.disabled = false;
+        gwBtn.innerHTML = orig;
       }
     });
 
