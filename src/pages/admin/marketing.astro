@@ -75,9 +75,14 @@ const presets = [
               : "Create trackable QR codes with UTM tags for print ads, coasters, flyers, and rack-cards."}
           </p>
         </div>
-        <button id="newCampBtn" class="rounded-xl bg-amber-400 text-black px-4 py-2 text-sm font-semibold hover:bg-amber-300 transition">
-          + {isEl ? "Νέα καμπάνια" : "New campaign"}
-        </button>
+        <div class="flex gap-2">
+          <a href="/admin/marketing-analytics" class="rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-white/80 hover:text-amber-200 px-4 py-2 text-sm font-semibold transition">
+            📊 {isEl ? "Αναλυτικά" : "Analytics"}
+          </a>
+          <button id="newCampBtn" class="rounded-xl bg-amber-400 text-black px-4 py-2 text-sm font-semibold hover:bg-amber-300 transition">
+            + {isEl ? "Νέα καμπάνια" : "New campaign"}
+          </button>
+        </div>
       </div>
 
       <!-- Presets -->

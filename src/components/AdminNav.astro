@@ -53,7 +53,8 @@ const groups: Group[] = [
     { key: "events",       label: t.admin.nav.events,       href: withLangPrefix(lang, "/admin/events"),       icon: I.events },
     { key: "orders",       label: t.admin.nav.orders,       href: withLangPrefix(lang, "/admin/orders"),       icon: I.orders },
     { key: "tips",         label: t.admin.nav.tips,         href: withLangPrefix(lang, "/admin/tips"),         icon: I.tips },
-    { key: "marketing",    label: isEl ? "Marketing" : "Marketing", href: withLangPrefix(lang, "/admin/marketing"), icon: I.marketing },
+    { key: "marketing",             label: isEl ? "Marketing" : "Marketing",                       href: withLangPrefix(lang, "/admin/marketing"),           icon: I.marketing },
+    { key: "marketing-analytics",   label: isEl ? "Marketing Analytics" : "Marketing Analytics",   href: withLangPrefix(lang, "/admin/marketing-analytics"), icon: I.analytics },
   ]},
   { title: isEl ? "Περιεχόμενο" : "Content", items: [
     { key: "editMenu", label: t.admin.nav.editMenu,         href: withLangPrefix(lang, "/admin/menu"),    icon: I.editMenu },
