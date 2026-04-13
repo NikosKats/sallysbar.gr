@@ -1324,6 +1324,17 @@ function statusLabel(s: string) {
       }
     } catch {}
 
+    // Pending staff-enrollment claim (replays for email-confirm flow)
+    try {
+      const pendingStaff = localStorage.getItem("pending_staff_ref");
+      if (pendingStaff) {
+        fetch("/api/loyalty/claim-staff-ref", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ staff_id: pendingStaff }),
+        }).finally(() => localStorage.removeItem("pending_staff_ref"));
+      }
+    } catch {}
+
     // Profile update
     const profileForm = document.getElementById("profileForm") as HTMLFormElement | null;
     profileForm?.addEventListener("submit", async (e) => {

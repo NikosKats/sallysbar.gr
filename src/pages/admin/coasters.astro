@@ -1,0 +1,100 @@
+---
+import "../../styles/global.css";
+import { withLangPrefix } from "../../i18n";
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+
+if (Astro.locals.role !== "admin") {
+  return Astro.redirect(withLangPrefix(lang, "/admin"));
+}
+
+// Six identical 90mm round coasters per A4 (3×2 grid).
+// Print on circular sticker stock or cut after.
+const coasters = Array.from({ length: 6 });
+const targetUrl = "https://sallysbar.gr/register?utm_source=coaster";
+---
+
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <title>{isEl ? "Σουβέρ — εκτυπώσιμα" : "Coasters — printable"}</title>
+    <meta name="robots" content="noindex,nofollow" />
+    <style>
+      :root { color-scheme: dark; }
+      body { margin: 0; background: #0b0b10; color: white; font-family: system-ui, -apple-system, sans-serif; }
+      .toolbar { position: sticky; top: 0; z-index: 10; display: flex; gap: 10px; align-items: center; justify-content: space-between;
+        padding: 14px 20px; background: #111118; border-bottom: 1px solid rgba(255,255,255,.1); }
+      .toolbar a, .toolbar button { font: inherit; cursor: pointer; border-radius: 10px; padding: 8px 14px; font-weight: 600; font-size: 13px; }
+      .back { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,.2); text-decoration: none; }
+      .print-btn { background: #fbbf24; color: #000; border: 0; }
+      .stage { padding: 30px 20px; display: flex; justify-content: center; }
+
+      .sheet {
+        width: 210mm; height: 297mm; background: white; padding: 12mm 12mm;
+        display: grid; grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(3, 1fr);
+        gap: 6mm;
+        box-sizing: border-box;
+      }
+      .coaster {
+        width: 90mm; height: 90mm; border-radius: 50%; padding: 6mm;
+        background: radial-gradient(circle at 30% 30%, #1a1220 0%, #0b0b10 70%, #050508 100%);
+        color: white; box-sizing: border-box;
+        display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+        text-align: center; position: relative; overflow: hidden;
+        border: 0.6mm solid #fbbf24;
+      }
+      .coaster::before {
+        content: ""; position: absolute; inset: 4mm; border-radius: 50%;
+        border: 0.3mm solid rgba(251,191,36,0.35); pointer-events: none;
+      }
+      .brand { font-size: 9pt; letter-spacing: 0.3em; text-transform: uppercase; color: #fcd34d; font-weight: 700; padding-top: 1mm; }
+      .headline { font-family: "Playfair Display", "Didot", serif; font-weight: 900; font-style: italic;
+        font-size: 16pt; line-height: 1.1; color: #fef3c7; padding: 0 4mm; }
+      .qrwrap { background: white; padding: 2mm; border-radius: 3mm; box-shadow: 0 1mm 3mm rgba(0,0,0,.5); }
+      .cta { font-size: 7.5pt; color: rgba(255,255,255,.7); padding-bottom: 1mm; line-height: 1.3; }
+      .cta strong { color: #fbbf24; }
+
+      @media print {
+        @page { size: A4; margin: 0; }
+        .toolbar { display: none; }
+        .stage { padding: 0; }
+        body { background: white; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="toolbar">
+      <a class="back" href="/admin">← {isEl ? "Πίσω" : "Back"}</a>
+      <span style="font-size:13px;color:#aaa">{isEl ? "Φύλλο A4 · 6 σουβέρ 90mm" : "A4 sheet · 6× 90mm coasters"}</span>
+      <button class="print-btn" onclick="window.print()">🖨 {isEl ? "Εκτύπωση A4" : "Print A4"}</button>
+    </div>
+
+    <div class="stage">
+      <div class="sheet">
+        {coasters.map(() => (
+          <div class="coaster">
+            <div class="brand">SALLY'S · BAR</div>
+            <div class="headline">{isEl ? "Σκάναρε. Κερδίζεις." : "Scan. You win."}</div>
+            <div class="qrwrap">
+              <canvas class="coaster-qr" data-url={targetUrl} width="160" height="160"></canvas>
+            </div>
+            <div class="cta">{isEl ? <>Δωρεάν εγγραφή · <strong>scratch card δώρο</strong></> : <>Free signup · <strong>free scratch card</strong></>}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <script>
+      import QRCode from "qrcode";
+      document.querySelectorAll<HTMLCanvasElement>(".coaster-qr").forEach(c => {
+        const url = c.dataset.url ?? "";
+        QRCode.toCanvas(c, url, {
+          width: 160, margin: 1,
+          color: { dark: "#0a0a0f", light: "#ffffff" },
+          errorCorrectionLevel: "H",
+        }).catch((e: unknown) => console.error(e));
+      });
+    </script>
+  </body>
+</html>
