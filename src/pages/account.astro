@@ -265,10 +265,14 @@ function statusLabel(s: string) {
 
       <!-- Dashboard KPIs -->
       <section class="order-5 grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div class="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4">
-          <p class="text-[10px] uppercase tracking-[0.2em] text-amber-300/70">{isEl ? "Πόντοι" : "Points"}</p>
+        <a href="#pointsHistory" class="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4 block hover:bg-amber-400/10 hover:border-amber-400/40 transition group cursor-pointer">
+          <div class="flex items-start justify-between gap-1">
+            <p class="text-[10px] uppercase tracking-[0.2em] text-amber-300/70">{isEl ? "Πόντοι" : "Points"}</p>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" class="text-amber-300/50 group-hover:text-amber-300 transition shrink-0"><path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
           <p class="text-2xl font-bold text-amber-300 mt-1">{loyaltyBalance}</p>
-        </div>
+          <p class="text-[10px] text-amber-300/50 mt-0.5">{isEl ? "Ιστορικό & εξαργύρωση" : "History & redeem"}</p>
+        </a>
         <div class="rounded-2xl border p-4" style={`border-color:${tierBorder};background:${tierBg}`}>
           <p class="text-[10px] uppercase tracking-[0.2em]" style={`color:${tierColor}`}>{isEl ? "Επίπεδο" : "Tier"}</p>
           <p class="text-2xl font-bold mt-1" style={`color:${tierColor}`}>{tierIcon} {tierLabel}</p>
@@ -707,9 +711,43 @@ function statusLabel(s: string) {
         )}
       </div>
 
+      <!-- Redeem points — shown next to history so the anchor jump lands on both -->
+      {rewards.length > 0 && (
+        <section id="pointsHistory" class="order-11 rounded-2xl border border-amber-400/30 bg-gradient-to-br from-amber-500/10 to-transparent p-5 scroll-mt-24">
+          <div class="flex items-center justify-between gap-2 flex-wrap mb-3">
+            <h2 class="text-sm font-semibold text-amber-200 uppercase tracking-widest">🎁 {isEl ? "Εξαργύρωση πόντων" : "Redeem your points"}</h2>
+            <span class="text-xs font-mono text-amber-300">{loyaltyBalance} pts</span>
+          </div>
+          <div class="space-y-2">
+            {rewards.map(rw => {
+              const canAfford = loyaltyBalance >= rw.cost;
+              const name = isEl ? rw.name_el : rw.name_en;
+              const desc = isEl ? rw.description_el : rw.description_en;
+              return (
+                <div class="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5">
+                  <div class="min-w-0 flex-1">
+                    <p class="text-sm font-semibold text-white truncate">{name}</p>
+                    {desc && <p class="text-xs text-white/50 truncate">{desc}</p>}
+                  </div>
+                  <button
+                    class="redeem-btn shrink-0 text-xs px-3 py-1.5 rounded-lg font-semibold transition disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={canAfford ? "background:#f59e0b;color:#000" : "background:rgba(255,255,255,.06);color:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.1)"}
+                    data-reward-id={rw.id}
+                    data-cost={rw.cost}
+                    disabled={!canAfford}
+                  >
+                    {rw.cost} {isEl ? "πόντοι" : "pts"}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       <!-- Points history -->
       {(loyaltyEvents ?? []).length > 0 && (
-        <section class="order-11 rounded-2xl border border-white/10 bg-white/5 p-5">
+        <section class="order-11 rounded-2xl border border-white/10 bg-white/5 p-5 scroll-mt-24">
           <h2 class="text-sm font-semibold text-white/50 uppercase tracking-widest mb-3">{isEl ? "Ιστορικό Πόντων" : "Points History"}</h2>
           <div class="divide-y divide-white/5">
             {(loyaltyEvents ?? []).slice(0, 15).map(e => (
