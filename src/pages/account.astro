@@ -783,6 +783,69 @@ function statusLabel(s: string) {
 
     </main>
 
+    <!-- Redemption modal: confirm + success state with code + QR + copy/share -->
+    <div id="redeemModal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+      <div class="relative w-full max-w-sm rounded-3xl border border-amber-400/30 bg-gradient-to-br from-[#1a1220] via-[#141420] to-[#0b0b10] p-6 space-y-4">
+        <button id="redeemCloseBtn" type="button" class="absolute top-3 right-3 text-white/40 hover:text-white text-2xl leading-none px-2">×</button>
+
+        <!-- Confirm state -->
+        <div id="redeemConfirm" class="space-y-4">
+          <div class="text-center">
+            <div class="text-4xl mb-2">🎁</div>
+            <h3 class="text-lg font-bold text-amber-200">{isEl ? "Επιβεβαίωση εξαργύρωσης" : "Confirm redemption"}</h3>
+            <p id="redeemConfirmName" class="text-sm text-white/70 mt-2"></p>
+            <p id="redeemConfirmCost" class="text-xs text-amber-300/80 font-mono mt-1"></p>
+          </div>
+          <div class="flex gap-2">
+            <button id="redeemCancelBtn" type="button" class="flex-1 rounded-xl border border-white/15 text-white/70 px-4 py-3 text-sm font-semibold hover:bg-white/5 transition">
+              {isEl ? "Άκυρο" : "Cancel"}
+            </button>
+            <button id="redeemGoBtn" type="button" class="flex-[2] rounded-xl bg-gradient-to-br from-amber-300 to-amber-500 text-black px-4 py-3 text-sm font-bold hover:scale-[1.02] active:scale-[0.98] transition">
+              {isEl ? "Εξαργύρωσε" : "Redeem"}
+            </button>
+          </div>
+        </div>
+
+        <!-- Success state -->
+        <div id="redeemSuccess" class="hidden space-y-5">
+          <div class="text-center">
+            <div class="text-4xl mb-2">✨</div>
+            <h3 class="text-lg font-bold text-emerald-300">{isEl ? "Εξαργύρωση επιτυχής!" : "Redemption confirmed!"}</h3>
+            <p id="redeemSuccessName" class="text-sm text-white/70 mt-2"></p>
+          </div>
+
+          <!-- Big code display with QR -->
+          <div class="rounded-2xl bg-white p-5 flex flex-col items-center gap-3 shadow-2xl shadow-amber-500/20">
+            <canvas id="redeemQr" width="160" height="160"></canvas>
+            <div class="text-center">
+              <p class="text-[10px] uppercase tracking-[0.3em] text-neutral-500 font-semibold">{isEl ? "Κωδικός" : "Code"}</p>
+              <p id="redeemCodeBig" class="text-3xl font-black font-mono tracking-widest text-black mt-1">—</p>
+            </div>
+          </div>
+
+          <p class="text-xs text-center text-white/60 leading-relaxed">
+            {isEl ? "Δείξε τον κωδικό ή σκάναρε τον QR στον σερβιτόρο για να εξαργυρώσεις την ανταμοιβή σου." : "Show the code or scan the QR with your waiter to claim your reward."}
+          </p>
+
+          <div class="grid grid-cols-3 gap-2">
+            <button id="redeemCopyBtn" type="button" class="flex items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3 py-2.5 text-xs font-semibold text-white hover:bg-white/10 transition">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="1.8"/></svg>
+              {isEl ? "Αντιγραφή" : "Copy"}
+            </button>
+            <button id="redeemShareBtn" type="button" class="flex items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3 py-2.5 text-xs font-semibold text-white hover:bg-white/10 transition">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              {isEl ? "Κοινοποίηση" : "Share"}
+            </button>
+            <button id="redeemDoneBtn" type="button" class="flex items-center justify-center rounded-xl bg-emerald-400 text-black px-3 py-2.5 text-xs font-bold hover:bg-emerald-300 transition">
+              {isEl ? "✓ Τέλος" : "✓ Done"}
+            </button>
+          </div>
+
+          <p id="redeemActionMsg" class="text-[11px] text-center text-white/50 h-4"></p>
+        </div>
+      </div>
+    </div>
+
     {!hasCard && (
       <div id="cardFormModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
         <div class="relative w-full max-w-lg my-8 rounded-2xl border border-white/10 bg-[#141420] p-6 space-y-4">
@@ -1373,30 +1436,129 @@ function statusLabel(s: string) {
       }
     });
 
-    // Redeem buttons
+    // Redeem modal refs
+    const redeemModal     = document.getElementById("redeemModal")!;
+    const redeemConfirm   = document.getElementById("redeemConfirm")!;
+    const redeemSuccess   = document.getElementById("redeemSuccess")!;
+    const redeemName      = document.getElementById("redeemConfirmName")!;
+    const redeemCostEl    = document.getElementById("redeemConfirmCost")!;
+    const redeemSuccName  = document.getElementById("redeemSuccessName")!;
+    const redeemCodeBig   = document.getElementById("redeemCodeBig")!;
+    const redeemQrCanvas  = document.getElementById("redeemQr") as HTMLCanvasElement;
+    const redeemGoBtn     = document.getElementById("redeemGoBtn") as HTMLButtonElement;
+    const redeemCancelBtn = document.getElementById("redeemCancelBtn")!;
+    const redeemCloseBtn  = document.getElementById("redeemCloseBtn")!;
+    const redeemDoneBtn   = document.getElementById("redeemDoneBtn")!;
+    const redeemCopyBtn   = document.getElementById("redeemCopyBtn")!;
+    const redeemShareBtn  = document.getElementById("redeemShareBtn")!;
+    const redeemActionMsg = document.getElementById("redeemActionMsg")!;
+
+    let pendingRewardId: string | null = null;
+    let currentCode: string | null = null;
+    let currentRewardName: string = "";
+
+    function openRedeem() {
+      redeemModal.classList.remove("hidden");
+      redeemModal.classList.add("flex");
+      redeemConfirm.classList.remove("hidden");
+      redeemSuccess.classList.add("hidden");
+      redeemActionMsg.textContent = "";
+    }
+    function closeRedeem() {
+      redeemModal.classList.add("hidden");
+      redeemModal.classList.remove("flex");
+      pendingRewardId = null; currentCode = null;
+    }
+
+    redeemCloseBtn.addEventListener("click", closeRedeem);
+    redeemCancelBtn.addEventListener("click", closeRedeem);
+    redeemDoneBtn.addEventListener("click", () => { closeRedeem(); location.reload(); });
+    redeemModal.addEventListener("click", (e) => { if (e.target === redeemModal) closeRedeem(); });
+
+    // Wire every Redeem button on the page
     document.querySelectorAll<HTMLButtonElement>(".redeem-btn").forEach(btn => {
-      btn.addEventListener("click", async () => {
-        const cost = btn.dataset.cost;
-        const msg = isEl ? `Εξαργύρωση ${cost} πόντων;` : `Redeem ${cost} points?`;
-        if (!confirm(msg)) return;
-        btn.disabled = true;
-        btn.textContent = "…";
+      btn.addEventListener("click", () => {
+        pendingRewardId = btn.dataset.rewardId ?? null;
+        currentRewardName = btn.closest(".flex")?.querySelector(".text-white.font-medium, .text-white.font-semibold")?.textContent?.trim() ?? (isEl ? "Ανταμοιβή" : "Reward");
+        redeemName.textContent = currentRewardName;
+        redeemCostEl.textContent = `${btn.dataset.cost} ${isEl ? "πόντοι" : "points"}`;
+        openRedeem();
+      });
+    });
+
+    redeemGoBtn.addEventListener("click", async () => {
+      if (!pendingRewardId) return;
+      redeemGoBtn.disabled = true;
+      redeemGoBtn.textContent = "⏳";
+      try {
         const res = await fetch("/api/loyalty/redeem", {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ reward_id: btn.dataset.rewardId }),
+          body: JSON.stringify({ reward_id: pendingRewardId }),
         });
         const j = await res.json().catch(() => ({}));
         if (!res.ok) {
-          alert(j.error === "insufficient_points"
+          redeemActionMsg.textContent = j.error === "insufficient_points"
             ? (isEl ? "Δεν έχεις αρκετούς πόντους." : "Not enough points.")
-            : (isEl ? "Σφάλμα. Δοκίμασε ξανά." : "Error. Try again."));
-          btn.disabled = false;
-          btn.textContent = `${cost} ${isEl ? "πόντοι" : "pts"}`;
+            : (isEl ? "Σφάλμα. Δοκίμασε ξανά." : "Error. Try again.");
+          redeemActionMsg.style.color = "#f87171";
+          redeemGoBtn.disabled = false;
+          redeemGoBtn.textContent = isEl ? "Εξαργύρωσε" : "Redeem";
           return;
         }
-        alert(isEl ? `✓ Κωδικός: ${j.code}\nΔείξε τον στον σερβιτόρο.` : `✓ Code: ${j.code}\nShow this to your waiter.`);
-        location.reload();
-      });
+
+        currentCode = String(j.code);
+        redeemSuccName.textContent = currentRewardName;
+        redeemCodeBig.textContent = currentCode;
+        // Render QR of the code itself — easy scan for staff
+        try {
+          await QRCode.toCanvas(redeemQrCanvas, currentCode, {
+            width: 160, margin: 1,
+            color: { dark: "#0a0a0f", light: "#ffffff" },
+            errorCorrectionLevel: "H",
+          });
+        } catch {}
+        redeemConfirm.classList.add("hidden");
+        redeemSuccess.classList.remove("hidden");
+      } catch {
+        redeemActionMsg.textContent = isEl ? "Σφάλμα δικτύου" : "Network error";
+        redeemActionMsg.style.color = "#f87171";
+        redeemGoBtn.disabled = false;
+        redeemGoBtn.textContent = isEl ? "Εξαργύρωσε" : "Redeem";
+      }
+    });
+
+    redeemCopyBtn.addEventListener("click", async () => {
+      if (!currentCode) return;
+      try {
+        await navigator.clipboard.writeText(currentCode);
+        redeemActionMsg.textContent = "✓ " + (isEl ? "Αντιγράφηκε" : "Copied");
+        redeemActionMsg.style.color = "#34d399";
+        setTimeout(() => { redeemActionMsg.textContent = ""; }, 1500);
+      } catch {
+        redeemActionMsg.textContent = (isEl ? "Αντιγραφή απέτυχε" : "Copy failed");
+        redeemActionMsg.style.color = "#f87171";
+      }
+    });
+
+    redeemShareBtn.addEventListener("click", async () => {
+      if (!currentCode) return;
+      const text = isEl
+        ? `🎁 Κέρδισα ${currentRewardName} στο Sally's Bar! Κωδικός εξαργύρωσης: ${currentCode}`
+        : `🎁 I just redeemed ${currentRewardName} at Sally's Bar! Code: ${currentCode}`;
+      if ((navigator as any).share) {
+        try {
+          await (navigator as any).share({ title: "Sally's Bar reward", text });
+          return;
+        } catch {}
+      }
+      try {
+        await navigator.clipboard.writeText(text);
+        redeemActionMsg.textContent = "✓ " + (isEl ? "Αντιγράφηκε μήνυμα" : "Message copied");
+        redeemActionMsg.style.color = "#34d399";
+        setTimeout(() => { redeemActionMsg.textContent = ""; }, 1500);
+      } catch {
+        prompt(isEl ? "Αντιγράψτε:" : "Copy:", text);
+      }
     });
 
     document.getElementById("resList")?.addEventListener("click", async (e) => {
