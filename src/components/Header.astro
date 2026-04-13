@@ -21,6 +21,16 @@ const switchHref = otherLang === "en"
 // Auth state from middleware
 const user = Astro.locals.user;
 const role = Astro.locals.role;
+
+// Social-card slug: prefer handle, fall back to first 8 chars of user id.
+import { supabaseAdmin } from "../lib/supabase";
+let cardSlug: string | null = null;
+if (user) {
+  try {
+    const { data } = await supabaseAdmin.from("profiles").select("handle").eq("id", user.id).maybeSingle();
+    cardSlug = ((data as any)?.handle as string | null) ?? user.id.slice(0, 8);
+  } catch { cardSlug = user.id.slice(0, 8); }
+}
 const adminGroups = role === "admin" ? getAdminNavGroups(lang as "en" | "el", t) : [];
 
 const isEl = lang === "el";
@@ -40,10 +50,7 @@ const nav = [
   { label: t.nav.menu,    icon: "📜",  href: withLangPrefix(lang, "/menu") },
   { label: bookLabel,     icon: "📅",  href: withLangPrefix(lang, "/book") },
   { label: eventsLabel,   icon: "🎵",  href: withLangPrefix(lang, "/events") },
-  { label: playLabel,                         icon: "🎁",  href: withLangPrefix(lang, "/play") },
-  { label: lang === "el" ? "Κάρτα" : "Card",  icon: "💳",  href: withLangPrefix(lang, "/membership") },
-  { label: loyaltyLabel,                      icon: "👑",  href: withLangPrefix(lang, "/loyalty") },
-  { label: t.nav.careers, icon: "💼",  href: withLangPrefix(lang, "/careers") },
+  { label: lang === "el" ? "Κάρτα Social" : "Social Card",  icon: "🪪",  href: withLangPrefix(lang, "/card") },
 ];
 
 function isActive(href: string) {
@@ -73,6 +80,7 @@ const adminLoyaltyHref       = withLangPrefix(lang, "/admin/loyalty");
 const adminEventsHref        = withLangPrefix(lang, "/admin/events");
 const staffHref              = withLangPrefix(lang, "/staff");
 const staffOrderHref     = withLangPrefix(lang, "/staff/order");
+const staffChatHref      = withLangPrefix(lang, "/staff/chat");
 
 // language button label
 const switchLabel = t.switchTo;
@@ -172,8 +180,14 @@ import CustomerPwa from "./CustomerPwa.astro";
 
                   <a href={accountHref} class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-white/70 hover:text-amber-200 hover:bg-white/5 transition">
                     <span class="shrink-0 w-5 grid place-items-center">💳</span>
-                    {isEl ? "Η κάρτα μου" : "My card"}
+                    {isEl ? "Η κάρτα πιστότητας" : "My loyalty card"}
                   </a>
+                  {cardSlug && (
+                    <a href={`/u/${cardSlug}`} class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-white/70 hover:text-amber-200 hover:bg-white/5 transition">
+                      <span class="shrink-0 w-5 grid place-items-center">🪪</span>
+                      {isEl ? "Η κάρτα social μου" : "My social card"}
+                    </a>
+                  )}
                   {role === "customer" && (
                     <>
                       <a href={withLangPrefix(lang, "/loyalty")} class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-white/70 hover:text-amber-200 hover:bg-white/5 transition">
@@ -231,10 +245,19 @@ import CustomerPwa from "./CustomerPwa.astro";
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-70"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
                         {t.user.newOrder}
                       </a>
+                      <a href={staffChatHref} class="relative flex items-center gap-2.5 px-4 py-2.5 text-sm text-sky-400/80 hover:text-sky-400 hover:bg-sky-400/5 transition">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-70"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        {isEl ? "Ομάδα (Chat)" : "Team Chat"}
+                        <span id="hdrTeamChatBadge" class="hidden ml-auto min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center"></span>
+                      </a>
                     </>
                   )}
 
                   <div class="mx-3 my-1.5 border-t border-white/10"></div>
+                  <a href={withLangPrefix(lang, "/settings")} class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-white/75 hover:text-white hover:bg-white/5 transition">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-70"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    {isEl ? "Ρυθμίσεις & Προφίλ" : "Settings & Profile"}
+                  </a>
                   <a href={logoutHref} class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-white/50 hover:text-white hover:bg-white/5 transition">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-60"><path d="M16 17l5-5-5-5M21 12H9M13 7V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h6a2 2 0 002-2v-2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     {logoutLabel}

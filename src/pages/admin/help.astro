@@ -32,6 +32,7 @@ const L = {
     "Χρήστες, ρόλοι & loyalty",
     "Παρακολούθηση φιλοδωρημάτων",
     "Σύνδεση με Telegram",
+    "Ομάδα — Team chat",
     "Επίλυση προβλημάτων",
   ] : [
     "Install the app (PWA)",
@@ -47,6 +48,7 @@ const L = {
     "Users, roles & loyalty",
     "Tips tracking",
     "Telegram integration",
+    "Team chat",
     "Troubleshooting",
   ],
 
@@ -716,8 +718,32 @@ const L = {
       <p><strong>Kefalonia BnB cross-promo</strong> — preset on <code>/admin/marketing</code>: "🏠 Book a Stay (Kefalonia BnB)". Generates a QR pointing to kefaloniabnb.com with UTM tracking. Put it on bar receipts/coasters for the affiliate flow.</p>
     `,
   },
+  s26: {
+    head: isEl ? "26. Ομάδα — Team Chat (staff + admin)" : "26. Team Chat (staff + admin)",
+    body: isEl ? `
+      <p>Ιδιωτικό κανάλι μηνυμάτων μόνο για staff και admin. Διαθέσιμο στο <a href="/staff/chat"><code>/staff/chat</code></a> ή από το sidebar → <strong>Team Chat</strong>.</p>
+      <ul>
+        <li><strong>Realtime</strong> — τα μηνύματα εμφανίζονται άμεσα (Supabase Realtime). Το πράσινο dot = συνδεδεμένο live.</li>
+        <li><strong>Push ειδοποίηση</strong> — όταν κάποιος στέλνει, οι υπόλοιποι του team παίρνουν web push (τίτλος = όνομα αποστολέα, tap ανοίγει το chat). Απαιτείται να έχει πατηθεί "Enable notifications" από το admin sidebar ή /staff.</li>
+        <li><strong>Unread badge</strong> — κόκκινο κουκκάκι στο sidebar item και στο dropdown header με πλήθος αδιάβαστων. Σηκώνεται σε 0 μόλις ανοίξεις το chat ή επιστρέψεις focus.</li>
+        <li><strong>Badge ρόλου</strong> — κάθε μήνυμα δείχνει "admin" (φούξια) ή "staff" (μπλε) για να ξέρεις ποιος μιλάει.</li>
+        <li><strong>Ασφάλεια</strong> — RLS στο Postgres· πελάτες δεν μπορούν να διαβάσουν ή να γράψουν καν αν γνωρίζουν το endpoint.</li>
+      </ul>
+      <p class="text-sm text-amber-200/80">💡 Χρήση: συντονισμός βάρδιας, "ο τουαλέτα χρειάζεται καθάρισμα", "τέλος bar stock — gin", quick heads-up σε admin χωρίς να ανοίξει κανείς Telegram.</p>
+    ` : `
+      <p>A private messaging channel for staff + admin only. Open at <a href="/staff/chat"><code>/staff/chat</code></a> or from the admin sidebar → <strong>Team Chat</strong>.</p>
+      <ul>
+        <li><strong>Realtime</strong> — messages appear instantly via Supabase Realtime. Green dot in the header = live connection.</li>
+        <li><strong>Push notification</strong> — when someone sends, every other team member gets a web push (title = sender name, tap opens the chat). Requires tapping "Enable notifications" once in the admin sidebar or /staff.</li>
+        <li><strong>Unread badge</strong> — red pip on the sidebar item and the dropdown entry showing the unread count. Clears to 0 as soon as you open the chat or the window regains focus.</li>
+        <li><strong>Role badges</strong> — every message shows "admin" (fuchsia) or "staff" (sky blue) so you know who's talking.</li>
+        <li><strong>Security</strong> — RLS at the Postgres layer; customers can't read or write even if they hit the endpoint directly.</li>
+      </ul>
+      <p class="text-sm text-amber-200/80">💡 Use it for: shift coordination, "bathroom needs cleaning", "out of gin", quick heads-up to admin without opening Telegram.</p>
+    `,
+  },
   s14: {
-    head: isEl ? "26. Επίλυση προβλημάτων" : "26. Troubleshooting",
+    head: isEl ? "27. Επίλυση προβλημάτων" : "27. Troubleshooting",
     body: isEl ? `
       <ul>
         <li><strong>Δεν λαμβάνω push σε iPhone</strong> — βεβαιώσου ότι άνοιξες από το εικονίδιο της αρχικής οθόνης, όχι από Safari. Απαιτείται iOS 16.4+.</li>
@@ -767,10 +793,11 @@ const sections = [
   { id: "user-dossier",   icon: "🗂️", tint: "bg-white/10",       ...L.s23 },
   { id: "notif-scope",    icon: "🔔", tint: "bg-fuchsia-300/15", ...L.s24 },
   { id: "play-crosspromo",icon: "🎁", tint: "bg-amber-300/15",   ...L.s25 },
+  { id: "team-chat",      icon: "💬", tint: "bg-sky-300/15",     ...L.s26 },
   { id: "troubleshoot",   icon: "🩹", tint: "bg-red-300/15",     ...L.s14 },
 ];
 
-const tocIds = ["install","push","customer","waiter","barman","deliver","admin-overview","admin-menu","admin-qr","admin-events","admin-users","admin-tips","telegram","marketing","mkt-analytics","gamification","customer-pwa","legal","wheel","customer-dash","wallet-share","user-dossier","notif-scope","play-crosspromo","troubleshoot"];
+const tocIds = ["install","push","customer","waiter","barman","deliver","admin-overview","admin-menu","admin-qr","admin-events","admin-users","admin-tips","telegram","marketing","mkt-analytics","gamification","customer-pwa","legal","wheel","customer-dash","wallet-share","user-dossier","notif-scope","play-crosspromo","team-chat","troubleshoot"];
 ---
 
 <html lang={lang}>

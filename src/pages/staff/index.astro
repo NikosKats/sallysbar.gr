@@ -2,6 +2,7 @@
 import "../../styles/global.css";
 import Header from "../../components/Header.astro";
 import StaffPwa from "../../components/StaffPwa.astro";
+import StaffNav from "../../components/StaffNav.astro";
 import { supabaseAdmin, createSupabaseServerClient } from "../../lib/supabase";
 import { dict, withLangPrefix } from "../../i18n";
 
@@ -9,6 +10,21 @@ const lang = Astro.locals.lang ?? "en";
 const t = dict[lang];
 const isEl = lang === "el";
 const user = Astro.locals.user;
+const role = (Astro.locals.role === "admin" ? "admin" : "employee") as "admin" | "employee";
+
+// Team-chat unread count for the sidebar badge
+let teamUnread = 0;
+if (user) {
+  const { data: readRow } = await supabaseAdmin
+    .from("team_reads").select("last_read_at").eq("user_id", user.id).maybeSingle();
+  const since = readRow?.last_read_at ?? "1970-01-01";
+  const { count } = await supabaseAdmin
+    .from("team_messages")
+    .select("id", { count: "exact", head: true })
+    .gt("created_at", since)
+    .neq("user_id", user.id);
+  teamUnread = count ?? 0;
+}
 
 // Get access token for authenticated realtime subscription
 const { data: { session } } = await createSupabaseServerClient(Astro.request, Astro.cookies).auth.getSession();
@@ -223,18 +239,15 @@ function fmtEur(cents: number) {
       <div class="h-20"></div>
     </div>
 
-    <!-- Staff sub-nav -->
-    <div class="staff-subnav sticky top-20 z-40 border-b border-sky-400/20 bg-[#0b0b10]/95 backdrop-blur">
-      <div class="mx-auto max-w-4xl px-4 flex items-center justify-between">
-        <nav class="flex items-center gap-1 py-2 text-sm">
-          <span class="px-3 py-1.5 rounded-lg bg-sky-400/15 border border-sky-400/20 text-sky-400 font-medium">{t.staff.operations}</span>
-          <a href={withLangPrefix(lang, "/staff/order")} class="px-3 py-1.5 rounded-lg text-white/50 hover:text-sky-400 hover:bg-sky-400/5 transition whitespace-nowrap">{t.staff.newOrder}</a>
-        </nav>
-        <div class="flex items-center gap-2 py-2">
+    <StaffNav active="staff" role={role} unread={teamUnread} />
+
+    <!-- Status strip (sidebar replaces the old sub-nav) -->
+    <div class="staff-subnav border-b border-sky-400/10 bg-[#0b0b10]/95 backdrop-blur">
+      <div class="mx-auto max-w-4xl px-4 flex items-center justify-between py-2">
+        <span class="text-xs uppercase tracking-[0.2em] text-sky-400/70 font-semibold">{t.staff.operations}</span>
+        <div class="flex items-center gap-2">
           <span id="realtimeDot" class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse" title="Connecting…" data-token={realtimeToken}></span>
-          <button id="refreshBtn" class="text-xs text-white/30 hover:text-white/60 transition">
-            {t.staff.refresh}
-          </button>
+          <button id="refreshBtn" class="text-xs text-white/30 hover:text-white/60 transition">{t.staff.refresh}</button>
         </div>
       </div>
     </div>
@@ -857,6 +870,27 @@ function fmtEur(cents: number) {
           window.location.reload();
         }
       });
+
+      // ── Team chat unread badge ─────────────────────────────────────────
+      const chatBadge = document.getElementById('teamChatBadge');
+      async function refreshTeamUnread() {
+        try {
+          const r = await fetch('/api/team/read');
+          const j = await r.json();
+          if (!chatBadge) return;
+          if (j.unread > 0) {
+            chatBadge.textContent = j.unread > 99 ? '99+' : String(j.unread);
+            chatBadge.classList.remove('hidden');
+          } else {
+            chatBadge.classList.add('hidden');
+          }
+        } catch {}
+      }
+      refreshTeamUnread();
+      supabase
+        .channel('team-unread')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'team_messages' }, refreshTeamUnread)
+        .subscribe();
 
       supabase
         .channel('staff-live')

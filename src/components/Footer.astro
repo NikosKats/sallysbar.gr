@@ -8,75 +8,89 @@ const url = new URL(Astro.request.url);
 const lang = getLangFromPath(url.pathname);
 const t = dict[lang];
 const isEl = lang === "el";
-
-// bilingual site copy
 const copy = getSiteCopy(lang);
+
+const explore = [
+  { label: t.nav.home,                          href: withLangPrefix(lang, "/") },
+  { label: t.nav.menu,                          href: withLangPrefix(lang, "/menu") },
+  { label: isEl ? "Κρατήσεις" : "Book a table", href: withLangPrefix(lang, "/book") },
+  { label: isEl ? "Events" : "Events",          href: withLangPrefix(lang, "/events") },
+  { label: isEl ? "Καριέρα" : "Careers",        href: withLangPrefix(lang, "/careers") },
+];
+
+const perks = [
+  { label: isEl ? "🪪 Social Card"   : "🪪 Social Card",    href: withLangPrefix(lang, "/card") },
+  { label: isEl ? "💳 Κάρτα Μέλους"  : "💳 Member Card",    href: withLangPrefix(lang, "/membership") },
+  { label: isEl ? "👑 Ανταμοιβές"    : "👑 Rewards",        href: withLangPrefix(lang, "/loyalty") },
+  { label: isEl ? "🎁 Παιχνίδια"     : "🎁 Play & Quests",  href: withLangPrefix(lang, "/play") },
+];
+
+const legal = [
+  { label: isEl ? "Πολιτική Απορρήτου" : "Privacy Policy", href: withLangPrefix(lang, "/privacy") },
+  { label: isEl ? "Όροι Χρήσης"        : "Terms of Use",   href: withLangPrefix(lang, "/terms") },
+];
+
+const brandSocials = [
+  { key: "instagram", label: "Instagram", href: site.socials.instagram,  icon: `<path d="M4 4h16v16H4zM16 11.5a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0zM17.5 6.5h.01" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>` },
+  { key: "facebook",  label: "Facebook",  href: site.socials.facebook,   icon: `<path d="M14 3h3v4h-3a1 1 0 0 0-1 1v3h4l-1 4h-3v7h-4v-7H7v-4h2V7a4 4 0 0 1 4-4h1z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>` },
+  { key: "tripadvisor", label: "Tripadvisor", href: site.socials.tripadvisor, icon: `<circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><circle cx="8" cy="12" r="2" stroke="currentColor" stroke-width="1.6"/><circle cx="16" cy="12" r="2" stroke="currentColor" stroke-width="1.6"/>` },
+];
 ---
 
-<footer class="border-t border-white/10 bg-[#0b0b10]">
-  <div class="mx-auto max-w-6xl px-6 py-10 grid gap-6 md:grid-cols-2">
-
-    <!-- Identity -->
-    <div class="text-sm text-white/70">
-      <div class="font-semibold text-white">{site.name}</div>
-
-      <!-- ✅ bilingual address -->
-      <div class="mt-1">{copy.addressFull}</div>
-
-      <!-- ✅ bilingual hours -->
-      <div class="mt-1">{copy.hoursText}</div>
-
-      <!-- Legal links -->
-      <div class="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-xs">
-        <a href={withLangPrefix(lang, "/privacy")} class="text-white/60 hover:text-amber-300 transition">
-          {isEl ? "Πολιτική Απορρήτου" : "Privacy Policy"}
+<footer class="mt-20 border-t border-white/10 bg-[#08080c]/90 backdrop-blur">
+  <div class="mx-auto max-w-6xl px-6 sm:px-8 py-12">
+    <div class="grid gap-10 md:grid-cols-[1.3fr_1fr_1fr_1fr]">
+      <!-- Brand -->
+      <div>
+        <a href={withLangPrefix(lang, "/")} class="inline-flex items-center gap-2">
+          <img src="/icon-customer-192.png" width="36" height="36" alt={site.name} class="rounded-xl" loading="lazy" />
+          <span class="font-heading text-lg font-bold">{site.name}</span>
         </a>
-        <a href={withLangPrefix(lang, "/terms")} class="text-white/60 hover:text-amber-300 transition">
-          {isEl ? "Όροι Χρήσης" : "Terms & Conditions"}
-        </a>
-        <a href={withLangPrefix(lang, "/careers")} class="text-white/60 hover:text-amber-300 transition">
-          {isEl ? "Καριέρα" : "Careers"}
-        </a>
+        <p class="mt-3 text-sm text-white/55 leading-relaxed max-w-xs">{copy.tagline}</p>
+        <p class="mt-4 text-xs text-white/45 leading-relaxed">
+          📍 {copy.addressFull}<br/>
+          🕒 {copy.hoursText}
+        </p>
+        <div class="mt-4 flex items-center gap-2">
+          <a href={site.mapsShareUrl} target="_blank" rel="noopener"
+            class="h-9 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 hover:border-amber-400/40 px-3 inline-flex items-center gap-1.5 text-xs text-white/80 hover:text-amber-200 transition">
+            🧭 {t.footer.directions}
+          </a>
+          {brandSocials.map(s => (
+            <a href={s.href} target="_blank" rel="noopener" aria-label={s.label}
+              class="h-9 w-9 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 hover:border-amber-400/40 flex items-center justify-center text-white/70 hover:text-amber-200 transition">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" set:html={s.icon}></svg>
+            </a>
+          ))}
+        </div>
       </div>
 
-      <div class="mt-4 text-xs text-white/40">
-        © {year} {site.name} · {isEl ? "Με επιφύλαξη κάθε νόμιμου δικαιώματος" : "All rights reserved"}
+      <div>
+        <p class="text-[10px] uppercase tracking-[0.22em] text-amber-200/80 font-semibold mb-3">{isEl ? "Εξερεύνηση" : "Explore"}</p>
+        <ul class="space-y-2">
+          {explore.map(i => <li><a href={i.href} class="text-sm text-white/65 hover:text-amber-200 transition">{i.label}</a></li>)}
+        </ul>
+      </div>
+
+      <div>
+        <p class="text-[10px] uppercase tracking-[0.22em] text-amber-200/80 font-semibold mb-3">{isEl ? "Μέλη & Κάρτες" : "Members & Cards"}</p>
+        <ul class="space-y-2">
+          {perks.map(i => <li><a href={i.href} class="text-sm text-white/65 hover:text-amber-200 transition">{i.label}</a></li>)}
+        </ul>
+      </div>
+
+      <div>
+        <p class="text-[10px] uppercase tracking-[0.22em] text-amber-200/80 font-semibold mb-3">{isEl ? "Νομικά" : "Legal"}</p>
+        <ul class="space-y-2">
+          {legal.map(i => <li><a href={i.href} class="text-sm text-white/65 hover:text-amber-200 transition">{i.label}</a></li>)}
+          <li><a href="mailto:hello@sallysbar.gr" class="text-sm text-white/65 hover:text-amber-200 transition">✉ hello@sallysbar.gr</a></li>
+        </ul>
       </div>
     </div>
 
-    <!-- Links -->
-    <div class="flex flex-wrap items-start gap-3 md:justify-end">
-      <a
-        href={site.mapsShareUrl}
-        target="_blank"
-        class="rounded-full border border-white/15 px-4 py-2 text-sm text-white/80 hover:text-white hover:bg-white/10 transition"
-      >
-        {t.footer.directions}
-      </a>
-
-      <a
-        href={site.socials.instagram}
-        target="_blank"
-        class="rounded-full border border-white/15 px-4 py-2 text-sm text-white/80 hover:text-white hover:bg-white/10 transition"
-      >
-        {t.footer.instagram}
-      </a>
-
-      <a
-        href={site.socials.facebook}
-        target="_blank"
-        class="rounded-full border border-white/15 px-4 py-2 text-sm text-white/80 hover:text-white hover:bg-white/10 transition"
-      >
-        {t.footer.facebook}
-      </a>
-
-      <a
-        href={site.socials.tripadvisor}
-        target="_blank"
-        class="rounded-full border border-white/15 px-4 py-2 text-sm text-white/80 hover:text-white hover:bg-white/10 transition"
-      >
-        {t.footer.tripadvisor}
-      </a>
+    <div class="mt-10 pt-6 border-t border-white/10 flex flex-wrap items-center justify-between gap-3 text-xs text-white/40">
+      <p>© {year} {site.name} · {isEl ? "Με επιφύλαξη κάθε νόμιμου δικαιώματος" : "All rights reserved"}</p>
+      <p>{isEl ? "Φτιαγμένο με ♥ στην Κεφαλονιά" : "Made with ♥ in Kefalonia"}</p>
     </div>
   </div>
 </footer>

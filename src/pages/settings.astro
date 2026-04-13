@@ -1,0 +1,500 @@
+---
+import "../styles/global.css";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+import { supabaseAdmin } from "../lib/supabase";
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+const user = Astro.locals.user;
+
+if (!user) {
+  return Astro.redirect(isEl ? "/el/login?next=/settings" : "/login?next=/settings");
+}
+
+// Try full select first; fall back if handle/card_public columns don't exist yet.
+let { data: profile } = await supabaseAdmin
+  .from("profiles")
+  .select("id, full_name, role, phone, gender, birthday, country, city, address, postal_code, bio, avatar_url, socials, marketing_consent, created_at, handle, card_public, card_visibility, card_issued_at")
+  .eq("id", user.id)
+  .maybeSingle();
+if (!profile) {
+  const fb = await supabaseAdmin
+    .from("profiles")
+    .select("id, full_name, role, phone, gender, birthday, country, city, address, postal_code, bio, avatar_url, socials, marketing_consent, created_at")
+    .eq("id", user.id)
+    .maybeSingle();
+  profile = fb.data as any;
+}
+
+const email = user.email ?? "";
+const p: any = profile ?? { socials: {}, id: user.id };
+if (!p.id) p.id = user.id;
+const socials = (p.socials ?? {}) as Record<string, string>;
+const cardSlug = (p.handle && p.handle.length >= 3) ? p.handle : p.id.slice(0, 8);
+const vis: any = p.card_visibility ?? { avatar: true, bio: true, location: true, phone: false, role_badge: true, socials: { instagram: true, facebook: true, tiktok: true, x: true, linkedin: true, youtube: true, website: true } };
+const socialVis: Record<string, boolean> = (vis.socials ?? {}) as Record<string, boolean>;
+function visOn(k: string, def = true) { return vis[k] === undefined ? def : vis[k] !== false; }
+
+const roleBadge = p.role === "admin"
+  ? { label: isEl ? "Διαχειριστής" : "Admin", color: "bg-fuchsia-400/15 text-fuchsia-300 border-fuchsia-400/30" }
+  : p.role === "employee"
+  ? { label: isEl ? "Σερβιτόρος" : "Staff",   color: "bg-sky-400/15 text-sky-300 border-sky-400/30" }
+  : { label: isEl ? "Μέλος" : "Member",       color: "bg-emerald-400/15 text-emerald-300 border-emerald-400/30" };
+
+const T = {
+  title:    isEl ? "Ο λογαριασμός μου" : "My account",
+  kicker:   isEl ? "Ρυθμίσεις & Προφίλ" : "Settings & Profile",
+  sub:      isEl ? "Διαχειρίσου τα προσωπικά σου στοιχεία και τα social links." : "Manage your personal info and social links.",
+  basics:   isEl ? "Βασικά" : "Basics",
+  contact:  isEl ? "Επικοινωνία & Τοποθεσία" : "Contact & Location",
+  personal: isEl ? "Προσωπικά" : "Personal",
+  socialsH: isEl ? "Social Media" : "Social Media",
+  prefs:    isEl ? "Προτιμήσεις" : "Preferences",
+  name:     isEl ? "Ονοματεπώνυμο" : "Full name",
+  bio:      isEl ? "Βιογραφικό (ό,τι θες να μοιραστείς)" : "Bio (anything you'd like to share)",
+  avatar:   isEl ? "URL εικόνας προφίλ" : "Avatar URL",
+  avatarHint: isEl ? "Κόλλα το link μιας εικόνας. (Υποστήριξη upload σύντομα.)" : "Paste an image URL. (Upload coming soon.)",
+  phone:    isEl ? "Τηλέφωνο" : "Phone",
+  gender:   isEl ? "Φύλο" : "Gender",
+  genderOpts: isEl
+    ? [["", "—"], ["female","Γυναίκα"], ["male","Άντρας"], ["nonbinary","Μη δυαδικό"], ["other","Άλλο"], ["prefer_not","Δεν απαντώ"]]
+    : [["", "—"], ["female","Female"], ["male","Male"], ["nonbinary","Non-binary"], ["other","Other"], ["prefer_not","Prefer not to say"]],
+  dob:      isEl ? "Ημερομηνία γέννησης" : "Date of birth",
+  country:  isEl ? "Χώρα" : "Country",
+  city:     isEl ? "Πόλη" : "City",
+  address:  isEl ? "Διεύθυνση" : "Address",
+  postal:   isEl ? "Τ.Κ." : "Postal code",
+  marketing: isEl ? "Να λαμβάνω προσφορές & ειδοποιήσεις για events" : "Receive offers & event notifications",
+  save:     isEl ? "💾 Αποθήκευση" : "💾 Save changes",
+  saving:   isEl ? "Αποθήκευση…" : "Saving…",
+  saved:    isEl ? "✓ Αποθηκεύτηκε" : "✓ Saved",
+  email:    isEl ? "Email (μόνο ανάγνωση)" : "Email (read-only)",
+  memberSince: isEl ? "Μέλος από" : "Member since",
+  danger:   isEl ? "Κίνδυνος" : "Danger zone",
+  logout:   isEl ? "Αποσύνδεση" : "Sign out",
+  forgot:   isEl ? "Αλλαγή κωδικού" : "Change password",
+  deleteAcc:isEl ? "Διαγραφή λογαριασμού" : "Delete account",
+  deleteHint: isEl ? "Στείλε email στο admin για διαγραφή λογαριασμού." : "Email admin to request account deletion.",
+};
+
+const socialFields = [
+  { key: "instagram", label: "Instagram", ph: "https://instagram.com/you",   icon: `<path d="M4 4h16v16H4zM16 11.5a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0zM17.5 6.5h.01" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>` },
+  { key: "facebook",  label: "Facebook",  ph: "https://facebook.com/you",    icon: `<path d="M14 3h3v4h-3a1 1 0 0 0-1 1v3h4l-1 4h-3v7h-4v-7H7v-4h2V7a4 4 0 0 1 4-4h1z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>` },
+  { key: "tiktok",    label: "TikTok",    ph: "https://tiktok.com/@you",     icon: `<path d="M14 4v9a4 4 0 1 1-4-4M14 4c0 3 2 5 5 5M14 4h0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>` },
+  { key: "x",         label: "X / Twitter", ph: "https://x.com/you",         icon: `<path d="M4 4l16 16M20 4L4 20" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>` },
+  { key: "linkedin",  label: "LinkedIn",  ph: "https://linkedin.com/in/you", icon: `<path d="M4 9h3v11H4zM5.5 4.5h.01M10 9h3v2c.5-1.3 2-2.3 4-2.3 3 0 4 2 4 5V20h-3v-5.3c0-1.6-.8-2.7-2.3-2.7-1.4 0-2.7 1-2.7 3V20h-3V9z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>` },
+  { key: "youtube",   label: "YouTube",   ph: "https://youtube.com/@you",    icon: `<rect x="3" y="6" width="18" height="12" rx="3" stroke="currentColor" stroke-width="1.6"/><path d="M10 9l5 3-5 3V9z" fill="currentColor"/>` },
+  { key: "website",   label: isEl ? "Ιστοσελίδα" : "Website", ph: "https://",icon: `<circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18" stroke="currentColor" stroke-width="1.6"/>` },
+];
+
+function initialsOf(name: string) {
+  const parts = (name || "M").trim().split(/\s+/);
+  return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "M";
+}
+const ini = initialsOf(p.full_name ?? email);
+---
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{T.title} — Sally's Bar</title>
+    <meta name="robots" content="noindex,nofollow" />
+  </head>
+  <body class="min-h-screen bg-[#0a0a0f] text-white font-body antialiased">
+    <Header />
+    <div class="h-20"></div>
+
+    <div class="pointer-events-none fixed inset-0 -z-10 opacity-70">
+      <div class="absolute -top-40 left-1/3 h-[520px] w-[520px] rounded-full bg-sky-400/10 blur-[140px]"></div>
+      <div class="absolute bottom-0 right-0 h-[420px] w-[420px] rounded-full bg-fuchsia-500/10 blur-[140px]"></div>
+    </div>
+
+    <main class="mx-auto max-w-3xl px-4 sm:px-6 py-8 sm:py-12">
+      <!-- Hero -->
+      <div class="mb-8 flex items-center gap-4">
+        <div class="relative shrink-0">
+          {p.avatar_url ? (
+            <img id="avatarPreview" src={p.avatar_url} alt="" class="h-20 w-20 rounded-full object-cover ring-2 ring-white/15" />
+          ) : (
+            <div id="avatarPreview" class="h-20 w-20 rounded-full bg-gradient-to-br from-sky-400 to-fuchsia-500 flex items-center justify-center text-2xl font-bold ring-2 ring-white/15">{ini}</div>
+          )}
+        </div>
+        <div class="min-w-0">
+          <p class="text-xs uppercase tracking-[0.24em] text-amber-200/70">{T.kicker}</p>
+          <h1 class="font-heading text-3xl sm:text-4xl font-bold truncate">{p.full_name ?? (isEl ? "Ο λογαριασμός μου" : "My account")}</h1>
+          <div class="mt-1.5 flex items-center gap-2 text-xs text-white/55">
+            <span class={`px-2 py-0.5 rounded-full border ${roleBadge.color} text-[10px] font-bold uppercase tracking-wider`}>{roleBadge.label}</span>
+            <span class="truncate">{email}</span>
+          </div>
+        </div>
+      </div>
+
+      {!p.card_issued_at && (
+        <div class="mb-5 rounded-2xl border border-amber-400/35 bg-gradient-to-br from-amber-500/10 via-fuchsia-500/5 to-sky-500/5 px-5 py-4 flex items-start gap-3">
+          <div class="shrink-0 h-10 w-10 rounded-full bg-amber-400/20 grid place-items-center text-xl">🎁</div>
+          <div class="flex-1 min-w-0">
+            <p class="font-semibold text-amber-100">{isEl ? "Ενεργοποίησε την κάρτα μέλους για να κερδίζεις πόντους από παραπομπές" : "Activate your loyalty card to earn referral points"}</p>
+            <p class="text-xs text-white/65 mt-1 leading-relaxed">{isEl
+              ? "Όποιος εγγράφεται μέσω του link/QR σου σου δίνει πόντους — αλλά μόνο αν είσαι ενεργό μέλος. Δωρεάν εγγραφή, 30 δευτερόλεπτα."
+              : "Anyone who signs up via your link/QR earns you points — but only if you're an active member. Free signup, 30 seconds."}</p>
+          </div>
+          <a href={(isEl ? "/el" : "") + "/membership"} class="shrink-0 rounded-xl bg-gradient-to-br from-amber-300 to-amber-500 text-black px-4 py-2 text-xs font-bold shadow-lg shadow-amber-500/20 hover:scale-[1.02] active:scale-[0.98] transition">
+            {isEl ? "Γίνε μέλος" : "Become a member"}
+          </a>
+        </div>
+      )}
+      <div id="saveBanner" class="hidden mb-5 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-2.5 text-sm text-emerald-200">{T.saved}</div>
+      <div id="saveError" class="hidden mb-5 rounded-xl border border-red-400/30 bg-red-400/10 px-4 py-2.5 text-sm text-red-200"></div>
+
+      <form id="profileForm" class="space-y-6">
+        <!-- Basics -->
+        <section class="rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur p-5 sm:p-6">
+          <h2 class="font-heading text-lg font-bold mb-4 text-amber-100">{T.basics}</h2>
+          <div class="grid sm:grid-cols-2 gap-4">
+            <label class="block sm:col-span-2">
+              <span class="text-xs text-white/60 mb-1.5 block">{T.name}</span>
+              <input name="full_name" type="text" maxlength="120" value={p.full_name ?? ""} class="w-full rounded-xl bg-white/5 border border-white/15 px-4 py-2.5 text-sm placeholder:text-white/30 focus:outline-none focus:border-sky-400/60" />
+            </label>
+            <label class="block sm:col-span-2">
+              <span class="text-xs text-white/60 mb-1.5 block">{T.bio}</span>
+              <textarea name="bio" rows="3" maxlength="500" class="w-full resize-none rounded-xl bg-white/5 border border-white/15 px-4 py-2.5 text-sm placeholder:text-white/30 focus:outline-none focus:border-sky-400/60">{p.bio ?? ""}</textarea>
+            </label>
+            <div class="sm:col-span-2">
+              <span class="text-xs text-white/60 mb-1.5 block">{isEl ? "Φωτογραφία προφίλ" : "Profile photo"}</span>
+              <div class="flex items-center gap-4">
+                <div id="avatarBig" class="shrink-0">
+                  {p.avatar_url ? (
+                    <img src={p.avatar_url} alt="" class="h-20 w-20 rounded-full object-cover ring-2 ring-white/15" />
+                  ) : (
+                    <div class="h-20 w-20 rounded-full bg-gradient-to-br from-sky-400 to-fuchsia-500 flex items-center justify-center text-2xl font-bold ring-2 ring-white/15">{ini}</div>
+                  )}
+                </div>
+                <div class="flex-1 flex flex-wrap gap-2">
+                  <label class="inline-flex items-center gap-2 cursor-pointer rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 px-4 py-2 text-xs font-semibold transition">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    <span id="uploadLabel">{isEl ? "Ανέβασε εικόνα" : "Upload photo"}</span>
+                    <input id="avatarFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden" />
+                  </label>
+                  {p.avatar_url && (
+                    <button type="button" id="removeAvatar" class="inline-flex items-center gap-1.5 rounded-xl border border-red-400/30 bg-red-400/10 hover:bg-red-400/20 px-3 py-2 text-xs font-semibold text-red-200">
+                      {isEl ? "Αφαίρεση" : "Remove"}
+                    </button>
+                  )}
+                  <p class="w-full text-[11px] text-white/40">{isEl ? "JPG/PNG/WebP · max 3MB" : "JPG/PNG/WebP · max 3MB"}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Personal -->
+        <section class="rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur p-5 sm:p-6">
+          <h2 class="font-heading text-lg font-bold mb-4 text-amber-100">{T.personal}</h2>
+          <div class="grid sm:grid-cols-2 gap-4">
+            <label class="block">
+              <span class="text-xs text-white/60 mb-1.5 block">{T.dob}</span>
+              <input name="birthday" type="date" value={p.birthday ?? ""} class="w-full rounded-xl bg-white/5 border border-white/15 px-4 py-2.5 text-sm placeholder:text-white/30 focus:outline-none focus:border-sky-400/60 [color-scheme:dark]" />
+            </label>
+            <label class="block">
+              <span class="text-xs text-white/60 mb-1.5 block">{T.gender}</span>
+              <select name="gender" class="w-full rounded-xl bg-white/5 border border-white/15 px-4 py-2.5 text-sm focus:outline-none focus:border-sky-400/60">
+                {T.genderOpts.map(([v, l]) => (
+                  <option value={v} selected={(p.gender ?? "") === v}>{l}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </section>
+
+        <!-- Contact / Location -->
+        <section class="rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur p-5 sm:p-6">
+          <h2 class="font-heading text-lg font-bold mb-4 text-amber-100">{T.contact}</h2>
+          <div class="grid sm:grid-cols-2 gap-4">
+            <label class="block sm:col-span-2">
+              <span class="text-xs text-white/60 mb-1.5 block">{T.phone}</span>
+              <input name="phone" type="tel" maxlength="40" value={p.phone ?? ""} placeholder="+30 …" class="w-full rounded-xl bg-white/5 border border-white/15 px-4 py-2.5 text-sm placeholder:text-white/30 focus:outline-none focus:border-sky-400/60" />
+            </label>
+            <label class="block">
+              <span class="text-xs text-white/60 mb-1.5 block">{T.country}</span>
+              <input name="country" type="text" maxlength="60" value={p.country ?? ""} class="w-full rounded-xl bg-white/5 border border-white/15 px-4 py-2.5 text-sm placeholder:text-white/30 focus:outline-none focus:border-sky-400/60" />
+            </label>
+            <label class="block">
+              <span class="text-xs text-white/60 mb-1.5 block">{T.city}</span>
+              <input name="city" type="text" maxlength="80" value={p.city ?? ""} class="w-full rounded-xl bg-white/5 border border-white/15 px-4 py-2.5 text-sm placeholder:text-white/30 focus:outline-none focus:border-sky-400/60" />
+            </label>
+            <label class="block sm:col-span-2">
+              <span class="text-xs text-white/60 mb-1.5 block">{T.address}</span>
+              <input name="address" type="text" maxlength="200" value={p.address ?? ""} class="w-full rounded-xl bg-white/5 border border-white/15 px-4 py-2.5 text-sm placeholder:text-white/30 focus:outline-none focus:border-sky-400/60" />
+            </label>
+            <label class="block">
+              <span class="text-xs text-white/60 mb-1.5 block">{T.postal}</span>
+              <input name="postal_code" type="text" maxlength="20" value={p.postal_code ?? ""} class="w-full rounded-xl bg-white/5 border border-white/15 px-4 py-2.5 text-sm placeholder:text-white/30 focus:outline-none focus:border-sky-400/60" />
+            </label>
+          </div>
+        </section>
+
+        <!-- Shareable digital card -->
+        <section class="rounded-2xl border border-amber-400/25 bg-gradient-to-br from-amber-500/10 via-fuchsia-500/5 to-sky-500/5 backdrop-blur p-5 sm:p-6">
+          <div class="flex items-start justify-between gap-3 flex-wrap mb-4">
+            <div>
+              <h2 class="font-heading text-lg font-bold text-amber-100 flex items-center gap-2">💳 {isEl ? "Η ψηφιακή σου κάρτα" : "Your digital card"}</h2>
+              <p class="text-xs text-white/55 mt-0.5">{isEl ? "Μοιράσου όλα τα social σου με μία σάρωση ή ένα link." : "Share every social in one scan or tap."}</p>
+            </div>
+            <a id="viewCardLink" target="_blank" href={`/u/${cardSlug}`} class="shrink-0 rounded-xl border border-amber-400/30 bg-amber-400/10 hover:bg-amber-400/20 text-amber-200 px-3 py-1.5 text-xs font-semibold">{isEl ? "Άνοιγμα ↗" : "Open ↗"}</a>
+          </div>
+
+          <div class="grid sm:grid-cols-[1fr_auto] gap-5 items-center">
+            <div class="space-y-3">
+              <label class="block">
+                <span class="text-xs text-white/60 mb-1.5 block">{isEl ? "Όνομα χρήστη (handle)" : "Username (handle)"}</span>
+                <div class="flex items-center rounded-xl bg-white/5 border border-white/15 focus-within:border-amber-400/60 overflow-hidden">
+                  <span class="pl-3 pr-1 text-sm text-white/45 select-none">sallysbar.gr/u/</span>
+                  <input id="handleInput" name="handle" type="text" maxlength="30" value={p.handle ?? ""} placeholder={p.id?.slice(0, 8)} pattern="[a-z0-9_.\-]{3,30}"
+                    class="flex-1 bg-transparent px-1 py-2.5 text-sm placeholder:text-white/30 focus:outline-none" />
+                </div>
+                <span class="text-[11px] text-white/40 mt-1 block">{isEl ? "3–30 χαρακτήρες · a–z, 0–9, . _ -" : "3–30 chars · a–z, 0–9, . _ -"}</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input name="card_public" type="checkbox" checked={p.card_public !== false} class="h-4 w-4 rounded border-white/30 bg-white/5 text-amber-400 focus:ring-amber-400/50" />
+                <span class="text-xs text-white/75">{isEl ? "Η κάρτα είναι δημόσια (όποιος έχει το link τη βλέπει)" : "Card is public (anyone with the link can view)"}</span>
+              </label>
+              <div class="flex flex-wrap gap-2 pt-1">
+                <button type="button" id="copyCardLink" class="rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 px-3 py-2 text-xs font-semibold">📋 {isEl ? "Αντιγραφή link" : "Copy link"}</button>
+                <button type="button" id="shareCardLink" class="rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 px-3 py-2 text-xs font-semibold">📤 {isEl ? "Κοινοποίηση" : "Share"}</button>
+                <button type="button" id="downloadQr" class="rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 px-3 py-2 text-xs font-semibold">⬇ QR (PNG)</button>
+              </div>
+              <p class="text-[11px] text-amber-200/70 pt-1">⭐ {isEl ? "Κάθε κοινοποιημένη κάρτα φέρει «Powered by Sally's Bar» — απλώνεις το brand και μοιράζεσαι πόντους από referrals." : "Every shared card says \"Powered by Sally's Bar\" — spreads the brand and earns you referral points."}</p>
+
+              <!-- Per-field visibility -->
+              <details class="mt-4 rounded-xl bg-white/[0.03] border border-white/10 p-3">
+                <summary class="cursor-pointer text-xs font-semibold text-white/80 select-none">⚙️ {isEl ? "Τι να φαίνεται στην κάρτα" : "What to show on the card"}</summary>
+                <div class="mt-3 grid grid-cols-2 gap-2 text-xs">
+                  <label class="flex items-center gap-2 cursor-pointer"><input name="vis_avatar"     type="checkbox" checked={visOn("avatar")}     class="h-3.5 w-3.5 accent-amber-400" /><span>{isEl ? "Φωτογραφία" : "Avatar"}</span></label>
+                  <label class="flex items-center gap-2 cursor-pointer"><input name="vis_role_badge" type="checkbox" checked={visOn("role_badge")} class="h-3.5 w-3.5 accent-amber-400" /><span>{isEl ? "Ρόλος (badge)" : "Role badge"}</span></label>
+                  <label class="flex items-center gap-2 cursor-pointer"><input name="vis_bio"        type="checkbox" checked={visOn("bio")}        class="h-3.5 w-3.5 accent-amber-400" /><span>{isEl ? "Βιογραφικό" : "Bio"}</span></label>
+                  <label class="flex items-center gap-2 cursor-pointer"><input name="vis_location"   type="checkbox" checked={visOn("location")}   class="h-3.5 w-3.5 accent-amber-400" /><span>{isEl ? "Τοποθεσία" : "Location"}</span></label>
+                  <label class="flex items-center gap-2 cursor-pointer col-span-2"><input name="vis_phone"  type="checkbox" checked={vis.phone === true} class="h-3.5 w-3.5 accent-amber-400" /><span>{isEl ? "Τηλέφωνο (με κουμπί κλήσης)" : "Phone (with call button)"}</span></label>
+                </div>
+                <p class="mt-2 text-[10px] text-white/40">{isEl ? "Κάθε social έχει ξεχωριστό διακόπτη στη λίστα πιο κάτω." : "Each social has its own toggle in the list below."}</p>
+              </details>
+            </div>
+            <div class="shrink-0 rounded-2xl bg-white p-2 mx-auto">
+              <img id="settingsQr" width="176" height="176" style="width:176px;height:176px;display:block;" alt="QR" src={`https://api.qrserver.com/v1/create-qr-code/?size=256x256&margin=4&qzone=1&bgcolor=ffffff&color=0a0a0f&data=${encodeURIComponent(`${Astro.url.origin}/u/${cardSlug}`)}`} />
+            </div>
+          </div>
+        </section>
+
+        <!-- Socials -->
+        <section class="rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur p-5 sm:p-6">
+          <h2 class="font-heading text-lg font-bold mb-4 text-amber-100">{T.socialsH}</h2>
+          <div class="grid sm:grid-cols-2 gap-3">
+            {socialFields.map(s => (
+              <label class="flex items-center gap-2 rounded-xl bg-white/5 border border-white/15 focus-within:border-sky-400/60 px-3 py-2.5 transition">
+                <span class="shrink-0 h-7 w-7 rounded-lg bg-white/5 flex items-center justify-center text-white/70">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" set:html={s.icon}></svg>
+                </span>
+                <div class="flex-1 min-w-0">
+                  <span class="text-[10px] uppercase tracking-wider text-white/50 block leading-none mb-0.5">{s.label}</span>
+                  <input name={`social_${s.key}`} type="url" maxlength="300" value={socials[s.key] ?? ""} placeholder={s.ph} class="w-full bg-transparent text-sm placeholder:text-white/25 focus:outline-none" />
+                </div>
+                <label class="shrink-0 flex items-center gap-1 cursor-pointer" title={isEl ? "Εμφάνιση στην κάρτα" : "Show on card"}>
+                  <input name={`viss_${s.key}`} type="checkbox" checked={socialVis[s.key] !== false} class="h-3.5 w-3.5 accent-amber-400" />
+                  <span class="text-[10px] text-white/45 uppercase">{isEl ? "Card" : "Card"}</span>
+                </label>
+              </label>
+            ))}
+          </div>
+        </section>
+
+        <!-- Prefs -->
+        <section class="rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur p-5 sm:p-6">
+          <h2 class="font-heading text-lg font-bold mb-4 text-amber-100">{T.prefs}</h2>
+          <label class="flex items-center gap-3 cursor-pointer">
+            <input name="marketing_consent" type="checkbox" checked={!!p.marketing_consent} class="h-4 w-4 rounded border-white/30 bg-white/5 text-sky-400 focus:ring-sky-400/50" />
+            <span class="text-sm text-white/80">{T.marketing}</span>
+          </label>
+        </section>
+
+        <!-- Save button (sticky) -->
+        <div class="sticky bottom-3 z-20 flex justify-end">
+          <button type="submit" id="saveBtn"
+            class="rounded-xl bg-gradient-to-br from-amber-300 to-amber-500 text-black font-bold px-6 py-3 text-sm shadow-lg shadow-amber-500/25 hover:scale-[1.02] active:scale-[0.98] transition disabled:opacity-60">
+            {T.save}
+          </button>
+        </div>
+      </form>
+
+      <!-- Read-only meta -->
+      <section class="mt-8 rounded-2xl border border-white/10 bg-white/[0.02] p-5 text-sm text-white/70 space-y-1.5">
+        <div><span class="text-white/40">{T.email}:</span> <span class="text-white/85">{email}</span></div>
+        {p.created_at && <div><span class="text-white/40">{T.memberSince}:</span> <span class="text-white/85">{new Date(p.created_at).toLocaleDateString(isEl ? "el-GR" : "en-GB")}</span></div>}
+      </section>
+
+      <!-- Danger zone -->
+      <section class="mt-6 rounded-2xl border border-red-400/20 bg-red-400/[0.04] p-5 space-y-3">
+        <h3 class="text-sm font-bold uppercase tracking-wider text-red-300/80">{T.danger}</h3>
+        <div class="flex flex-wrap gap-2">
+          <a href={isEl ? "/el/forgot-password" : "/forgot-password"} class="inline-flex items-center rounded-xl border border-white/20 bg-white/5 hover:bg-white/10 px-4 py-2 text-xs text-white/80">{T.forgot}</a>
+          <a href="/api/auth/logout" class="inline-flex items-center rounded-xl border border-white/20 bg-white/5 hover:bg-white/10 px-4 py-2 text-xs text-white/80">{T.logout}</a>
+          <a href="mailto:admin@sallysbar.gr?subject=Delete%20my%20account" class="inline-flex items-center rounded-xl border border-red-400/30 bg-red-400/10 hover:bg-red-400/20 px-4 py-2 text-xs text-red-200">{T.deleteAcc}</a>
+        </div>
+        <p class="text-[11px] text-white/40">{T.deleteHint}</p>
+      </section>
+    </main>
+    <Footer />
+
+    <script is:inline define:vars={{ profileId: p.id, initialHandle: p.handle ?? "", fallbackHandle: (p.id ?? "").slice(0, 8), isEl, fullName: p.full_name ?? "" }}>
+      (function () {
+        const form = document.getElementById("profileForm");
+        const btn = document.getElementById("saveBtn");
+        const ok = document.getElementById("saveBanner");
+        const err = document.getElementById("saveError");
+        const avatarFile = document.getElementById("avatarFile");
+        const uploadLabel = document.getElementById("uploadLabel");
+        const avatarBig = document.getElementById("avatarBig");
+        const heroPreview = document.getElementById("avatarPreview");
+        const removeAvatar = document.getElementById("removeAvatar");
+        const handleInput = document.getElementById("handleInput");
+        const viewCardLink = document.getElementById("viewCardLink");
+        const copyBtn = document.getElementById("copyCardLink");
+        const shareBtn = document.getElementById("shareCardLink");
+        const dlQrBtn = document.getElementById("downloadQr");
+        const qrCanvas = document.getElementById("settingsQr");
+        if (!form || !btn) return;
+
+        function cardUrl(h) {
+          const slug = (h && /^[a-z0-9_.\-]{3,30}$/i.test(h)) ? h : fallbackHandle;
+          return location.origin + "/u/" + slug;
+        }
+
+        function drawQr(url) {
+          if (!qrCanvas) return;
+          qrCanvas.src = `https://api.qrserver.com/v1/create-qr-code/?size=256x256&margin=4&qzone=1&bgcolor=ffffff&color=0a0a0f&data=${encodeURIComponent(url)}`;
+        }
+        drawQr(cardUrl(initialHandle));
+
+        function updateCardLinks() {
+          const h = handleInput ? handleInput.value.trim().toLowerCase() : initialHandle;
+          const url = cardUrl(h);
+          if (viewCardLink) viewCardLink.href = "/u/" + ((h && /^[a-z0-9_.\-]{3,30}$/i.test(h)) ? h : fallbackHandle);
+          drawQr(url);
+        }
+        handleInput?.addEventListener("input", updateCardLinks);
+
+        copyBtn?.addEventListener("click", async () => {
+          try {
+            await navigator.clipboard.writeText(cardUrl(handleInput?.value ?? initialHandle));
+            copyBtn.textContent = "✓ " + (isEl ? "Αντιγράφηκε" : "Copied");
+            setTimeout(() => copyBtn.textContent = "📋 " + (isEl ? "Αντιγραφή link" : "Copy link"), 1500);
+          } catch {}
+        });
+        shareBtn?.addEventListener("click", async () => {
+          const url = cardUrl(handleInput?.value ?? initialHandle);
+          const data = { title: fullName + " — Sally's Bar", text: (isEl ? "Η κάρτα μου:" : "My card:"), url };
+          if (navigator.share) { try { await navigator.share(data); } catch {} }
+          else copyBtn?.click();
+        });
+        dlQrBtn?.addEventListener("click", () => {
+          if (!qrCanvas) return;
+          const a = document.createElement("a");
+          a.download = "sallysbar-card-" + (handleInput?.value || fallbackHandle) + ".png";
+          a.href = qrCanvas.src;
+          a.target = "_blank";
+          a.click();
+        });
+
+        // ── Avatar upload ──
+        avatarFile?.addEventListener("change", async () => {
+          const f = avatarFile.files && avatarFile.files[0];
+          if (!f) return;
+          if (f.size > 3 * 1024 * 1024) {
+            err.textContent = "⚠️ " + (isEl ? "Μέγιστο 3MB" : "Max 3MB");
+            err.classList.remove("hidden");
+            return;
+          }
+          const orig = uploadLabel.textContent;
+          uploadLabel.textContent = isEl ? "Ανεβαίνει…" : "Uploading…";
+          const fd = new FormData();
+          fd.append("file", f);
+          try {
+            const r = await fetch("/api/profile/avatar", { method: "POST", body: fd });
+            const j = await r.json();
+            if (!r.ok) throw new Error(j.error || "upload failed");
+            const img = `<img src="${j.url}" alt="" class="h-20 w-20 rounded-full object-cover ring-2 ring-white/15" />`;
+            if (avatarBig) avatarBig.innerHTML = img;
+            if (heroPreview) heroPreview.outerHTML = `<img id="avatarPreview" src="${j.url}" alt="" class="h-20 w-20 rounded-full object-cover ring-2 ring-white/15" />`;
+            ok.textContent = "✓ " + (isEl ? "Η φωτογραφία ενημερώθηκε" : "Photo updated");
+            ok.classList.remove("hidden");
+            setTimeout(() => ok.classList.add("hidden"), 2500);
+          } catch (ex) {
+            err.textContent = "⚠️ " + (ex.message || "upload failed");
+            err.classList.remove("hidden");
+          } finally {
+            uploadLabel.textContent = orig;
+            avatarFile.value = "";
+          }
+        });
+
+        removeAvatar?.addEventListener("click", async () => {
+          if (!confirm(isEl ? "Αφαίρεση φωτογραφίας;" : "Remove photo?")) return;
+          try {
+            await fetch("/api/profile/avatar", { method: "DELETE" });
+            location.reload();
+          } catch {}
+        });
+
+        form.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          btn.disabled = true;
+          const orig = btn.textContent;
+          btn.textContent = "⏳";
+          ok.classList.add("hidden");
+          err.classList.add("hidden");
+
+          const fd = new FormData(form);
+          const socials = {};
+          const payload = { socials };
+          const vSocials = {};
+          for (const [k, v] of fd.entries()) {
+            if (k.startsWith("social_")) socials[k.slice(7)] = String(v);
+            else if (k.startsWith("viss_")) { /* handled below via fd.has */ }
+            else if (k.startsWith("vis_")) { /* same */ }
+            else payload[k] = v;
+          }
+          ["instagram","facebook","tiktok","x","linkedin","youtube","website"].forEach(k => {
+            vSocials[k] = fd.has("viss_" + k);
+          });
+          payload.card_visibility = {
+            avatar:     fd.has("vis_avatar"),
+            bio:        fd.has("vis_bio"),
+            location:   fd.has("vis_location"),
+            phone:      fd.has("vis_phone"),
+            role_badge: fd.has("vis_role_badge"),
+            socials: vSocials,
+          };
+          payload.marketing_consent = fd.has("marketing_consent");
+          payload.card_public       = fd.has("card_public");
+
+          try {
+            const r = await fetch("/api/profile/update", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            });
+            const j = await r.json();
+            if (!r.ok) throw new Error(j.error || "save failed");
+            ok.classList.remove("hidden");
+            setTimeout(() => ok.classList.add("hidden"), 3000);
+          } catch (ex) {
+            err.textContent = "⚠️ " + (ex.message || "Save failed");
+            err.classList.remove("hidden");
+          } finally {
+            btn.disabled = false;
+            btn.textContent = orig;
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>

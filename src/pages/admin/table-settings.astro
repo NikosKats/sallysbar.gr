@@ -1,0 +1,104 @@
+---
+import "../../styles/global.css";
+import Header from "../../components/Header.astro";
+import AdminNav from "../../components/AdminNav.astro";
+import { supabaseAdmin } from "../../lib/supabase";
+import { getTablePageSettings } from "../../lib/tablePageSettings";
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+
+// Handle POST submission
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  const update = {
+    menu_tile_enabled:  form.get("menu_tile_enabled")  === "on",
+    wheel_tile_enabled: form.get("wheel_tile_enabled") === "on",
+    card_tile_enabled:  form.get("card_tile_enabled")  === "on",
+    call_order_enabled: form.get("call_order_enabled") === "on",
+    call_pay_enabled:   form.get("call_pay_enabled")   === "on",
+    chatbot_enabled:    form.get("chatbot_enabled")    === "on",
+    updated_at: new Date().toISOString(),
+  };
+  await supabaseAdmin.from("table_page_settings").update(update).eq("id", 1);
+  return Astro.redirect((isEl ? "/el" : "") + "/admin/table-settings?saved=1");
+}
+
+const s = await getTablePageSettings();
+const saved = new URL(Astro.request.url).searchParams.has("saved");
+
+const rows = [
+  { key: "menu_tile_enabled",  icon: "📜", title: isEl ? "Πλακίδιο «Μενού»" : "\"See the menu\" tile",
+    sub: isEl ? "Η πρώτη κάρτα στο /table — οδηγεί στο μενού." : "First tile on /table — jumps to the menu.", val: s.menu_tile_enabled },
+  { key: "wheel_tile_enabled", icon: "🎡", title: isEl ? "Πλακίδιο «Γύρνα τη ρόδα»" : "\"Spin the wheel\" tile",
+    sub: isEl ? "Εμφανίζει την ημερήσια ρόδα τύχης στον πελάτη." : "Shows the daily wheel of luck section.", val: s.wheel_tile_enabled },
+  { key: "card_tile_enabled",  icon: "💳", title: isEl ? "Πλακίδιο «Κάρτα Μέλους»" : "\"Get the member card\" tile",
+    sub: isEl ? "Προωθητική κάρτα για εγγραφή loyalty." : "CTA tile driving signup to /membership.", val: s.card_tile_enabled },
+  { key: "call_order_enabled", icon: "🧑‍🍳", title: isEl ? "Κουμπί «Κάλεσε σερβιτόρο για παραγγελία»" : "\"Call Waiter to Order\" button",
+    sub: isEl ? "Κάτω κουμπί — στέλνει ειδοποίηση στο staff." : "Bottom button — notifies staff to take an order.", val: s.call_order_enabled },
+  { key: "call_pay_enabled",   icon: "💶", title: isEl ? "Κουμπί «Κάλεσε σερβιτόρο για πληρωμή»" : "\"Call Waiter to Pay\" button",
+    sub: isEl ? "Ανοίγει sheet κάρτα/μετρητά και ειδοποιεί το staff." : "Opens the card/cash sheet and notifies staff.", val: s.call_pay_enabled },
+  { key: "chatbot_enabled",    icon: "💬", title: isEl ? "AI Chatbot μενού" : "Menu AI chatbot",
+    sub: isEl ? "Το floating 💬 κουμπί + το chat panel." : "The floating 💬 button and the chat panel.", val: s.chatbot_enabled },
+];
+
+const T = {
+  title:  isEl ? "Ρυθμίσεις σελίδας τραπεζιού" : "Table page settings",
+  kicker: isEl ? "Πίνακας Διαχείρισης" : "Admin panel",
+  sub:    isEl ? "Ενεργοποίηση / απενεργοποίηση των λειτουργιών που βλέπει ο πελάτης στο /table/:n." : "Toggle features the customer sees on /table/:n.",
+  save:   isEl ? "💾 Αποθήκευση αλλαγών" : "💾 Save changes",
+  saved:  isEl ? "✓ Αποθηκεύτηκε" : "✓ Saved",
+  preview: isEl ? "🔗 Προεπισκόπηση /table/1" : "🔗 Preview /table/1",
+};
+---
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{T.title} — Sally's Bar Admin</title>
+    <meta name="robots" content="noindex,nofollow" />
+  </head>
+  <body class="min-h-screen bg-[#0a0a0f] text-white font-body antialiased">
+    <Header />
+    <div class="h-20"></div>
+    <AdminNav active="table-settings" />
+
+    <main class="mx-auto max-w-3xl px-5 py-10">
+      <div class="mb-8 flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <p class="text-xs uppercase tracking-[0.28em] text-amber-200/80 mb-2">{T.kicker}</p>
+          <h1 class="font-heading text-4xl font-bold">{T.title}</h1>
+          <p class="mt-2 text-sm text-white/60 max-w-xl">{T.sub}</p>
+        </div>
+        <a href={(isEl ? "/el" : "") + "/table/1"} target="_blank" class="shrink-0 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 px-4 py-2 text-xs font-semibold">{T.preview}</a>
+      </div>
+
+      {saved && (
+        <div class="mb-5 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-2.5 text-sm text-emerald-200">{T.saved}</div>
+      )}
+
+      <form method="POST" class="space-y-3">
+        {rows.map(r => (
+          <label class="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.05] transition p-4 cursor-pointer">
+            <div class="shrink-0 h-12 w-12 rounded-xl bg-amber-400/10 grid place-items-center text-2xl">{r.icon}</div>
+            <div class="flex-1 min-w-0">
+              <p class="font-semibold text-white">{r.title}</p>
+              <p class="text-xs text-white/55 mt-0.5">{r.sub}</p>
+            </div>
+            <input type="checkbox" name={r.key} checked={r.val} class="sr-only peer" />
+            <span class="shrink-0 relative inline-flex h-6 w-11 rounded-full bg-white/15 peer-checked:bg-emerald-500 transition">
+              <span class="absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white transition-transform peer-checked:translate-x-5"></span>
+            </span>
+          </label>
+        ))}
+
+        <div class="sticky bottom-3 z-20 flex justify-end pt-3">
+          <button type="submit"
+            class="rounded-xl bg-gradient-to-br from-amber-300 to-amber-500 text-black font-bold px-6 py-3 text-sm shadow-lg shadow-amber-500/25 hover:scale-[1.02] active:scale-[0.98] transition">
+            {T.save}
+          </button>
+        </div>
+      </form>
+    </main>
+  </body>
+</html>

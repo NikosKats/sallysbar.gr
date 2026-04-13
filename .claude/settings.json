@@ -49,7 +49,12 @@
       "Bash(sips -s format png --resampleHeightWidth 192 192 icon-admin.svg    --out icon-admin-192.png)",
       "Bash(sips -s format png --resampleHeightWidth 512 512 icon-staff.svg    --out icon-staff-512.png)",
       "Bash(sips -s format png --resampleHeightWidth 192 192 icon-staff.svg    --out icon-staff-192.png)",
-      "Bash(curl -s \"https://sallysbar.gr/table/1?v=$\\(date +%s\\)\")"
+      "Bash(curl -s \"https://sallysbar.gr/table/1?v=$\\(date +%s\\)\")",
+      "Bash(curl -sI \"https://sallysbar.gr/table/1?v=$\\(date +%s\\)\")",
+      "Bash(awk 'NR>=820 && NR<=830 {print NR\": \"$0}' /Users/nikolaoskatsilidis/Desktop/sallysbar.gr/src/pages/table/\\\\[id\\\\].astro)",
+      "Bash(grep -rn \"realtime\\\\|createClient\" /Users/nikolaoskatsilidis/Desktop/sallysbar.gr/src/lib/supabase*)",
+      "Bash(grep -n \"</div>\\\\s*$\\\\|chatInput\\\\|chatPanel\" /Users/nikolaoskatsilidis/Desktop/sallysbar.gr/src/pages/table/\\\\[id\\\\].astro)",
+      "Bash(awk 'NR>=647 && NR<=851 { for\\(i=1;i<=length\\($0\\);i++\\){c=substr\\($0,i,1\\); if\\(c==\"{\"\\)o++; else if\\(c==\"}\"\\)x++} } END{print \"open=\"o\" close=\"x}' /Users/nikolaoskatsilidis/Desktop/sallysbar.gr/src/pages/table/\\\\[id\\\\].astro)"
     ],
     "additionalDirectories": [
       "/Users/nikolaoskatsilidis/Desktop/sallysbar.gr/public/photos",

@@ -1,0 +1,175 @@
+---
+import { withLangPrefix } from "../i18n";
+
+interface Props {
+  active: string;
+  role: "admin" | "employee";
+  unread?: number;
+}
+
+const { active, role, unread = 0 } = Astro.props;
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+
+type Tint = "sky" | "emerald" | "fuchsia" | "amber";
+const tints: Record<Tint, { active: string; dot: string; hover: string; iconBg: string }> = {
+  sky:      { active: "bg-sky-400/15 text-sky-200 border-l-2 border-sky-400",        dot: "text-sky-300",      hover: "hover:text-sky-200",      iconBg: "bg-sky-400/10" },
+  emerald:  { active: "bg-emerald-400/15 text-emerald-200 border-l-2 border-emerald-400", dot: "text-emerald-300", hover: "hover:text-emerald-200", iconBg: "bg-emerald-400/10" },
+  fuchsia:  { active: "bg-fuchsia-400/15 text-fuchsia-200 border-l-2 border-fuchsia-400", dot: "text-fuchsia-300", hover: "hover:text-fuchsia-200", iconBg: "bg-fuchsia-400/10" },
+  amber:    { active: "bg-amber-400/15 text-amber-200 border-l-2 border-amber-400", dot: "text-amber-300", hover: "hover:text-amber-200", iconBg: "bg-amber-400/10" },
+};
+
+type Group = { title: string; items: Array<{ key: string; label: string; href: string; icon: string; tint: Tint; badge?: number }> };
+
+const groups: Group[] = [
+  {
+    title: isEl ? "Λειτουργία" : "Operations",
+    items: [
+      { key: "staff",       tint: "sky",     label: isEl ? "Ενεργές Παραγγελίες" : "Active Orders", href: withLangPrefix(lang, "/staff"),       icon: `<path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><rect x="9" y="3" width="6" height="4" rx="1" stroke="currentColor" stroke-width="1.6"/>` },
+      { key: "staff-order", tint: "emerald", label: isEl ? "Νέα Παραγγελία"     : "New Order",      href: withLangPrefix(lang, "/staff/order"), icon: `<circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M12 8v8M8 12h8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>` },
+    ],
+  },
+  {
+    title: isEl ? "Επικοινωνία" : "Communication",
+    items: [
+      { key: "staff-chat",  tint: "fuchsia", label: isEl ? "Ομάδα (Chat)"       : "Team Chat",      href: withLangPrefix(lang, "/staff/chat"),  icon: `<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>`, badge: unread },
+    ],
+  },
+];
+const items = groups.flatMap(g => g.items);
+
+const adminLink = role === "admin"
+  ? { label: isEl ? "Πίνακας Διαχείρισης" : "Admin Panel", href: withLangPrefix(lang, "/admin") }
+  : null;
+---
+
+<style is:global>
+  html:has(.staff-nav-root) header.fixed.top-0.inset-x-0,
+  html:has(.staff-nav-root) header.fixed.top-0.inset-x-0 + div.h-20 { display: none !important; }
+  @media (min-width: 1024px) {
+    html:has(.staff-nav-root) body { padding-left: 240px; }
+  }
+</style>
+
+<div class="staff-nav-root">
+  <!-- Mobile top bar -->
+  <div class="lg:hidden sticky top-0 z-40 border-b border-sky-400/20 bg-[#0b0b10]/95 backdrop-blur-md">
+    <div class="flex items-center gap-3 px-4 py-3">
+      <button id="staffMenuBtn" type="button" aria-label="Open menu" class="shrink-0 rounded-lg border border-white/10 bg-white/5 p-2 text-white/80 hover:bg-white/10 transition">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+      <div class="min-w-0 flex-1">
+        <p class="text-[10px] uppercase tracking-[0.2em] text-sky-300/70">{role === "admin" ? (isEl ? "Διαχειριστής" : "Admin") : (isEl ? "Σερβιτόρος" : "Staff")}</p>
+        <p class="text-sm font-semibold text-sky-100 truncate">{items.find(i => i.key === active)?.label ?? "Sally's Staff"}</p>
+      </div>
+      {unread > 0 && (
+        <span class="shrink-0 min-w-[22px] h-[22px] px-1.5 rounded-full bg-rose-500 text-white text-[11px] font-bold flex items-center justify-center">{unread > 99 ? "99+" : unread}</span>
+      )}
+    </div>
+  </div>
+
+  <!-- Desktop sidebar -->
+  <aside class="lg:fixed lg:top-0 lg:bottom-0 lg:left-0 lg:w-[240px] lg:border-r lg:border-white/10 lg:bg-[#0e0e16]/95 lg:backdrop-blur-md lg:z-40 lg:flex lg:flex-col hidden">
+    <div class="px-5 py-5 border-b border-white/10 flex items-center gap-3">
+      <div class="h-9 w-9 rounded-xl bg-gradient-to-br from-sky-300 to-sky-500 text-black grid place-items-center font-bold shadow-lg shadow-sky-500/20">S</div>
+      <div class="leading-tight min-w-0">
+        <p class="text-[10px] uppercase tracking-[0.2em] text-sky-300/70">{role === "admin" ? (isEl ? "Διαχειριστής" : "Admin") : (isEl ? "Σερβιτόρος" : "Staff")}</p>
+        <p class="text-sm font-semibold text-white truncate">Sally's Bar</p>
+      </div>
+    </div>
+    <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-5">
+      {groups.map(g => (
+        <div>
+          <p class="px-2 mb-1.5 text-[10px] uppercase tracking-[0.18em] text-white/40 font-semibold">{g.title}</p>
+          <div class="space-y-0.5">
+            {g.items.map(i => {
+              const isActive = i.key === active;
+              const tint = tints[i.tint];
+              return (
+                <a href={i.href}
+                  class={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition ${isActive ? tint.active + " font-medium" : "text-white/70 hover:bg-white/5 " + tint.hover}`}>
+                  <span class={`shrink-0 w-7 h-7 inline-flex items-center justify-center rounded-md ${tint.iconBg} ${isActive ? tint.dot : "text-white/60"}`}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" set:html={i.icon}></svg>
+                  </span>
+                  <span class="flex-1 truncate">{i.label}</span>
+                  {i.badge && i.badge > 0 && (
+                    <span class="min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center">{i.badge > 99 ? "99+" : i.badge}</span>
+                  )}
+                </a>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </nav>
+    {adminLink && (
+      <div class="border-t border-white/10 p-3">
+        <a href={adminLink.href} class="flex items-center justify-center gap-2 w-full rounded-xl bg-gradient-to-br from-amber-300 to-amber-500 text-black px-3 py-2.5 text-sm font-semibold shadow-lg shadow-amber-500/10 hover:scale-[1.01] active:scale-[0.99] transition">
+          👑 {adminLink.label}
+        </a>
+      </div>
+    )}
+  </aside>
+
+  <!-- Mobile drawer -->
+  <div id="staffDrawer" class="lg:hidden fixed inset-0 z-[60] hidden">
+    <div id="staffDrawerBackdrop" class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+    <aside class="absolute left-0 top-0 bottom-0 w-[80vw] max-w-[300px] bg-[#0e0e16] border-r border-white/10 flex flex-col">
+      <div class="px-5 py-5 border-b border-white/10 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="h-9 w-9 rounded-xl bg-gradient-to-br from-sky-300 to-sky-500 text-black grid place-items-center font-bold">S</div>
+          <p class="text-sm font-semibold text-white">Sally's Bar</p>
+        </div>
+        <button id="staffDrawerClose" aria-label="Close" class="text-white/50 hover:text-white text-3xl leading-none -mt-1">×</button>
+      </div>
+      <nav class="flex-1 overflow-y-auto px-3 py-4 space-y-5">
+        {groups.map(g => (
+          <div>
+            <p class="px-2 mb-1.5 text-[10px] uppercase tracking-[0.18em] text-white/40 font-semibold">{g.title}</p>
+            <div class="space-y-0.5">
+              {g.items.map(i => {
+                const isActive = i.key === active;
+                const tint = tints[i.tint];
+                return (
+                  <a href={i.href}
+                    class={`relative flex items-center gap-3 px-3 py-3 rounded-lg text-sm transition ${isActive ? tint.active + " font-medium" : "text-white/75 hover:bg-white/5 " + tint.hover}`}>
+                    <span class={`shrink-0 w-7 h-7 inline-flex items-center justify-center rounded-md ${tint.iconBg} ${isActive ? tint.dot : "text-white/60"}`}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" set:html={i.icon}></svg>
+                    </span>
+                    <span class="flex-1 truncate">{i.label}</span>
+                    {i.badge && i.badge > 0 && (
+                      <span class="min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center">{i.badge > 99 ? "99+" : i.badge}</span>
+                    )}
+                  </a>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </nav>
+      {adminLink && (
+        <div class="border-t border-white/10 p-3">
+          <a href={adminLink.href} class="flex items-center justify-center gap-2 w-full rounded-xl bg-gradient-to-br from-amber-300 to-amber-500 text-black px-3 py-2.5 text-sm font-semibold">
+            👑 {adminLink.label}
+          </a>
+        </div>
+      )}
+    </aside>
+  </div>
+</div>
+
+<script is:inline>
+  (function () {
+    const btn = document.getElementById("staffMenuBtn");
+    const drawer = document.getElementById("staffDrawer");
+    const backdrop = document.getElementById("staffDrawerBackdrop");
+    const close = document.getElementById("staffDrawerClose");
+    if (!btn || !drawer) return;
+    const open = () => { drawer.classList.remove("hidden"); document.body.style.overflow = "hidden"; };
+    const shut = () => { drawer.classList.add("hidden"); document.body.style.overflow = ""; };
+    btn.addEventListener("click", open);
+    backdrop && backdrop.addEventListener("click", shut);
+    close && close.addEventListener("click", shut);
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") shut(); });
+  })();
+</script>

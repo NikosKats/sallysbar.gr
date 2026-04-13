@@ -2,6 +2,7 @@
 import "../../styles/global.css";
 import { site } from "../../data/site";
 import { getMenu, formatPriceEUR } from "../../lib/menuService";
+import { getTablePageSettings } from "../../lib/tablePageSettings";
 
 const { id } = Astro.params;
 const tableNumber = Number(id);
@@ -41,6 +42,8 @@ const t = {
   reviewSub:    isEl ? "Άφησέ μας μια κριτική — σημαίνει πολλά!" : "Leave us a review — it means a lot!",
   reviewBtn:    isEl ? "Γράψε κριτική στο Google"          : "Leave a Google review",
 };
+
+const tps = await getTablePageSettings();
 
 const menuSlug = new URL(Astro.request.url).searchParams.get("menu") ?? undefined;
 const { menu: currentMenu, menus: activeMenus, categories, items } = await (async () => {
@@ -234,6 +237,10 @@ for (const c of categories) {
         setTimeout(() => { t.style.opacity = "0"; setTimeout(() => t.remove(), 280); }, 4200);
       }
 
+      // All chooser/scroll handlers must wait for DOM to be ready, since this script
+      // runs at the top of body before #seeMenuBtn / #goWheelBtn / #scrollTopBtn exist.
+      document.addEventListener("DOMContentLoaded", function () {
+
       // "See menu" chooser tile → smooth scroll without putting #menu in URL
       (function () {
         const link = document.getElementById("seeMenuBtn");
@@ -250,9 +257,10 @@ for (const c of categories) {
         const topBtn = document.getElementById("scrollTopBtn");
         if (!topBtn) return;
         const toggle = () => {
-          const show = window.scrollY > 400;
+          const show = window.scrollY > 200;
           topBtn.style.opacity = show ? "1" : "0";
           topBtn.style.pointerEvents = show ? "auto" : "none";
+          topBtn.style.transform = show ? "translateY(0)" : "translateY(8px)";
         };
         window.addEventListener("scroll", toggle, { passive: true });
         toggle();
@@ -302,6 +310,8 @@ for (const c of categories) {
           }
         });
       })();
+
+      }); // end DOMContentLoaded
     </script>
     <!-- Header -->
     <div class="sticky top-0 z-50 border-b border-white/10 bg-[#0b0b10]/90 backdrop-blur px-4 py-3 flex items-center justify-between gap-2">
@@ -354,6 +364,7 @@ for (const c of categories) {
         </h2>
 
         <div class="mt-5 grid grid-cols-1 gap-3">
+          {tps.menu_tile_enabled && (
           <a href="#menu" id="seeMenuBtn"
             class="group flex items-center gap-3 rounded-2xl border border-white/15 bg-white/[0.04] hover:bg-white/[0.07] hover:border-white/25 p-4 transition">
             <div class="shrink-0 h-12 w-12 rounded-xl bg-amber-400/15 grid place-items-center text-2xl">📜</div>
@@ -363,7 +374,9 @@ for (const c of categories) {
             </div>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="shrink-0 text-white/40 group-hover:text-amber-300 transition"><path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </a>
+          )}
 
+          {tps.wheel_tile_enabled && (
           <a href="#wheelSection" id="goWheelBtn"
             class="group flex items-center gap-3 rounded-2xl border border-fuchsia-400/30 bg-gradient-to-br from-fuchsia-500/15 via-amber-500/10 to-cyan-500/10 hover:from-fuchsia-500/25 p-4 transition shadow-lg shadow-fuchsia-500/10">
             <div class="shrink-0 h-12 w-12 rounded-xl bg-fuchsia-400/25 grid place-items-center text-2xl">🎡</div>
@@ -373,7 +386,9 @@ for (const c of categories) {
             </div>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="shrink-0 text-fuchsia-300/60 group-hover:text-fuchsia-200 transition"><path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </a>
+          )}
 
+          {tps.card_tile_enabled && (
           <a href={`${isEl ? "/el" : ""}/membership`}
             class="group flex items-center gap-3 rounded-2xl border border-amber-400/30 bg-gradient-to-br from-amber-500/15 via-rose-500/10 to-fuchsia-500/10 hover:from-amber-500/25 p-4 transition shadow-lg shadow-amber-500/10">
             <div class="shrink-0 h-12 w-12 rounded-xl bg-amber-400/30 grid place-items-center text-2xl">💳</div>
@@ -383,10 +398,12 @@ for (const c of categories) {
             </div>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="shrink-0 text-amber-300/60 group-hover:text-amber-200 transition"><path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
           </a>
+          )}
         </div>
       </section>
 
       <!-- Daily Wheel of Luck -->
+      {tps.wheel_tile_enabled && (
       <section id="wheelSection" class="mb-8 hidden scroll-mt-24 rounded-3xl border border-amber-400/30 bg-gradient-to-br from-amber-500/10 via-fuchsia-500/10 to-cyan-500/10 p-5 relative overflow-hidden">
         <div class="flex items-start justify-between gap-3 flex-wrap">
           <div class="min-w-0">
@@ -437,6 +454,7 @@ for (const c of categories) {
           {isEl ? "Χρειάζεται πρόσβαση τοποθεσίας. Μόνο μέσα στο bar." : "Location access required. Bar-only."}
         </p>
       </section>
+      )}
 
       <!-- Category jump chips (anchor target for "See the menu" CTA) -->
       <div id="menu" class="flex flex-wrap gap-2 mb-8 scroll-mt-24">
@@ -521,23 +539,29 @@ for (const c of categories) {
 
     <!-- Scroll-to-top floating button — appears after 400px scroll -->
     <button id="scrollTopBtn" type="button" aria-label={isEl ? "Πάνω" : "Top"}
-      class="fixed right-4 bottom-24 z-40 h-11 w-11 rounded-full border border-white/20 bg-[#141420]/90 backdrop-blur text-white shadow-xl shadow-black/50 flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-200 hover:bg-white/10 active:scale-95">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 19V5M5 12l7-7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      style="position:fixed;right:16px;bottom:96px;z-index:60;width:48px;height:48px;border-radius:9999px;background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#0b0b10;box-shadow:0 10px 30px rgba(251,191,36,0.45),0 2px 8px rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;border:none;opacity:0;pointer-events:none;transition:opacity .2s ease, transform .2s ease;cursor:pointer;">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 19V5M5 12l7-7 7 7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>
 
     <!-- Sticky bottom bar -->
+    {(tps.call_order_enabled || tps.call_pay_enabled) && (
     <div class="fixed bottom-0 inset-x-0 border-t border-white/10 bg-[#0b0b10]/95 backdrop-blur px-4 py-3">
       <div class="mx-auto max-w-2xl flex gap-3">
+        {tps.call_order_enabled && (
         <button id="orderBtnBottom" data-reason="order"
           class="waiter-btn flex-1 rounded-2xl border border-white/20 bg-white/10 text-white font-semibold py-3.5 text-sm hover:bg-white/20 active:scale-95 transition">
           {t.orderBottom}
         </button>
+        )}
+        {tps.call_pay_enabled && (
         <button id="payBtnBottom" data-reason="pay"
           class="waiter-btn flex-1 rounded-2xl bg-white text-black font-semibold py-3.5 text-sm hover:bg-white/90 active:scale-95 transition">
           {t.payBottom}
         </button>
+        )}
       </div>
     </div>
+    )}
 
     <!-- Pay method sheet -->
     <div id="paySheet" class="fixed inset-0 z-50 hidden">
@@ -562,6 +586,8 @@ for (const c of categories) {
       </div>
     </div>
 
+    {tps.chatbot_enabled && (
+    <>
     <!-- AI Chat button -->
     <button id="chatOpenBtn"
       class="fixed bottom-24 right-4 z-40 flex items-center justify-center w-12 h-12 rounded-full bg-white text-black shadow-lg hover:bg-white/90 active:scale-95 transition"
@@ -617,6 +643,8 @@ for (const c of categories) {
         </button>
       </div>
     </div>
+    </>
+    )}
 
     <script define:vars={{ tableNumber, switchLang, lang, labels: { order: { top: t.order, bottom: t.orderBottom }, pay: { top: t.pay, bottom: t.payBottom } }, notified: t.notified, calling: t.calling, tryAgain: t.tryAgain, rateLimit: t.rateLimit }}>
       const SESSION_KEY = `tbl_token_${tableNumber}`;
@@ -719,13 +747,16 @@ for (const c of categories) {
       const chatMessages = document.getElementById("chatMessages");
       const chatInput    = document.getElementById("chatInput");
       const chatSendBtn  = document.getElementById("chatSendBtn");
+      const chatOpenBtn  = document.getElementById("chatOpenBtn");
+      const chatCloseBtn = document.getElementById("chatCloseBtn");
 
-      document.getElementById("chatOpenBtn").addEventListener("click", () => {
+      if (chatPanel && chatOpenBtn && chatCloseBtn && chatInput && chatSendBtn) {
+      chatOpenBtn.addEventListener("click", () => {
         chatPanel.classList.remove("hidden");
         chatPanel.classList.add("flex");
         chatInput.focus();
       });
-      document.getElementById("chatCloseBtn").addEventListener("click", () => {
+      chatCloseBtn.addEventListener("click", () => {
         chatPanel.classList.add("hidden");
         chatPanel.classList.remove("flex");
       });
@@ -814,6 +845,8 @@ for (const c of categories) {
           sendChat(question);
         });
       });
+
+      } // end if(chat elements present)
     </script>
   </body>
 </html>

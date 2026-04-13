@@ -171,6 +171,12 @@ export async function awardEventRsvpPoints(userId: string, eventId: string): Pro
 export async function awardReferralPoints(referrerId: string, newUserId: string): Promise<number> {
   const settings = await getLoyaltySettings();
   if (settings.referral_points <= 0) return 0;
+
+  // Gate: only loyalty-card members earn referral points. Non-members get zero.
+  const { data: ref } = await supabaseAdmin
+    .from("profiles").select("card_issued_at").eq("id", referrerId).maybeSingle();
+  if (!ref?.card_issued_at) return 0;
+
   const { error } = await supabaseAdmin.from("loyalty_events").insert({
     user_id: referrerId,
     points: settings.referral_points,

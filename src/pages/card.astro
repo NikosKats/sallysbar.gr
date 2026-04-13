@@ -1,0 +1,167 @@
+---
+import "../styles/global.css";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+const user = Astro.locals.user;
+
+const signInHref = user ? "/settings" : (isEl ? "/el/register?next=/settings" : "/register?next=/settings");
+
+const T = {
+  kicker:   isEl ? "Ψηφιακή Κάρτα Social" : "Digital Social Card",
+  h1a:      isEl ? "Όλα τα social σου" : "All your socials,",
+  h1b:      isEl ? "σε μία σάρωση" : "in one tap",
+  sub:      isEl ? "Μία σύντομη διεύθυνση. Ένα QR. Όλα όσα μοιράζεσαι — Instagram, TikTok, LinkedIn, τηλέφωνο — σε μία κάρτα που αγγίζεις, σαρώνεις ή στέλνεις." : "One short URL. One QR. Every social you share — Instagram, TikTok, LinkedIn, phone — on one card you tap, scan, or send.",
+  ctaMain:  user ? (isEl ? "Άνοιξε τη δική σου" : "Open yours") : (isEl ? "Φτιάξε τη ΔΩΡΕΑΝ κάρτα" : "Create your FREE card"),
+  ctaSub:   isEl ? "30 δευτερόλεπτα · δωρεάν για πάντα" : "30 seconds · free forever",
+  sampleLabel: isEl ? "Δείγμα κάρτας" : "Sample card",
+  sampleHandle: "nikos",
+  sampleName: "Nikos K.",
+  sampleRole: isEl ? "Μέλος" : "Member",
+  features: [
+    { icon: "📱", t: isEl ? "Tap & Scan" : "Tap & Scan", s: isEl ? "Δείξε το QR ή τάπα NFC tag. Ο άλλος ανοίγει την κάρτα σου αμέσως — χωρίς app." : "Show the QR or tap an NFC tag. The other person opens your card instantly — no app." },
+    { icon: "🎛️", t: isEl ? "Full control" : "Full control", s: isEl ? "Ενεργοποίησε ή απενεργοποίησε οτιδήποτε — τηλέφωνο, τοποθεσία, Instagram, ακόμα και ολόκληρη την κάρτα." : "Turn anything on or off — phone, location, Instagram, or the whole card." },
+    { icon: "💾", t: isEl ? "Save contact" : "Save contact", s: isEl ? "Ένα tap κατεβάζει vCard — όλα τα social σου πάνε στις επαφές του κινητού τους." : "One tap downloads a vCard — all your socials land in their phone's contacts." },
+    { icon: "🎁", t: isEl ? "Referral bonus" : "Referral bonus", s: isEl ? "Κάθε νέος που εγγράφεται μέσω της κάρτας σου = πόντοι loyalty για σένα." : "Every new signup via your card = loyalty points for you." },
+    { icon: "🌐", t: isEl ? "Με ποιον θες" : "Share anywhere", s: isEl ? "Στείλε το link στο WhatsApp, Instagram story, email — ή τύπωσέ το σε κάρτα." : "Drop the link in WhatsApp, Instagram stories, email — or print it on a real card." },
+    { icon: "🔐", t: isEl ? "Ιδιωτικό ή κρυφό" : "Private or hidden", s: isEl ? "Μπορείς ανά πάσα στιγμή να κρύψεις την κάρτα — το link δείχνει 404." : "You can hide the card anytime — the link shows 404 instantly." },
+  ],
+  how: isEl ? "Σε 3 βήματα" : "In 3 steps",
+  steps: [
+    { n: 1, t: isEl ? "Εγγράψου" : "Sign up", s: isEl ? "Δωρεάν λογαριασμός — μόνο email." : "Free account — email only." },
+    { n: 2, t: isEl ? "Γέμισε το προφίλ" : "Fill your profile", s: isEl ? "Όνομα, φωτογραφία, social links. 30 δευτερόλεπτα." : "Name, photo, social links. 30 seconds." },
+    { n: 3, t: isEl ? "Μοιράσου" : "Share", s: isEl ? "Κοινοποίησε το link ή δείξε το QR." : "Share the link or show your QR." },
+  ],
+  poweredBy: "Powered by Sally's Bar · Skala · Kefalonia",
+  why:       isEl ? "Γιατί δωρεάν;" : "Why is it free?",
+  whySub:    isEl ? "Κάθε κάρτα μοιράζεται με «Powered by Sally's Bar». Ο κόσμος που τη βλέπει βρίσκει εμάς. Εσύ κερδίζεις πόντους. Win-win." : "Every card says \"Powered by Sally's Bar\". People who see it find us. You earn loyalty points. Win-win.",
+  final:     isEl ? "Έτοιμος;" : "Ready?",
+  finalSub:  isEl ? "Φτιάξε την κάρτα σου σε 30 δευτερόλεπτα." : "Create your card in 30 seconds.",
+};
+---
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{T.kicker} — Sally's Bar</title>
+    <meta name="description" content={T.sub} />
+    <meta property="og:title" content={`Sally's Bar — ${T.kicker}`} />
+    <meta property="og:description" content={T.sub} />
+    <meta name="theme-color" content="#0b0b10" />
+  </head>
+  <body class="min-h-screen bg-[#0a0a0f] text-white font-body antialiased overflow-x-hidden">
+    <div class="pointer-events-none fixed inset-0 -z-10 opacity-80">
+      <div class="absolute top-[-20%] left-[-15%] h-[620px] w-[620px] rounded-full bg-amber-400/15 blur-[150px]"></div>
+      <div class="absolute bottom-[-20%] right-[-15%] h-[500px] w-[500px] rounded-full bg-fuchsia-500/15 blur-[140px]"></div>
+      <div class="absolute top-1/3 left-1/2 h-[320px] w-[320px] -translate-x-1/2 rounded-full bg-sky-400/10 blur-[120px]"></div>
+    </div>
+
+    <Header />
+    <div class="h-20"></div>
+
+    <main class="mx-auto max-w-5xl px-5 sm:px-8">
+      <!-- Hero -->
+      <section class="pt-10 sm:pt-16 pb-14 text-center">
+        <p class="text-xs uppercase tracking-[0.28em] text-amber-200/80 font-semibold">{T.kicker}</p>
+        <h1 class="mt-4 font-heading text-5xl sm:text-7xl font-bold leading-[0.95] bg-gradient-to-br from-white via-amber-50 to-amber-200/80 bg-clip-text text-transparent">
+          {T.h1a}<br/>{T.h1b}
+        </h1>
+        <p class="mt-6 text-lg text-white/65 max-w-2xl mx-auto leading-relaxed">{T.sub}</p>
+        <div class="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+          <a href={signInHref} class="group inline-flex items-center gap-3 rounded-2xl bg-gradient-to-br from-amber-300 to-amber-500 text-black px-7 py-4 font-bold shadow-xl shadow-amber-500/30 hover:scale-[1.02] active:scale-[0.98] transition">
+            🎁 {T.ctaMain}
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 12h14m-4-4l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </a>
+          <p class="text-xs text-white/45">{T.ctaSub}</p>
+        </div>
+
+        <!-- Sample card visual -->
+        <div class="mt-14 mx-auto max-w-md">
+          <p class="text-[10px] uppercase tracking-[0.24em] text-white/40 mb-3">{T.sampleLabel}</p>
+          <div class="relative rounded-[28px] border border-white/10 bg-gradient-to-br from-white/[0.06] via-white/[0.03] to-white/[0.02] shadow-2xl shadow-black/40 overflow-hidden">
+            <div class="absolute inset-x-0 top-0 h-24 opacity-40" style="background:radial-gradient(ellipse at 20% 10%, rgba(253,164,175,0.5), transparent 60%), radial-gradient(ellipse at 90% 20%, rgba(167,139,250,0.5), transparent 60%);"></div>
+            <div class="relative p-7 text-center">
+              <div class="inline-block relative">
+                <div class="h-24 w-24 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-2xl font-bold ring-4 ring-white/15 shadow-2xl">NK</div>
+                <span class="absolute -bottom-1 -right-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-lg">{T.sampleRole}</span>
+              </div>
+              <h3 class="mt-4 font-heading text-2xl font-bold">{T.sampleName}</h3>
+              <p class="mt-1 text-xs text-white/50">📍 Skala, Kefalonia</p>
+            </div>
+            <div class="px-5 pb-5 grid grid-cols-1 gap-2">
+              <div class="flex items-center gap-3 rounded-2xl bg-gradient-to-br from-rose-500 via-fuchsia-500 to-violet-600 p-[1.5px]">
+                <span class="flex-1 flex items-center gap-3 rounded-2xl bg-[#0e0e16] px-4 py-2.5">
+                  <span class="h-8 w-8 rounded-lg bg-gradient-to-br from-rose-500 to-fuchsia-600 flex items-center justify-center text-white text-sm">📸</span>
+                  <span class="flex-1 text-sm font-semibold">Instagram</span>
+                </span>
+              </div>
+              <div class="flex items-center gap-3 rounded-2xl bg-gradient-to-br from-[#ff0050] via-fuchsia-500 to-cyan-400 p-[1.5px]">
+                <span class="flex-1 flex items-center gap-3 rounded-2xl bg-[#0e0e16] px-4 py-2.5">
+                  <span class="h-8 w-8 rounded-lg bg-gradient-to-br from-[#ff0050] to-cyan-400 flex items-center justify-center text-white text-sm">🎵</span>
+                  <span class="flex-1 text-sm font-semibold">TikTok</span>
+                </span>
+              </div>
+              <div class="flex items-center gap-3 rounded-2xl bg-gradient-to-br from-sky-500 to-blue-700 p-[1.5px]">
+                <span class="flex-1 flex items-center gap-3 rounded-2xl bg-[#0e0e16] px-4 py-2.5">
+                  <span class="h-8 w-8 rounded-lg bg-gradient-to-br from-sky-500 to-blue-700 flex items-center justify-center text-white text-sm">💼</span>
+                  <span class="flex-1 text-sm font-semibold">LinkedIn</span>
+                </span>
+              </div>
+            </div>
+            <div class="bg-gradient-to-br from-amber-300 via-amber-400 to-amber-500 text-black p-3 text-center">
+              <p class="text-[10px] uppercase tracking-[0.2em] font-bold opacity-70">{T.poweredBy}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Features grid -->
+      <section class="py-14">
+        <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {T.features.map(f => (
+            <div class="rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur p-5">
+              <div class="text-3xl">{f.icon}</div>
+              <h3 class="mt-3 font-heading text-lg font-bold">{f.t}</h3>
+              <p class="mt-1.5 text-sm text-white/65 leading-relaxed">{f.s}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <!-- Why free -->
+      <section class="py-10">
+        <div class="rounded-3xl border border-amber-400/25 bg-gradient-to-br from-amber-500/10 via-fuchsia-500/5 to-sky-500/5 p-8 text-center">
+          <p class="text-xs uppercase tracking-[0.24em] text-amber-200/80 font-bold">⭐ {T.why}</p>
+          <p class="mt-3 text-lg text-white/80 max-w-2xl mx-auto leading-relaxed">{T.whySub}</p>
+        </div>
+      </section>
+
+      <!-- Steps -->
+      <section class="py-14">
+        <h2 class="font-heading text-3xl sm:text-4xl font-bold text-center">{T.how}</h2>
+        <div class="mt-8 grid sm:grid-cols-3 gap-4">
+          {T.steps.map(st => (
+            <div class="rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur p-6 text-center">
+              <div class="mx-auto h-12 w-12 rounded-full bg-gradient-to-br from-amber-300 to-amber-500 text-black font-bold text-xl flex items-center justify-center">{st.n}</div>
+              <h4 class="mt-4 font-heading text-lg font-bold">{st.t}</h4>
+              <p class="mt-1.5 text-sm text-white/65">{st.s}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <!-- Final CTA -->
+      <section class="py-16 text-center">
+        <h2 class="font-heading text-4xl sm:text-5xl font-bold">{T.final}</h2>
+        <p class="mt-3 text-white/60">{T.finalSub}</p>
+        <a href={signInHref} class="mt-8 inline-flex items-center gap-3 rounded-2xl bg-gradient-to-br from-amber-300 to-amber-500 text-black px-8 py-4 font-bold shadow-xl shadow-amber-500/30 hover:scale-[1.02] active:scale-[0.98] transition">
+          🎁 {T.ctaMain}
+        </a>
+      </section>
+    </main>
+
+    <Footer />
+  </body>
+</html>

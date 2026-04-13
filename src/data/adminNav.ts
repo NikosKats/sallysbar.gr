@@ -29,6 +29,7 @@ export const I = {
   coasters:     `<circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="1.6"/>`,
   activeOrders: `<path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><rect x="9" y="3" width="6" height="4" rx="1" stroke="currentColor" stroke-width="1.6"/><path d="M9 12h6M9 16h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>`,
   newOrder:     `<circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M12 8v8M8 12h8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>`,
+  chat:         `<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>`,
 };
 
 export function getAdminNavGroups(lang: "en" | "el", t: any): AdminNavGroup[] {
@@ -60,10 +61,12 @@ export function getAdminNavGroups(lang: "en" | "el", t: any): AdminNavGroup[] {
     { title: isEl ? "Staff" : "Staff", items: [
       { key: "staff-orders",    label: t.user?.activeOrders ?? (isEl ? "Ενεργές Παραγγελίες" : "Active Orders"), href: withLangPrefix(lang, "/staff"),       icon: I.activeOrders },
       { key: "staff-new-order", label: t.user?.newOrder     ?? (isEl ? "Νέα Παραγγελία" : "New Order"),        href: withLangPrefix(lang, "/staff/order"), icon: I.newOrder },
+      { key: "staff-chat",      label: isEl ? "Ομάδα (Chat)" : "Team Chat",                                    href: withLangPrefix(lang, "/staff/chat"),  icon: I.chat },
     ]},
     { title: isEl ? "Σύστημα" : "System", items: [
       { key: "users",   label: t.admin.nav.users,                href: withLangPrefix(lang, "/admin/users"),   icon: I.users },
       { key: "qrcodes", label: isEl ? "QR Codes" : "QR Codes",   href: withLangPrefix(lang, "/admin/qrcodes"), icon: I.qrcodes },
+      { key: "table-settings", label: isEl ? "Ρυθμίσεις Τραπεζιού" : "Table Page Settings", href: withLangPrefix(lang, "/admin/table-settings"), icon: I.wheel },
       { key: "help",    label: isEl ? "Οδηγός" : "Help & Guide", href: withLangPrefix(lang, "/admin/help"),    icon: I.help },
     ]},
   ];

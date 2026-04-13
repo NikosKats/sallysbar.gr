@@ -1,0 +1,232 @@
+---
+import "../../styles/global.css";
+import { supabaseAdmin } from "../../lib/supabase";
+import { site } from "../../data/site";
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+const raw = Astro.params.handle ?? "";
+
+// Accept either a handle (alphanumeric) or a short UUID prefix.
+let profile: any = null;
+if (/^[a-z0-9_.\-]{3,40}$/i.test(raw)) {
+  const { data } = await supabaseAdmin
+    .from("profiles")
+    .select("id, full_name, role, bio, avatar_url, socials, handle, card_public, card_visibility, city, country, phone")
+    .eq("handle", raw.toLowerCase())
+    .maybeSingle();
+  profile = data;
+}
+if (!profile) {
+  // UUID fallback (first 8 of id)
+  const { data } = await supabaseAdmin
+    .from("profiles")
+    .select("id, full_name, role, bio, avatar_url, socials, handle, card_public, card_visibility, city, country, phone")
+    .ilike("id", `${raw}%`)
+    .limit(1)
+    .maybeSingle();
+  profile = data;
+}
+
+if (!profile || profile.card_public === false) {
+  return new Response("Card not found", { status: 404 });
+}
+
+const socials = (profile.socials ?? {}) as Record<string, string>;
+const vis: any = profile.card_visibility ?? { avatar: true, bio: true, location: true, phone: false, role_badge: true, socials: { instagram: true, facebook: true, tiktok: true, x: true, linkedin: true, youtube: true, website: true } };
+const socialVis: Record<string, boolean> = vis.socials ?? {};
+const personName = profile.full_name ?? "Member";
+const bio  = vis.bio !== false ? (profile.bio ?? "") : "";
+const showPhone = !!vis.phone && !!profile.phone;
+const cardUrl = new URL(Astro.request.url).toString();
+const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=256x256&margin=4&qzone=1&bgcolor=ffffff&color=0a0a0f&data=${encodeURIComponent(cardUrl)}`;
+
+const roleBadge = profile.role === "admin"
+  ? { label: isEl ? "Διαχειριστής" : "Admin",  color: "from-fuchsia-400 to-pink-500" }
+  : profile.role === "employee"
+  ? { label: isEl ? "Σερβιτόρος" : "Staff",    color: "from-sky-400 to-blue-500" }
+  : { label: isEl ? "Μέλος"     : "Member",   color: "from-amber-400 to-orange-500" };
+
+function initialsOf(n: string) {
+  const p = (n || "M").trim().split(/\s+/);
+  return ((p[0]?.[0] ?? "") + (p[1]?.[0] ?? "")).toUpperCase() || "M";
+}
+const ini = initialsOf(personName);
+
+const socialLinks = [
+  { key: "instagram", label: "Instagram", color: "from-rose-500 via-fuchsia-500 to-violet-600", icon: `<path d="M4 4h16v16H4zM16 11.5a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0zM17.5 6.5h.01" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>` },
+  { key: "facebook",  label: "Facebook",  color: "from-blue-500 to-blue-700",                  icon: `<path d="M14 3h3v4h-3a1 1 0 0 0-1 1v3h4l-1 4h-3v7h-4v-7H7v-4h2V7a4 4 0 0 1 4-4h1z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>` },
+  { key: "tiktok",    label: "TikTok",    color: "from-[#ff0050] via-fuchsia-500 to-cyan-400", icon: `<path d="M14 4v9a4 4 0 1 1-4-4M14 4c0 3 2 5 5 5M14 4h0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>` },
+  { key: "x",         label: "X / Twitter", color: "from-neutral-700 to-black",                icon: `<path d="M4 4l16 16M20 4L4 20" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>` },
+  { key: "linkedin",  label: "LinkedIn",  color: "from-sky-500 to-blue-700",                  icon: `<path d="M4 9h3v11H4zM5.5 4.5h.01M10 9h3v2c.5-1.3 2-2.3 4-2.3 3 0 4 2 4 5V20h-3v-5.3c0-1.6-.8-2.7-2.3-2.7-1.4 0-2.7 1-2.7 3V20h-3V9z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>` },
+  { key: "youtube",   label: "YouTube",   color: "from-red-500 to-red-700",                    icon: `<rect x="3" y="6" width="18" height="12" rx="3" stroke="currentColor" stroke-width="1.6"/><path d="M10 9l5 3-5 3V9z" fill="currentColor"/>` },
+  { key: "website",   label: isEl ? "Ιστοσελίδα" : "Website", color: "from-emerald-400 to-teal-600", icon: `<circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18" stroke="currentColor" stroke-width="1.6"/>` },
+].filter(s => socials[s.key] && socialVis[s.key] !== false);
+
+const T = {
+  shareCard:  isEl ? "Κοινοποίησε" : "Share card",
+  save:       isEl ? "Αποθήκευση επαφής" : "Save contact",
+  cta:        isEl ? "Φτιάξε τη δική σου ΔΩΡΕΑΝ κάρτα" : "Create your own FREE card",
+  poweredBy:  isEl ? "Powered by Sally's Bar" : "Powered by Sally's Bar",
+  poweredSub: isEl ? "Skala · Kefalonia · κάρτα μέλους & loyalty" : "Skala · Kefalonia · member card & loyalty",
+  location:   [profile.city, profile.country].filter(Boolean).join(", "),
+};
+---
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <title>{personName} — Sally's Bar</title>
+    <meta name="description" content={bio ? bio.slice(0, 180) : (isEl ? `Η ψηφιακή κάρτα του ${personName} στο Sally's Bar.` : `${personName}'s digital card at Sally's Bar.`)} />
+    <meta property="og:title" content={`${personName} — Sally's Bar`} />
+    <meta property="og:description" content={bio || (isEl ? `Ψηφιακή κάρτα — κοινοποιήθηκε μέσω Sally's Bar.` : `Digital card — shared via Sally's Bar.`)} />
+    {profile.avatar_url && <meta property="og:image" content={profile.avatar_url} />}
+    <meta property="og:type" content="profile" />
+    <meta name="theme-color" content="#0b0b10" />
+    <meta name="robots" content="noindex" />
+  </head>
+  <body class="min-h-screen bg-[#0a0a0f] text-white font-body antialiased">
+    <!-- Ambient glow -->
+    <div class="pointer-events-none fixed inset-0 -z-10 opacity-80">
+      <div class="absolute top-[-25%] left-[-15%] h-[560px] w-[560px] rounded-full bg-amber-400/15 blur-[140px]"></div>
+      <div class="absolute bottom-[-25%] right-[-15%] h-[480px] w-[480px] rounded-full bg-fuchsia-500/15 blur-[130px]"></div>
+      <div class="absolute top-1/2 left-1/2 h-[320px] w-[320px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-sky-400/10 blur-[110px]"></div>
+    </div>
+
+    <main class="mx-auto w-full max-w-md px-5 pt-10 pb-8 flex flex-col items-center gap-6">
+      <!-- Top mini brand -->
+      <a href="/" class="text-[10px] uppercase tracking-[0.32em] text-amber-200/70 font-semibold">Sally's Bar · Skala · Kefalonia</a>
+
+      <!-- Card -->
+      <article class="relative w-full rounded-[28px] border border-white/10 bg-gradient-to-br from-white/[0.06] via-white/[0.03] to-white/[0.02] backdrop-blur-xl shadow-2xl shadow-black/40 overflow-hidden">
+        <!-- iridescent top strip -->
+        <div class="absolute inset-x-0 top-0 h-24 opacity-40" style="background:radial-gradient(ellipse at 20% 10%, rgba(253,164,175,0.5), transparent 60%), radial-gradient(ellipse at 90% 20%, rgba(167,139,250,0.5), transparent 60%);"></div>
+
+        <div class="relative p-7 text-center">
+          <div class="inline-block relative">
+            {vis.avatar !== false && profile.avatar_url ? (
+              <img src={profile.avatar_url} alt={personName} class="h-28 w-28 rounded-full object-cover ring-4 ring-white/15 shadow-2xl" />
+            ) : (
+              <div class={`h-28 w-28 rounded-full bg-gradient-to-br ${roleBadge.color} flex items-center justify-center text-3xl font-bold ring-4 ring-white/15 shadow-2xl`}>{ini}</div>
+            )}
+            {vis.role_badge !== false && (
+              <span class={`absolute -bottom-1 -right-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-gradient-to-br ${roleBadge.color} text-white shadow-lg`}>{roleBadge.label}</span>
+            )}
+          </div>
+
+          <h1 class="mt-5 font-heading text-3xl font-bold bg-gradient-to-br from-white to-amber-100 bg-clip-text text-transparent">{personName}</h1>
+          {vis.location !== false && T.location && <p class="mt-1 text-xs text-white/50">📍 {T.location}</p>}
+          {bio && <p class="mt-3 text-sm text-white/70 leading-relaxed max-w-xs mx-auto">{bio}</p>}
+          {showPhone && (
+            <a href={`tel:${profile.phone}`} class="mt-3 inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 hover:bg-emerald-400/20 px-3 py-1.5 text-xs font-semibold text-emerald-200">
+              📞 {profile.phone}
+            </a>
+          )}
+        </div>
+
+        <!-- Socials -->
+        {socialLinks.length > 0 && (
+          <div class="px-5 pb-5 grid grid-cols-1 gap-2">
+            {socialLinks.map(s => (
+              <a href={socials[s.key]} target="_blank" rel="noopener"
+                class={`group flex items-center gap-3 rounded-2xl p-[1.5px] bg-gradient-to-br ${s.color} hover:scale-[1.01] active:scale-[0.99] transition`}>
+                <span class="flex-1 flex items-center gap-3 rounded-2xl bg-[#0e0e16] px-4 py-3">
+                  <span class={`h-9 w-9 shrink-0 rounded-xl bg-gradient-to-br ${s.color} flex items-center justify-center text-white`}>
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" set:html={s.icon}></svg>
+                  </span>
+                  <span class="flex-1 min-w-0">
+                    <p class="text-sm font-semibold text-white leading-tight">{s.label}</p>
+                    <p class="text-[11px] text-white/45 truncate">{socials[s.key]}</p>
+                  </span>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="shrink-0 text-white/40 group-hover:text-white transition"><path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </span>
+              </a>
+            ))}
+          </div>
+        )}
+
+        <!-- Actions -->
+        <div class="px-5 pb-5 grid grid-cols-2 gap-2">
+          <button id="shareBtn" class="rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 px-3 py-2.5 text-sm font-semibold text-white/90 flex items-center justify-center gap-2 transition">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M4 12v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6M16 6l-4-4-4 4M12 2v13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            {T.shareCard}
+          </button>
+          <a id="saveVcf" href={`/api/card/vcf?id=${encodeURIComponent(profile.id)}`}
+            class="rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 px-3 py-2.5 text-sm font-semibold text-white/90 flex items-center justify-center gap-2 transition">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2M21 11h-6M18 8v6M11 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            {T.save}
+          </a>
+        </div>
+
+        <!-- QR mini -->
+        <div class="border-t border-white/10 bg-black/20 px-5 py-4 flex items-center gap-3">
+          <img src={qrImageUrl} alt="QR" class="shrink-0 rounded-lg bg-white p-1.5" style="width:64px;height:64px;" loading="lazy" />
+          <div class="flex-1 min-w-0">
+            <p class="text-[10px] uppercase tracking-wider text-white/50 font-semibold">{isEl ? "Σκάναρε ή δείξε αυτό" : "Scan or show this"}</p>
+            <p class="text-xs text-white/70 truncate break-all">{cardUrl}</p>
+          </div>
+        </div>
+
+        <!-- Bar ad: directions + bar socials -->
+        <div class="border-t border-white/10 bg-gradient-to-br from-amber-500/[0.06] via-black/20 to-fuchsia-500/[0.06] px-5 py-4">
+          <p class="text-[10px] uppercase tracking-[0.22em] text-amber-200/80 font-bold mb-2.5">🍸 {isEl ? "Έλα να μας βρεις" : "Come visit us"}</p>
+          <a href={site.mapsShareUrl} target="_blank" rel="noopener"
+            class="group flex items-center gap-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-amber-400/40 px-3 py-2.5 transition mb-2">
+            <span class="h-9 w-9 shrink-0 rounded-lg bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white text-lg">📍</span>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-semibold text-white leading-tight">{isEl ? "Οδηγίες στο Google Maps" : "Directions on Google Maps"}</p>
+              <p class="text-[11px] text-white/50 truncate">Skala · Kefalonia · Greece</p>
+            </div>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="shrink-0 text-white/40 group-hover:text-amber-200 transition"><path d="M7 17L17 7M7 7h10v10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </a>
+          <div class="grid grid-cols-3 gap-2">
+            <a href={site.socials.instagram} target="_blank" rel="noopener"
+              class="flex flex-col items-center justify-center gap-1 rounded-xl bg-gradient-to-br from-rose-500/15 via-fuchsia-500/10 to-violet-500/15 border border-fuchsia-400/20 hover:border-fuchsia-400/50 px-2 py-2.5 transition">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" class="text-fuchsia-300"><path d="M4 4h16v16H4zM16 11.5a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0zM17.5 6.5h.01" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+              <span class="text-[10px] font-semibold text-white/80">Instagram</span>
+            </a>
+            <a href={site.socials.facebook} target="_blank" rel="noopener"
+              class="flex flex-col items-center justify-center gap-1 rounded-xl bg-blue-500/10 border border-blue-400/20 hover:border-blue-400/50 px-2 py-2.5 transition">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" class="text-blue-300"><path d="M14 3h3v4h-3a1 1 0 0 0-1 1v3h4l-1 4h-3v7h-4v-7H7v-4h2V7a4 4 0 0 1 4-4h1z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+              <span class="text-[10px] font-semibold text-white/80">Facebook</span>
+            </a>
+            <a href={site.socials.tripadvisor} target="_blank" rel="noopener"
+              class="flex flex-col items-center justify-center gap-1 rounded-xl bg-emerald-500/10 border border-emerald-400/20 hover:border-emerald-400/50 px-2 py-2.5 transition">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" class="text-emerald-300"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><circle cx="8" cy="12" r="2" stroke="currentColor" stroke-width="1.6"/><circle cx="16" cy="12" r="2" stroke="currentColor" stroke-width="1.6"/></svg>
+              <span class="text-[10px] font-semibold text-white/80">Tripadvisor</span>
+            </a>
+          </div>
+          <a href={site.reviews.googleUrl} target="_blank" rel="noopener"
+            class="mt-2 flex items-center justify-center gap-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-2 text-[11px] text-white/70 hover:text-amber-200 transition">
+            ⭐ {site.ratings.google.rating} · {site.ratings.google.count} {isEl ? "κριτικές στο Google" : "reviews on Google"}
+          </a>
+        </div>
+
+        <!-- Powered-by + viral CTA -->
+        <a href={(isEl ? "/el" : "") + "/card"}
+          class="block bg-gradient-to-br from-amber-300 via-amber-400 to-amber-500 text-black p-4 text-center hover:brightness-110 active:brightness-95 transition">
+          <p class="text-[10px] uppercase tracking-[0.2em] font-bold opacity-70">{T.poweredBy}</p>
+          <p class="mt-1 font-heading text-lg font-bold">🎁 {T.cta}</p>
+          <p class="mt-0.5 text-[11px] font-medium opacity-80">{T.poweredSub}</p>
+        </a>
+      </article>
+
+      <p class="text-[10px] text-white/25 text-center">sallysbar.gr · {isEl ? "Πάτα το κουμπί «Κοινοποίησε» για να στείλεις αυτή την κάρτα" : "Tap Share to send this card to a friend"}</p>
+    </main>
+
+    <script is:inline define:vars={{ cardUrl, personName, isEl }}>
+      const share = document.getElementById("shareBtn");
+      share?.addEventListener("click", async () => {
+        const data = { title: personName + " — Sally's Bar", text: (isEl ? "Κοίτα την κάρτα μου:" : "Check out my card:"), url: cardUrl };
+        if (navigator.share) {
+          try { await navigator.share(data); return; } catch {}
+        }
+        try {
+          await navigator.clipboard.writeText(cardUrl);
+          share.textContent = isEl ? "✓ Αντιγράφηκε" : "✓ Copied";
+          setTimeout(() => location.reload(), 1500);
+        } catch {}
+      });
+    </script>
+  </body>
+</html>
