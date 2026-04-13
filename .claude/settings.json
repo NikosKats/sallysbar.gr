@@ -35,10 +35,25 @@
       "Bash(awk 'NR>=80 && NR<=90 {print NR\": \"$0}' /Users/nikolaoskatsilidis/Desktop/sallysbar.gr/src/pages/play.astro)",
       "Bash(awk 'NR==489,/^      \\\\\\)\\\\}/' /Users/nikolaoskatsilidis/Desktop/sallysbar.gr/src/pages/account.astro)",
       "Bash(curl -s -H \"Cache-Control: no-cache\" https://sallysbar.gr/table/1)",
-      "Bash(curl -s https://sallysbar.gr/table/1)"
+      "Bash(curl -s https://sallysbar.gr/table/1)",
+      "Bash(npm list:*)",
+      "Bash(sips --version)",
+      "Bash(sips -s format png --resampleHeightWidth 1024 1024 /Users/nikolaoskatsilidis/Desktop/sallysbar.gr/public/icon.svg --out /tmp/icon-1024.png)",
+      "Bash(curl -sI https://sallysbar.gr/icon-1024.png)",
+      "Bash(curl -sI https://0f9dcbc2.sallysbar.pages.dev/icon-1024.png)",
+      "Bash(curl -sI \"https://sallysbar.gr/icon-1024.png?v=$\\(date +%s\\)\")",
+      "Bash(ls /Users/nikolaoskatsilidis/Desktop/sallysbar.gr/public/icon*.svg)",
+      "Bash(sips -s format png --resampleHeightWidth 512 512 icon-customer.svg --out icon-customer-512.png)",
+      "Bash(sips -s format png --resampleHeightWidth 192 192 icon-customer.svg --out icon-customer-192.png)",
+      "Bash(sips -s format png --resampleHeightWidth 512 512 icon-admin.svg    --out icon-admin-512.png)",
+      "Bash(sips -s format png --resampleHeightWidth 192 192 icon-admin.svg    --out icon-admin-192.png)",
+      "Bash(sips -s format png --resampleHeightWidth 512 512 icon-staff.svg    --out icon-staff-512.png)",
+      "Bash(sips -s format png --resampleHeightWidth 192 192 icon-staff.svg    --out icon-staff-192.png)",
+      "Bash(curl -s \"https://sallysbar.gr/table/1?v=$\\(date +%s\\)\")"
     ],
     "additionalDirectories": [
-      "/Users/nikolaoskatsilidis/Desktop/sallysbar.gr/public/photos"
+      "/Users/nikolaoskatsilidis/Desktop/sallysbar.gr/public/photos",
+      "/private/tmp"
     ]
   }
 }

@@ -1,20 +1,17 @@
 ---
 import "../../styles/global.css";
 import { supabaseAdmin } from "../../lib/supabase";
+import { getTiers, currentTier } from "../../lib/loyalty";
 
 const lang = Astro.locals.lang ?? "en";
 const isEl = lang === "el";
 
-// Forgiving ID parsing: extract the first UUID-looking token from the path
-// even if a share target mashed extra text onto the URL.
+// Forgiving ID parsing: accept UUID-like prefix even if share targets tacked text onto the path.
 const raw = Astro.params.id ?? "";
 const match = raw.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
 const id = match ? match[0] : null;
 if (!id) return new Response("Not found", { status: 404 });
 
-// We only render the card if the user exists AND has activated (card_issued_at set).
-// Raw user-id lookup is fine — knowing the id alone confers no extra power (the QR
-// encodes `loyalty:<uid>` which is the same value).
 const { data: profile } = await supabaseAdmin
   .from("profiles")
   .select("id, full_name, card_issued_at")
@@ -25,6 +22,18 @@ if (!profile || !profile.card_issued_at) {
   return new Response("Card not active", { status: 404 });
 }
 
+// Live points + tier for the card face
+const { data: events } = await supabaseAdmin
+  .from("loyalty_events").select("points").eq("user_id", id);
+const points = (events ?? []).reduce((s: number, e: any) => s + (e.points ?? 0), 0);
+const tiers  = await getTiers();
+const tier   = currentTier(tiers, points);
+const tierLabel = tier ? (isEl ? tier.label_el : tier.label_en) : "Member";
+const tierColor = tier?.color ?? "#94a3b8";
+const tierIcon  = tier?.icon ?? "";
+const tierBg    = `${tierColor}1f`;
+const tierBorder= `${tierColor}4d`;
+
 const name = profile.full_name ?? "Member";
 ---
 <html lang={lang}>
@@ -32,30 +41,119 @@ const name = profile.full_name ?? "Member";
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>{name} — Sally's Bar Loyalty Card</title>
+    <meta name="description" content={isEl ? `Κοινοποιημένη κάρτα πιστότητας ${name} στο Sally's Bar.` : `${name}'s shared loyalty card at Sally's Bar.`} />
+    <meta property="og:title" content={`Sally's Bar — ${name}`} />
+    <meta property="og:description" content={isEl ? "Δείξε στον σερβιτόρο στο Sally's Bar για να κερδίσεις πόντους στον λογαριασμό μου." : "Show at Sally's Bar to earn points on my account."} />
+    <meta property="og:image" content="https://sallysbar.gr/icon-1024.png" />
     <meta name="robots" content="noindex,nofollow" />
     <meta name="theme-color" content="#0b0b10" />
   </head>
-  <body class="min-h-screen bg-[#0b0b10] text-white font-body antialiased flex flex-col">
-    <main class="flex-1 flex flex-col items-center justify-center px-6 py-10 text-center gap-6">
-      <div class="text-[11px] uppercase tracking-[0.3em] text-amber-300/80">Sally's Bar · Skala · Kefalonia</div>
-      <h1 class="font-heading text-3xl font-bold bg-gradient-to-br from-white via-amber-50 to-amber-200/80 bg-clip-text text-transparent">
-        {name}
-      </h1>
-      <p class="text-sm text-white/60 max-w-sm">
-        {isEl
-          ? "Δείξε αυτό τον κωδικό στον σερβιτόρο. Οι πόντοι θα προστεθούν στον λογαριασμό μου."
-          : "Show this code to the waiter. Points land on my account."}
-      </p>
+  <body class="min-h-screen bg-[#0b0b10] text-white font-body antialiased flex flex-col overflow-x-hidden">
+    <!-- Ambient glow -->
+    <div class="pointer-events-none fixed inset-0 -z-10 opacity-80">
+      <div class="absolute top-[-20%] left-[-10%] h-[520px] w-[520px] rounded-full bg-amber-400/15 blur-[140px]"></div>
+      <div class="absolute bottom-[-20%] right-[-10%] h-[440px] w-[440px] rounded-full bg-fuchsia-500/15 blur-[130px]"></div>
+    </div>
 
-      <div class="rounded-3xl bg-white p-6 shadow-2xl shadow-amber-500/10">
-        <canvas id="qr" data-code={`loyalty:${profile.id}`} width="280" height="280"></canvas>
+    <main class="flex-1 flex flex-col items-center justify-center px-6 py-10 text-center gap-6 max-w-2xl mx-auto w-full">
+      <div class="text-[10px] uppercase tracking-[0.32em] text-amber-200/80 font-semibold">Sally's Bar · Skala · Kefalonia</div>
+
+      <h1 class="font-heading text-xl font-semibold text-white/70">{isEl ? "Η κάρτα του" : "Card from"} <span class="bg-gradient-to-br from-amber-100 to-amber-400 bg-clip-text text-transparent font-bold">{name}</span></h1>
+
+      <!-- Luxury flip card — physical ISO/IEC 7810 ID-1 (85.6mm × 53.98mm) -->
+      <div style="perspective:1600px;">
+        <div id="luxeCard" class="relative cursor-pointer select-none" style="width:85.6mm;height:53.98mm;transform-style:preserve-3d;transition:transform 0.8s cubic-bezier(.2,.9,.2,1);">
+          <!-- FRONT — iridescent + rose-gold (fresh redesign) -->
+          <div class="absolute inset-0 overflow-hidden shadow-2xl shadow-amber-500/15" style="backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:4mm;">
+            <div class="absolute inset-0" style="background:
+              radial-gradient(ellipse at 15% 10%, rgba(253,164,175,0.32) 0%, transparent 42%),
+              radial-gradient(ellipse at 90% 95%, rgba(167,139,250,0.28) 0%, transparent 48%),
+              linear-gradient(140deg, #0b0b10 0%, #1a0f18 50%, #06060a 100%);"></div>
+            <!-- Holographic strip -->
+            <div class="absolute left-0 right-0" style="top:18mm;height:4mm;mix-blend-mode:screen;opacity:0.55;background:linear-gradient(90deg,#ff9eb4,#ffd86e,#a5f3fc,#c4b5fd,#fda4af,#fde68a);"></div>
+            <!-- Subtle line texture -->
+            <div class="absolute inset-0 opacity-15" style="background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22140%22 height=%22140%22 viewBox=%220 0 140 140%22><path d=%22M0 40 L140 40 M0 80 L140 80 M0 120 L140 120%22 stroke=%22white%22 stroke-width=%220.25%22/></svg>');"></div>
+
+            <div class="absolute flex items-start justify-between" style="top:3mm;left:4mm;right:4mm;">
+              <div>
+                <p class="font-bold" style="font-size:6pt;letter-spacing:0.3em;text-transform:uppercase;color:rgba(251,191,36,0.7);">Sally's Bar</p>
+                <p class="font-semibold" style="font-size:5pt;letter-spacing:0.25em;text-transform:uppercase;color:rgba(254,243,199,0.5);margin-top:1mm;">Member Card</p>
+              </div>
+              <span class="inline-flex items-center gap-1 font-bold"
+                style={`background:${tierBg};color:${tierColor};border:1px solid ${tierBorder};font-size:6pt;padding:1mm 2mm;border-radius:999px;`}>
+                {tierIcon} {tierLabel}
+              </span>
+            </div>
+
+            <!-- Silver chip -->
+            <div class="absolute" style="top:26mm;left:4mm;width:8mm;height:6mm;border-radius:1mm;background:linear-gradient(135deg,#e5e7eb 0%,#9ca3af 50%,#6b7280 100%);box-shadow:inset 0 0 0 0.3mm rgba(0,0,0,.2),0 0.5mm 1.5mm rgba(0,0,0,.3);">
+              <div class="absolute" style="inset:0.5mm;border:0.2mm solid rgba(0,0,0,0.25);border-radius:0.5mm;"></div>
+              <div class="absolute top-1/2 left-[0.5mm] right-[0.5mm]" style="height:0.2mm;background:rgba(0,0,0,0.25);"></div>
+            </div>
+
+            <!-- Watermark S — rose-gold-iridescent -->
+            <span class="absolute font-heading italic leading-none opacity-80" style="
+              right:2mm;top:6mm;font-size:40mm;font-weight:900;
+              background:linear-gradient(135deg,rgba(253,164,175,0.22) 0%,rgba(251,191,36,0.1) 100%);
+              -webkit-background-clip:text;background-clip:text;color:transparent;
+              font-family:'Playfair Display','Didot',serif;">S</span>
+
+            <!-- Card holder name — rose-gold foil -->
+            <div class="absolute" style="bottom:11mm;left:4mm;right:4mm;">
+              <p class="font-semibold" style="font-size:4.5pt;letter-spacing:0.3em;text-transform:uppercase;color:rgba(255,255,255,0.4);">Member</p>
+              <p class="font-bold truncate" style="font-family:'Playfair Display',serif;font-size:13pt;background:linear-gradient(135deg,#fef3c7 0%,#fbbf24 50%,#fda4af 100%);-webkit-background-clip:text;background-clip:text;color:transparent;">{name}</p>
+            </div>
+
+            <!-- Bottom row -->
+            <div class="absolute flex items-end justify-between" style="bottom:3mm;left:4mm;right:4mm;">
+              <div>
+                <p style="font-size:4.5pt;letter-spacing:0.25em;text-transform:uppercase;color:rgba(255,255,255,0.3);">No.</p>
+                <p class="font-mono font-semibold" style="font-size:7pt;letter-spacing:0.1em;color:rgba(255,255,255,0.85);">{profile.id.slice(0, 4).toUpperCase()} {profile.id.slice(4, 8).toUpperCase()}</p>
+              </div>
+              <div class="text-right">
+                <p style="font-size:4.5pt;letter-spacing:0.25em;text-transform:uppercase;color:rgba(255,255,255,0.3);">Points</p>
+                <p class="font-mono font-bold" style={`font-size:8pt;color:${tierColor};`}>{points}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- BACK (QR) -->
+          <div class="absolute inset-0 overflow-hidden shadow-2xl shadow-amber-500/10" style="backface-visibility:hidden;-webkit-backface-visibility:hidden;transform:rotateY(180deg);border-radius:3mm;">
+            <div class="absolute inset-0" style="background:linear-gradient(160deg,#0b0b10 0%,#1a1220 70%,#0b0b10 100%);"></div>
+            <!-- Magnetic stripe -->
+            <div class="absolute left-0 right-0" style="top:3mm;height:8mm;background:linear-gradient(180deg,#000 0%,#171717 50%,#000 100%);"></div>
+            <!-- Signature strip -->
+            <div class="absolute flex items-center" style="top:14mm;left:3mm;right:3mm;height:6mm;border-radius:1mm;background:rgba(255,255,255,0.9);padding:0 2mm;">
+              <p class="font-mono truncate" style="font-size:5pt;letter-spacing:0.15em;color:rgba(64,64,64,0.8);">{profile.id}</p>
+            </div>
+
+            <!-- QR + instructions -->
+            <div class="absolute flex items-center" style="top:22mm;left:3mm;right:3mm;gap:3mm;">
+              <div class="shrink-0 rounded bg-white" style="padding:1.5mm;">
+                <canvas id="cardQr" width="110" height="110" data-code={`loyalty:${profile.id}`} style="width:25mm;height:25mm;display:block;"></canvas>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="font-bold" style="font-size:5pt;letter-spacing:0.25em;text-transform:uppercase;color:rgba(251,191,36,0.7);">{isEl ? "Σκαναρε στο bar" : "Scan at the bar"}</p>
+                <p style="font-size:6pt;line-height:1.35;color:rgba(255,255,255,0.8);margin-top:1mm;">{isEl
+                  ? "Δείξε τον κωδικό στον σερβιτόρο — οι πόντοι πάνε στον λογαριασμό μου."
+                  : "Show this QR to the waiter — points credit to my account."}</p>
+              </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="absolute" style="bottom:2mm;left:3mm;right:3mm;font-size:4.5pt;line-height:1.4;color:rgba(255,255,255,0.4);">
+              <p>sallysbar.gr · Skala · Kefalonia</p>
+              <p style="opacity:0.6;margin-top:0.5mm;">{isEl ? "Κοινοποιημένη κάρτα — όχι εξαργυρώσιμη σε μετρητά." : "Shared card — not redeemable for cash."}</p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <p class="text-xs text-white/35 max-w-sm">
-        {isEl
-          ? "Κοινοποιημένη κάρτα. Μόνο ο κάτοχος λαμβάνει τους πόντους. Δεν μπορεί να εξαργυρωθεί σε μετρητά."
-          : "Shared card — only the owner accrues points. Not redeemable for cash."}
-      </p>
+      <p class="text-xs text-white/40 tracking-wider uppercase mt-1">{isEl ? "Πάτα την κάρτα για QR" : "Tap the card for QR"}</p>
+
+      <a href="/register" class="mt-2 inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-amber-200 to-amber-500 text-black px-5 py-3 text-sm font-bold hover:scale-[1.02] active:scale-[0.98] transition shadow-lg shadow-amber-500/20">
+        🎁 {isEl ? "Φτιάξε τη δική σου κάρτα" : "Get your own card"}
+      </a>
     </main>
 
     <footer class="py-6 text-center text-[10px] text-white/25">
@@ -64,15 +162,22 @@ const name = profile.full_name ?? "Member";
 
     <script>
       import QRCode from "qrcode";
-      const canvas = document.getElementById("qr") as HTMLCanvasElement | null;
+      const canvas = document.getElementById("cardQr") as HTMLCanvasElement | null;
       const code = canvas?.dataset.code ?? "";
       if (canvas && code) {
         QRCode.toCanvas(canvas, code, {
-          width: 280,
-          margin: 1,
+          width: 110, margin: 1,
           color: { dark: "#0a0a0f", light: "#ffffff" },
           errorCorrectionLevel: "H",
         }).catch((e: unknown) => console.error(e));
+      }
+      const luxe = document.getElementById("luxeCard");
+      if (luxe) {
+        let flipped = false;
+        luxe.addEventListener("click", () => {
+          flipped = !flipped;
+          (luxe as HTMLElement).style.transform = flipped ? "rotateY(180deg)" : "rotateY(0deg)";
+        });
       }
     </script>
   </body>

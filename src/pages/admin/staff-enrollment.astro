@@ -1,0 +1,201 @@
+---
+import "../../styles/global.css";
+import AdminNav from "../../components/AdminNav.astro";
+import { supabaseAdmin } from "../../lib/supabase";
+import { withLangPrefix } from "../../i18n";
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+
+if (Astro.locals.role !== "admin") {
+  return Astro.redirect(withLangPrefix(lang, "/admin"));
+}
+
+const TIP_PER_SIGNUP = 0.50;
+
+// All staff (employee + admin)
+const { data: staffProfiles } = await supabaseAdmin
+  .from("profiles").select("id, full_name, role")
+  .in("role", ["employee", "admin"]);
+
+const staff = staffProfiles ?? [];
+
+// All customer signups that have a referred_by_staff
+const { data: enrollments } = await supabaseAdmin
+  .from("profiles")
+  .select("id, full_name, created_at, referred_by_staff")
+  .not("referred_by_staff", "is", null)
+  .order("created_at", { ascending: false })
+  .limit(500);
+
+const now = Date.now();
+const startToday  = new Date(); startToday.setHours(0, 0, 0, 0);
+const startWeek   = new Date(now - 7  * 86400000);
+const startMonth  = new Date(now - 30 * 86400000);
+
+type Row = { id: string; name: string; role: string; today: number; week: number; month: number; total: number; tips: number };
+const byStaff = new Map<string, Row>();
+for (const s of staff) {
+  byStaff.set(s.id, { id: s.id, name: s.full_name ?? s.id.slice(0, 8), role: s.role, today: 0, week: 0, month: 0, total: 0, tips: 0 });
+}
+for (const e of enrollments ?? []) {
+  const sid = e.referred_by_staff!;
+  const row = byStaff.get(sid);
+  if (!row) continue;
+  const t = new Date(e.created_at).getTime();
+  row.total++;
+  if (t >= startMonth.getTime()) row.month++;
+  if (t >= startWeek.getTime())  row.week++;
+  if (t >= startToday.getTime()) row.today++;
+}
+for (const r of byStaff.values()) r.tips = r.month * TIP_PER_SIGNUP;
+
+const leaderboard = [...byStaff.values()].sort((a, b) => b.month - a.month || b.total - a.total);
+
+// Recent signups feed
+const nameById = new Map(staff.map(s => [s.id, s.full_name ?? s.id.slice(0, 8)]));
+const recent = (enrollments ?? []).slice(0, 50);
+
+// KPIs
+const totalMonth = leaderboard.reduce((s, r) => s + r.month, 0);
+const totalTips  = leaderboard.reduce((s, r) => s + r.tips, 0);
+const topStaff   = leaderboard[0];
+
+function fmtDateTime(s: string) {
+  return new Date(s).toLocaleString(isEl ? "el-GR" : "en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+}
+---
+
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{isEl ? "Εγγραφές από Staff" : "Staff Enrollments"} — Admin</title>
+    <meta name="robots" content="noindex,nofollow" />
+  </head>
+  <body class="min-h-screen bg-[#0b0b10] text-white">
+    <AdminNav active="staff-enrollment" />
+
+    <main class="mx-auto max-w-6xl px-4 py-6 space-y-6">
+      <div>
+        <h1 class="text-2xl font-bold">🧑‍🍳 {isEl ? "Εγγραφές από Staff" : "Staff Enrollments"}</h1>
+        <p class="text-sm text-white/50 mt-1">
+          {isEl
+            ? `Παρακολουθεί ποιος σερβιτόρος εγγράφει πελάτες. Εκτιμώμενο tip-jar: €${TIP_PER_SIGNUP.toFixed(2)} ανά εγγραφή.`
+            : `Tracks which waiter enrolled which customer. Estimated tip-jar payout: €${TIP_PER_SIGNUP.toFixed(2)} per signup.`}
+        </p>
+      </div>
+
+      <!-- KPIs -->
+      <section class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div class="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4">
+          <p class="text-[10px] uppercase tracking-wider text-amber-300/70">{isEl ? "30 ημέρες" : "Last 30 days"}</p>
+          <p class="text-3xl font-bold text-amber-300 mt-1">{totalMonth}</p>
+        </div>
+        <div class="rounded-2xl border border-emerald-400/20 bg-emerald-400/5 p-4">
+          <p class="text-[10px] uppercase tracking-wider text-emerald-300/70">{isEl ? "Tip jar (30 ημ.)" : "Tip jar (30d)"}</p>
+          <p class="text-3xl font-bold text-emerald-300 mt-1">€{totalTips.toFixed(2)}</p>
+        </div>
+        <div class="rounded-2xl border border-fuchsia-400/20 bg-fuchsia-400/5 p-4">
+          <p class="text-[10px] uppercase tracking-wider text-fuchsia-300/70">{isEl ? "Κορυφαίος" : "Top performer"}</p>
+          <p class="text-sm font-bold text-fuchsia-300 mt-1 truncate">{topStaff?.name ?? "—"}</p>
+          <p class="text-[11px] text-fuchsia-300/60">{topStaff ? `${topStaff.month} ${isEl ? "εγγραφές" : "signups"}` : ""}</p>
+        </div>
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+          <p class="text-[10px] uppercase tracking-wider text-white/40">{isEl ? "Ενεργά μέλη staff" : "Active staff"}</p>
+          <p class="text-3xl font-bold text-white mt-1">{staff.length}</p>
+        </div>
+      </section>
+
+      <!-- Leaderboard -->
+      <section class="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
+        <div class="px-5 py-3 border-b border-white/10 flex items-center justify-between">
+          <h2 class="text-sm font-semibold uppercase tracking-widest text-white/50">{isEl ? "Πίνακας κατάταξης" : "Leaderboard"}</h2>
+          <a href="/staff/enroll" class="text-xs text-amber-300 hover:text-amber-200 transition">{isEl ? "Σελίδα staff →" : "Staff page →"}</a>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-white/5">
+              <tr class="text-white/40 text-[10px] uppercase tracking-wider">
+                <th class="text-left px-4 py-2">#</th>
+                <th class="text-left px-4 py-2">{isEl ? "Σερβιτόρος" : "Staff"}</th>
+                <th class="text-right px-4 py-2">{isEl ? "Σήμερα" : "Today"}</th>
+                <th class="text-right px-4 py-2">{isEl ? "7 ημ." : "7 d"}</th>
+                <th class="text-right px-4 py-2">{isEl ? "30 ημ." : "30 d"}</th>
+                <th class="text-right px-4 py-2">{isEl ? "Σύνολο" : "All time"}</th>
+                <th class="text-right px-4 py-2">{isEl ? "Tip 30ημ." : "Tip 30d"}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {leaderboard.map((r, i) => (
+                <tr class="border-t border-white/5 hover:bg-white/[0.03]">
+                  <td class="px-4 py-2.5 text-white/40">{i + 1}</td>
+                  <td class="px-4 py-2.5">
+                    <a href={`/admin/users/${r.id}`} class="text-white hover:text-amber-300 underline-offset-2 hover:underline transition">{r.name}</a>
+                    <span class={`ml-2 text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded-full ${
+                      r.role === "admin" ? "bg-fuchsia-400/15 text-fuchsia-300" : "bg-sky-400/15 text-sky-300"
+                    }`}>{r.role}</span>
+                  </td>
+                  <td class="px-4 py-2.5 text-right font-mono text-white/80">{r.today || ""}</td>
+                  <td class="px-4 py-2.5 text-right font-mono text-white/80">{r.week  || ""}</td>
+                  <td class="px-4 py-2.5 text-right font-mono text-amber-300 font-semibold">{r.month}</td>
+                  <td class="px-4 py-2.5 text-right font-mono text-white/80">{r.total}</td>
+                  <td class="px-4 py-2.5 text-right font-mono text-emerald-300 font-semibold">€{r.tips.toFixed(2)}</td>
+                </tr>
+              ))}
+              {leaderboard.length === 0 && (
+                <tr><td colspan="7" class="px-4 py-8 text-center text-white/40 italic">{isEl ? "Δεν υπάρχουν staff ακόμα." : "No staff yet."}</td></tr>
+              )}
+            </tbody>
+            {leaderboard.length > 0 && (
+              <tfoot>
+                <tr class="border-t border-white/15 bg-white/[0.02] font-semibold">
+                  <td colspan="4" class="px-4 py-2.5 text-white/60 text-right">{isEl ? "Σύνολα" : "Totals"}</td>
+                  <td class="px-4 py-2.5 text-right font-mono text-amber-300">{totalMonth}</td>
+                  <td class="px-4 py-2.5 text-right font-mono text-white/60">{leaderboard.reduce((s, r) => s + r.total, 0)}</td>
+                  <td class="px-4 py-2.5 text-right font-mono text-emerald-300">€{totalTips.toFixed(2)}</td>
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+      </section>
+
+      <!-- Recent signups feed -->
+      <section class="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
+        <div class="px-5 py-3 border-b border-white/10">
+          <h2 class="text-sm font-semibold uppercase tracking-widest text-white/50">{isEl ? "Πρόσφατες εγγραφές" : "Recent signups"} ({recent.length})</h2>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs">
+            <thead class="bg-white/5">
+              <tr class="text-white/40 text-[10px] uppercase tracking-wider">
+                <th class="text-left px-3 py-2">{isEl ? "Όταν" : "When"}</th>
+                <th class="text-left px-3 py-2">{isEl ? "Πελάτης" : "Customer"}</th>
+                <th class="text-left px-3 py-2">{isEl ? "Εγγράφηκε από" : "Enrolled by"}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recent.map(r => (
+                <tr class="border-t border-white/5 hover:bg-white/[0.03]">
+                  <td class="px-3 py-2 text-white/60 whitespace-nowrap">{fmtDateTime(r.created_at)}</td>
+                  <td class="px-3 py-2 text-white/80">
+                    <a href={`/admin/users/${r.id}`} class="hover:text-amber-300 underline-offset-2 hover:underline">{r.full_name ?? r.id.slice(0, 8)}</a>
+                  </td>
+                  <td class="px-3 py-2 text-white/80">
+                    <a href={`/admin/users/${r.referred_by_staff}`} class="hover:text-amber-300 underline-offset-2 hover:underline">
+                      {nameById.get(r.referred_by_staff!) ?? r.referred_by_staff!.slice(0, 8)}
+                    </a>
+                  </td>
+                </tr>
+              ))}
+              {recent.length === 0 && (
+                <tr><td colspan="3" class="px-3 py-8 text-center text-white/40 italic">{isEl ? "Καμία εγγραφή ακόμα." : "No enrollments yet."}</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

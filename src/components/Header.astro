@@ -40,8 +40,9 @@ const nav = [
   { label: t.nav.menu,    icon: "📜",  href: withLangPrefix(lang, "/menu") },
   { label: bookLabel,     icon: "📅",  href: withLangPrefix(lang, "/book") },
   { label: eventsLabel,   icon: "🎵",  href: withLangPrefix(lang, "/events") },
-  { label: playLabel,     icon: "🎁",  href: withLangPrefix(lang, "/play") },
-  { label: loyaltyLabel,  icon: "👑",  href: withLangPrefix(lang, "/loyalty") },
+  { label: playLabel,                         icon: "🎁",  href: withLangPrefix(lang, "/play") },
+  { label: lang === "el" ? "Κάρτα" : "Card",  icon: "💳",  href: withLangPrefix(lang, "/membership") },
+  { label: loyaltyLabel,                      icon: "👑",  href: withLangPrefix(lang, "/loyalty") },
   { label: t.nav.careers, icon: "💼",  href: withLangPrefix(lang, "/careers") },
 ];
 
@@ -157,15 +158,45 @@ import CustomerPwa from "./CustomerPwa.astro";
 
               <div id="userMenuDropdown" class="hidden absolute right-0 top-full mt-2 w-60 rounded-2xl border border-white/10 bg-[#0b0b10] shadow-xl z-50 max-h-[min(80vh,600px)] overflow-y-auto overscroll-contain">
                 <div class="py-1.5">
-                  <a href={accountHref} class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/5 transition">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-60"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.5"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-                    {t.user.myAccount}
+                  <!-- Header card: avatar + name -->
+                  <div class="flex items-center gap-3 px-4 pt-3 pb-2.5">
+                    <div class="shrink-0 h-10 w-10 rounded-full bg-gradient-to-br from-amber-300 to-amber-500 text-black font-bold grid place-items-center text-sm shadow-lg shadow-amber-500/20">
+                      {displayName.charAt(0).toUpperCase()}
+                    </div>
+                    <div class="min-w-0 flex-1">
+                      <p class="text-sm font-semibold text-white truncate">{displayName}</p>
+                      <p class="text-[10px] uppercase tracking-widest text-white/40 mt-0.5">{role ?? "guest"}</p>
+                    </div>
+                  </div>
+                  <div class="mx-3 mb-1.5 border-t border-white/10"></div>
+
+                  <a href={accountHref} class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-white/70 hover:text-amber-200 hover:bg-white/5 transition">
+                    <span class="shrink-0 w-5 grid place-items-center">💳</span>
+                    {isEl ? "Η κάρτα μου" : "My card"}
                   </a>
                   {role === "customer" && (
-                    <a href={accountHref} class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-white/70 hover:text-white hover:bg-white/5 transition">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="opacity-60"><rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 9h18M8 2v4M16 2v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-                      {t.user.myReservations}
-                    </a>
+                    <>
+                      <a href={withLangPrefix(lang, "/loyalty")} class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-white/70 hover:text-amber-200 hover:bg-white/5 transition">
+                        <span class="shrink-0 w-5 grid place-items-center">👑</span>
+                        {isEl ? "Ανταμοιβές & Επίπεδα" : "Rewards & Tiers"}
+                      </a>
+                      <a href={withLangPrefix(lang, "/play")} class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-white/70 hover:text-amber-200 hover:bg-white/5 transition">
+                        <span class="shrink-0 w-5 grid place-items-center">🎁</span>
+                        {isEl ? "Παιχνίδι & αποστολές" : "Play & quests"}
+                      </a>
+                      <a href={accountHref + "#pointsHistory"} class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-white/70 hover:text-amber-200 hover:bg-white/5 transition">
+                        <span class="shrink-0 w-5 grid place-items-center">💰</span>
+                        {isEl ? "Πόντοι & εξαργύρωση" : "Points & redeem"}
+                      </a>
+                      <a href={withLangPrefix(lang, "/book")} class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-white/70 hover:text-amber-200 hover:bg-white/5 transition">
+                        <span class="shrink-0 w-5 grid place-items-center">📅</span>
+                        {isEl ? "Κρατήσεις" : "Reservations"}
+                      </a>
+                      <a href={withLangPrefix(lang, "/events")} class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-white/70 hover:text-amber-200 hover:bg-white/5 transition">
+                        <span class="shrink-0 w-5 grid place-items-center">🎵</span>
+                        {isEl ? "Events" : "Events"}
+                      </a>
+                    </>
                   )}
 
                   {role === "admin" && (

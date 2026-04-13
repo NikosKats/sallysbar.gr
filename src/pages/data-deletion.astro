@@ -1,0 +1,98 @@
+---
+import "../styles/global.css";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+
+const title = (isEl ? "Διαγραφή Δεδομένων Χρήστη" : "User Data Deletion") + " — Sally's Bar";
+---
+
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={isEl ? "Πώς να διαγράψετε τον λογαριασμό και τα δεδομένα σας από το Sally's Bar." : "How to delete your account and data from Sally's Bar."} />
+    <meta name="robots" content="index,follow" />
+    <link rel="canonical" href={`https://sallysbar.gr${isEl ? "/el" : ""}/data-deletion`} />
+  </head>
+  <body class="min-h-screen bg-[#0a0a0f] text-white font-body antialiased">
+    <Header />
+
+    <main class="mx-auto max-w-3xl px-6 py-16 pt-32">
+      <p class="text-xs uppercase tracking-[0.28em] text-amber-200/80 mb-3">Sally's Bar · Skala · Kefalonia</p>
+      <h1 class="font-heading text-4xl md:text-5xl font-bold leading-tight bg-gradient-to-br from-white via-amber-50 to-amber-200/80 bg-clip-text text-transparent">
+        {isEl ? "Διαγραφή Δεδομένων Χρήστη" : "User Data Deletion"}
+      </h1>
+
+      <div class="mt-10 space-y-8 text-[15px] leading-relaxed text-white/80">
+        <section>
+          <h2 class="text-xl font-semibold text-amber-200 mb-2">{isEl ? "Συνοπτικά" : "Summary"}</h2>
+          <p>{isEl
+            ? "Έχετε δικαίωμα να ζητήσετε άμεση και πλήρη διαγραφή του λογαριασμού σας και όλων των προσωπικών δεδομένων που έχουμε για εσάς, σύμφωνα με τον GDPR (Άρθρο 17 — δικαίωμα στη λήθη)."
+            : "You can request immediate and full deletion of your account and all personal data we hold for you, in line with GDPR (Article 17 — right to be forgotten)."}</p>
+        </section>
+
+        <section>
+          <h2 class="text-xl font-semibold text-amber-200 mb-2">{isEl ? "Επιλογή 1 — Αυτο-εξυπηρέτηση από το λογαριασμό σας" : "Option 1 — Self-service from your account"}</h2>
+          <ol class="list-decimal pl-6 space-y-2">
+            <li>{isEl ? "Συνδεθείτε στο " : "Sign in at "}<a href="/account" class="text-amber-300 hover:underline">/account</a></li>
+            <li>{isEl ? "Κάντε κύλιση στο τμήμα Προφίλ στο κάτω μέρος της σελίδας." : "Scroll to the Profile section at the bottom of the page."}</li>
+            <li>{isEl ? "Πατήστε «Διαγραφή λογαριασμού»." : "Tap \"Delete account\"."}</li>
+            <li>{isEl ? "Επιβεβαιώστε. Ο λογαριασμός και όλα τα συσχετισμένα δεδομένα διαγράφονται μέσα σε 24 ώρες." : "Confirm. Your account and all associated data are deleted within 24 hours."}</li>
+          </ol>
+        </section>
+
+        <section>
+          <h2 class="text-xl font-semibold text-amber-200 mb-2">{isEl ? "Επιλογή 2 — Αίτημα μέσω email" : "Option 2 — Email request"}</h2>
+          <p>{isEl ? "Στείλτε email στο " : "Email "}<a href="mailto:privacy@sallysbar.gr" class="text-amber-300 hover:underline">privacy@sallysbar.gr</a>{isEl ? " από τη διεύθυνση email του λογαριασμού σας με το θέμα " : " from your account's email address with the subject "}<code class="bg-amber-400/10 text-amber-300 px-2 py-0.5 rounded">{isEl ? "Διαγραφή Λογαριασμού" : "Delete Account"}</code>{isEl ? "." : "."}</p>
+          <p class="mt-3">{isEl
+            ? "Δεν χρειάζεται να αιτιολογήσετε την αίτηση. Επεξεργαζόμαστε εντός 30 ημερών (συνήθως εντός 48 ωρών). Λάβετε επιβεβαίωση μέσω email."
+            : "No reason required. We process within 30 days (typically within 48 hours). You'll receive an email confirmation."}</p>
+        </section>
+
+        <section>
+          <h2 class="text-xl font-semibold text-amber-200 mb-2">{isEl ? "Επιλογή 3 — Από το Facebook" : "Option 3 — From Facebook"}</h2>
+          <p>{isEl
+            ? "Αν συνδεθήκατε μέσω Facebook, μπορείτε επίσης να αφαιρέσετε την εφαρμογή «Sally's Bar Login» από τις ρυθμίσεις του Facebook σας:"
+            : "If you signed in via Facebook, you can also remove the \"Sally's Bar Login\" app from your Facebook settings:"}</p>
+          <ol class="list-decimal pl-6 space-y-2 mt-3">
+            <li>Facebook → <strong>Settings & privacy</strong> → <strong>Settings</strong></li>
+            <li><strong>{isEl ? "Apps and Websites" : "Apps and Websites"}</strong></li>
+            <li>{isEl ? "Βρείτε «Sally's Bar Login» → Remove" : "Find \"Sally's Bar Login\" → Remove"}</li>
+          </ol>
+          <p class="mt-3 text-sm text-white/60">{isEl
+            ? "Αυτή η ενέργεια ενεργοποιεί το Facebook Data Deletion Callback μας, το οποίο διαγράφει αυτόματα τον λογαριασμό σας από τους διακομιστές μας. Λαμβάνετε κωδικό επιβεβαίωσης που μπορείτε να ελέγξετε στο "
+            : "This triggers our Facebook Data Deletion Callback, which automatically deletes your account from our servers. You'll receive a confirmation code you can check at "}<code class="bg-white/5 px-2 py-0.5 rounded">https://sallysbar.gr/data-deletion?code=&lt;code&gt;</code>{isEl ? "." : "."}</p>
+        </section>
+
+        <section>
+          <h2 class="text-xl font-semibold text-amber-200 mb-2">{isEl ? "Τι διαγράφεται" : "What gets deleted"}</h2>
+          <ul class="list-disc pl-6 space-y-1.5">
+            <li>{isEl ? "Λογαριασμός Supabase auth (email, hashed password, sessions, OAuth identities)" : "Supabase auth account (email, hashed password, sessions, OAuth identities)"}</li>
+            <li>{isEl ? "Προφίλ (όνομα, τηλέφωνο, διεύθυνση, ημ. γέννησης, χώρα, κ.λπ.)" : "Profile (name, phone, address, birthday, country, etc.)"}</li>
+            <li>{isEl ? "Πόντοι και ιστορικό loyalty events" : "Loyalty points and event history"}</li>
+            <li>{isEl ? "Scratch cards, ολοκληρωμένες αποστολές, εξαργυρώσεις" : "Scratch cards, completed quests, redemptions"}</li>
+            <li>{isEl ? "Κρατήσεις, RSVP σε events, push subscriptions" : "Reservations, event RSVPs, push subscriptions"}</li>
+            <li>{isEl ? "Αναφορές σύστασης, todos, dossier" : "Referral records, todos, dossier"}</li>
+          </ul>
+          <p class="mt-3 text-sm text-white/60">{isEl
+            ? "Διατηρούμε μόνο φορολογικά απαραίτητα στοιχεία παραγγελιών (anonymized — αριθμός παραγγελίας + ποσό) για 10 έτη όπως απαιτεί η ελληνική φορολογική νομοθεσία."
+            : "We keep only the tax-required order records (anonymized — order number + amount) for 10 years as Greek tax law requires."}</p>
+        </section>
+
+        <section>
+          <h2 class="text-xl font-semibold text-amber-200 mb-2">{isEl ? "Επικοινωνία" : "Contact"}</h2>
+          <p>{isEl ? "Για ερωτήσεις σχετικά με τα δεδομένα σας: " : "For questions about your data: "}<a href="mailto:privacy@sallysbar.gr" class="text-amber-300 hover:underline">privacy@sallysbar.gr</a></p>
+          <p class="mt-2 text-sm text-white/60">{isEl
+            ? "Μπορείτε επίσης να υποβάλετε καταγγελία στην Αρχή Προστασίας Δεδομένων Προσωπικού Χαρακτήρα (dpa.gr)."
+            : "You may also lodge a complaint with the Hellenic Data Protection Authority (dpa.gr)."}</p>
+        </section>
+      </div>
+    </main>
+
+    <Footer />
+  </body>
+</html>

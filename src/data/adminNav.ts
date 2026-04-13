@@ -50,6 +50,7 @@ export function getAdminNavGroups(lang: "en" | "el", t: any): AdminNavGroup[] {
       { key: "scratch",             label: isEl ? "Scratch Cards" : "Scratch Cards",       href: withLangPrefix(lang, "/admin/scratch"),             icon: I.scratch },
       { key: "wheel",               label: isEl ? "Ρόδα Τύχης" : "Wheel of Luck",           href: withLangPrefix(lang, "/admin/wheel"),               icon: I.wheel },
       { key: "coasters",            label: isEl ? "Σουβέρ (εκτυπώσιμα)" : "Coasters (printable)", href: withLangPrefix(lang, "/admin/coasters"),       icon: I.coasters },
+      { key: "staff-enrollment",    label: isEl ? "Εγγραφές από Staff" : "Staff Enrollments",    href: withLangPrefix(lang, "/admin/staff-enrollment"), icon: I.users },
     ]},
     { title: isEl ? "Περιεχόμενο" : "Content", items: [
       { key: "editMenu", label: t.admin.nav.editMenu,         href: withLangPrefix(lang, "/admin/menu"),    icon: I.editMenu },

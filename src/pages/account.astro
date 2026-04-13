@@ -492,9 +492,9 @@ function statusLabel(s: string) {
 
       <!-- Loyalty Points -->
       {hasCard && (
-      <div class="order-3 rounded-2xl border bg-white/5 p-6 space-y-4" style={`border-color:${tierBorder}`}>
+      <div class="order-3 space-y-3">
         <!-- Header row: section label + balance -->
-        <div class="flex items-center justify-between gap-3">
+        <div class="flex items-center justify-between gap-3 px-1">
           <h2 class="text-sm font-semibold text-white/50 uppercase tracking-widest">{ta.loyaltySection}</h2>
           <div class="flex items-baseline gap-1.5">
             <span class="text-2xl font-bold" style={`color:${tierColor}`}>{loyaltyBalance}</span>
@@ -502,33 +502,96 @@ function statusLabel(s: string) {
           </div>
         </div>
 
-        <!-- Loyalty Card QR -->
-        <div class="rounded-xl bg-white p-4 flex items-center gap-4">
-          <canvas id="loyaltyQr" width="140" height="140" class="shrink-0" data-code={`loyalty:${user.id}`}></canvas>
-          <div class="min-w-0">
-            <p class="text-xs uppercase tracking-wider text-neutral-500">{isEl ? "Κάρτα Πιστότητας" : "Loyalty Card"}</p>
-            <p class="text-base font-bold text-neutral-900 truncate">{displayName}</p>
-            <p class="text-xs text-neutral-600 mt-1">{isEl ? "Δείξε τον κωδικό στον σερβιτόρο για να κερδίσεις πόντους." : "Show this code to the waiter to earn points."}</p>
+        <!-- Luxury physical-card — actual ISO/IEC 7810 ID-1 size (85.6mm × 53.98mm), click/tap to flip -->
+        <div class="flex flex-col items-center gap-3 py-3" style="perspective:1600px;">
+          <div id="luxeCard" class="luxe-card relative cursor-pointer select-none" style="width:85.6mm;height:53.98mm;transform-style:preserve-3d;transition:transform 0.8s cubic-bezier(.2,.9,.2,1);">
+            <!-- FRONT — iridescent + rose-gold, sized in mm so it matches a real card -->
+            <div class="absolute inset-0 overflow-hidden shadow-2xl shadow-amber-500/15" style="backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:4mm;">
+              <div class="absolute inset-0" style="background:
+                radial-gradient(ellipse at 15% 10%, rgba(253,164,175,0.32) 0%, transparent 42%),
+                radial-gradient(ellipse at 90% 95%, rgba(167,139,250,0.28) 0%, transparent 48%),
+                linear-gradient(140deg, #0b0b10 0%, #1a0f18 50%, #06060a 100%);"></div>
+              <div class="absolute left-0 right-0" style="top:18mm;height:4mm;mix-blend-mode:screen;opacity:0.55;background:linear-gradient(90deg,#ff9eb4,#ffd86e,#a5f3fc,#c4b5fd,#fda4af,#fde68a);"></div>
+              <div class="absolute inset-0 opacity-15" style="background-image:url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22140%22 height=%22140%22 viewBox=%220 0 140 140%22><path d=%22M0 40 L140 40 M0 80 L140 80 M0 120 L140 120%22 stroke=%22white%22 stroke-width=%220.25%22/></svg>');"></div>
+
+              <div class="absolute flex items-start justify-between" style="top:3mm;left:4mm;right:4mm;">
+                <div>
+                  <p class="font-bold" style="font-size:6pt;letter-spacing:0.3em;text-transform:uppercase;color:rgba(251,191,36,0.7);">Sally's Bar</p>
+                  <p class="font-semibold" style="font-size:5pt;letter-spacing:0.25em;text-transform:uppercase;color:rgba(254,243,199,0.5);margin-top:1mm;">Member Card</p>
+                </div>
+                <span class="inline-flex items-center gap-1 font-bold"
+                  style={`background:${tierBg};color:${tierColor};border:1px solid ${tierBorder};font-size:6pt;padding:1mm 2mm;border-radius:999px;`}>
+                  {tierIcon} {tierLabel}
+                </span>
+              </div>
+
+              <!-- Silver chip -->
+              <div class="absolute" style="top:26mm;left:4mm;width:8mm;height:6mm;border-radius:1mm;background:linear-gradient(135deg,#e5e7eb 0%,#9ca3af 50%,#6b7280 100%);box-shadow:inset 0 0 0 0.3mm rgba(0,0,0,.2),0 0.5mm 1.5mm rgba(0,0,0,.3);">
+                <div class="absolute" style="inset:0.5mm;border:0.2mm solid rgba(0,0,0,0.25);border-radius:0.5mm;"></div>
+                <div class="absolute top-1/2 left-[0.5mm] right-[0.5mm]" style="height:0.2mm;background:rgba(0,0,0,0.25);"></div>
+              </div>
+
+              <span class="absolute font-heading italic leading-none opacity-80" style="
+                right:2mm;top:6mm;font-size:40mm;font-weight:900;
+                background:linear-gradient(135deg,rgba(253,164,175,0.22) 0%,rgba(251,191,36,0.1) 100%);
+                -webkit-background-clip:text;background-clip:text;color:transparent;
+                font-family:'Playfair Display','Didot',serif;">S</span>
+
+              <div class="absolute" style="bottom:11mm;left:4mm;right:4mm;">
+                <p class="font-semibold" style="font-size:4.5pt;letter-spacing:0.3em;text-transform:uppercase;color:rgba(255,255,255,0.4);">Member</p>
+                <p class="font-bold truncate" style="font-family:'Playfair Display',serif;font-size:13pt;background:linear-gradient(135deg,#fef3c7 0%,#fbbf24 50%,#fda4af 100%);-webkit-background-clip:text;background-clip:text;color:transparent;">{displayName}</p>
+              </div>
+
+              <div class="absolute flex items-end justify-between" style="bottom:3mm;left:4mm;right:4mm;">
+                <div>
+                  <p style="font-size:4.5pt;letter-spacing:0.25em;text-transform:uppercase;color:rgba(255,255,255,0.3);">No.</p>
+                  <p class="font-mono font-semibold" style="font-size:7pt;letter-spacing:0.1em;color:rgba(255,255,255,0.85);">{user.id.slice(0, 4).toUpperCase()} {user.id.slice(4, 8).toUpperCase()}</p>
+                </div>
+                <div class="text-right">
+                  <p style="font-size:4.5pt;letter-spacing:0.25em;text-transform:uppercase;color:rgba(255,255,255,0.3);">Points</p>
+                  <p class="font-mono font-bold" style={`font-size:8pt;color:${tierColor};`}>{loyaltyBalance}</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- BACK — sized in mm so QR + signature are crisp -->
+            <div class="absolute inset-0 overflow-hidden shadow-2xl shadow-amber-500/10" style="backface-visibility:hidden;-webkit-backface-visibility:hidden;transform:rotateY(180deg);border-radius:4mm;">
+              <div class="absolute inset-0" style="background:linear-gradient(160deg,#0b0b10 0%,#1a1220 70%,#0b0b10 100%);"></div>
+              <!-- Magnetic stripe -->
+              <div class="absolute left-0 right-0" style="top:3mm;height:8mm;background:linear-gradient(180deg,#000 0%,#171717 50%,#000 100%);"></div>
+              <!-- Signature strip -->
+              <div class="absolute flex items-center" style="top:14mm;left:3mm;right:3mm;height:6mm;border-radius:1mm;background:rgba(255,255,255,0.9);padding:0 2mm;">
+                <p class="font-mono truncate" style="font-size:5pt;letter-spacing:0.15em;color:rgba(64,64,64,0.8);">{user.id}</p>
+              </div>
+
+              <div class="absolute flex items-center" style="top:22mm;left:3mm;right:3mm;gap:3mm;">
+                <div class="shrink-0 rounded bg-white" style="padding:1.5mm;">
+                  <canvas id="loyaltyQr" width="110" height="110" data-code={`loyalty:${user.id}`} style="width:25mm;height:25mm;display:block;"></canvas>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="font-bold" style="font-size:5pt;letter-spacing:0.25em;text-transform:uppercase;color:rgba(251,191,36,0.7);">{isEl ? "Σκαναρε στο bar" : "Scan at the bar"}</p>
+                  <p style="font-size:6pt;line-height:1.35;color:rgba(255,255,255,0.8);margin-top:1mm;">{isEl
+                    ? "Δείξε τον κωδικό στον σερβιτόρο για να κερδίσεις πόντους."
+                    : "Show this QR to the waiter to earn points."}</p>
+                  <button id="shareCardBtn" type="button" data-share-url={`https://sallysbar.gr/card/${user.id}`}
+                    class="rounded font-semibold hover:opacity-90 transition" style="margin-top:1.5mm;background:rgba(251,191,36,0.15);color:rgba(254,243,199,0.95);border:0.3mm solid rgba(251,191,36,0.4);font-size:5pt;padding:1mm 2mm;letter-spacing:0.1em;"
+                    onclick="event.stopPropagation();">
+                    🔗 {isEl ? "Κοινοποιηση" : "Share"}
+                  </button>
+                </div>
+              </div>
+
+              <div class="absolute" style="bottom:2mm;left:3mm;right:3mm;font-size:4.5pt;line-height:1.4;color:rgba(255,255,255,0.4);">
+                <p>sallysbar.gr · Skala · Kefalonia</p>
+                <p style="opacity:0.6;margin-top:0.5mm;">{isEl ? "Μη μεταβιβάσιμη. Δες /terms." : "Non-transferable. See /terms."}</p>
+              </div>
+            </div>
           </div>
+          <p class="text-center text-[10px] text-white/35 tracking-wider uppercase">{isEl ? "Πάτα την κάρτα για να γυρίσει" : "Tap the card to flip"}</p>
         </div>
 
-        <!-- Wallet buttons -->
-        <div class="grid grid-cols-2 gap-2">
-          <button id="appleWalletBtn" class="flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-black px-3 py-2.5 text-xs text-white hover:bg-white/5 transition">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.5 12.5c0-2.5 2-3.7 2.1-3.8-1.1-1.6-2.9-1.9-3.5-1.9-1.5-.2-2.9.9-3.6.9-.7 0-1.9-.9-3.1-.9-1.6 0-3 .9-3.8 2.3-1.6 2.8-.4 7 1.2 9.3.8 1.1 1.7 2.4 2.9 2.3 1.2-.1 1.6-.8 3-.8s1.8.8 3 .8c1.2 0 2-1.1 2.8-2.3.9-1.3 1.3-2.6 1.3-2.7-.1 0-2.3-.9-2.3-3.2M14.8 5.3c.6-.8 1.1-1.9 1-3-.9 0-2.1.6-2.7 1.4-.6.7-1.1 1.8-1 2.9 1 .1 2.1-.5 2.7-1.3"/></svg>
-            {isEl ? "Apple Wallet" : "Add to Apple Wallet"}
-          </button>
-          <button id="googleWalletBtn" class="flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 py-2.5 text-xs text-white hover:bg-white/10 transition">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="18" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M3 10h18" stroke="currentColor" stroke-width="1.5"/></svg>
-            {isEl ? "Google Wallet" : "Save to Google Wallet"}
-          </button>
-          <button id="shareCardBtn" data-share-url={`https://sallysbar.gr/card/${user.id}`}
-            class="col-span-2 flex items-center justify-center gap-2 rounded-xl border border-amber-400/30 bg-amber-400/10 px-3 py-2.5 text-xs font-semibold text-amber-200 hover:bg-amber-400/15 transition">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7M16 6l-4-4-4 4M12 2v13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            {isEl ? "Κοινοποίησε την κάρτα" : "Share my card"}
-          </button>
-        </div>
-
+        <!-- Tier progress + redemptions + rewards (separate card so the loyalty card sits free) -->
+        <div class="rounded-2xl border bg-white/5 p-5 space-y-4" style={`border-color:${tierBorder}`}>
         <!-- Tier badge + progress -->
         <div class="space-y-2">
           <div class="flex items-center justify-between gap-2 flex-wrap">
@@ -622,6 +685,7 @@ function statusLabel(s: string) {
             <p class="text-xs text-white/25">{ta.loyaltyEarn}</p>
           </div>
         )}
+        </div>
       </div>
       )}
 
@@ -1297,9 +1361,9 @@ function statusLabel(s: string) {
     const loyaltyCode = (loyaltyCanvas?.dataset.code) || "";
     if (loyaltyCanvas && loyaltyCode) {
       QRCode.toCanvas(loyaltyCanvas, loyaltyCode, {
-        width: 140,
-        margin: 1,
+        width: 110, margin: 1,
         color: { dark: "#0a0a0f", light: "#ffffff" },
+        errorCorrectionLevel: "H",
       }).catch((e) => console.error("loyalty qr failed", e));
     }
     const isEl = document.documentElement.lang === "el";
@@ -1387,20 +1451,15 @@ function statusLabel(s: string) {
       }
     });
 
-    // Wallet buttons
-    document.getElementById("appleWalletBtn")?.addEventListener("click", async () => {
-      const res = await fetch("/api/wallet/apple-pass", { method: "POST" });
-      if (res.ok) {
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url; a.download = "sallys-loyalty.pkpass"; a.click();
-        URL.revokeObjectURL(url);
-      } else {
-        const j = await res.json().catch(() => ({}));
-        alert(j.fallback ?? j.message ?? (isEl ? "Δεν είναι διαθέσιμο." : "Not available yet."));
-      }
-    });
+    // Flip the luxury physical-style loyalty card
+    const luxeCard = document.getElementById("luxeCard");
+    if (luxeCard) {
+      let flipped = false;
+      luxeCard.addEventListener("click", () => {
+        flipped = !flipped;
+        (luxeCard as HTMLElement).style.transform = flipped ? "rotateY(180deg)" : "rotateY(0deg)";
+      });
+    }
 
     // Share my loyalty card
     const shareBtn = document.getElementById("shareCardBtn") as HTMLButtonElement | null;
@@ -1423,29 +1482,6 @@ function statusLabel(s: string) {
       }
     });
 
-    const gwBtn = document.getElementById("googleWalletBtn") as HTMLButtonElement | null;
-    gwBtn?.addEventListener("click", async () => {
-      const orig = gwBtn.innerHTML;
-      gwBtn.disabled = true;
-      gwBtn.innerHTML = "⏳ " + (isEl ? "Φόρτωση…" : "Loading…");
-      try {
-        const res = await fetch("/api/wallet/google-pass", { method: "POST" });
-        const j = await res.json().catch(() => ({}));
-        if (res.ok && j.saveUrl) {
-          // Open in same tab on mobile (Wallet handoff), new tab on desktop
-          const isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
-          if (isMobile) window.location.href = j.saveUrl;
-          else window.open(j.saveUrl, "_blank", "noopener");
-        } else {
-          alert(j.message ?? (isEl ? "Δεν είναι διαθέσιμο ακόμα." : "Not available yet."));
-        }
-      } catch {
-        alert(isEl ? "Σφάλμα δικτύου" : "Network error");
-      } finally {
-        gwBtn.disabled = false;
-        gwBtn.innerHTML = orig;
-      }
-    });
 
     // Redeem modal refs
     const redeemModal     = document.getElementById("redeemModal")!;

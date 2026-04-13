@@ -219,6 +219,89 @@ for (const c of categories) {
           }, 4100);
         });
       })();
+
+      // Toast helper for the chooser tile
+      function sallysToast(text, kind) {
+        const t = document.createElement("div");
+        const colors = kind === "ok"   ? "background:linear-gradient(135deg,#34d399,#10b981);color:#0b0b10;"
+                     : kind === "warn" ? "background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#0b0b10;"
+                     : kind === "err"  ? "background:linear-gradient(135deg,#fca5a5,#ef4444);color:#1a0b0b;"
+                     :                   "background:linear-gradient(135deg,#1f1430,#0b0b10);color:#fef3c7;border:1px solid rgba(251,191,36,0.4);";
+        t.style.cssText = `position:fixed;top:90px;left:50%;transform:translateX(-50%) translateY(-12px);z-index:9999;${colors};padding:12px 18px;border-radius:14px;box-shadow:0 12px 30px rgba(0,0,0,0.5);max-width:92vw;text-align:center;font-weight:600;font-size:13px;line-height:1.35;opacity:0;transition:opacity .25s,transform .25s;`;
+        t.innerHTML = text;
+        document.body.appendChild(t);
+        requestAnimationFrame(() => { t.style.opacity = "1"; t.style.transform = "translateX(-50%) translateY(0)"; });
+        setTimeout(() => { t.style.opacity = "0"; setTimeout(() => t.remove(), 280); }, 4200);
+      }
+
+      // "See menu" chooser tile → smooth scroll without putting #menu in URL
+      (function () {
+        const link = document.getElementById("seeMenuBtn");
+        if (!link) return;
+        link.addEventListener("click", (e) => {
+          e.preventDefault();
+          const target = document.getElementById("menu");
+          if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      })();
+
+      // Scroll-to-top floating button
+      (function () {
+        const topBtn = document.getElementById("scrollTopBtn");
+        if (!topBtn) return;
+        const toggle = () => {
+          const show = window.scrollY > 400;
+          topBtn.style.opacity = show ? "1" : "0";
+          topBtn.style.pointerEvents = show ? "auto" : "none";
+        };
+        window.addEventListener("scroll", toggle, { passive: true });
+        toggle();
+        topBtn.addEventListener("click", () => {
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        });
+      })();
+
+      // "Spin the wheel" chooser → fetch state, show contextual toast, scroll
+      (function () {
+        const isEl = document.documentElement.lang === "el";
+        const btn = document.getElementById("goWheelBtn");
+        if (!btn) return;
+        btn.addEventListener("click", async (e) => {
+          e.preventDefault();
+          // Smooth-scroll to wheel section without adding the hash to the URL
+          const target = document.getElementById("wheelSection");
+          if (target) {
+            target.scrollIntoView({ behavior: "smooth", block: "start" });
+          }
+          try {
+            const r = await fetch("/api/loyalty/wheel-spin");
+            const j = await r.json();
+            if (j.reason === "auth_required") {
+              sallysToast(isEl
+                ? "🔒 <strong>Συνδέσου πρώτα</strong><br/>Μία περιστροφή την ημέρα, μόνο για συνδεδεμένους πελάτες."
+                : "🔒 <strong>Sign in first</strong><br/>One spin a day — for signed-in customers only.", "warn");
+            } else if (j.reason === "disabled") {
+              sallysToast(isEl
+                ? "⏸ <strong>Η ρόδα είναι ανενεργή</strong><br/>Δοκίμασε ξανά αργότερα."
+                : "⏸ <strong>The wheel is off</strong><br/>Try again later.", "info");
+            } else if (j.reason === "staff_role") {
+              sallysToast(isEl
+                ? "🚫 <strong>Μόνο για πελάτες</strong><br/>Η ρόδα δεν είναι για staff/admin."
+                : "🚫 <strong>Customers only</strong><br/>The wheel isn't available for staff/admin.", "info");
+            } else if (j.reason === "already_spun_today") {
+              sallysToast(isEl
+                ? `✓ <strong>Ήδη γύρισες σήμερα</strong><br/>Έπαθλο: ${j.lastReward ?? "—"}. Νέα περιστροφή αύριο.`
+                : `✓ <strong>Already spun today</strong><br/>Prize: ${j.lastReward ?? "—"}. Come back tomorrow.`, "ok");
+            } else if (j.canSpin) {
+              sallysToast(isEl
+                ? "🎡 <strong>Έτοιμος για περιστροφή!</strong><br/>Πάτα Spin και επίτρεψε την τοποθεσία — δουλεύει μόνο μέσα στο bar."
+                : "🎡 <strong>Ready to spin!</strong><br/>Tap Spin and allow location — works only inside the bar.", "info");
+            }
+          } catch {
+            sallysToast(isEl ? "⚠️ Σφάλμα δικτύου" : "⚠️ Network error", "err");
+          }
+        });
+      })();
     </script>
     <!-- Header -->
     <div class="sticky top-0 z-50 border-b border-white/10 bg-[#0b0b10]/90 backdrop-blur px-4 py-3 flex items-center justify-between gap-2">
@@ -263,8 +346,48 @@ for (const c of categories) {
     </div>
 
     <main class="mx-auto max-w-2xl px-6 py-8">
+      <!-- Welcome chooser: menu vs loyalty card -->
+      <section class="mb-8">
+        <p class="text-[10px] uppercase tracking-[0.28em] text-amber-300/80 text-center font-bold">{isEl ? "Καλωσήρθες στο τραπέζι" : "Welcome to your table"} {tableNumber}</p>
+        <h2 class="text-center font-heading text-2xl md:text-3xl font-bold mt-2 bg-gradient-to-br from-white via-amber-50 to-amber-200/80 bg-clip-text text-transparent">
+          {isEl ? "Τι θες να κάνεις πρώτα;" : "What would you like first?"}
+        </h2>
+
+        <div class="mt-5 grid grid-cols-1 gap-3">
+          <a href="#menu" id="seeMenuBtn"
+            class="group flex items-center gap-3 rounded-2xl border border-white/15 bg-white/[0.04] hover:bg-white/[0.07] hover:border-white/25 p-4 transition">
+            <div class="shrink-0 h-12 w-12 rounded-xl bg-amber-400/15 grid place-items-center text-2xl">📜</div>
+            <div class="min-w-0 flex-1">
+              <p class="font-semibold text-white">{isEl ? "Δες το μενού" : "See the menu"}</p>
+              <p class="text-xs text-white/55 mt-0.5">{isEl ? "Cocktails, ποτά, σνακ — διάλεξε από εδώ." : "Cocktails, drinks, snacks — order from here."}</p>
+            </div>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="shrink-0 text-white/40 group-hover:text-amber-300 transition"><path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </a>
+
+          <a href="#wheelSection" id="goWheelBtn"
+            class="group flex items-center gap-3 rounded-2xl border border-fuchsia-400/30 bg-gradient-to-br from-fuchsia-500/15 via-amber-500/10 to-cyan-500/10 hover:from-fuchsia-500/25 p-4 transition shadow-lg shadow-fuchsia-500/10">
+            <div class="shrink-0 h-12 w-12 rounded-xl bg-fuchsia-400/25 grid place-items-center text-2xl">🎡</div>
+            <div class="min-w-0 flex-1">
+              <p class="font-semibold text-fuchsia-100">{isEl ? "Γύρνα τη ρόδα" : "Spin the wheel"}</p>
+              <p class="text-xs text-fuchsia-100/70 mt-0.5">{isEl ? "Μία περιστροφή την ημέρα · κερδίζεις πάντα κάτι" : "One spin a day · every spin wins something"}</p>
+            </div>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="shrink-0 text-fuchsia-300/60 group-hover:text-fuchsia-200 transition"><path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </a>
+
+          <a href={`${isEl ? "/el" : ""}/membership`}
+            class="group flex items-center gap-3 rounded-2xl border border-amber-400/30 bg-gradient-to-br from-amber-500/15 via-rose-500/10 to-fuchsia-500/10 hover:from-amber-500/25 p-4 transition shadow-lg shadow-amber-500/10">
+            <div class="shrink-0 h-12 w-12 rounded-xl bg-amber-400/30 grid place-items-center text-2xl">💳</div>
+            <div class="min-w-0 flex-1">
+              <p class="font-semibold text-amber-100">{isEl ? "Φτιάξε κάρτα μέλους" : "Get the member card"}</p>
+              <p class="text-xs text-amber-100/70 mt-0.5">{isEl ? "Δωρεάν · scratch δώρο · 30 δευτερόλεπτα" : "Free · scratch reward · 30 seconds"}</p>
+            </div>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="shrink-0 text-amber-300/60 group-hover:text-amber-200 transition"><path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </a>
+        </div>
+      </section>
+
       <!-- Daily Wheel of Luck -->
-      <section id="wheelSection" class="mb-8 hidden rounded-3xl border border-amber-400/30 bg-gradient-to-br from-amber-500/10 via-fuchsia-500/10 to-cyan-500/10 p-5 relative overflow-hidden">
+      <section id="wheelSection" class="mb-8 hidden scroll-mt-24 rounded-3xl border border-amber-400/30 bg-gradient-to-br from-amber-500/10 via-fuchsia-500/10 to-cyan-500/10 p-5 relative overflow-hidden">
         <div class="flex items-start justify-between gap-3 flex-wrap">
           <div class="min-w-0">
             <p class="text-[10px] uppercase tracking-[0.24em] text-amber-300 font-bold">🎡 {isEl ? "Ημερήσια Ρόδα Τύχης" : "Daily Wheel of Luck"}</p>
@@ -315,8 +438,8 @@ for (const c of categories) {
         </p>
       </section>
 
-      <!-- Category jump chips -->
-      <div class="flex flex-wrap gap-2 mb-8">
+      <!-- Category jump chips (anchor target for "See the menu" CTA) -->
+      <div id="menu" class="flex flex-wrap gap-2 mb-8 scroll-mt-24">
         {categories.map((c) => (
           <a href={`#${c.slug}`}
             class="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-white/80 hover:text-white hover:bg-white/10 transition">
@@ -395,6 +518,12 @@ for (const c of categories) {
         </a>
       </div>
     </main>
+
+    <!-- Scroll-to-top floating button — appears after 400px scroll -->
+    <button id="scrollTopBtn" type="button" aria-label={isEl ? "Πάνω" : "Top"}
+      class="fixed right-4 bottom-24 z-40 h-11 w-11 rounded-full border border-white/20 bg-[#141420]/90 backdrop-blur text-white shadow-xl shadow-black/50 flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-200 hover:bg-white/10 active:scale-95">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 19V5M5 12l7-7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
 
     <!-- Sticky bottom bar -->
     <div class="fixed bottom-0 inset-x-0 border-t border-white/10 bg-[#0b0b10]/95 backdrop-blur px-4 py-3">
