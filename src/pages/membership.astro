@@ -35,7 +35,7 @@ const rewardsUnique = rewards.filter(r => {
 const title = (isEl ? "Η Κάρτα Μέλους" : "The Member Card") + " — Sally's Bar";
 const desc  = isEl
   ? "Δωρεάν κάρτα μέλους. Κάθε ποτό κερδίζει πόντους. Scratch cards, αποψινές αποστολές, VIP επίπεδα."
-  : "Free member card. Every drink earns points. Scratch cards, nightly quests, VIP tiers.";
+  : "Free member card. Every drink earns points. VIP tiers and exclusive perks.";
 ---
 <html lang={lang}>
   <head>
@@ -78,8 +78,8 @@ const desc  = isEl
           </h1>
           <p class="text-lg text-white/70 leading-relaxed max-w-lg">
             {isEl
-              ? "Δωρεάν, ψηφιακή, στο κινητό σου. Κερδίζεις πόντους με κάθε ποτό, παίζεις νυχτερινά quests, και ξεκλειδώνεις επίπεδα VIP."
-              : "Free, digital, on your phone. Earn points with every drink, play nightly quests, unlock VIP tiers."}
+              ? "Δωρεάν, ψηφιακή, στο κινητό σου. Κερδίζεις πόντους με κάθε ποτό και ξεκλειδώνεις επίπεδα VIP."
+              : "Free, digital, on your phone. Earn points with every drink and unlock VIP tiers."}
           </p>
           <div class="flex flex-wrap gap-3">
             <a href={registerHref} class="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-200 to-amber-500 px-8 py-4 font-bold text-black shadow-[0_0_40px_rgba(251,191,36,0.3)] hover:shadow-[0_0_60px_rgba(251,191,36,0.5)] hover:scale-[1.03] active:scale-[0.98] transition">
@@ -165,16 +165,6 @@ const desc  = isEl
           <h3 class="font-heading text-xl font-bold">{isEl ? `${settings.points_per_euro} πόντος/€` : `${settings.points_per_euro} point per €`}</h3>
           <p class="text-sm text-white/60 mt-2">{isEl ? "Αυτόματα σε κάθε παραγγελία. Χωρίς να δείχνεις ή να πληρώνεις με τίποτα ειδικό." : "Auto-credited on every order. No swipe, no hassle."}</p>
         </div>
-        <div class="rounded-3xl border border-rose-400/25 bg-rose-400/5 p-6">
-          <div class="text-3xl mb-3">🎫</div>
-          <h3 class="font-heading text-xl font-bold">{isEl ? "Scratch cards" : "Scratch cards"}</h3>
-          <p class="text-sm text-white/60 mt-2">{isEl ? "Ένα ψηφιακό ξυστό μετά από ενέργειες — κερδίζεις πάντα." : "A digital scratch after key actions — every reveal wins."}</p>
-        </div>
-        <div class="rounded-3xl border border-cyan-400/25 bg-cyan-400/5 p-6">
-          <div class="text-3xl mb-3">⚡</div>
-          <h3 class="font-heading text-xl font-bold">{isEl ? "Αποψινές αποστολές" : "Tonight's quests"}</h3>
-          <p class="text-sm text-white/60 mt-2">{isEl ? "Ένα νυχτερινό challenge. Κάνε το, πάρε bonus." : "A nightly challenge. Complete it, claim the bonus."}</p>
-        </div>
         <div class="rounded-3xl border border-fuchsia-400/25 bg-fuchsia-400/5 p-6">
           <div class="text-3xl mb-3">🎂</div>
           <h3 class="font-heading text-xl font-bold">{settings.birthday_multiplier}× {isEl ? "γενέθλια" : "birthday"}</h3>
@@ -183,7 +173,7 @@ const desc  = isEl
         <div class="rounded-3xl border border-emerald-400/25 bg-emerald-400/5 p-6">
           <div class="text-3xl mb-3">🤝</div>
           <h3 class="font-heading text-xl font-bold">{isEl ? "Φέρε φίλο" : "Bring a friend"}</h3>
-          <p class="text-sm text-white/60 mt-2">{isEl ? `+${settings.referral_points} πόντοι για σένα. Μια scratch card για τον φίλο. Χωρίς όριο.` : `+${settings.referral_points} pts for you. A scratch card for your friend. Unlimited.`}</p>
+          <p class="text-sm text-white/60 mt-2">{isEl ? `+${settings.referral_points} πόντοι για σένα, δωρεάν κέρασμα για τον φίλο. Χωρίς όριο.` : `+${settings.referral_points} pts for you, a welcome drink for your friend. Unlimited.`}</p>
         </div>
         <div class="rounded-3xl border border-white/15 bg-white/5 p-6">
           <div class="text-3xl mb-3">👑</div>
@@ -255,7 +245,7 @@ const desc  = isEl
         <div class="rounded-3xl border border-white/10 bg-white/[0.03] p-6 relative">
           <div class="absolute -top-4 -left-4 h-10 w-10 rounded-full bg-amber-400 text-black text-lg font-black grid place-items-center shadow-lg">1</div>
           <h3 class="mt-2 font-heading text-lg font-bold">{isEl ? "Εγγράψου" : "Sign up"}</h3>
-          <p class="text-sm text-white/60 mt-1.5">{isEl ? "30 δευτερόλεπτα. Παίρνεις αμέσως μία scratch card." : "30 seconds. You get a welcome scratch card instantly."}</p>
+          <p class="text-sm text-white/60 mt-1.5">{isEl ? "30 δευτερόλεπτα. Η κάρτα σου ξεκινάει αμέσως." : "30 seconds. Your card starts earning instantly."}</p>
         </div>
         <div class="rounded-3xl border border-white/10 bg-white/[0.03] p-6 relative">
           <div class="absolute -top-4 -left-4 h-10 w-10 rounded-full bg-rose-400 text-black text-lg font-black grid place-items-center shadow-lg">2</div>

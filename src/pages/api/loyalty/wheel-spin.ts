@@ -23,32 +23,35 @@ function json(obj: unknown, status = 200) {
 export const GET: APIRoute = async ({ locals }) => {
   if (!locals.user) return json({ canSpin: false, reason: "auth_required" });
 
-  const settings = await getWheelSettings();
-  if (!settings.enabled) return json({ canSpin: false, reason: "disabled" });
+  const [settings, flags] = await Promise.all([getWheelSettings(), (await import("../../../lib/gameFlags")).getGameFlags()]);
+  if (!settings.enabled || !flags.wheel) return json({ canSpin: false, reason: "disabled" });
 
-  // Staff and admin play a different role — wheel is customer-only
-  if (locals.role === "admin" || locals.role === "employee") {
+  // Staff and admin play a different role — wheel is customer-only.
+  // Exception: testing mode (allow_remote) lets everyone spin so we can demo.
+  if (!settings.allow_remote && (locals.role === "admin" || locals.role === "employee" || locals.role === "super_admin")) {
     return json({ canSpin: false, reason: "staff_role", role: locals.role });
   }
 
-  // Check today's spin
-  const { data: existing } = await supabaseAdmin
-    .from("wheel_spins")
-    .select("id, reward_label, spun_at")
-    .eq("user_id", locals.user.id)
-    .gte("spun_at", startOfTodayAthensIso())
-    .maybeSingle();
+  // Check today's spin — skipped entirely in testing mode (unlimited spins for demos)
+  if (!settings.allow_remote) {
+    const { data: existing } = await supabaseAdmin
+      .from("wheel_spins")
+      .select("id, reward_label, spun_at")
+      .eq("user_id", locals.user.id)
+      .gte("spun_at", startOfTodayAthensIso())
+      .maybeSingle();
 
-  if (existing) {
-    return json({
-      canSpin: false,
-      reason: "already_spun_today",
-      lastReward: existing.reward_label,
-      lastSpunAt: existing.spun_at,
-      nextSpinAt: startOfTomorrowAthensIso(),
-    });
+    if (existing) {
+      return json({
+        canSpin: false,
+        reason: "already_spun_today",
+        lastReward: existing.reward_label,
+        lastSpunAt: existing.spun_at,
+        nextSpinAt: startOfTomorrowAthensIso(),
+      });
+    }
   }
-  return json({ canSpin: true });
+  return json({ canSpin: true, allow_remote: !!settings.allow_remote });
 };
 
 // POST — actually spin. Requires auth + geolocation proving user is at the bar
@@ -56,8 +59,8 @@ export const GET: APIRoute = async ({ locals }) => {
 export const POST: APIRoute = async ({ request, locals, clientAddress }) => {
   if (!locals.user) return json({ error: "auth_required" }, 401);
 
-  const settings = await getWheelSettings();
-  if (!settings.enabled) return json({ error: "disabled", message: "The wheel is temporarily disabled." }, 403);
+  const [settings, flags] = await Promise.all([getWheelSettings(), (await import("../../../lib/gameFlags")).getGameFlags()]);
+  if (!settings.enabled || !flags.wheel) return json({ error: "disabled", message: "The wheel is temporarily disabled." }, 403);
 
   let body: any;
   try { body = await request.json(); } catch { return json({ error: "bad_json" }, 400); }
@@ -93,15 +96,17 @@ export const POST: APIRoute = async ({ request, locals, clientAddress }) => {
     if (!ok) return json({ error: "bad_table_token" }, 403);
   }
 
-  // 4) Daily limit
-  const { data: alreadyToday } = await supabaseAdmin
-    .from("wheel_spins")
-    .select("id, reward_label")
-    .eq("user_id", locals.user.id)
-    .gte("spun_at", startOfTodayAthensIso())
-    .maybeSingle();
-  if (alreadyToday) {
-    return json({ error: "already_spun_today", message: "You already spun today. Come back tomorrow.", lastReward: alreadyToday.reward_label }, 409);
+  // 4) Daily limit — skipped entirely in testing mode (allow_remote)
+  if (!settings.allow_remote) {
+    const { data: alreadyToday } = await supabaseAdmin
+      .from("wheel_spins")
+      .select("id, reward_label")
+      .eq("user_id", locals.user.id)
+      .gte("spun_at", startOfTodayAthensIso())
+      .maybeSingle();
+    if (alreadyToday) {
+      return json({ error: "already_spun_today", message: "You already spun today. Come back tomorrow.", lastReward: alreadyToday.reward_label }, 409);
+    }
   }
 
   // 5) Roll
@@ -113,32 +118,34 @@ export const POST: APIRoute = async ({ request, locals, clientAddress }) => {
   try { ip = clientAddress || request.headers.get("cf-connecting-ip") || ""; } catch {}
   const ip_hash = ip ? await hashIp(ip) : null;
 
-  // 7) Persist spin (unique partial index enforces once-per-day)
-  const { error: insErr } = await supabaseAdmin.from("wheel_spins").insert({
-    user_id: locals.user.id,
-    table_number,
-    lat: Number.isFinite(lat) ? lat : null,
-    lon: Number.isFinite(lon) ? lon : null,
-    distance_m: distM,
-    reward_type: reward.type,
-    reward_value: reward.value,
-    reward_label: reward.label_en,
-    ip_hash,
-  });
-  if (insErr) {
-    if ((insErr as any).code === "23505") {
-      return json({ error: "already_spun_today" }, 409);
-    }
-    return json({ error: insErr.message }, 500);
-  }
-
-  // 8) Auto-credit points rewards
-  if (reward.type === "points" && Number(reward.value) > 0) {
-    await supabaseAdmin.from("loyalty_events").insert({
+  // 7) Persist spin — skipped in testing mode (demos don't pollute DB or earn points)
+  if (!settings.allow_remote) {
+    const { error: insErr } = await supabaseAdmin.from("wheel_spins").insert({
       user_id: locals.user.id,
-      points: Number(reward.value),
-      reason: `wheel:${new Date().toISOString().slice(0, 10)}`,
+      table_number,
+      lat: Number.isFinite(lat) ? lat : null,
+      lon: Number.isFinite(lon) ? lon : null,
+      distance_m: distM,
+      reward_type: reward.type,
+      reward_value: reward.value,
+      reward_label: reward.label_en,
+      ip_hash,
     });
+    if (insErr) {
+      if ((insErr as any).code === "23505") {
+        return json({ error: "already_spun_today" }, 409);
+      }
+      return json({ error: insErr.message }, 500);
+    }
+
+    // 8) Auto-credit points rewards (only in production)
+    if (reward.type === "points" && Number(reward.value) > 0) {
+      await supabaseAdmin.from("loyalty_events").insert({
+        user_id: locals.user.id,
+        points: Number(reward.value),
+        reason: `wheel:${new Date().toISOString().slice(0, 10)}`,
+      });
+    }
   }
 
   return json({
@@ -150,8 +157,9 @@ export const POST: APIRoute = async ({ request, locals, clientAddress }) => {
       label_el: reward.label_el,
       index: idx,
       color: reward.color,
-      auto_claimed: reward.type === "points",
+      auto_claimed: reward.type === "points" && !settings.allow_remote,
     },
+    testing: !!settings.allow_remote,
   });
 };
 

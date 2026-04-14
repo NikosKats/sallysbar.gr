@@ -3,9 +3,17 @@ import "../../styles/global.css";
 import AdminNav from "../../components/AdminNav.astro";
 import { supabaseAdmin } from "../../lib/supabase";
 import { withLangPrefix } from "../../i18n";
-import { getScratchSettings } from "../../lib/scratch";
+import { getScratchSettings, getScratchPool } from "../../lib/scratch";
 
 const settings = await getScratchSettings();
+const rewards = await getScratchPool();
+const totalWeight = rewards.reduce((s, r) => s + r.weight, 0);
+
+const { data: earnRows } = await supabaseAdmin
+  .from("scratch_earn_items")
+  .select("emoji, text_en, text_el, active, sort_order")
+  .order("sort_order", { ascending: true });
+const earnItems = (earnRows ?? []) as Array<{ emoji: string; text_en: string; text_el: string; active: boolean; sort_order: number }>;
 
 const lang = Astro.locals.lang ?? "en";
 const isEl = lang === "el";
@@ -300,9 +308,272 @@ const memberCount = (members ?? []).length;
           </table>
         </div>
       </section>
+
+      <!-- Editable reward pool -->
+      <section class="rounded-2xl border border-white/10 bg-white/5 p-5 space-y-3">
+        <div class="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <h2 class="text-sm font-semibold uppercase tracking-widest text-white/50">🏆 {isEl ? "Έπαθλα (weighted pool)" : "Rewards (weighted pool)"}</h2>
+            <p class="text-xs text-white/40 mt-1">{isEl ? "Επεξεργάσιμα. Σύνολο βαρών = 100%. Το τσεκ \"Active\" κρύβει το reward από το pool χωρίς να το διαγράφει." : "Fully editable. Weights sum to 100%. Uncheck \"Active\" to hide a reward without deleting it."}</p>
+          </div>
+          <div class="flex gap-2">
+            <button id="addRewardBtn" type="button" class="rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 px-3 py-1.5 text-xs font-semibold">+ {isEl ? "Νέα" : "New"}</button>
+            <button id="saveRewardsBtn" type="button" class="rounded-xl bg-gradient-to-br from-amber-300 to-amber-500 text-black px-4 py-1.5 text-xs font-bold">💾 {isEl ? "Αποθήκευση" : "Save"}</button>
+          </div>
+        </div>
+        <p id="rewardsMsg" class="text-xs hidden"></p>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="text-[10px] uppercase tracking-wider text-white/40 text-left">
+              <tr>
+                <th class="py-2 pr-2">{isEl ? "Τύπος" : "Type"}</th>
+                <th class="py-2 pr-2 w-20">Value</th>
+                <th class="py-2 pr-2">Label EN</th>
+                <th class="py-2 pr-2">Label EL</th>
+                <th class="py-2 pr-2 w-24 text-right">Weight</th>
+                <th class="py-2 pr-2 w-16 text-right">%</th>
+                <th class="py-2 pr-2 w-14 text-center">On</th>
+                <th class="py-2 w-8"></th>
+              </tr>
+            </thead>
+            <tbody id="rewardsBody">
+              {rewards.map((r) => {
+                const pct = totalWeight > 0 ? (r.weight / totalWeight) * 100 : 0;
+                return (
+                  <tr class="reward-row border-t border-white/5">
+                    <td class="py-1.5 pr-2">
+                      <select data-field="type" class="rounded bg-white/5 border border-white/10 px-2 py-1 text-xs">
+                        <option value="points"     selected={r.type === "points"}>points</option>
+                        <option value="free_shot"  selected={r.type === "free_shot"}>free_shot</option>
+                        <option value="free_drink" selected={r.type === "free_drink"}>free_drink</option>
+                        <option value="discount"   selected={r.type === "discount"}>discount</option>
+                        <option value="custom"     selected={r.type === "custom"}>custom</option>
+                      </select>
+                    </td>
+                    <td class="py-1.5 pr-2"><input type="number" data-field="value" value={r.value} class="w-20 rounded bg-white/5 border border-white/10 px-2 py-1 text-xs font-mono" /></td>
+                    <td class="py-1.5 pr-2"><input type="text" data-field="label_en" value={r.label_en} class="w-full rounded bg-white/5 border border-white/10 px-2 py-1 text-xs" /></td>
+                    <td class="py-1.5 pr-2"><input type="text" data-field="label_el" value={r.label_el} class="w-full rounded bg-white/5 border border-white/10 px-2 py-1 text-xs" /></td>
+                    <td class="py-1.5 pr-2 text-right"><input type="number" data-field="weight" value={r.weight} min="0" class="w-20 rounded bg-white/5 border border-white/10 px-2 py-1 text-xs font-mono text-right" /></td>
+                    <td class="py-1.5 pr-2 text-right"><span class="pct-out font-mono text-white/60">{pct.toFixed(pct < 10 ? 1 : 0)}%</span></td>
+                    <td class="py-1.5 pr-2 text-center"><input type="checkbox" data-field="active" checked class="h-4 w-4 accent-emerald-400" /></td>
+                    <td class="py-1.5 text-right"><button type="button" class="del-reward text-white/40 hover:text-red-300" title="Delete">🗑</button></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr class="border-t-2 border-amber-400/40">
+                <td class="py-2 pr-2 text-[10px] uppercase text-amber-300 font-bold" colspan="4">Total</td>
+                <td class="py-2 pr-2 text-right font-mono font-bold text-amber-200" id="totalWeight">{totalWeight}</td>
+                <td class="py-2 pr-2 text-right font-mono font-bold">100%</td>
+                <td colspan="2"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </section>
+
+      <!-- Editable "How to earn more" list -->
+      <section class="rounded-2xl border border-white/10 bg-white/5 p-5 space-y-3">
+        <div class="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <h2 class="text-sm font-semibold uppercase tracking-widest text-white/50">🎯 {isEl ? "Πώς παίρνουν περισσότερες (πελάτες)" : "How customers earn more"}</h2>
+            <p class="text-xs text-white/40 mt-1">{isEl ? "Η λίστα που φαίνεται στο /scratch. Επεξεργάσιμη με σειρά." : "The list shown on /scratch. Fully editable with reordering."}</p>
+          </div>
+          <div class="flex gap-2">
+            <button id="addEarnBtn" type="button" class="rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 px-3 py-1.5 text-xs font-semibold">+ {isEl ? "Νέα" : "New"}</button>
+            <button id="saveEarnBtn" type="button" class="rounded-xl bg-gradient-to-br from-amber-300 to-amber-500 text-black px-4 py-1.5 text-xs font-bold">💾 {isEl ? "Αποθήκευση" : "Save"}</button>
+          </div>
+        </div>
+        <p id="earnMsg" class="text-xs hidden"></p>
+        <div id="earnList" class="space-y-2">
+          {earnItems.map(it => (
+            <div class="earn-row flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+              <button type="button" class="earn-up    text-white/40 hover:text-white text-xs" title="Up">↑</button>
+              <button type="button" class="earn-down  text-white/40 hover:text-white text-xs" title="Down">↓</button>
+              <input type="text" data-field="emoji"   value={it.emoji}   class="w-12 text-center rounded bg-white/5 border border-white/10 px-1 py-1 text-lg" />
+              <input type="text" data-field="text_en" value={it.text_en} placeholder="English" class="flex-1 rounded bg-white/5 border border-white/10 px-2 py-1.5 text-xs" />
+              <input type="text" data-field="text_el" value={it.text_el} placeholder="Ελληνικά" class="flex-1 rounded bg-white/5 border border-white/10 px-2 py-1.5 text-xs" />
+              <label class="inline-flex items-center gap-1 text-[10px] text-white/60"><input type="checkbox" data-field="active" checked={it.active} class="h-3.5 w-3.5 accent-emerald-400" />on</label>
+              <button type="button" class="earn-del text-white/40 hover:text-red-300" title="Delete">🗑</button>
+            </div>
+          ))}
+        </div>
+      </section>
     </main>
 
     <script is:inline>
+      // ── Rewards editor ────────────────────────────────────────────────
+      (function () {
+        const body = document.getElementById("rewardsBody");
+        const totalOut = document.getElementById("totalWeight");
+        const msgEl = document.getElementById("rewardsMsg");
+        if (!body) return;
+
+        function rowTemplate(r) {
+          const tr = document.createElement("tr");
+          tr.className = "reward-row border-t border-white/5";
+          tr.innerHTML = `
+            <td class="py-1.5 pr-2">
+              <select data-field="type" class="rounded bg-white/5 border border-white/10 px-2 py-1 text-xs">
+                <option value="points">points</option>
+                <option value="free_shot">free_shot</option>
+                <option value="free_drink">free_drink</option>
+                <option value="discount">discount</option>
+                <option value="custom">custom</option>
+              </select>
+            </td>
+            <td class="py-1.5 pr-2"><input type="number" data-field="value" value="${r.value ?? 0}" class="w-20 rounded bg-white/5 border border-white/10 px-2 py-1 text-xs font-mono" /></td>
+            <td class="py-1.5 pr-2"><input type="text" data-field="label_en" value="${(r.label_en ?? "").replace(/"/g, "&quot;")}" class="w-full rounded bg-white/5 border border-white/10 px-2 py-1 text-xs" /></td>
+            <td class="py-1.5 pr-2"><input type="text" data-field="label_el" value="${(r.label_el ?? "").replace(/"/g, "&quot;")}" class="w-full rounded bg-white/5 border border-white/10 px-2 py-1 text-xs" /></td>
+            <td class="py-1.5 pr-2 text-right"><input type="number" data-field="weight" value="${r.weight ?? 1}" min="0" class="w-20 rounded bg-white/5 border border-white/10 px-2 py-1 text-xs font-mono text-right" /></td>
+            <td class="py-1.5 pr-2 text-right"><span class="pct-out font-mono text-white/60">0%</span></td>
+            <td class="py-1.5 pr-2 text-center"><input type="checkbox" data-field="active" ${r.active !== false ? "checked" : ""} class="h-4 w-4 accent-emerald-400" /></td>
+            <td class="py-1.5 text-right"><button type="button" class="del-reward text-white/40 hover:text-red-300" title="Delete">🗑</button></td>`;
+          tr.querySelector('[data-field="type"]').value = r.type || "points";
+          return tr;
+        }
+
+        function rowsToObjects() {
+          return Array.from(body.querySelectorAll(".reward-row")).map(tr => ({
+            type:     tr.querySelector('[data-field="type"]').value,
+            value:    Number(tr.querySelector('[data-field="value"]').value) || 0,
+            label_en: tr.querySelector('[data-field="label_en"]').value,
+            label_el: tr.querySelector('[data-field="label_el"]').value,
+            weight:   Number(tr.querySelector('[data-field="weight"]').value) || 0,
+            active:   tr.querySelector('[data-field="active"]').checked,
+          }));
+        }
+
+        function recalc() {
+          const rows = rowsToObjects();
+          const total = rows.reduce((s, r) => s + (r.active ? r.weight : 0), 0);
+          totalOut.textContent = total;
+          Array.from(body.querySelectorAll(".reward-row")).forEach((tr, i) => {
+            const w = rows[i].active ? rows[i].weight : 0;
+            const pct = total > 0 ? (w / total) * 100 : 0;
+            tr.querySelector(".pct-out").textContent = pct.toFixed(pct < 10 ? 1 : 0) + "%";
+          });
+        }
+
+        function bindRow(tr) {
+          tr.querySelectorAll("input, select").forEach(el => el.addEventListener("input", recalc));
+          tr.querySelector(".del-reward").addEventListener("click", () => {
+            if (!confirm("Delete this reward?")) return;
+            tr.remove(); recalc();
+          });
+        }
+        body.querySelectorAll(".reward-row").forEach(bindRow);
+
+        document.getElementById("addRewardBtn").addEventListener("click", () => {
+          const tr = rowTemplate({ type: "points", value: 10, label_en: "New reward", label_el: "Νέα ανταμοιβή", weight: 5, active: true });
+          body.appendChild(tr);
+          bindRow(tr);
+          recalc();
+        });
+
+        function flash(text, ok) {
+          msgEl.textContent = text;
+          msgEl.className = `text-xs ${ok ? "text-emerald-300" : "text-red-300"} block`;
+          setTimeout(() => msgEl.classList.add("hidden"), 3000);
+        }
+
+        document.getElementById("saveRewardsBtn").addEventListener("click", async (e) => {
+          const btn = e.currentTarget;
+          btn.disabled = true;
+          try {
+            const rows = rowsToObjects();
+            if (!rows.length) { flash("⚠️ Need at least one reward.", false); return; }
+            if (rows.every(r => !r.active)) { flash("⚠️ At least one reward must be active.", false); return; }
+            const r = await fetch("/api/admin/scratch-rewards", {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "save", rows }),
+            });
+            const j = await r.json();
+            if (!r.ok) throw new Error(j.error || "save_failed");
+            flash("✓ Saved (" + j.count + " rewards)", true);
+            setTimeout(() => location.reload(), 700);
+          } catch (err) {
+            flash("⚠️ " + (err.message || "failed"), false);
+          } finally {
+            btn.disabled = false;
+          }
+        });
+
+        recalc();
+      })();
+
+      // ── Earn-list editor ──────────────────────────────────────────────
+      (function () {
+        const list = document.getElementById("earnList");
+        const msg  = document.getElementById("earnMsg");
+        if (!list) return;
+
+        function flash(t, ok) {
+          msg.textContent = t;
+          msg.className = `text-xs block ${ok ? "text-emerald-300" : "text-red-300"}`;
+          setTimeout(() => msg.classList.add("hidden"), 2500);
+        }
+
+        function rowTpl(it) {
+          const div = document.createElement("div");
+          div.className = "earn-row flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 px-3 py-2";
+          div.innerHTML = `
+            <button type="button" class="earn-up text-white/40 hover:text-white text-xs">↑</button>
+            <button type="button" class="earn-down text-white/40 hover:text-white text-xs">↓</button>
+            <input type="text" data-field="emoji"   value="${(it.emoji   ?? "🎁").replace(/"/g,"&quot;")}"   class="w-12 text-center rounded bg-white/5 border border-white/10 px-1 py-1 text-lg" />
+            <input type="text" data-field="text_en" value="${(it.text_en ?? "").replace(/"/g,"&quot;")}" placeholder="English" class="flex-1 rounded bg-white/5 border border-white/10 px-2 py-1.5 text-xs" />
+            <input type="text" data-field="text_el" value="${(it.text_el ?? "").replace(/"/g,"&quot;")}" placeholder="Ελληνικά" class="flex-1 rounded bg-white/5 border border-white/10 px-2 py-1.5 text-xs" />
+            <label class="inline-flex items-center gap-1 text-[10px] text-white/60"><input type="checkbox" data-field="active" ${it.active === false ? "" : "checked"} class="h-3.5 w-3.5 accent-emerald-400" />on</label>
+            <button type="button" class="earn-del text-white/40 hover:text-red-300">🗑</button>`;
+          bind(div);
+          return div;
+        }
+        function bind(row) {
+          row.querySelector(".earn-up").addEventListener("click", () => {
+            const prev = row.previousElementSibling;
+            if (prev) list.insertBefore(row, prev);
+          });
+          row.querySelector(".earn-down").addEventListener("click", () => {
+            const next = row.nextElementSibling;
+            if (next) list.insertBefore(next, row);
+          });
+          row.querySelector(".earn-del").addEventListener("click", () => {
+            if (confirm("Delete this item?")) row.remove();
+          });
+        }
+        list.querySelectorAll(".earn-row").forEach(bind);
+
+        document.getElementById("addEarnBtn").addEventListener("click", () => {
+          list.appendChild(rowTpl({ emoji: "🎁", text_en: "New way to earn", text_el: "Νέος τρόπος", active: true }));
+        });
+
+        document.getElementById("saveEarnBtn").addEventListener("click", async (e) => {
+          const btn = e.currentTarget;
+          btn.disabled = true;
+          try {
+            const rows = Array.from(list.querySelectorAll(".earn-row")).map(row => ({
+              emoji:   row.querySelector('[data-field="emoji"]').value.trim(),
+              text_en: row.querySelector('[data-field="text_en"]').value,
+              text_el: row.querySelector('[data-field="text_el"]').value,
+              active:  row.querySelector('[data-field="active"]').checked,
+            }));
+            const r = await fetch("/api/admin/scratch-earn", {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ rows }),
+            });
+            const j = await r.json();
+            if (!r.ok) throw new Error(j.error || "save failed");
+            flash(`✓ Saved (${j.count})`, true);
+          } catch (err) {
+            flash("⚠️ " + (err.message || "failed"), false);
+          } finally {
+            btn.disabled = false;
+          }
+        });
+      })();
+
       (function () {
         const isEl = document.documentElement.lang === "el";
 

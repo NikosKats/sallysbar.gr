@@ -61,7 +61,8 @@
       "Bash(ls /Users/nikolaoskatsilidis/Desktop/sallysbar.gr/src/pages/admin/*.astro)",
       "Bash(xargs -n1 basename)",
       "Bash(ls /Users/nikolaoskatsilidis/Desktop/sallysbar.gr/src/pages/el/admin/*.astro)",
-      "Bash(grep -n \"create table.*quests\\\\|insert into.*quests\" /Users/nikolaoskatsilidis/Desktop/sallysbar.gr/scripts/*.sql)"
+      "Bash(grep -n \"create table.*quests\\\\|insert into.*quests\" /Users/nikolaoskatsilidis/Desktop/sallysbar.gr/scripts/*.sql)",
+      "Bash(grep -n \"</section>\\\\s*$\" /Users/nikolaoskatsilidis/Desktop/sallysbar.gr/src/pages/admin/scratch.astro)"
     ],
     "additionalDirectories": [
       "/Users/nikolaoskatsilidis/Desktop/sallysbar.gr/public/photos",

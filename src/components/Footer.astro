@@ -1,6 +1,8 @@
 ---
 import { site, getSiteCopy } from "../data/site";
 import { getLangFromPath, dict, withLangPrefix } from "../i18n";
+import { getGameFlags } from "../lib/gameFlags";
+const gameFlags = await getGameFlags();
 
 const year = new Date().getFullYear();
 
@@ -22,8 +24,11 @@ const perks = [
   { label: isEl ? "🪪 Social Card"   : "🪪 Social Card",    href: withLangPrefix(lang, "/card") },
   { label: isEl ? "💳 Κάρτα Μέλους"  : "💳 Member Card",    href: withLangPrefix(lang, "/membership") },
   { label: isEl ? "👑 Ανταμοιβές"    : "👑 Rewards",        href: withLangPrefix(lang, "/loyalty") },
-  { label: isEl ? "🎁 Παιχνίδια"     : "🎁 Play & Quests",  href: withLangPrefix(lang, "/play") },
-];
+  (gameFlags.quests || gameFlags.wheel || gameFlags.scratch) && { label: isEl ? "🎮 Παιχνίδια" : "🎮 Games",       href: withLangPrefix(lang, "/play") },
+  gameFlags.quests  && { label: isEl ? "🎯 Αποστολές"     : "🎯 Quests",          href: withLangPrefix(lang, "/quests") },
+  gameFlags.wheel   && { label: isEl ? "🎡 Ρόδα Τύχης"    : "🎡 Wheel of Luck",   href: withLangPrefix(lang, "/wheel") },
+  gameFlags.scratch && { label: isEl ? "🎟 Scratch Cards" : "🎟 Scratch Cards",  href: withLangPrefix(lang, "/scratch") },
+].filter(Boolean) as { label: string; href: string }[];
 
 const legal = [
   { label: isEl ? "Πολιτική Απορρήτου" : "Privacy Policy", href: withLangPrefix(lang, "/privacy") },

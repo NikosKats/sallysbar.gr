@@ -65,6 +65,31 @@ function fmtDateTime(s: string) {
         </p>
       </div>
 
+      <!-- Testing mode banner -->
+      <section class="rounded-2xl border-2 border-fuchsia-400/40 bg-gradient-to-br from-fuchsia-500/15 via-amber-500/10 to-sky-500/10 p-5">
+        <div class="flex items-start gap-4 flex-wrap">
+          <div class="flex-1 min-w-0">
+            <p class="text-[10px] uppercase tracking-[0.24em] text-fuchsia-300 font-bold">🧪 {isEl ? "Λειτουργία Δοκιμής" : "Testing Mode"}</p>
+            <h2 class="font-heading text-xl font-bold mt-1">{isEl ? "Επιτρέπει σε όλους και από παντού να γυρίζουν" : "Let anyone spin from anywhere"}</h2>
+            <p class="text-sm text-white/70 mt-1 leading-relaxed">{isEl
+              ? "Όταν ενεργό: παρακάμπτει geofence, ημερήσιο όριο, ρόλο staff. Ιδανικό για demo σε νέα bars. Απενεργοποίησε πριν το production."
+              : "When ON: bypasses geofence, daily limit, staff-role block. Perfect for demoing to new bars. Turn OFF before real customers use it."}</p>
+          </div>
+          <label class="flex items-center gap-3 shrink-0 cursor-pointer">
+            <span id="testModeLabel" class={`text-xs font-bold uppercase tracking-wider ${settings?.allow_remote ? "text-emerald-300" : "text-white/40"}`}>{settings?.allow_remote ? (isEl ? "ΕΝΕΡΓΟ" : "ON") : (isEl ? "ΚΛΕΙΣΤΟ" : "OFF")}</span>
+            <input id="testModeToggle" type="checkbox" checked={!!settings?.allow_remote} class="sr-only peer" />
+            <span class="relative inline-block w-14 h-7 rounded-full bg-white/15 peer-checked:bg-emerald-500 transition">
+              <span class="absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform peer-checked:translate-x-7"></span>
+            </span>
+          </label>
+        </div>
+        {settings?.allow_remote && (
+          <p class="mt-3 rounded-lg bg-emerald-400/10 border border-emerald-400/30 px-3 py-2 text-xs text-emerald-200 font-semibold">
+            ✓ {isEl ? "ΕΝΕΡΓΟ — οποιοσδήποτε χρήστης μπορεί να γυρίσει τη ρόδα από οποιαδήποτε τοποθεσία, χωρίς ημερήσιο όριο." : "ACTIVE — any user can spin from anywhere, no daily limit."}
+          </p>
+        )}
+      </section>
+
       <!-- KPI -->
       <section class="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div class="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4">
@@ -195,6 +220,32 @@ function fmtDateTime(s: string) {
         const isEl = document.documentElement.lang === "el";
         const btn = document.getElementById("saveWheelBtn");
         const msg = document.getElementById("wMsg");
+
+        // Big testing toggle → instant save + keep the small toggle in sync
+        const testToggle = document.getElementById("testModeToggle");
+        const wAllowRemote = document.getElementById("wAllowRemote");
+        const testLabel = document.getElementById("testModeLabel");
+        testToggle?.addEventListener("change", async () => {
+          const v = testToggle.checked;
+          if (wAllowRemote) wAllowRemote.checked = v;
+          if (testLabel) {
+            testLabel.textContent = v ? (isEl ? "ΕΝΕΡΓΟ" : "ON") : (isEl ? "ΚΛΕΙΣΤΟ" : "OFF");
+            testLabel.className = `text-xs font-bold uppercase tracking-wider ${v ? "text-emerald-300" : "text-white/40"}`;
+          }
+          try {
+            const payload = {
+              enabled: document.getElementById("wEnabled").checked,
+              max_distance_m: Number(document.getElementById("wDistance").value) || 250,
+              require_country: document.getElementById("wRequireCountry").checked,
+              allow_remote: v,
+            };
+            await fetch("/api/admin/wheel-settings", {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            });
+            setTimeout(() => location.reload(), 500);
+          } catch {}
+        });
         btn.addEventListener("click", async () => {
           btn.disabled = true;
           const payload = {

@@ -3,6 +3,8 @@ import "../../styles/global.css";
 import { site } from "../../data/site";
 import { getMenu, formatPriceEUR } from "../../lib/menuService";
 import { getTablePageSettings } from "../../lib/tablePageSettings";
+import { getGameFlags } from "../../lib/gameFlags";
+const gameFlags = await getGameFlags();
 
 const { id } = Astro.params;
 const tableNumber = Number(id);
@@ -209,12 +211,51 @@ for (const c of categories) {
           }
 
           const idx = j.reward.index ?? 0;
-          // Animation: rotate to the winning slice center. Total rotation includes 6 full turns for flourish.
+          // Animation: rotate to the winning slice center. Total rotation includes 8 full turns for flourish.
           const sliceAngle = 360 / 8;                    // 45
-          const center = idx * sliceAngle + sliceAngle / 2;  // center of winning slice (0..360)
-          // Pointer sits at top (0 deg clockwise = top). We need the center of the slice to be at the top.
-          const rotation = 360 * 6 + (360 - center);
+          const center = idx * sliceAngle + sliceAngle / 2;
+          const rotation = 360 * 8 + (360 - center);
           disk.style.transform = "rotate(" + rotation + "deg)";
+
+          // ── Sound: casino ticks (fast → slow over 5.2s) + win chime ──
+          try {
+            const AC = window.AudioContext || window.webkitAudioContext;
+            const ctx = new AC();
+            const tickCount = 64;
+            const duration = 5200;
+            // Exponential easing so ticks bunch at the start and space out at the end (like a slowing wheel)
+            for (let i = 0; i < tickCount; i++) {
+              const t = Math.pow(i / tickCount, 2.1);
+              const delay = t * duration;
+              setTimeout(() => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = "square";
+                osc.frequency.value = 1800 - i * 10;
+                gain.gain.setValueAtTime(0, ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.14, ctx.currentTime + 0.002);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.06);
+                osc.connect(gain).connect(ctx.destination);
+                osc.start(); osc.stop(ctx.currentTime + 0.08);
+              }, delay);
+            }
+            // Win chime at the end (C major triad arpeggio)
+            setTimeout(() => {
+              [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = "triangle";
+                osc.frequency.value = f;
+                const start = ctx.currentTime + i * 0.09;
+                gain.gain.setValueAtTime(0, start);
+                gain.gain.linearRampToValueAtTime(0.28, start + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.001, start + 0.55);
+                osc.connect(gain).connect(ctx.destination);
+                osc.start(start); osc.stop(start + 0.6);
+              });
+              setTimeout(() => ctx.close(), 2000);
+            }, duration + 60);
+          } catch {}
 
           setTimeout(() => {
             btn.textContent = "🎁 " + (isEl ? j.reward.label_el : j.reward.label_en);
@@ -224,7 +265,7 @@ for (const c of categories) {
               ? (isEl ? "✓ Προστέθηκαν στο λογαριασμό σου" : "✓ Added to your account")
               : (isEl ? "Δείξε την οθόνη στον σερβιτόρο για εξαργύρωση" : "Show this screen to a waiter to redeem");
             sub.textContent = isEl ? "Τα λέμε αύριο για νέα περιστροφή." : "See you tomorrow for another spin.";
-          }, 4100);
+          }, 5300);
         });
       })();
 
@@ -274,11 +315,12 @@ for (const c of categories) {
         });
       })();
 
-      // "Spin the wheel" chooser → fetch state, show contextual toast, scroll
+      // "Spin the wheel" chooser → now navigates directly to /wheel (no preventDefault)
       (function () {
-        const isEl = document.documentElement.lang === "el";
         const btn = document.getElementById("goWheelBtn");
         if (!btn) return;
+        // Keep the tile as a plain anchor — no JS interception.
+        return;
         btn.addEventListener("click", async (e) => {
           e.preventDefault();
           // Smooth-scroll to wheel section without adding the hash to the URL
@@ -306,9 +348,15 @@ for (const c of categories) {
                 ? `✓ <strong>Ήδη γύρισες σήμερα</strong><br/>Έπαθλο: ${j.lastReward ?? "—"}. Νέα περιστροφή αύριο.`
                 : `✓ <strong>Already spun today</strong><br/>Prize: ${j.lastReward ?? "—"}. Come back tomorrow.`, "ok");
             } else if (j.canSpin) {
-              sallysToast(isEl
-                ? "🎡 <strong>Έτοιμος για περιστροφή!</strong><br/>Πάτα Spin και επίτρεψε την τοποθεσία — δουλεύει μόνο μέσα στο bar."
-                : "🎡 <strong>Ready to spin!</strong><br/>Tap Spin and allow location — works only inside the bar.", "info");
+              if (j.allow_remote) {
+                sallysToast(isEl
+                  ? "🧪 <strong>Testing mode</strong><br/>Γύρνα τη ρόδα από οπουδήποτε. Καλή τύχη! 🍀"
+                  : "🧪 <strong>Testing mode</strong><br/>Spin from anywhere. Good luck! 🍀", "info");
+              } else {
+                sallysToast(isEl
+                  ? "🎡 <strong>Έτοιμος για περιστροφή!</strong><br/>Πάτα Spin και επίτρεψε την τοποθεσία — δουλεύει μόνο μέσα στο bar."
+                  : "🎡 <strong>Ready to spin!</strong><br/>Tap Spin and allow location — works only inside the bar.", "info");
+              }
             }
           } catch {
             sallysToast(isEl ? "⚠️ Σφάλμα δικτύου" : "⚠️ Network error", "err");
@@ -381,8 +429,8 @@ for (const c of categories) {
           </a>
           )}
 
-          {tps.wheel_tile_enabled && (
-          <a href="#wheelSection" id="goWheelBtn"
+          {tps.wheel_tile_enabled && gameFlags.wheel && (
+          <a href={`${isEl ? "/el" : ""}/wheel`} id="goWheelBtn"
             class="group flex items-center gap-3 rounded-2xl border border-fuchsia-400/30 bg-gradient-to-br from-fuchsia-500/15 via-amber-500/10 to-cyan-500/10 hover:from-fuchsia-500/25 p-4 transition shadow-lg shadow-fuchsia-500/10">
             <div class="shrink-0 h-12 w-12 rounded-xl bg-fuchsia-400/25 grid place-items-center text-2xl">🎡</div>
             <div class="min-w-0 flex-1">
@@ -408,7 +456,7 @@ for (const c of categories) {
       </section>
 
       <!-- Daily Wheel of Luck -->
-      {tps.wheel_tile_enabled && (
+      {tps.wheel_tile_enabled && gameFlags.wheel && (
       <section id="wheelSection" class="mb-8 hidden scroll-mt-24 rounded-3xl border border-amber-400/30 bg-gradient-to-br from-amber-500/10 via-fuchsia-500/10 to-cyan-500/10 p-5 relative overflow-hidden">
         <div class="flex items-start justify-between gap-3 flex-wrap">
           <div class="min-w-0">
@@ -419,36 +467,71 @@ for (const c of categories) {
           <div id="wheelBadge" class="shrink-0"></div>
         </div>
 
-        <div class="relative mt-4 mx-auto" style="width:240px;height:240px;">
-          <!-- Wheel -->
-          <div id="wheelDisk" class="absolute inset-0 rounded-full shadow-2xl shadow-amber-500/20 transition-transform" style="transform:rotate(0deg); transition-duration: 4000ms; transition-timing-function: cubic-bezier(.17,.67,.3,1);">
-            <svg viewBox="0 0 100 100" class="w-full h-full">
-              <!-- 8 pie segments; colors match WHEEL_POOL order -->
-              <g transform="translate(50 50)">
-                <path d="M0 0 L 47.55 -15.45 A 50 50 0 0 1 47.55 15.45 Z" fill="#64748b"/>
-                <path d="M0 0 L 47.55 15.45 A 50 50 0 0 1 15.45 47.55 Z" fill="#0ea5e9"/>
-                <path d="M0 0 L 15.45 47.55 A 50 50 0 0 1 -15.45 47.55 Z" fill="#10b981"/>
-                <path d="M0 0 L -15.45 47.55 A 50 50 0 0 1 -47.55 15.45 Z" fill="#f59e0b"/>
-                <path d="M0 0 L -47.55 15.45 A 50 50 0 0 1 -47.55 -15.45 Z" fill="#a855f7"/>
-                <path d="M0 0 L -47.55 -15.45 A 50 50 0 0 1 -15.45 -47.55 Z" fill="#ec4899"/>
-                <path d="M0 0 L -15.45 -47.55 A 50 50 0 0 1 15.45 -47.55 Z" fill="#ef4444"/>
-                <path d="M0 0 L 15.45 -47.55 A 50 50 0 0 1 47.55 -15.45 Z" fill="#fbbf24"/>
-                <!-- labels -->
-                <text x="33" y="2"   font-size="4" fill="white" text-anchor="middle">+10</text>
-                <text x="26" y="20"  font-size="4" fill="white" text-anchor="middle">+25</text>
-                <text x="0"  y="32"  font-size="4" fill="white" text-anchor="middle">+50</text>
-                <text x="-26" y="20" font-size="4" fill="black" text-anchor="middle">🥃</text>
-                <text x="-33" y="2"  font-size="4" fill="white" text-anchor="middle">+100</text>
-                <text x="-26" y="-15" font-size="4" fill="white" text-anchor="middle">10%</text>
-                <text x="0"  y="-24" font-size="4" fill="white" text-anchor="middle">🍸</text>
-                <text x="26" y="-15" font-size="4" fill="black" text-anchor="middle">🎉</text>
+        <div class="relative mt-5 mx-auto" style="width:min(340px, 90vw); aspect-ratio:1/1;">
+          <!-- Outer gold rim with studs -->
+          <div class="absolute inset-0 rounded-full" style="background: radial-gradient(circle at 30% 30%, #fde68a 0%, #f59e0b 35%, #b45309 70%, #78350f 100%); box-shadow: 0 0 40px rgba(251,191,36,0.35), inset 0 0 20px rgba(0,0,0,0.4);"></div>
+          <!-- Stud ring -->
+          <div id="studRing" class="absolute inset-2 rounded-full pointer-events-none">
+            {Array.from({length: 16}).map((_, i) => (
+              <span class="absolute block w-2 h-2 rounded-full" style={`top:50%;left:50%;transform:translate(-50%,-50%) rotate(${i * 22.5}deg) translateY(calc(min(170px, 45vw) - 6px)); background:radial-gradient(circle at 30% 30%, #fffbeb, #f59e0b); box-shadow: 0 0 6px rgba(251,191,36,0.8);`}></span>
+            ))}
+          </div>
+          <!-- Wheel disk -->
+          <div id="wheelDisk" class="absolute inset-[14px] rounded-full shadow-2xl transition-transform" style="transform:rotate(0deg); transition-duration: 5200ms; transition-timing-function: cubic-bezier(.17,.67,.3,1);">
+            <svg viewBox="-50 -50 100 100" class="w-full h-full">
+              <defs>
+                <filter id="slice-shadow"><feDropShadow dx="0" dy="0.4" stdDeviation="0.3" flood-opacity="0.3"/></filter>
+                <linearGradient id="sliceGlow" x1="0" y1="-50" x2="0" y2="50" gradientUnits="userSpaceOnUse">
+                  <stop offset="0" stop-color="white" stop-opacity="0.18"/>
+                  <stop offset="1" stop-color="black" stop-opacity="0.18"/>
+                </linearGradient>
+              </defs>
+              <g filter="url(#slice-shadow)">
+                <!-- 8 slices; alternating fills for contrast; index 0 is top-right of pointer; slices rotate with disk -->
+                <path d="M0 0 L 47.55 -15.45 A 50 50 0 0 1 47.55 15.45 Z" fill="#475569"/>
+                <path d="M0 0 L 47.55 15.45 A 50 50 0 0 1 15.45 47.55 Z" fill="#0284c7"/>
+                <path d="M0 0 L 15.45 47.55 A 50 50 0 0 1 -15.45 47.55 Z" fill="#059669"/>
+                <path d="M0 0 L -15.45 47.55 A 50 50 0 0 1 -47.55 15.45 Z" fill="#d97706"/>
+                <path d="M0 0 L -47.55 15.45 A 50 50 0 0 1 -47.55 -15.45 Z" fill="#7c3aed"/>
+                <path d="M0 0 L -47.55 -15.45 A 50 50 0 0 1 -15.45 -47.55 Z" fill="#db2777"/>
+                <path d="M0 0 L -15.45 -47.55 A 50 50 0 0 1 15.45 -47.55 Z" fill="#dc2626"/>
+                <path d="M0 0 L 15.45 -47.55 A 50 50 0 0 1 47.55 -15.45 Z" fill="#eab308"/>
+                <!-- Light/dark gradient overlay for 3D look -->
+                <circle cx="0" cy="0" r="50" fill="url(#sliceGlow)"/>
+                <!-- Slice dividers -->
+                <g stroke="white" stroke-width="0.35" opacity="0.55">
+                  <line x1="0" y1="0" x2="47.55" y2="-15.45"/>
+                  <line x1="0" y1="0" x2="47.55" y2="15.45"/>
+                  <line x1="0" y1="0" x2="15.45" y2="47.55"/>
+                  <line x1="0" y1="0" x2="-15.45" y2="47.55"/>
+                  <line x1="0" y1="0" x2="-47.55" y2="15.45"/>
+                  <line x1="0" y1="0" x2="-47.55" y2="-15.45"/>
+                  <line x1="0" y1="0" x2="-15.45" y2="-47.55"/>
+                  <line x1="0" y1="0" x2="15.45" y2="-47.55"/>
+                </g>
+                <!-- Slice labels (rotated so each reads radially) -->
+                <g font-family="ui-sans-serif, system-ui, sans-serif" font-weight="900" font-size="4.5" fill="white" text-anchor="middle">
+                  <g transform="rotate(22.5)"><text x="0" y="-36">+10 pts</text></g>
+                  <g transform="rotate(67.5)"><text x="0" y="-36">+25 pts</text></g>
+                  <g transform="rotate(112.5)"><text x="0" y="-36" transform="rotate(180 0 -36)">+50 pts</text></g>
+                  <g transform="rotate(157.5)"><text x="0" y="-36" transform="rotate(180 0 -36)" font-size="7">🥃</text></g>
+                  <g transform="rotate(202.5)"><text x="0" y="-36" transform="rotate(180 0 -36)">+100</text></g>
+                  <g transform="rotate(247.5)"><text x="0" y="-36" transform="rotate(180 0 -36)">-10%</text></g>
+                  <g transform="rotate(292.5)"><text x="0" y="-36" font-size="7">🍸</text></g>
+                  <g transform="rotate(337.5)"><text x="0" y="-36" font-size="6">🎉</text></g>
+                </g>
               </g>
-              <circle cx="50" cy="50" r="50" fill="none" stroke="#fbbf24" stroke-width="1" opacity="0.6"/>
-              <circle cx="50" cy="50" r="7" fill="#0b0b10" stroke="#fbbf24" stroke-width="1"/>
+              <!-- Rim accent + center hub -->
+              <circle cx="0" cy="0" r="50" fill="none" stroke="#fde68a" stroke-width="0.6" opacity="0.8"/>
+              <circle cx="0" cy="0" r="8" fill="#111827" stroke="#fbbf24" stroke-width="1"/>
+              <circle cx="0" cy="0" r="3" fill="#fde68a"/>
             </svg>
           </div>
-          <!-- Pointer -->
-          <div class="absolute left-1/2 -translate-x-1/2 -top-3 w-0 h-0 z-10" style="border-left:12px solid transparent; border-right:12px solid transparent; border-top:20px solid #fbbf24; filter: drop-shadow(0 4px 6px rgba(0,0,0,.5));"></div>
+          <!-- Pointer (brass peg) -->
+          <div class="absolute left-1/2 -translate-x-1/2 z-20 flex flex-col items-center pointer-events-none" style="top:-6px;">
+            <div style="width:0;height:0;border-left:14px solid transparent;border-right:14px solid transparent;border-top:26px solid #b45309; filter: drop-shadow(0 3px 2px rgba(0,0,0,0.5));"></div>
+            <div class="w-4 h-4 -mt-1 rounded-full" style="background:radial-gradient(circle at 30% 30%, #fde68a, #b45309); box-shadow: 0 2px 4px rgba(0,0,0,0.5);"></div>
+          </div>
         </div>
 
         <button id="wheelSpinBtn" type="button" class="mt-5 w-full rounded-xl bg-gradient-to-br from-amber-300 to-amber-500 text-black px-5 py-3 text-sm font-bold hover:scale-[1.02] active:scale-[0.99] transition disabled:opacity-40">

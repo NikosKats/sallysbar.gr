@@ -299,6 +299,7 @@ function statusLabel(s: string) {
       </section>
 
       <!-- Tasks -->
+      {enabledTodos.length > 0 && (
       <section class="order-8 rounded-2xl border border-white/10 bg-white/5 p-5">
         <div class="flex items-center justify-between gap-2 flex-wrap mb-2">
           <div>
@@ -354,6 +355,7 @@ function statusLabel(s: string) {
           );
         })}
       </section>
+      )}
 
       <!-- Invite friends (referrals) -->
       <section class="order-7 rounded-2xl border border-fuchsia-400/30 bg-gradient-to-br from-fuchsia-500/10 to-amber-400/10 p-5 relative overflow-hidden">

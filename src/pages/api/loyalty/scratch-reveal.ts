@@ -13,6 +13,8 @@ async function sha256Hex(s: string): Promise<string> {
 
 export const POST: APIRoute = async ({ request, locals, clientAddress }) => {
   if (!locals.user) return json({ error: "auth_required" }, 401);
+  const { getGameFlags } = await import("../../../lib/gameFlags");
+  if (!(await getGameFlags()).scratch) return json({ error: "scratch_disabled" }, 403);
 
   let body: any;
   try { body = await request.json(); } catch { return json({ error: "bad_json" }, 400); }

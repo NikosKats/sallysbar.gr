@@ -12,13 +12,40 @@ export const SCRATCH_POOL = [
   { type: "custom",     value: 0,   label_en: "Skip-the-line pass", label_el: "Pass χωρίς ουρά",        weight: 1 },
 ] as const;
 
-export function rollReward() {
-  const total = SCRATCH_POOL.reduce((s, r) => s + r.weight, 0);
+export type ScratchReward = {
+  type: string; value: number; label_en: string; label_el: string; weight: number;
+};
+
+let _poolCache: { pool: ScratchReward[]; at: number } | null = null;
+export function clearScratchPoolCache() { _poolCache = null; }
+
+export async function getScratchPool(): Promise<ScratchReward[]> {
+  if (_poolCache && Date.now() - _poolCache.at < 60_000) return _poolCache.pool;
+  try {
+    const { data } = await supabaseAdmin
+      .from("scratch_rewards")
+      .select("type, value, label_en, label_el, weight")
+      .eq("active", true)
+      .gt("weight", 0)
+      .order("sort_order", { ascending: true });
+    if (data && data.length) {
+      const pool = data as ScratchReward[];
+      _poolCache = { pool, at: Date.now() };
+      return pool;
+    }
+  } catch {}
+  return [...SCRATCH_POOL] as unknown as ScratchReward[];
+}
+
+export async function rollReward(): Promise<ScratchReward> {
+  const pool = await getScratchPool();
+  const total = pool.reduce((s, r) => s + r.weight, 0);
+  if (total <= 0) return pool[0] ?? (SCRATCH_POOL[0] as unknown as ScratchReward);
   let roll = Math.random() * total;
-  for (const r of SCRATCH_POOL) {
+  for (const r of pool) {
     if ((roll -= r.weight) <= 0) return r;
   }
-  return SCRATCH_POOL[0];
+  return pool[0];
 }
 
 export type ScratchSettings = {
@@ -55,17 +82,15 @@ export async function issueScratchCard(
   opts: { expires_at?: string | null; count?: number } = {},
 ): Promise<number> {
   const n = Math.max(1, Math.min(10, opts.count ?? 1));
-  const rows = Array.from({ length: n }, () => {
-    const r = rollReward();
-    return {
-      user_id,
-      reward_type: r.type,
-      reward_value: r.value,
-      reward_label: r.label_en,
-      trigger,
-      expires_at: opts.expires_at ?? null,
-    };
-  });
+  const rolls = await Promise.all(Array.from({ length: n }, () => rollReward()));
+  const rows = rolls.map(r => ({
+    user_id,
+    reward_type: r.type,
+    reward_value: r.value,
+    reward_label: r.label_en,
+    trigger,
+    expires_at: opts.expires_at ?? null,
+  }));
   const { error, data } = await supabaseAdmin.from("scratch_cards").insert(rows).select("id");
   if (error) {
     // Unique-index violation means the idempotent trigger already fired today — that's fine.

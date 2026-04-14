@@ -1,0 +1,143 @@
+---
+import "../../styles/global.css";
+import Header from "../../components/Header.astro";
+import AdminNav from "../../components/AdminNav.astro";
+import { getGameFlags } from "../../lib/gameFlags";
+
+if (!["admin","super_admin"].includes(Astro.locals.role ?? "")) {
+  return new Response("Forbidden", { status: 403 });
+}
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+const flags = await getGameFlags();
+
+const games = [
+  { key: "wheel",   icon: "🎡", label_en: "Wheel of Luck",  label_el: "Ρόδα Τύχης",   on: flags.wheel,
+    desc_en: "Daily spin wheel. Disables /wheel page, /table tiles, footer links, and redirects /staff/wheel-claim.",
+    desc_el: "Ημερήσια ρόδα. Απενεργοποιεί τη σελίδα /wheel, τα tiles /table, τα footer links και το /staff/wheel-claim." },
+  { key: "scratch", icon: "🎟", label_en: "Scratch Cards",  label_el: "Scratch Cards", on: flags.scratch,
+    desc_en: "Hidden from /scratch page, /account scratch panel, signup bonus, footer, nav.",
+    desc_el: "Κρύβεται από /scratch, /account panel, signup bonus, footer, nav." },
+  { key: "quests",  icon: "🎯", label_en: "Tonight's Quests", label_el: "Αποψινές Αποστολές", on: flags.quests,
+    desc_en: "Hides /quest/[id] pages, dropdown entry, push campaigns, /staff/quest-review.",
+    desc_el: "Κρύβει /quest/[id], dropdown entry, push campaigns, /staff/quest-review." },
+];
+---
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{isEl ? "Διακόπτες Παιχνιδιών" : "Game toggles"} — Sally's Bar Admin</title>
+    <meta name="robots" content="noindex,nofollow" />
+  </head>
+  <body class="min-h-screen bg-[#0a0a0f] text-white font-body antialiased">
+    <Header />
+    <div class="h-20"></div>
+    <AdminNav active="games" />
+
+    <main class="mx-auto max-w-3xl px-5 py-10">
+      <div class="mb-8">
+        <p class="text-xs uppercase tracking-[0.28em] text-amber-200/80 mb-2">Admin</p>
+        <h1 class="font-heading text-4xl font-bold">🎮 {isEl ? "Διακόπτες Παιχνιδιών" : "Game toggles"}</h1>
+        <p class="mt-2 text-sm text-white/60 max-w-2xl">{isEl
+          ? "Master ON/OFF για κάθε παιχνίδι. Όταν κλειστά: κρύβονται από menu, footer, tiles, ads και τα APIs τα μπλοκάρουν."
+          : "Master ON/OFF for each game. When OFF: hidden from menu, footer, tiles, ads, and the APIs reject requests."}</p>
+      </div>
+
+      {/* Master kill-switch */}
+      <section class={`mb-6 rounded-2xl border p-5 ${(!flags.wheel && !flags.scratch && !flags.quests) ? "border-red-400/40 bg-red-400/[0.07]" : "border-white/10 bg-white/[0.03]"}`}>
+        <div class="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <p class="text-[10px] uppercase tracking-[0.24em] text-red-300 font-bold">☠️ {isEl ? "Master διακόπτης" : "Master kill switch"}</p>
+            <h2 class="font-heading text-xl font-bold mt-1">{isEl ? "Απενεργοποίηση ΟΛΩΝ των παιχνιδιών" : "Disable ALL games"}</h2>
+            <p class="text-xs text-white/60 mt-1 max-w-xl">{isEl
+              ? "Ένα κουμπί → κλείνει wheel, scratch, quests, τη σελίδα /play, τα πάντα στο site. Χωρίς links, menu items, tiles, push ή ads."
+              : "One click → turns off wheel, scratch, quests, the /play page, and every mention site-wide. No links, menu items, tiles, push, or ads."}</p>
+          </div>
+          <div class="flex gap-2 shrink-0">
+            <button id="killAll" class="rounded-xl bg-gradient-to-br from-red-400 to-red-600 text-white px-5 py-2.5 text-sm font-bold shadow-lg shadow-red-500/25 hover:scale-[1.02] active:scale-[0.98] transition">⛔ {isEl ? "ΚΛΕΙΣΕ ΟΛΑ" : "TURN ALL OFF"}</button>
+            <button id="enableAll" class="rounded-xl border border-emerald-400/40 bg-emerald-400/10 hover:bg-emerald-400/20 text-emerald-200 px-5 py-2.5 text-sm font-bold transition">✓ {isEl ? "Άνοιξε όλα" : "Turn all ON"}</button>
+          </div>
+        </div>
+      </section>
+
+      <div id="banner" class="hidden mb-4 rounded-xl px-4 py-2 text-sm"></div>
+
+      <div class="space-y-3">
+        {games.map(g => (
+          <article class={`rounded-2xl border p-5 transition ${g.on ? "border-emerald-400/30 bg-emerald-400/[0.05]" : "border-red-400/30 bg-red-400/[0.05]"}`}>
+            <div class="flex items-center gap-4">
+              <div class="shrink-0 h-14 w-14 rounded-2xl bg-white/5 grid place-items-center text-3xl">{g.icon}</div>
+              <div class="flex-1 min-w-0">
+                <p class="font-heading text-xl font-bold">{isEl ? g.label_el : g.label_en}</p>
+                <p class="text-xs text-white/55 mt-1">{isEl ? g.desc_el : g.desc_en}</p>
+              </div>
+              <label class="shrink-0 flex items-center gap-3 cursor-pointer">
+                <span class={`text-xs font-bold uppercase tracking-wider ${g.on ? "text-emerald-300" : "text-red-300"}`}>{g.on ? "ON" : "OFF"}</span>
+                <input type="checkbox" data-game={g.key} checked={g.on} class="game-toggle sr-only peer" />
+                <span class="relative inline-block w-14 h-7 rounded-full bg-white/15 peer-checked:bg-emerald-500 transition">
+                  <span class="absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform peer-checked:translate-x-7"></span>
+                </span>
+              </label>
+            </div>
+          </article>
+        ))}
+      </div>
+
+      <p class="mt-6 text-[11px] text-white/40 leading-relaxed">⚠️ {isEl ? "Αλλαγή εφαρμόζεται μέσα σε 60s (server cache). Hard-refresh για άμεση ενημέρωση." : "Changes apply within 60s (server cache). Hard-refresh for immediate effect."}</p>
+    </main>
+
+    <script is:inline>
+      const banner = document.getElementById("banner");
+      function flash(text, ok) {
+        banner.textContent = text;
+        banner.className = `mb-4 rounded-xl px-4 py-2 text-sm ${ok ? "border border-emerald-400/30 bg-emerald-400/10 text-emerald-200" : "border border-red-400/30 bg-red-400/10 text-red-200"}`;
+        banner.classList.remove("hidden");
+        setTimeout(() => banner.classList.add("hidden"), 2500);
+      }
+      async function toggleAll(enabled) {
+        for (const game of ["wheel", "scratch", "quests"]) {
+          try {
+            await fetch("/api/admin/game-flag", {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ game, enabled }),
+            });
+          } catch {}
+        }
+      }
+
+      document.getElementById("killAll").addEventListener("click", async () => {
+        if (!confirm("Disable ALL games site-wide? Customers won't see any game anywhere.")) return;
+        await toggleAll(false);
+        flash("⛔ All games disabled", true);
+        setTimeout(() => location.reload(), 500);
+      });
+
+      document.getElementById("enableAll").addEventListener("click", async () => {
+        await toggleAll(true);
+        flash("✓ All games enabled", true);
+        setTimeout(() => location.reload(), 500);
+      });
+
+      document.querySelectorAll(".game-toggle").forEach(input => {
+        input.addEventListener("change", async () => {
+          const game = input.getAttribute("data-game");
+          const enabled = input.checked;
+          try {
+            const r = await fetch("/api/admin/game-flag", {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ game, enabled }),
+            });
+            if (!r.ok) throw new Error("save failed");
+            flash(`✓ ${game} ${enabled ? "enabled" : "disabled"}`, true);
+            setTimeout(() => location.reload(), 500);
+          } catch {
+            input.checked = !enabled;
+            flash("⚠️ Save failed", false);
+          }
+        });
+      });
+    </script>
+  </body>
+</html>

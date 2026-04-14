@@ -19,7 +19,7 @@ export const POST: APIRoute = async ({ locals, request }) => {
   if (!msg) return json({ error: "Not found" }, 404);
 
   const isOwner = msg.user_id === locals.user.id;
-  const isAdmin = me?.role === "admin";
+  const isAdmin = me?.role === "admin" || me?.role === "super_admin";
   if (!isOwner && !isAdmin) return json({ error: "Forbidden" }, 403);
 
   const { error } = await supabaseAdmin

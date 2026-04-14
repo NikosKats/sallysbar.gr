@@ -46,6 +46,11 @@ const L = {
     "Sitemap & SEO",
     "Role: super_admin",
     "SaaS: Venues, Onboarding, Business",
+    "Games ON/OFF toggles",
+    "Wheel: Testing mode & redemption",
+    "Scratch rewards + earn list",
+    "Tasks: kill & CRUD",
+    "Games hub & dedicated pages",
     "Επίλυση προβλημάτων",
   ] : [
     "Install the app (PWA)",
@@ -75,6 +80,11 @@ const L = {
     "Sitemap & SEO",
     "super_admin role",
     "SaaS: Venues, Onboarding, Business",
+    "Games ON/OFF toggles",
+    "Wheel: Testing mode & redemption",
+    "Scratch rewards + earn list",
+    "Tasks: kill & CRUD",
+    "Games hub & dedicated pages",
     "Troubleshooting",
   ],
 
@@ -1050,8 +1060,102 @@ const L = {
       <p class="text-xs text-white/50">Migrations: <code>add-saas-venues.sql</code>, <code>add-venue-credentials.sql</code>.</p>
     `,
   },
+  s39: {
+    head: isEl ? "39. Games ON/OFF (master διακόπτες)" : "39. Games ON/OFF (master toggles)",
+    body: isEl ? `
+      <p><a href="/admin/games"><code>/admin/games</code></a> — ένας διακόπτης για κάθε παιχνίδι (wheel, scratch, quests). Όταν OFF: η σελίδα του παιχνιδιού επιστρέφει 404, το footer δεν έχει link, τα tiles στο /table εξαφανίζονται, τα APIs απορρίπτουν αιτήματα, το dropdown Tonight's Quest δεν εμφανίζεται.</p>
+      <ul>
+        <li><strong>⛔ Master kill switch</strong> — "TURN ALL OFF" κλείνει και τα 3 ταυτόχρονα (και το /play γίνεται 404).</li>
+        <li><strong>60s cache</strong> — αλλαγή εφαρμόζεται μέσα σε 60 δευτερόλεπτα server-side.</li>
+      </ul>
+      <p class="text-xs text-white/50">Migration: <code>scripts/add-game-enabled-flags.sql</code>.</p>
+    ` : `
+      <p><a href="/admin/games"><code>/admin/games</code></a> — one toggle per game (wheel, scratch, quests). When OFF: the game's page returns 404, footer link hides, /table tiles disappear, APIs reject, dropdown Tonight's Quest card hides.</p>
+      <ul>
+        <li><strong>⛔ Master kill switch</strong> — "TURN ALL OFF" flips all three at once (and /play returns 404).</li>
+        <li><strong>60s cache</strong> — changes propagate within a minute server-side.</li>
+      </ul>
+      <p class="text-xs text-white/50">Migration: <code>scripts/add-game-enabled-flags.sql</code>.</p>
+    `,
+  },
+  s40: {
+    head: isEl ? "40. Wheel: Testing mode + εξαργύρωση" : "40. Wheel: Testing mode + redemption",
+    body: isEl ? `
+      <p>Στο <a href="/admin/wheel"><code>/admin/wheel</code></a>: κουμπί 🧪 <strong>Testing Mode</strong> παρακάμπτει geofence, daily limit, staff-role block — ιδανικό για demos.</p>
+      <p>Η σελίδα <a href="/wheel"><code>/wheel</code></a> είναι αυτόνομη με casino-style UI (340px gold rim, 16 stud lights, 3D slices) και casino ήχους (64 ticks + win chime μέσω Web Audio).</p>
+      <p>Οι φυσικοί έπαθλοι (shots, cocktails, discounts) εξαργυρώνονται μέσω QR → <a href="/staff/wheel-claim"><code>/staff/wheel-claim</code></a> (staff σκανάρει ή πατά ✓ Approve). Pleπόντοι αυτοπιστώνονται στο loyalty_events.</p>
+      <p class="text-xs text-white/50">Migrations: <code>scripts/add-wheel-claims.sql</code>.</p>
+    ` : `
+      <p>At <a href="/admin/wheel"><code>/admin/wheel</code></a>: 🧪 <strong>Testing Mode</strong> toggle bypasses geofence, daily limit, staff-role block — perfect for demos.</p>
+      <p><a href="/wheel"><code>/wheel</code></a> is a dedicated standalone page with casino-style UI (340px gold rim, 16 stud lights, 3D slices) and casino sounds (64 ticks + win chime via Web Audio).</p>
+      <p>Physical prizes (shots, cocktails, discounts) redeem via QR → <a href="/staff/wheel-claim"><code>/staff/wheel-claim</code></a> (staff scans or taps ✓ Approve). Points rewards auto-credit to loyalty_events.</p>
+      <p class="text-xs text-white/50">Migration: <code>scripts/add-wheel-claims.sql</code>.</p>
+    `,
+  },
+  s41: {
+    head: isEl ? "41. Scratch rewards + earn-list (editable)" : "41. Scratch rewards + earn-list (editable)",
+    body: isEl ? `
+      <p>Στο <a href="/admin/scratch"><code>/admin/scratch</code></a>:</p>
+      <ul>
+        <li><strong>🏆 Rewards pool</strong> — πλήρως επεξεργάσιμο table (type, value, EN/EL labels, weight, active, delete). Οι πιθανότητες υπολογίζονται live. Atomic save.</li>
+        <li><strong>🎯 How customers earn more</strong> — reorderable list (↑/↓, add, delete, toggle active). Εμφανίζεται στο <a href="/scratch"><code>/scratch</code></a> μόνο αν υπάρχουν active rows.</li>
+      </ul>
+      <p>Runtime: <code>getScratchPool()</code> στο <code>src/lib/scratch.ts</code> διαβάζει από DB με 60s cache, fallback σε hardcoded αν άδειο.</p>
+      <p class="text-xs text-white/50">Migrations: <code>add-scratch-rewards-table.sql</code>, <code>add-scratch-earn-items.sql</code>.</p>
+    ` : `
+      <p>At <a href="/admin/scratch"><code>/admin/scratch</code></a>:</p>
+      <ul>
+        <li><strong>🏆 Rewards pool</strong> — fully editable table (type, value, EN/EL labels, weight, active, delete). Live odds recompute. Atomic save.</li>
+        <li><strong>🎯 How customers earn more</strong> — reorderable list (↑/↓, add, delete, active toggle). Shown on <a href="/scratch"><code>/scratch</code></a> only when there are active rows.</li>
+      </ul>
+      <p>Runtime: <code>getScratchPool()</code> in <code>src/lib/scratch.ts</code> reads from DB with 60s cache, falls back to hardcoded if empty.</p>
+      <p class="text-xs text-white/50">Migrations: <code>add-scratch-rewards-table.sql</code>, <code>add-scratch-earn-items.sql</code>.</p>
+    `,
+  },
+  s42: {
+    head: isEl ? "42. Tasks: master kill + CRUD" : "42. Tasks: master kill + CRUD",
+    body: isEl ? `
+      <p>Στο <a href="/admin/tasks"><code>/admin/tasks</code></a>:</p>
+      <ul>
+        <li><strong>☠️ Master kill switch</strong> — "TURN ALL OFF" απενεργοποιεί όλα τα 19 tasks με μία κίνηση. Η ενότητα 🎯 My Tasks στο /account αυτο-κρύβεται.</li>
+        <li><strong>✎ Edit per-task</strong> — override του default title/description/points. Κενό πεδίο = χρήση default. "Reset to defaults" button.</li>
+        <li>Edited tasks εμφανίζουν badge "edited". Overrides εφαρμόζονται και στη διεκδίκηση points.</li>
+      </ul>
+      <p class="text-xs text-white/50">Migration: <code>scripts/add-task-overrides.sql</code>.</p>
+    ` : `
+      <p>At <a href="/admin/tasks"><code>/admin/tasks</code></a>:</p>
+      <ul>
+        <li><strong>☠️ Master kill switch</strong> — "TURN ALL OFF" disables all 19 tasks in one click. The 🎯 My Tasks section on /account auto-hides.</li>
+        <li><strong>✎ Per-task edit</strong> — override default title/description/points. Empty field = use default. "Reset to defaults" button.</li>
+        <li>Edited tasks show an "edited" badge. Overrides apply to the claim-points insert too.</li>
+      </ul>
+      <p class="text-xs text-white/50">Migration: <code>scripts/add-task-overrides.sql</code>.</p>
+    `,
+  },
+  s43: {
+    head: isEl ? "43. Games hub & dedicated pages" : "43. Games hub & dedicated pages",
+    body: isEl ? `
+      <p>Χωρίς loyalty ή referral ανάμειξη — μόνο παιχνίδια:</p>
+      <ul>
+        <li><strong><a href="/play"><code>/play</code></a></strong> — hub με 3 tiles (Quests, Wheel, Scratch), hero "Play. Win. Come back."</li>
+        <li><strong><a href="/quests"><code>/quests</code></a></strong> — αποκλειστική quest landing με tonight's quest, 4-step how-it-works, upcoming 7-day preview, completed count, rules.</li>
+        <li><strong><a href="/wheel"><code>/wheel</code></a></strong> — casino wheel + "🏆 All prizes" με odds + "🎁 My prizes" history με redemption flow.</li>
+        <li><strong><a href="/scratch"><code>/scratch</code></a></strong> — hero, available cards CTA, editable prize pool, recent reveals, editable earn-list.</li>
+      </ul>
+      <p>Όλες κάνουν 404 όταν το αντίστοιχο game είναι OFF στο /admin/games. /play κάνει 404 όταν όλα είναι κλειστά.</p>
+    ` : `
+      <p>Pure games — no loyalty or referral mentions:</p>
+      <ul>
+        <li><strong><a href="/play"><code>/play</code></a></strong> — hub with 3 tiles (Quests, Wheel, Scratch), hero "Play. Win. Come back."</li>
+        <li><strong><a href="/quests"><code>/quests</code></a></strong> — dedicated quest landing with tonight's quest, 4-step how-it-works, 7-day upcoming preview, completed count, rules.</li>
+        <li><strong><a href="/wheel"><code>/wheel</code></a></strong> — casino wheel + "🏆 All prizes" odds + "🎁 My prizes" history with redemption flow.</li>
+        <li><strong><a href="/scratch"><code>/scratch</code></a></strong> — hero, available-cards CTA, editable prize pool, recent reveals, editable earn-list.</li>
+      </ul>
+      <p>All return 404 when the respective game is OFF at /admin/games. /play returns 404 when all three are off.</p>
+    `,
+  },
   s14: {
-    head: isEl ? "39. Επίλυση προβλημάτων" : "39. Troubleshooting",
+    head: isEl ? "44. Επίλυση προβλημάτων" : "44. Troubleshooting",
     body: isEl ? `
       <ul>
         <li><strong>Δεν λαμβάνω push σε iPhone</strong> — βεβαιώσου ότι άνοιξες από το εικονίδιο της αρχικής οθόνης, όχι από Safari. Απαιτείται iOS 16.4+.</li>
@@ -1114,10 +1218,15 @@ const sections = [
   { id: "sitemap-seo",    icon: "🧭", tint: "bg-sky-300/15",     ...L.s36 },
   { id: "super-admin",    icon: "🔐", tint: "bg-rose-300/15",    ...L.s37 },
   { id: "saas-tooling",   icon: "🚀", tint: "bg-amber-300/15",   ...L.s38 },
+  { id: "games-toggles",  icon: "🎮", tint: "bg-fuchsia-300/15", ...L.s39 },
+  { id: "wheel-redeem",   icon: "🎡", tint: "bg-amber-300/15",   ...L.s40 },
+  { id: "scratch-editor", icon: "🎟", tint: "bg-sky-300/15",     ...L.s41 },
+  { id: "tasks-crud",     icon: "✅", tint: "bg-emerald-300/15", ...L.s42 },
+  { id: "games-pages",    icon: "🎯", tint: "bg-amber-300/15",   ...L.s43 },
   { id: "troubleshoot",   icon: "🩹", tint: "bg-red-300/15",     ...L.s14 },
 ];
 
-const tocIds = ["install","push","customer","waiter","barman","deliver","admin-overview","admin-menu","admin-qr","admin-events","admin-users","admin-tips","telegram","marketing","mkt-analytics","gamification","customer-pwa","legal","wheel","customer-dash","wallet-share","user-dossier","notif-scope","play-crosspromo","team-chat","settings-profile","social-card","table-settings","staff-sidebar","referral-gate","quests-ai-confirm","tasks-admin","wheel-settings","address-autocomplete","sitemap-seo","super-admin","saas-tooling","troubleshoot"];
+const tocIds = ["install","push","customer","waiter","barman","deliver","admin-overview","admin-menu","admin-qr","admin-events","admin-users","admin-tips","telegram","marketing","mkt-analytics","gamification","customer-pwa","legal","wheel","customer-dash","wallet-share","user-dossier","notif-scope","play-crosspromo","team-chat","settings-profile","social-card","table-settings","staff-sidebar","referral-gate","quests-ai-confirm","tasks-admin","wheel-settings","address-autocomplete","sitemap-seo","super-admin","saas-tooling","games-toggles","wheel-redeem","scratch-editor","tasks-crud","games-pages","troubleshoot"];
 ---
 
 <html lang={lang}>

@@ -1,0 +1,170 @@
+---
+import "../styles/global.css";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+import { getScratchPool } from "../lib/scratch";
+import { supabaseAdmin } from "../lib/supabase";
+import { getGameFlags } from "../lib/gameFlags";
+if (!(await getGameFlags()).scratch) return new Response("Not found", { status: 404 });
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+const user = Astro.locals.user;
+
+const scratchPool = await getScratchPool();
+const totalWeight = scratchPool.reduce((s: number, r: any) => s + r.weight, 0);
+const colors = ["#64748b", "#0ea5e9", "#10b981", "#a855f7", "#f59e0b", "#ec4899", "#ef4444", "#fbbf24"];
+
+// Editable "How to earn more" list — only shown if admin has added active items.
+let earnItems: Array<{ emoji: string; text_en: string; text_el: string }> = [];
+try {
+  const { data } = await supabaseAdmin
+    .from("scratch_earn_items")
+    .select("emoji, text_en, text_el")
+    .eq("active", true)
+    .order("sort_order", { ascending: true });
+  earnItems = data ?? [];
+} catch {}
+
+// Count user's available (unrevealed) scratch cards if logged in
+let availableCount = 0;
+let recentReveals: any[] = [];
+if (user) {
+  const { count } = await supabaseAdmin
+    .from("scratch_cards").select("id", { count: "exact", head: true })
+    .eq("user_id", user.id).is("revealed_at", null);
+  availableCount = count ?? 0;
+
+  const { data: recent } = await supabaseAdmin
+    .from("scratch_cards")
+    .select("reward_label, revealed_at")
+    .eq("user_id", user.id).not("revealed_at", "is", null)
+    .order("revealed_at", { ascending: false }).limit(5);
+  recentReveals = recent ?? [];
+}
+
+const T = {
+  title:   isEl ? "🎟 Scratch Cards" : "🎟 Scratch Cards",
+  sub:     isEl ? "Ξύσε τις κάρτες σου και δες τι κέρδισες — κάθε κάρτα κερδίζει κάτι." : "Scratch your cards to reveal a prize — every card wins something.",
+  you:     isEl ? "Έχεις" : "You have",
+  cards:   isEl ? "κάρτες να ξύσεις" : "cards to scratch",
+  goPlay:  isEl ? "🎟 Πήγαινε να τις ξύσεις" : "🎟 Go scratch them",
+  earnMore:isEl ? "Πώς παίρνεις περισσότερες" : "How to earn more",
+  earnList: isEl ? [
+    "🎁 Νέα εγγραφή → 1 δώρο card",
+    "📱 Επαληθεύεις τηλέφωνο → 1 card",
+    "🎂 Στα γενέθλιά σου → 1 card",
+    "🤝 Κάθε φίλος που εγγράφεται → 1 card",
+    "🎯 Ολοκλήρωσε Tonight's Quest → έκπληξη",
+  ] : [
+    "🎁 Sign up → 1 welcome card",
+    "📱 Verify your phone → 1 card",
+    "🎂 On your birthday → 1 card",
+    "🤝 Every friend you refer → 1 card",
+    "🎯 Complete Tonight's Quest → surprise",
+  ],
+  prizes:  isEl ? "🏆 Τα έπαθλα" : "🏆 All prizes",
+  weighted:isEl ? "Ζυγισμένα με πιθανότητα" : "Weighted by odds",
+  recent:  isEl ? "🕘 Τελευταία που ξύσες" : "🕘 Recently scratched",
+  signIn:  isEl ? "🔑 Συνδέσου για να ξύσεις" : "🔑 Sign in to scratch",
+};
+---
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{T.title} — Sally's Bar</title>
+    <meta name="description" content={T.sub} />
+    <meta name="theme-color" content="#0b0b10" />
+  </head>
+  <body class="min-h-screen bg-[#0a0a0f] text-white font-body antialiased">
+    <Header />
+    <div class="h-20"></div>
+
+    <div class="pointer-events-none fixed inset-0 -z-10 opacity-70">
+      <div class="absolute -top-40 left-1/3 h-[520px] w-[520px] rounded-full bg-fuchsia-400/15 blur-[140px]"></div>
+      <div class="absolute bottom-0 right-0 h-[420px] w-[420px] rounded-full bg-amber-500/15 blur-[140px]"></div>
+    </div>
+
+    <main class="mx-auto max-w-xl px-5 py-8">
+      <p class="text-[10px] uppercase tracking-[0.28em] text-fuchsia-300 mb-2 font-bold">Sally's Bar · Play</p>
+      <h1 class="font-heading text-4xl sm:text-5xl font-bold">{T.title}</h1>
+      <p class="mt-2 text-sm text-white/65 max-w-md">{T.sub}</p>
+
+      {/* Available cards CTA */}
+      {user ? (
+        availableCount > 0 ? (
+          <a href={`${isEl ? "/el" : ""}/account#scratch`} class="mt-6 flex items-center justify-between gap-3 rounded-2xl border border-fuchsia-400/40 bg-gradient-to-br from-fuchsia-500/15 via-amber-500/10 to-sky-500/10 p-5 hover:from-fuchsia-500/25 transition">
+            <div>
+              <p class="text-[11px] uppercase tracking-wider text-fuchsia-300 font-bold">{T.you}</p>
+              <p class="font-heading text-3xl font-bold mt-1">{availableCount} <span class="text-sm text-white/70 font-normal">{T.cards}</span></p>
+            </div>
+            <span class="shrink-0 rounded-xl bg-gradient-to-br from-amber-300 to-amber-500 text-black font-bold px-4 py-2.5 text-sm shadow-lg">{T.goPlay} →</span>
+          </a>
+        ) : (
+          <div class="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-5 text-center text-white/60 text-sm">
+            {isEl ? "Δεν έχεις ενεργές κάρτες — δες παρακάτω πώς να πάρεις." : "No active cards — see below how to earn more."}
+          </div>
+        )
+      ) : (
+        <a href={`${isEl ? "/el" : ""}/login?next=/scratch`} class="mt-6 block rounded-2xl bg-gradient-to-br from-amber-300 to-amber-500 text-black font-bold px-5 py-4 text-center text-sm shadow-xl shadow-amber-500/30">{T.signIn}</a>
+      )}
+
+      {/* Prize pool */}
+      <section class="mt-10">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="font-heading text-xl font-bold">{T.prizes}</h2>
+          <span class="text-[10px] uppercase tracking-wider text-white/40 font-bold">{T.weighted}</span>
+        </div>
+        <ul class="space-y-2">
+          {scratchPool.map((p: any, i: number) => {
+            const pct = (p.weight / totalWeight) * 100;
+            const col = colors[i % colors.length];
+            return (
+              <li class="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                <span class="shrink-0 h-10 w-10 rounded-full shadow-inner" style={`background:${col}`}></span>
+                <div class="flex-1 min-w-0">
+                  <p class="font-semibold text-white">{isEl ? p.label_el : p.label_en}</p>
+                  <div class="mt-1 h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
+                    <div class="h-full rounded-full" style={`width:${pct}%; background:${col}`}></div>
+                  </div>
+                </div>
+                <span class="shrink-0 text-right">
+                  <span class="text-sm font-bold text-white/85 font-mono">{pct.toFixed(pct < 10 ? 1 : 0)}%</span>
+                  <span class="block text-[10px] text-white/40">{isEl ? "πιθανότητα" : "chance"}</span>
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+
+      {/* Recent reveals */}
+      {recentReveals.length > 0 && (
+        <section class="mt-10">
+          <h2 class="font-heading text-lg font-bold mb-3">{T.recent}</h2>
+          <ul class="space-y-2">
+            {recentReveals.map(r => (
+              <li class="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm">
+                <span class="font-semibold text-white">{r.reward_label}</span>
+                <span class="text-xs text-white/45 font-mono">{new Date(r.revealed_at).toLocaleDateString(isEl ? "el-GR" : "en-GB", { day: "2-digit", month: "short" })}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* Earn more — only shown when admin has added active items */}
+      {earnItems.length > 0 && (
+        <section class="mt-10 rounded-2xl border border-amber-400/25 bg-gradient-to-br from-amber-500/10 via-fuchsia-500/5 to-sky-500/5 p-5">
+          <h2 class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-3">🎯 {T.earnMore}</h2>
+          <ul class="space-y-1.5 text-sm text-white/80">
+            {earnItems.map(e => <li>{e.emoji} {isEl ? e.text_el : e.text_en}</li>)}
+          </ul>
+        </section>
+      )}
+    </main>
+
+    <Footer />
+  </body>
+</html>

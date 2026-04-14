@@ -215,20 +215,44 @@ function autoIsDone(key: string, c: Context): boolean {
   }
 }
 
-// Cache disabled keys (1 minute TTL — admin toggles propagate fast enough).
-let _disabledKeysCache: { keys: Set<string>; at: number } | null = null;
-export async function getDisabledTodoKeys(): Promise<Set<string>> {
-  if (_disabledKeysCache && Date.now() - _disabledKeysCache.at < 60_000) return _disabledKeysCache.keys;
-  const { data } = await supabaseAdmin.from("task_settings").select("task_key, enabled").eq("enabled", false);
-  const keys = new Set((data ?? []).map((r: any) => r.task_key as string));
-  _disabledKeysCache = { keys, at: Date.now() };
-  return keys;
+// Cache disabled keys + per-task overrides (1 min TTL).
+let _taskCache: { off: Set<string>; overrides: Map<string, any>; at: number } | null = null;
+async function loadTaskCache() {
+  if (_taskCache && Date.now() - _taskCache.at < 60_000) return _taskCache;
+  const { data } = await supabaseAdmin
+    .from("task_settings")
+    .select("task_key, enabled, custom_title_en, custom_title_el, custom_desc_en, custom_desc_el, custom_points");
+  const off = new Set<string>();
+  const overrides = new Map<string, any>();
+  for (const r of (data ?? []) as any[]) {
+    if (r.enabled === false) off.add(r.task_key);
+    if (r.custom_title_en || r.custom_title_el || r.custom_desc_en || r.custom_desc_el || (r.custom_points != null)) {
+      overrides.set(r.task_key, r);
+    }
+  }
+  _taskCache = { off, overrides, at: Date.now() };
+  return _taskCache;
 }
-export function clearDisabledTodoCache() { _disabledKeysCache = null; }
+export async function getDisabledTodoKeys(): Promise<Set<string>> {
+  return (await loadTaskCache()).off;
+}
+export function clearDisabledTodoCache() { _taskCache = null; }
+
+function applyOverride(t: TodoDef, o: any): TodoDef {
+  if (!o) return t;
+  return {
+    ...t,
+    title_en: o.custom_title_en ?? t.title_en,
+    title_el: o.custom_title_el ?? t.title_el,
+    desc_en:  o.custom_desc_en  ?? t.desc_en,
+    desc_el:  o.custom_desc_el  ?? t.desc_el,
+    points:   (o.custom_points != null) ? Number(o.custom_points) : t.points,
+  };
+}
 
 export async function getEnabledTodos(): Promise<TodoDef[]> {
-  const off = await getDisabledTodoKeys();
-  return TODOS.filter(t => !off.has(t.key));
+  const { off, overrides } = await loadTaskCache();
+  return TODOS.filter(t => !off.has(t.key)).map(t => applyOverride(t, overrides.get(t.key)));
 }
 
 export async function getTodoStates(userId: string): Promise<TodoState[]> {
@@ -251,10 +275,11 @@ export async function attemptClaim(
   key: string,
   opts: { clientSignal?: Record<string, unknown> } = {},
 ): Promise<{ ok: true; points: number } | { ok: false; error: string }> {
-  const def = TODOS.find(t => t.key === key);
-  if (!def) return { ok: false, error: "unknown_todo" };
-  const off = await getDisabledTodoKeys();
+  const rawDef = TODOS.find(t => t.key === key);
+  if (!rawDef) return { ok: false, error: "unknown_todo" };
+  const { off, overrides } = await loadTaskCache();
   if (off.has(key)) return { ok: false, error: "task_disabled" };
+  const def = applyOverride(rawDef, overrides.get(key));
 
   // Already claimed?
   const { data: existing } = await supabaseAdmin

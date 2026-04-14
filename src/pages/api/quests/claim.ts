@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 import { supabaseAdmin } from "../../../lib/supabase";
+import { getGameFlags } from "../../../lib/gameFlags";
 
 function json(obj: unknown, status = 200) {
   return new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json" } });
@@ -7,6 +8,7 @@ function json(obj: unknown, status = 200) {
 
 export const POST: APIRoute = async ({ request, locals }) => {
   if (!locals.user) return json({ error: "auth_required" }, 401);
+  if (!(await getGameFlags()).quests) return json({ error: "quests_disabled" }, 403);
 
   let body: any;
   try { body = await request.json(); } catch { return json({ error: "bad_json" }, 400); }

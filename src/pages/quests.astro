@@ -1,0 +1,194 @@
+---
+import "../styles/global.css";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+import { getGameFlags } from "../lib/gameFlags";
+import { supabaseAdmin } from "../lib/supabase";
+
+if (!(await getGameFlags()).quests) return new Response("Not found", { status: 404 });
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+const user = Astro.locals.user;
+
+const today = new Date().toISOString().slice(0, 10);
+
+// Today's active quest
+const { data: tonight } = await supabaseAdmin
+  .from("quests")
+  .select("id, title_en, title_el, description_en, description_el, reward_points, reward_label_en, reward_label_el, active_date, cta_url")
+  .eq("active", true).eq("active_date", today)
+  .order("created_at", { ascending: false }).limit(1).maybeSingle();
+
+// Upcoming preview (next 7 days, titles only — no spoilers on rewards)
+const weekAhead = new Date(Date.now() + 7 * 86400_000).toISOString().slice(0, 10);
+const { data: upcoming } = await supabaseAdmin
+  .from("quests")
+  .select("id, title_en, title_el, active_date")
+  .eq("active", true).gt("active_date", today).lte("active_date", weekAhead)
+  .order("active_date", { ascending: true }).limit(7);
+
+// User's claim history
+let completed: any[] = [];
+let tonightClaimed = false;
+if (user) {
+  const { data } = await supabaseAdmin
+    .from("quest_claims")
+    .select("quest_id, claimed_at:created_at, status")
+    .eq("user_id", user.id).eq("status", "approved")
+    .order("created_at", { ascending: false }).limit(20);
+  completed = data ?? [];
+  if (tonight) tonightClaimed = completed.some(c => c.quest_id === tonight.id);
+}
+
+const T = {
+  kicker:   isEl ? "Αποψινή Αποστολή" : "Tonight's Quest",
+  h1:       isEl ? "🎯 Quests" : "🎯 Quests",
+  sub:      isEl ? "Μία φρέσκια αποστολή κάθε νύχτα. Κάνε την στο bar, κέρδισε πόντους + έκπληξη." : "A fresh mission every night. Do it at the bar, earn points + a surprise.",
+  howTitle: isEl ? "Πώς παίζεται" : "How it works",
+  howSteps: isEl ? [
+    { icon: "🔔", t: "Ειδοποίηση στις 19:00", d: "Αν έχεις ενεργοποιημένες push, παίρνεις το challenge στο κινητό σου." },
+    { icon: "🍸", t: "Κάνε την αποστολή", d: "Παράγγειλε, φωτογράφισε, χόρεψε — ό,τι ζητάει η αποψινή." },
+    { icon: "✅", t: "Πάτα \"Το έκανα\"", d: "Η οθόνη γίνεται QR για 5 λεπτά. Δείξε στο staff." },
+    { icon: "🏆", t: "Staff επιβεβαιώνει", d: "Ένα tap και οι πόντοι + το έπαθλο σου έρχονται αυτόματα." },
+  ] : [
+    { icon: "🔔", t: "7pm push alert", d: "If you've enabled notifications, tonight's challenge lands on your phone." },
+    { icon: "🍸", t: "Do the quest", d: "Order, photograph, dance — whatever tonight's mission calls for." },
+    { icon: "✅", t: "Tap \"I did it\"", d: "Your screen flips to a QR for 5 minutes. Show it to staff." },
+    { icon: "🏆", t: "Staff confirms", d: "One tap and your points + prize land automatically." },
+  ],
+  activeNow: isEl ? "Αποψινή αποστολή" : "Tonight's quest",
+  openQuest: isEl ? "Άνοιξε την αποστολή →" : "Open the quest →",
+  claimed:   isEl ? "✓ Το έχεις κάνει" : "✓ You've claimed this",
+  upcoming:  isEl ? "📅 Έρχονται" : "📅 Upcoming",
+  noUpcoming:isEl ? "Δεν υπάρχουν προγραμματισμένες αποστολές ακόμα." : "No upcoming quests scheduled yet.",
+  myHistory: isEl ? "🏅 Ολοκληρωμένες" : "🏅 Completed",
+  signIn:    isEl ? "🔑 Συνδέσου για να παίξεις" : "🔑 Sign in to play",
+  ruleTitle: isEl ? "Κανόνες" : "Rules",
+  rules: isEl ? [
+    "1 αποστολή ανά μέρα.",
+    "Μία εξαργύρωση ανά χρήστη.",
+    "Απαιτείται επιβεβαίωση από staff στο bar.",
+    "3 απορρίψεις σε 7 μέρες = 24h παύση.",
+    "Τα έπαθλα δεν αντικαθίστανται με μετρητά.",
+  ] : [
+    "One quest per day.",
+    "One claim per user.",
+    "Requires staff confirmation at the bar.",
+    "3 rejections in 7 days = 24h cooldown.",
+    "Prizes are non-exchangeable for cash.",
+  ],
+};
+---
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>🎯 Quests — Sally's Bar</title>
+    <meta name="description" content={T.sub} />
+    <meta name="theme-color" content="#0b0b10" />
+  </head>
+  <body class="min-h-screen bg-[#0a0a0f] text-white font-body antialiased">
+    <Header />
+    <div class="h-20"></div>
+
+    <div class="pointer-events-none fixed inset-0 -z-10 opacity-70">
+      <div class="absolute -top-40 left-1/3 h-[520px] w-[520px] rounded-full bg-amber-400/15 blur-[140px]"></div>
+      <div class="absolute bottom-0 right-0 h-[420px] w-[420px] rounded-full bg-fuchsia-500/15 blur-[140px]"></div>
+    </div>
+
+    <main class="mx-auto max-w-3xl px-5 py-8">
+      <!-- Hero -->
+      <p class="text-[10px] uppercase tracking-[0.28em] text-amber-200/80 mb-2 font-bold">Sally's Bar · Play</p>
+      <h1 class="font-heading text-5xl font-bold">{T.h1}</h1>
+      <p class="mt-3 text-base text-white/70 max-w-xl">{T.sub}</p>
+
+      <!-- Tonight -->
+      <section class="mt-8">
+        {tonight ? (
+          <article class="rounded-3xl border border-amber-400/40 bg-gradient-to-br from-amber-500/15 via-fuchsia-500/10 to-sky-500/10 p-6 relative overflow-hidden">
+            <div class="absolute -top-10 -right-10 text-[140px] opacity-10">🎯</div>
+            <div class="relative">
+              <p class="text-[10px] uppercase tracking-wider text-amber-300 font-bold">🎯 {T.activeNow}</p>
+              <h2 class="font-heading text-2xl sm:text-3xl font-bold mt-2">{isEl ? (tonight.title_el || tonight.title_en) : tonight.title_en}</h2>
+              {(isEl ? tonight.description_el : tonight.description_en) && (
+                <p class="text-sm text-white/75 mt-2 leading-relaxed">{isEl ? (tonight.description_el || tonight.description_en) : tonight.description_en}</p>
+              )}
+              <p class="text-sm text-amber-200 mt-3 font-semibold">🏆 +{tonight.reward_points} pts{(isEl ? tonight.reward_label_el : tonight.reward_label_en) && <span> · {isEl ? (tonight.reward_label_el || tonight.reward_label_en) : tonight.reward_label_en}</span>}</p>
+              <div class="mt-4 flex gap-2 flex-wrap">
+                {tonightClaimed ? (
+                  <span class="rounded-xl bg-emerald-400/15 text-emerald-300 border border-emerald-400/30 px-4 py-2.5 text-sm font-bold">{T.claimed}</span>
+                ) : (
+                  <a href={`/quest/${tonight.id}`} class="rounded-xl bg-gradient-to-br from-amber-300 to-amber-500 text-black font-bold px-5 py-2.5 text-sm shadow-lg shadow-amber-500/20 hover:scale-[1.02] active:scale-[0.98] transition">{T.openQuest}</a>
+                )}
+              </div>
+            </div>
+          </article>
+        ) : (
+          <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center text-white/55">
+            {isEl ? "Η αποψινή αποστολή έρχεται στις 19:00. 🔔" : "Tonight's quest drops at 7pm. 🔔"}
+          </div>
+        )}
+      </section>
+
+      <!-- How it works -->
+      <section class="mt-10">
+        <h2 class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-4">{T.howTitle}</h2>
+        <div class="grid sm:grid-cols-2 gap-3">
+          {T.howSteps.map(s => (
+            <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+              <div class="text-2xl">{s.icon}</div>
+              <p class="font-heading font-bold mt-1.5">{s.t}</p>
+              <p class="text-xs text-white/55 mt-1 leading-relaxed">{s.d}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <!-- Upcoming (titles only) -->
+      <section class="mt-10">
+        <h2 class="text-[10px] uppercase tracking-wider text-sky-300 font-bold mb-4">{T.upcoming}</h2>
+        {upcoming && upcoming.length > 0 ? (
+          <ul class="space-y-2">
+            {upcoming.map(q => (
+              <li class="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2.5">
+                <span class="text-xs font-mono text-white/45 w-20 shrink-0">{q.active_date.slice(5)}</span>
+                <span class="text-sm text-white/80 flex-1 truncate">{isEl ? (q.title_el || q.title_en) : q.title_en}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p class="text-xs text-white/40 italic">{T.noUpcoming}</p>
+        )}
+      </section>
+
+      <!-- My completed -->
+      {user && completed.length > 0 && (
+        <section class="mt-10">
+          <h2 class="text-[10px] uppercase tracking-wider text-emerald-300 font-bold mb-4">{T.myHistory} ({completed.length})</h2>
+          <p class="text-xs text-white/55">
+            {isEl ? "Έχεις ολοκληρώσει " : "You've completed "}
+            <span class="font-bold text-white">{completed.length}</span>
+            {isEl ? " αποστολές." : " quests."}
+          </p>
+        </section>
+      )}
+
+      <!-- Rules -->
+      <section class="mt-10 rounded-2xl border border-red-400/20 bg-red-400/[0.04] p-5">
+        <h2 class="text-[10px] uppercase tracking-wider text-red-300 font-bold mb-3">⚖️ {T.ruleTitle}</h2>
+        <ul class="space-y-1.5 text-sm text-white/75 list-disc pl-5">
+          {T.rules.map(r => <li>{r}</li>)}
+        </ul>
+      </section>
+
+      {!user && (
+        <div class="mt-8 text-center">
+          <a href={`${isEl ? "/el" : ""}/login?next=/quests`} class="inline-flex items-center rounded-2xl bg-gradient-to-br from-amber-300 to-amber-500 text-black font-bold px-6 py-3 text-sm shadow-xl shadow-amber-500/25">{T.signIn}</a>
+        </div>
+      )}
+    </main>
+
+    <Footer />
+  </body>
+</html>

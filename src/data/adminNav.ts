@@ -59,6 +59,7 @@ export function getAdminNavGroups(lang: "en" | "el", t: any, role?: string | nul
       { key: "editMenu", label: t.admin.nav.editMenu,         href: withLangPrefix(lang, "/admin/menu"),    icon: I.editMenu },
       { key: "loyalty",  label: t.admin.nav.loyalty,          href: withLangPrefix(lang, "/admin/loyalty"), icon: I.loyalty },
       { key: "tasks",    label: isEl ? "Tasks (πελάτη)" : "Tasks (customer)", href: withLangPrefix(lang, "/admin/tasks"), icon: I.loyalty },
+      { key: "games",    label: isEl ? "🎮 Παιχνίδια ON/OFF" : "🎮 Games ON/OFF", href: withLangPrefix(lang, "/admin/games"), icon: I.scratch },
       { key: "careers",  label: isEl ? "Καριέρα" : "Careers", href: withLangPrefix(lang, "/admin/careers"), icon: I.careers },
     ]},
     { title: isEl ? "Staff" : "Staff", items: [
