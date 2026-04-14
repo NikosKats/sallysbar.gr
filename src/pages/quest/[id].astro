@@ -1,0 +1,321 @@
+---
+import "../../styles/global.css";
+import Header from "../../components/Header.astro";
+import Footer from "../../components/Footer.astro";
+import { supabaseAdmin } from "../../lib/supabase";
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+const user = Astro.locals.user;
+
+const id = Astro.params.id ?? "";
+if (!/^[0-9a-f-]{36}$/i.test(id)) return new Response("Not found", { status: 404 });
+
+const { data: quest } = await supabaseAdmin
+  .from("quests")
+  .select("id, title_en, title_el, description_en, description_el, reward_points, reward_label_en, reward_label_el, cta_url, active_date, active_from, active_to, active")
+  .eq("id", id)
+  .maybeSingle();
+
+if (!quest) return new Response("Quest not found", { status: 404 });
+
+const today = new Date().toISOString().slice(0, 10);
+const isToday  = quest.active_date === today;
+const isPast   = quest.active_date < today;
+const isFuture = quest.active_date > today;
+
+let alreadyClaimed = false;
+let pendingClaim: any = null;
+if (user) {
+  const { data: claim } = await supabaseAdmin
+    .from("quest_claims")
+    .select("id, status, claim_token, expires_at")
+    .eq("quest_id", id).eq("user_id", user.id)
+    .order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (claim) {
+    if (claim.status === "approved") alreadyClaimed = true;
+    else if (claim.status === "pending" && new Date(claim.expires_at).getTime() > Date.now()) {
+      pendingClaim = claim;
+    }
+  }
+}
+
+const { data: questSettings } = await supabaseAdmin
+  .from("quest_settings").select("require_confirmation").eq("id", 1).maybeSingle();
+const requireConfirm = questSettings?.require_confirmation !== false;
+
+const title = isEl ? quest.title_el : quest.title_en;
+const desc  = isEl ? quest.description_el : quest.description_en;
+const rwd   = isEl ? (quest.reward_label_el || `+${quest.reward_points} πόντοι`) : (quest.reward_label_en || `+${quest.reward_points} pts`);
+
+const ctaLabels: Record<string, { en: string; el: string; emoji: string }> = {
+  "/menu":       { en: "Open the menu",     el: "Άνοιξε το μενού",      emoji: "📜" },
+  "/book":       { en: "Book a table",      el: "Κάνε κράτηση",          emoji: "📅" },
+  "/events":     { en: "See events",        el: "Δες events",            emoji: "🎵" },
+  "/play":       { en: "Play & quests",     el: "Παιχνίδια",             emoji: "🎁" },
+  "/loyalty":    { en: "View rewards",      el: "Δες ανταμοιβές",        emoji: "👑" },
+  "/membership": { en: "Get the card",      el: "Πάρε την κάρτα",        emoji: "💳" },
+};
+const cta = quest.cta_url && ctaLabels[quest.cta_url] ? { url: quest.cta_url, ...ctaLabels[quest.cta_url] } : null;
+const ctaHref = cta ? (isEl ? "/el" + cta.url : cta.url) : null;
+
+const shareUrl = `https://sallysbar.gr/quest/${quest.id}`;
+const fromPush = new URL(Astro.request.url).searchParams.has("from");
+
+const T = {
+  back:        isEl ? "← Πίσω στο /account" : "← Back to /account",
+  todayBadge:  isEl ? "🎯 Αποψινή αποστολή" : "🎯 Tonight's quest",
+  pastBadge:   isEl ? "Έληξε" : "Expired",
+  futureBadge: isEl ? "Έρχεται σύντομα" : "Coming soon",
+  reward:      isEl ? "Έπαθλο" : "Reward",
+  claim:       isEl ? "✅ Το έκανα — διεκδίκηση πόντων" : "✅ I did it — claim my points",
+  claimed:     isEl ? "✓ Ήδη πήρες τους πόντους!" : "✓ You already claimed this!",
+  notToday:    isEl ? "Αυτή η αποστολή δεν είναι ενεργή σήμερα." : "This quest isn't active today.",
+  signIn:      isEl ? "Συνδέσου για να διεκδικήσεις πόντους" : "Sign in to claim points",
+  share:       isEl ? "📤 Κοινοποίηση" : "📤 Share",
+  copied:      isEl ? "✓ Αντιγράφηκε" : "✓ Copied",
+  manage:      isEl ? "Όλες οι αποστολές μου" : "All my quests",
+  expires:     isEl ? "Λήγει στο τέλος της ημέρας" : "Expires end of day",
+};
+
+const ogImage = `https://sallysbar.gr/icon-1024.png`;
+---
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{title} — Sally's Bar</title>
+    <meta name="description" content={desc ?? ""} />
+    <meta property="og:title" content={`🎯 ${title}`} />
+    <meta property="og:description" content={(desc ?? "") + ` · ${rwd}`} />
+    <meta property="og:image" content={ogImage} />
+    <meta name="theme-color" content="#0b0b10" />
+  </head>
+  <body class="min-h-screen bg-[#0a0a0f] text-white font-body antialiased">
+    <Header />
+    <div class="h-20"></div>
+
+    <div class="pointer-events-none fixed inset-0 -z-10 opacity-70">
+      <div class="absolute -top-40 left-1/3 h-[520px] w-[520px] rounded-full bg-amber-400/15 blur-[140px]"></div>
+      <div class="absolute bottom-0 right-0 h-[420px] w-[420px] rounded-full bg-fuchsia-500/15 blur-[140px]"></div>
+    </div>
+
+    <main class="mx-auto max-w-xl px-5 py-8">
+      <!-- Status badge -->
+      <div class="mb-4 flex items-center justify-between">
+        {isToday && <span class="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-amber-400/15 text-amber-200 border border-amber-400/30">{T.todayBadge}</span>}
+        {isPast   && <span class="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-white/10 text-white/50 border border-white/15">{T.pastBadge}</span>}
+        {isFuture && <span class="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-sky-400/15 text-sky-200 border border-sky-400/30">{T.futureBadge}</span>}
+        <span class="text-[11px] text-white/40 font-mono">{quest.active_date}</span>
+      </div>
+
+      <!-- Hero card -->
+      <article class="rounded-3xl border border-amber-400/30 bg-gradient-to-br from-amber-500/15 via-fuchsia-500/8 to-sky-500/8 backdrop-blur-xl p-7 shadow-2xl shadow-black/40">
+        <h1 class="font-heading text-3xl sm:text-4xl font-bold leading-tight bg-gradient-to-br from-white to-amber-100 bg-clip-text text-transparent">
+          {title}
+        </h1>
+        {desc && <p class="mt-4 text-white/75 leading-relaxed">{desc}</p>}
+
+        <!-- Reward -->
+        <div class="mt-6 rounded-2xl border border-amber-400/30 bg-black/30 px-5 py-4 flex items-center gap-4">
+          <div class="shrink-0 h-14 w-14 rounded-full bg-gradient-to-br from-amber-300 to-amber-500 text-black flex items-center justify-center text-2xl shadow-lg shadow-amber-500/30">🏆</div>
+          <div class="flex-1 min-w-0">
+            <p class="text-[10px] uppercase tracking-wider text-amber-300 font-bold">{T.reward}</p>
+            <p class="font-heading text-xl font-bold mt-0.5">{rwd}</p>
+            {quest.reward_points > 0 && quest.reward_label_en && <p class="text-[11px] text-white/50 mt-0.5">+{quest.reward_points} pts</p>}
+          </div>
+        </div>
+
+        <!-- Action area -->
+        <div class="mt-6 space-y-2">
+          {!user ? (
+            <a href={`${isEl ? "/el" : ""}/login?next=/quest/${quest.id}`} class="block w-full rounded-2xl bg-gradient-to-br from-amber-300 to-amber-500 text-black font-bold px-5 py-4 text-center text-sm shadow-xl shadow-amber-500/30 hover:scale-[1.01] active:scale-[0.99] transition">
+              🔑 {T.signIn}
+            </a>
+          ) : alreadyClaimed ? (
+            <div class="rounded-2xl border border-emerald-400/40 bg-emerald-400/10 text-emerald-200 px-5 py-4 text-center font-bold">
+              {T.claimed}
+            </div>
+          ) : isToday ? (
+            <div id="claimArea">
+              <button id="claimBtn" class="w-full rounded-2xl bg-gradient-to-br from-amber-300 to-amber-500 text-black font-bold px-5 py-4 text-sm shadow-xl shadow-amber-500/30 hover:scale-[1.01] active:scale-[0.99] transition">
+                {T.claim}
+              </button>
+              {requireConfirm && <p class="text-[11px] text-white/45 text-center mt-2">{isEl ? "🛎 Θα δείξεις το QR στο staff για επιβεβαίωση." : "🛎 You'll show a QR to staff for confirmation."}</p>}
+            </div>
+          ) : (
+            <div class="rounded-2xl border border-white/15 bg-white/5 text-white/60 px-5 py-4 text-center text-sm">
+              {T.notToday}
+            </div>
+          )}
+          <p id="claimMsg" class="hidden text-xs text-center"></p>
+
+          <!-- Pending QR view (filled by JS) -->
+          <div id="pendingView" class="hidden">
+            <div class="rounded-2xl border border-amber-400/40 bg-gradient-to-br from-amber-500/15 to-fuchsia-500/10 p-5 text-center">
+              <p class="text-[10px] uppercase tracking-wider text-amber-300 font-bold">{isEl ? "Δείξε στο staff" : "Show this to staff"}</p>
+              <div class="mt-3 mx-auto bg-white p-2 rounded-xl inline-block">
+                <img id="pendingQr" alt="QR" width="180" height="180" style="width:180px;height:180px;display:block;" />
+              </div>
+              <p class="mt-3 font-mono font-bold text-white text-2xl tracking-wider"><span id="pendingTimer">5:00</span></p>
+              <p class="text-[11px] text-white/55 mt-1">{isEl ? "Το staff σκανάρει & επιβεβαιώνει — οι πόντοι έρχονται αυτόματα." : "Staff scans & confirms — points arrive automatically."}</p>
+              <button id="pendingCancel" class="mt-3 text-[11px] text-white/40 hover:text-red-300 underline">{isEl ? "Ακύρωση" : "Cancel"}</button>
+            </div>
+          </div>
+
+          {ctaHref && (
+            <a href={ctaHref} class="block w-full rounded-2xl border border-white/15 bg-white/5 hover:bg-white/10 px-5 py-3 text-center text-sm font-semibold transition">
+              {cta?.emoji} {isEl ? cta?.el : cta?.en}
+            </a>
+          )}
+
+          <div class="grid grid-cols-2 gap-2 pt-1">
+            <button id="shareBtn" class="rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 px-3 py-2.5 text-xs font-semibold transition">{T.share}</button>
+            <a href={`${isEl ? "/el" : ""}/account#tasks`} class="flex items-center justify-center rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 px-3 py-2.5 text-xs font-semibold transition">📋 {T.manage}</a>
+          </div>
+
+          {isToday && <p class="text-[11px] text-white/40 text-center pt-1">⏳ {T.expires}</p>}
+        </div>
+      </article>
+
+      {fromPush && (
+        <p class="mt-4 text-center text-[11px] text-white/40">{isEl ? "Έφτασες εδώ από push notification 🔔" : "You arrived here from a push notification 🔔"}</p>
+      )}
+    </main>
+
+    <Footer />
+
+    <script is:inline define:vars={{ questId: quest.id, isEl, shareUrl, title, pendingFromServer: pendingClaim, originHost: Astro.url.origin }}>
+      const claimArea  = document.getElementById("claimArea");
+      const claimBtn   = document.getElementById("claimBtn");
+      const claimMsg   = document.getElementById("claimMsg");
+      const pendingView= document.getElementById("pendingView");
+      const pendingQr  = document.getElementById("pendingQr");
+      const pendingTimer= document.getElementById("pendingTimer");
+      const pendingCancel = document.getElementById("pendingCancel");
+
+      let pollHandle = null;
+      let tickHandle = null;
+      let currentClaimId = null;
+      let currentExpiresAt = null;
+
+      function flash(text, ok) {
+        if (!claimMsg) return;
+        claimMsg.textContent = text;
+        claimMsg.className = `text-xs text-center ${ok ? "text-emerald-300" : "text-red-300"}`;
+        claimMsg.classList.remove("hidden");
+      }
+      function fmt(s) { const m = Math.floor(s/60), x = s % 60; return `${m}:${String(x).padStart(2,"0")}`; }
+
+      function showApproved(points) {
+        clearTimers();
+        pendingView?.classList.add("hidden");
+        if (claimArea) claimArea.outerHTML = `<div class="rounded-2xl border border-emerald-400/40 bg-emerald-400/15 text-emerald-200 px-5 py-4 text-center font-bold">🎉 +${points} ${isEl ? "πόντοι!" : "points!"}</div>`;
+      }
+      function showRejected(reason) {
+        clearTimers();
+        pendingView?.classList.add("hidden");
+        if (claimArea) {
+          claimArea.innerHTML = `<div class="rounded-2xl border border-red-400/30 bg-red-400/10 text-red-200 px-5 py-4 text-center text-sm">⚠️ ${isEl ? "Δεν επιβεβαιώθηκε" : "Not confirmed"}${reason ? `: ${reason}` : "."}</div>`;
+        }
+      }
+      function showExpired() {
+        clearTimers();
+        pendingView?.classList.add("hidden");
+        if (claimArea) {
+          claimArea.innerHTML = `<div class="rounded-2xl border border-white/15 bg-white/5 text-white/60 px-5 py-4 text-center text-sm">⌛ ${isEl ? "Έληξε. Δοκίμασε ξανά στο bar." : "Expired. Try again at the bar."}</div>`;
+        }
+      }
+      function clearTimers() {
+        if (pollHandle) { clearInterval(pollHandle); pollHandle = null; }
+        if (tickHandle) { clearInterval(tickHandle); tickHandle = null; }
+      }
+
+      function startPending(claim) {
+        currentClaimId   = claim.id;
+        currentExpiresAt = new Date(claim.expires_at).getTime();
+        if (claimArea) claimArea.classList.add("hidden");
+        pendingView.classList.remove("hidden");
+
+        // QR encodes the claim_token (staff PWA scans → /staff/quest-review opens with ?token=xxx)
+        const qrUrl = `${originHost}/staff/quest-review?token=${claim.claim_token}`;
+        pendingQr.src = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=2&qzone=1&bgcolor=ffffff&color=0a0a0f&data=${encodeURIComponent(qrUrl)}`;
+
+        // countdown
+        const tick = () => {
+          const left = Math.max(0, Math.round((currentExpiresAt - Date.now()) / 1000));
+          if (pendingTimer) pendingTimer.textContent = fmt(left);
+          if (left === 0) showExpired();
+        };
+        tick();
+        tickHandle = setInterval(tick, 1000);
+
+        // poll status every 3s
+        pollHandle = setInterval(async () => {
+          try {
+            const r = await fetch(`/api/quests/status?claim_id=${currentClaimId}`);
+            if (!r.ok) return;
+            const j = await r.json();
+            if (j.status === "approved") showApproved(j.points ?? 0);
+            else if (j.status === "rejected") showRejected(j.reject_reason);
+            else if (j.status === "expired") showExpired();
+          } catch {}
+        }, 3000);
+      }
+
+      pendingCancel?.addEventListener("click", () => {
+        if (!confirm(isEl ? "Άκυρο πληρωμή κλεισίματος;" : "Cancel this claim?")) return;
+        clearTimers();
+        pendingView.classList.add("hidden");
+        if (claimArea) claimArea.classList.remove("hidden");
+      });
+
+      // If server saw a pending claim already, jump straight into the QR view.
+      if (pendingFromServer) startPending(pendingFromServer);
+
+      claimBtn?.addEventListener("click", async () => {
+        claimBtn.disabled = true;
+        const orig = claimBtn.textContent;
+        claimBtn.textContent = "⏳";
+        try {
+          const r = await fetch("/api/quests/claim", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ quest_id: questId }),
+          });
+          const j = await r.json();
+          if (!r.ok) {
+            const msg = j.error === "already_claimed"     ? (isEl ? "✓ Ήδη το έκανες." : "✓ Already claimed.") :
+                       j.error === "not_today"            ? (isEl ? "Δεν είναι ενεργή σήμερα." : "Not active today.") :
+                       j.error === "auth_required"        ? (isEl ? "Συνδέσου πρώτα." : "Sign in first.") :
+                       j.error === "claim_in_progress"    ? (isEl ? "Έχεις ήδη ενεργό αίτημα." : "You already have a pending claim.") :
+                       j.error === "abuse_cooldown"       ? (isEl ? "Πολλές απορρίψεις πρόσφατα — δοκίμασε αύριο." : "Too many rejects — try tomorrow.") :
+                       (j.message || (isEl ? "Σφάλμα." : "Error."));
+            flash(msg, false);
+            claimBtn.disabled = false; claimBtn.textContent = orig;
+            return;
+          }
+          if (j.mode === "instant") {
+            showApproved(j.points ?? 0);
+            return;
+          }
+          // Pending mode
+          startPending({ id: j.claim_id, claim_token: j.token, expires_at: j.expires_at });
+        } catch {
+          flash(isEl ? "Σφάλμα δικτύου." : "Network error.", false);
+          claimBtn.disabled = false; claimBtn.textContent = orig;
+        }
+      });
+
+      document.getElementById("shareBtn")?.addEventListener("click", async () => {
+        const data = { title: "🎯 " + title, text: title, url: shareUrl };
+        if (navigator.share) { try { await navigator.share(data); return; } catch {} }
+        try {
+          await navigator.clipboard.writeText(shareUrl);
+          const b = document.getElementById("shareBtn");
+          if (b) { b.textContent = isEl ? "✓ Αντιγράφηκε" : "✓ Copied"; setTimeout(() => b.textContent = (isEl ? "📤 Κοινοποίηση" : "📤 Share"), 1500); }
+        } catch {}
+      });
+    </script>
+  </body>
+</html>

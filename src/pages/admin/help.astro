@@ -32,7 +32,20 @@ const L = {
     "Χρήστες, ρόλοι & loyalty",
     "Παρακολούθηση φιλοδωρημάτων",
     "Σύνδεση με Telegram",
-    "Ομάδα — Team chat",
+    "Ομάδα — Team chat (με edit/delete/uploads)",
+    "Ρυθμίσεις & Προφίλ χρήστη",
+    "Social Card (ψηφιακή κάρτα /u/handle)",
+    "Ρυθμίσεις σελίδας τραπεζιού",
+    "Staff sidebar & κοινό Footer",
+    "Referral points — αποκλειστικά για μέλη",
+    "Tonight's Quests με AI + επιβεβαίωση staff",
+    "Διαχείριση Tasks",
+    "Ρυθμίσεις Wheel / geofence",
+    "Ρυθμίσεις σελίδας τραπεζιού",
+    "Address autocomplete (Photon)",
+    "Sitemap & SEO",
+    "Role: super_admin",
+    "SaaS: Venues, Onboarding, Business",
     "Επίλυση προβλημάτων",
   ] : [
     "Install the app (PWA)",
@@ -48,7 +61,20 @@ const L = {
     "Users, roles & loyalty",
     "Tips tracking",
     "Telegram integration",
-    "Team chat",
+    "Team chat (edit/delete/uploads)",
+    "User settings & profile",
+    "Social Card (/u/handle)",
+    "Table page feature toggles",
+    "Staff sidebar & shared Footer",
+    "Referral points — members only",
+    "Tonight's Quests (AI + staff confirm)",
+    "Task management panel",
+    "Wheel / geofence settings",
+    "Table page toggles",
+    "Address autocomplete (Photon)",
+    "Sitemap & SEO",
+    "super_admin role",
+    "SaaS: Venues, Onboarding, Business",
     "Troubleshooting",
   ],
 
@@ -724,26 +750,308 @@ const L = {
       <p>Ιδιωτικό κανάλι μηνυμάτων μόνο για staff και admin. Διαθέσιμο στο <a href="/staff/chat"><code>/staff/chat</code></a> ή από το sidebar → <strong>Team Chat</strong>.</p>
       <ul>
         <li><strong>Realtime</strong> — τα μηνύματα εμφανίζονται άμεσα (Supabase Realtime). Το πράσινο dot = συνδεδεμένο live.</li>
-        <li><strong>Push ειδοποίηση</strong> — όταν κάποιος στέλνει, οι υπόλοιποι του team παίρνουν web push (τίτλος = όνομα αποστολέα, tap ανοίγει το chat). Απαιτείται να έχει πατηθεί "Enable notifications" από το admin sidebar ή /staff.</li>
-        <li><strong>Unread badge</strong> — κόκκινο κουκκάκι στο sidebar item και στο dropdown header με πλήθος αδιάβαστων. Σηκώνεται σε 0 μόλις ανοίξεις το chat ή επιστρέψεις focus.</li>
-        <li><strong>Badge ρόλου</strong> — κάθε μήνυμα δείχνει "admin" (φούξια) ή "staff" (μπλε) για να ξέρεις ποιος μιλάει.</li>
-        <li><strong>Ασφάλεια</strong> — RLS στο Postgres· πελάτες δεν μπορούν να διαβάσουν ή να γράψουν καν αν γνωρίζουν το endpoint.</li>
+        <li><strong>Avatar + timestamp + ρόλος</strong> — κάθε μήνυμα έχει αρχικά σε gradient κύκλο, ημερομηνία/ώρα και badge "admin" / "staff".</li>
+        <li><strong>Edit ✎</strong> — πατάς hover στο δικό σου μήνυμα· εμφανίζεται "· επεξεργασμένο" στο timestamp.</li>
+        <li><strong>Delete 🗑</strong> — ο συντάκτης ή ο admin μπορεί να διαγράψει. Soft-delete (το μήνυμα εμφανίζεται "🗑️ διαγράφηκε" — audit trail στον πίνακα).</li>
+        <li><strong>Image upload</strong> — ⬆ κουμπί δίπλα στο input, 5MB max (JPG/PNG/WebP/GIF). Ανεβαίνει στο bucket <code>chat</code> και ενσωματώνεται στο μήνυμα.</li>
+        <li><strong>Auto-linkify</strong> — URLs γίνονται clickable αυτόματα.</li>
+        <li><strong>Push ειδοποίηση</strong> — web push στα υπόλοιπα μέλη όταν στέλνεις. Απαιτεί "Enable notifications" από το sidebar.</li>
+        <li><strong>Unread badge</strong> — κόκκινο badge στο sidebar item και στο dropdown. Μηδενίζει με άνοιγμα chat ή window focus.</li>
+        <li><strong>Ασφάλεια</strong> — RLS Postgres· οι πελάτες δεν μπορούν να διαβάσουν/γράψουν καν με direct endpoint hit.</li>
       </ul>
-      <p class="text-sm text-amber-200/80">💡 Χρήση: συντονισμός βάρδιας, "ο τουαλέτα χρειάζεται καθάρισμα", "τέλος bar stock — gin", quick heads-up σε admin χωρίς να ανοίξει κανείς Telegram.</p>
+      <p class="text-sm text-amber-200/80">💡 Χρήση: συντονισμός βάρδιας, "τουαλέτα χρειάζεται καθάρισμα", "out of gin", photo από απόθεμα, quick heads-up σε admin χωρίς Telegram.</p>
+      <p class="text-xs text-white/50">Migrations: <code>scripts/add-team-chat.sql</code> + <code>scripts/add-team-chat-crud.sql</code>.</p>
     ` : `
       <p>A private messaging channel for staff + admin only. Open at <a href="/staff/chat"><code>/staff/chat</code></a> or from the admin sidebar → <strong>Team Chat</strong>.</p>
       <ul>
-        <li><strong>Realtime</strong> — messages appear instantly via Supabase Realtime. Green dot in the header = live connection.</li>
-        <li><strong>Push notification</strong> — when someone sends, every other team member gets a web push (title = sender name, tap opens the chat). Requires tapping "Enable notifications" once in the admin sidebar or /staff.</li>
-        <li><strong>Unread badge</strong> — red pip on the sidebar item and the dropdown entry showing the unread count. Clears to 0 as soon as you open the chat or the window regains focus.</li>
-        <li><strong>Role badges</strong> — every message shows "admin" (fuchsia) or "staff" (sky blue) so you know who's talking.</li>
-        <li><strong>Security</strong> — RLS at the Postgres layer; customers can't read or write even if they hit the endpoint directly.</li>
+        <li><strong>Realtime</strong> — messages appear instantly via Supabase Realtime. Green dot = live.</li>
+        <li><strong>Avatar + timestamp + role</strong> — every message shows initials in a gradient circle, date/time, and an "admin" / "staff" role badge.</li>
+        <li><strong>Edit ✎</strong> — hover your own message to edit. An "· edited" marker appears next to the timestamp.</li>
+        <li><strong>Delete 🗑</strong> — author or admin can delete. Soft-delete (shows "🗑️ Message deleted" — audit trail preserved).</li>
+        <li><strong>Image upload</strong> — ⬆ button next to the input, 5MB max (JPG/PNG/WebP/GIF). Uploads to the <code>chat</code> bucket, embedded in the message.</li>
+        <li><strong>Auto-linkify</strong> — URLs become clickable automatically.</li>
+        <li><strong>Push notification</strong> — web push to other members when you send. Requires tapping "Enable notifications" once in the sidebar.</li>
+        <li><strong>Unread badge</strong> — red pip on the sidebar item and the dropdown. Clears on chat open or window focus.</li>
+        <li><strong>Security</strong> — Postgres RLS; customers can't read/write even if they hit the endpoint.</li>
       </ul>
-      <p class="text-sm text-amber-200/80">💡 Use it for: shift coordination, "bathroom needs cleaning", "out of gin", quick heads-up to admin without opening Telegram.</p>
+      <p class="text-sm text-amber-200/80">💡 Use it for: shift coordination, "bathroom needs cleaning", "out of gin", a photo of stock, quick heads-up without Telegram.</p>
+      <p class="text-xs text-white/50">Migrations: <code>scripts/add-team-chat.sql</code> + <code>scripts/add-team-chat-crud.sql</code>.</p>
+    `,
+  },
+  s27: {
+    head: isEl ? "27. Ρυθμίσεις χρήστη & Προφίλ (/settings)" : "27. User settings & profile (/settings)",
+    body: isEl ? `
+      <p>Ενοποιημένη σελίδα <a href="/settings"><code>/settings</code></a> για ΚΑΘΕ ρόλο (customer, staff, admin). Όλα τα πεδία του προφίλ με CRUD.</p>
+      <ul>
+        <li><strong>Avatar upload</strong> — JPG/PNG/WebP/GIF, max 3MB, αποθηκεύεται στο Supabase Storage (<code>avatars</code> bucket). Remove button + live preview.</li>
+        <li><strong>Basics</strong> — όνομα, βιογραφικό (500 χαρακτήρες).</li>
+        <li><strong>Personal</strong> — ημερομηνία γέννησης, φύλο.</li>
+        <li><strong>Contact &amp; Location</strong> — τηλέφωνο, χώρα, πόλη, διεύθυνση, ΤΚ.</li>
+        <li><strong>Social media</strong> — Instagram, Facebook, TikTok, X, LinkedIn, YouTube, Website.</li>
+        <li><strong>Handle (username)</strong> — 3–30 χαρακτήρες, unique. Ορίζει τη διεύθυνση <code>/u/your-handle</code>.</li>
+        <li><strong>Card toggle</strong> — "Card is public" για απενεργοποίηση ολόκληρης της κάρτας (404 σε όποιον επισκεφθεί).</li>
+        <li><strong>Per-field visibility</strong> — διακόπτες για avatar, bio, location, phone, role badge, + ξεχωριστό "CARD" tick σε κάθε social.</li>
+        <li><strong>Share toolkit</strong> — live QR, Copy link, Share (native), Download QR PNG.</li>
+        <li><strong>Danger zone</strong> — αλλαγή κωδικού, αποσύνδεση, αίτημα διαγραφής λογαριασμού (mailto admin).</li>
+      </ul>
+      <p>Entry point: στο header dropdown κάθε χρήστη → <strong>⚙ Settings & Profile</strong>.</p>
+      <p class="text-xs text-white/50">Migrations: <code>scripts/add-profile-fields.sql</code>, <code>scripts/add-profile-card.sql</code>, <code>scripts/add-card-visibility.sql</code>.</p>
+    ` : `
+      <p>Unified page <a href="/settings"><code>/settings</code></a> for every role (customer, staff, admin). Full CRUD on every profile field.</p>
+      <ul>
+        <li><strong>Avatar upload</strong> — JPG/PNG/WebP/GIF, 3MB max, stored in Supabase Storage (<code>avatars</code> bucket). Remove button + live preview.</li>
+        <li><strong>Basics</strong> — full name, bio (500 chars).</li>
+        <li><strong>Personal</strong> — date of birth, gender.</li>
+        <li><strong>Contact &amp; Location</strong> — phone, country, city, address, postal code.</li>
+        <li><strong>Social media</strong> — Instagram, Facebook, TikTok, X, LinkedIn, YouTube, Website.</li>
+        <li><strong>Handle (username)</strong> — 3–30 chars, unique. Sets the public card URL <code>/u/your-handle</code>.</li>
+        <li><strong>Card toggle</strong> — "Card is public" turns the whole card off (404 for visitors).</li>
+        <li><strong>Per-field visibility</strong> — toggles for avatar, bio, location, phone, role badge, plus a "CARD" tick on every social row.</li>
+        <li><strong>Share toolkit</strong> — live QR, Copy link, Share (native), Download QR PNG.</li>
+        <li><strong>Danger zone</strong> — change password, sign out, request account deletion (mailto admin).</li>
+      </ul>
+      <p>Entry point: in the header dropdown on every page → <strong>⚙ Settings & Profile</strong>.</p>
+      <p class="text-xs text-white/50">Migrations: <code>scripts/add-profile-fields.sql</code>, <code>scripts/add-profile-card.sql</code>, <code>scripts/add-card-visibility.sql</code>.</p>
+    `,
+  },
+  s28: {
+    head: isEl ? "28. Social Card — ψηφιακή κάρτα στο /u/handle" : "28. Social Card — public digital card at /u/handle",
+    body: isEl ? `
+      <p>Κάθε χρήστης έχει δημόσια ψηφιακή "business card" με όλα τα social του σε μία διεύθυνση. Δουλεύει σαν tap-able NFC tag ή QR — ο παραλήπτης ανοίγει την κάρτα χωρίς app.</p>
+      <ul>
+        <li><strong>URL</strong> — <code>sallysbar.gr/u/&lt;handle&gt;</code> (ή τα πρώτα 8 χαρακτήρες του UUID αν δεν έχει handle).</li>
+        <li><strong>Content</strong> — avatar, όνομα, role badge, bio, τοποθεσία, phone (προαιρετικό), tap-able social tiles σε brand gradients, QR, κουμπί "Save contact" που κατεβάζει vCard με όλα τα social ως X-SOCIALPROFILE.</li>
+        <li><strong>Bar ad block</strong> — ακριβώς κάτω από τα social του χρήστη: Google Maps directions, Instagram, Facebook, Tripadvisor, Google reviews (⭐ rating + count από <code>site.ts</code>).</li>
+        <li><strong>Viral footer</strong> — "Powered by Sally's Bar · 🎁 Create your own FREE card" CTA → <a href="/card">/card</a>.</li>
+        <li><strong>Privacy</strong> — κάθε πεδίο μπορεί να κρυφτεί από <code>/settings</code>. Ολική απενεργοποίηση με το "Card is public" toggle → 404 ακόμα κι αν κάποιος έχει το link.</li>
+      </ul>
+      <p><strong>Marketing landing:</strong> <a href="/card"><code>/card</code></a> — hero, sample card, 6-feature grid, "Why free?", 3 steps, final CTA. Linked from το top nav ως "🪪 Social Card" και από το footer κάθε public page.</p>
+      <p class="text-sm text-amber-200/80">⭐ Virality: κάθε shared κάρτα είναι mini ad για το bar. Users που κάνουν signup μέσω του link σου = referral points (αν είσαι μέλος — δες #31).</p>
+    ` : `
+      <p>Every user has a public digital "business card" with all their socials at one URL. Works as a tap-able NFC tag or scannable QR — recipients open it without any app.</p>
+      <ul>
+        <li><strong>URL</strong> — <code>sallysbar.gr/u/&lt;handle&gt;</code> (or the first 8 chars of the UUID if no handle is set).</li>
+        <li><strong>Content</strong> — avatar, name, role badge, bio, location, phone (opt-in), tap-able social tiles in brand gradients, QR, "Save contact" button that downloads a vCard with every social as X-SOCIALPROFILE.</li>
+        <li><strong>Bar ad block</strong> — directly below the user's socials: Google Maps directions, Instagram, Facebook, Tripadvisor, Google reviews (⭐ live rating + count from <code>site.ts</code>).</li>
+        <li><strong>Viral footer</strong> — "Powered by Sally's Bar · 🎁 Create your own FREE card" CTA → <a href="/card">/card</a>.</li>
+        <li><strong>Privacy</strong> — every field can be hidden from <code>/settings</code>. Global kill via "Card is public" toggle → 404 even if someone has the link.</li>
+      </ul>
+      <p><strong>Marketing landing:</strong> <a href="/card"><code>/card</code></a> — hero, sample card, 6-feature grid, "Why free?", 3 steps, final CTA. Linked from the top nav as "🪪 Social Card" and from the footer on every public page.</p>
+      <p class="text-sm text-amber-200/80">⭐ Virality: every shared card is a mini ad for the bar. Users who sign up via your link = referral points (if you're a member — see #31).</p>
+    `,
+  },
+  s29: {
+    head: isEl ? "29. Ρυθμίσεις σελίδας τραπεζιού (/admin/table-settings)" : "29. Table page feature toggles (/admin/table-settings)",
+    body: isEl ? `
+      <p>Admin-only control για τις λειτουργίες που εμφανίζονται στο <code>/table/:n</code>. Κάθε toggle εφαρμόζεται άμεσα server-side.</p>
+      <ul>
+        <li>📜 <strong>"See the menu" tile</strong> — το welcome chooser με smooth scroll στο μενού.</li>
+        <li>🎡 <strong>"Spin the wheel" tile</strong> — κρύβει και το tile και ολόκληρο το wheel section.</li>
+        <li>💳 <strong>"Get the member card" tile</strong> — CTA στο /membership.</li>
+        <li>🧑‍🍳 <strong>"Call Waiter to Order"</strong> — κάτω κουμπί που στέλνει ειδοποίηση στο staff.</li>
+        <li>💶 <strong>"Call Waiter to Pay"</strong> — το card/cash sheet. Αν και τα δύο call buttons είναι off, κρύβεται όλη η κάτω μπάρα.</li>
+        <li>💬 <strong>Menu AI chatbot</strong> — floating button + chat panel + "Ask about item" actions.</li>
+      </ul>
+      <p>Migration: <code>scripts/add-table-page-settings.sql</code>.</p>
+    ` : `
+      <p>Admin-only control for the features shown on <code>/table/:n</code>. Every toggle applies instantly server-side.</p>
+      <ul>
+        <li>📜 <strong>"See the menu" tile</strong> — welcome chooser with smooth scroll to the menu.</li>
+        <li>🎡 <strong>"Spin the wheel" tile</strong> — hides both the tile and the whole wheel section.</li>
+        <li>💳 <strong>"Get the member card" tile</strong> — CTA to /membership.</li>
+        <li>🧑‍🍳 <strong>"Call Waiter to Order"</strong> — bottom button that notifies staff.</li>
+        <li>💶 <strong>"Call Waiter to Pay"</strong> — card/cash sheet. If both call buttons are off, the entire bottom bar hides.</li>
+        <li>💬 <strong>Menu AI chatbot</strong> — floating button + chat panel + "Ask about item" actions.</li>
+      </ul>
+      <p>Migration: <code>scripts/add-table-page-settings.sql</code>.</p>
+    `,
+  },
+  s30: {
+    head: isEl ? "30. Staff sidebar & κοινό Footer" : "30. Staff sidebar & shared Footer",
+    body: isEl ? `
+      <p><strong>StaffNav sidebar</strong> σε <code>/staff</code>, <code>/staff/order</code>, <code>/staff/chat</code>. Desktop fixed rail (240px), mobile hamburger + drawer. Clustered με χρώμα ανά ομάδα:</p>
+      <ul>
+        <li><strong>Operations</strong> (sky/emerald) — Active Orders, New Order</li>
+        <li><strong>Communication</strong> (fuchsia) — Team Chat με live unread badge</li>
+        <li>Admins βλέπουν επιπλέον "👑 Admin Panel" CTA στο footer του sidebar.</li>
+      </ul>
+      <p><strong>Shared Footer.astro</strong> σε όλες τις public σελίδες (<code>/</code>, <code>/menu</code>, <code>/events</code>, <code>/book</code>, <code>/card</code>, <code>/play</code>, <code>/membership</code>, <code>/loyalty</code>, <code>/careers</code>, <code>/settings</code>, <code>/account</code>). 4 στήλες:</p>
+      <ul>
+        <li><strong>Brand</strong> — logo, tagline, address, hours, Directions + Instagram/Facebook/Tripadvisor icons.</li>
+        <li><strong>Explore</strong> — Home, Menu, Book, Events, Careers.</li>
+        <li><strong>Members & Cards</strong> — 🪪 Social Card, 💳 Member Card, 👑 Rewards, 🎁 Play.</li>
+        <li><strong>Legal</strong> — Privacy, Terms, email.</li>
+      </ul>
+      <p>Top nav καθαρισμένο σε 5 core items: Home · Menu · Book · Events · 🪪 Social Card. Όλα τα άλλα ζουν στο footer.</p>
+    ` : `
+      <p><strong>StaffNav sidebar</strong> on <code>/staff</code>, <code>/staff/order</code>, <code>/staff/chat</code>. Desktop fixed rail (240px), mobile hamburger + drawer. Colour-clustered by group:</p>
+      <ul>
+        <li><strong>Operations</strong> (sky/emerald) — Active Orders, New Order</li>
+        <li><strong>Communication</strong> (fuchsia) — Team Chat with a live unread badge</li>
+        <li>Admins also see a "👑 Admin Panel" CTA at the bottom of the sidebar.</li>
+      </ul>
+      <p><strong>Shared Footer.astro</strong> on every public page (<code>/</code>, <code>/menu</code>, <code>/events</code>, <code>/book</code>, <code>/card</code>, <code>/play</code>, <code>/membership</code>, <code>/loyalty</code>, <code>/careers</code>, <code>/settings</code>, <code>/account</code>). 4 columns:</p>
+      <ul>
+        <li><strong>Brand</strong> — logo, tagline, address, hours, Directions + Instagram/Facebook/Tripadvisor icons.</li>
+        <li><strong>Explore</strong> — Home, Menu, Book, Events, Careers.</li>
+        <li><strong>Members & Cards</strong> — 🪪 Social Card, 💳 Member Card, 👑 Rewards, 🎁 Play.</li>
+        <li><strong>Legal</strong> — Privacy, Terms, email.</li>
+      </ul>
+      <p>Top nav trimmed to 5 core items: Home · Menu · Book · Events · 🪪 Social Card. Everything else lives in the footer.</p>
+    `,
+  },
+  s31: {
+    head: isEl ? "31. Referral points — μόνο για μέλη" : "31. Referral points — members only",
+    body: isEl ? `
+      <p><code>awardReferralPoints()</code> στο <code>src/lib/loyalty.ts</code> ελέγχει πλέον <code>profiles.card_issued_at</code> του referrer. Αν δεν είναι ενεργό μέλος, <strong>0 πόντοι</strong> — silent no-op. Το signup του νέου χρήστη πάντα περνάει, το <code>referred_by</code> αποθηκεύεται για audit.</p>
+      <p>Στο <code>/settings</code> εμφανίζεται banner για όσους δεν έχουν ενεργοποιήσει κάρτα μέλους:</p>
+      <blockquote class="border-l-2 border-amber-400/40 pl-4 text-sm text-white/75 italic">🎁 Ενεργοποίησε την κάρτα μέλους για να κερδίζεις πόντους από παραπομπές — όποιος εγγράφεται μέσω του link/QR σου σου δίνει πόντους, αλλά μόνο αν είσαι ενεργό μέλος.</blockquote>
+      <p>Κουμπί "Become a member →" οδηγεί στο <code>/membership</code>. Banner κρύβεται αυτόματα μόλις το <code>card_issued_at</code> γεμίσει.</p>
+    ` : `
+      <p><code>awardReferralPoints()</code> in <code>src/lib/loyalty.ts</code> now checks the referrer's <code>profiles.card_issued_at</code>. If they're not an active member, <strong>zero points</strong> — silent no-op. The new user's signup still succeeds and <code>referred_by</code> is stored for audit.</p>
+      <p>On <code>/settings</code>, a banner appears for anyone who hasn't activated their loyalty card yet:</p>
+      <blockquote class="border-l-2 border-amber-400/40 pl-4 text-sm text-white/75 italic">🎁 Activate your loyalty card to earn referral points — anyone who signs up via your link/QR earns you points, but only if you're an active member.</blockquote>
+      <p>A "Become a member →" button links to <code>/membership</code>. Banner auto-hides once <code>card_issued_at</code> is populated.</p>
+    `,
+  },
+  s32: {
+    head: isEl ? "32. Tonight's Quests (AI + επιβεβαίωση staff)" : "32. Tonight's Quests (AI + staff confirm)",
+    body: isEl ? `
+      <p>Καθημερινή αποστολή με push notifications + έγκριση από staff. Δημιουργείς από το <a href="/admin/quests"><code>/admin/quests</code></a>.</p>
+      <ul>
+        <li><strong>AI bulk generator</strong> — κουμπί "✨ AI: φτιάξε 100" καλεί Claude Haiku σε 5 batches × 20 με rotating themes (cocktails, Greek, social, sunset, κ.ά.). Προγραμματίζει μία/μέρα από σήμερα, push_at = 19:00 ΕΕΤ.</li>
+        <li><strong>Require staff confirmation</strong> toggle (default ON) — ο πελάτης πατά "✅ Το έκανα" στο <code>/quest/&lt;id&gt;</code>, η οθόνη γίνεται QR με 5-λεπτο countdown, δείχνει στο staff, staff σκανάρει ή πατά "✓ Έγκριση" στο <a href="/staff/quest-review"><code>/staff/quest-review</code></a>.</li>
+        <li><strong>Anti-abuse</strong>: 1 pending claim ταυτόχρονα, 3 rejects σε 7 μέρες = 24h cooldown, tokens random+DB 5-min expiry, approve requires staff role.</li>
+        <li><strong>Push payload</strong>: τίτλος "🎯 &lt;quest&gt;", url <code>/quest/&lt;id&gt;?from=push</code>, actions "Open quest"/"Later".</li>
+        <li><strong>Από το dropdown</strong>: customers βλέπουν "🎯 Tonight's quest" στο header με pulsing dot αν δεν έχουν κάνει claim.</li>
+      </ul>
+      <p class="text-xs text-white/50">Migrations: <code>scripts/add-quest-confirmation.sql</code>.</p>
+    ` : `
+      <p>Daily quest with push + staff approval. Manage at <a href="/admin/quests"><code>/admin/quests</code></a>.</p>
+      <ul>
+        <li><strong>AI bulk generator</strong> — "✨ AI: generate 100" button calls Claude Haiku in 5×20 batches with rotating themes (cocktails, Greek, social, sunset…). Schedules one per day starting today, push_at = 19:00 EET.</li>
+        <li><strong>Require staff confirmation</strong> toggle (default ON) — customer taps "✅ I did it" at <code>/quest/&lt;id&gt;</code>, screen flips to QR with 5-min countdown, shows to staff, staff scans or taps "✓ Approve" at <a href="/staff/quest-review"><code>/staff/quest-review</code></a>.</li>
+        <li><strong>Anti-abuse</strong>: one pending claim at a time, 3 rejects in 7 days = 24h cooldown, tokens random + DB-stored with 5-min expiry, approve requires staff role.</li>
+        <li><strong>Push payload</strong>: title "🎯 &lt;quest&gt;", url <code>/quest/&lt;id&gt;?from=push</code>, actions "Open quest"/"Later".</li>
+        <li><strong>From the dropdown</strong>: customers see "🎯 Tonight's quest" in the header with pulsing dot if unclaimed.</li>
+      </ul>
+      <p class="text-xs text-white/50">Migrations: <code>scripts/add-quest-confirmation.sql</code>.</p>
+    `,
+  },
+  s33: {
+    head: isEl ? "33. Διαχείριση Tasks πελάτη" : "33. Customer task management",
+    body: isEl ? `
+      <p><a href="/admin/tasks"><code>/admin/tasks</code></a> — toggle ON/OFF για καθέναν από τους 19 tasks του <code>/account</code> (onboarding, social, achievements).</p>
+      <ul>
+        <li>Πελάτες δεν βλέπουν τα disabled tasks και δεν κερδίζουν πόντους.</li>
+        <li>Η claim API απορρίπτει disabled tasks (<code>task_disabled</code>).</li>
+        <li>Cache 60s server-side (αλλαγές εφαρμόζονται εντός λεπτού).</li>
+      </ul>
+      <p class="text-xs text-white/50">Migration: <code>scripts/add-task-settings.sql</code>.</p>
+    ` : `
+      <p><a href="/admin/tasks"><code>/admin/tasks</code></a> — toggle ON/OFF for each of the 19 tasks on <code>/account</code> (onboarding, social, achievements).</p>
+      <ul>
+        <li>Customers don't see disabled tasks and can't earn points from them.</li>
+        <li>Claim API rejects disabled tasks (<code>task_disabled</code>).</li>
+        <li>60s server-side cache (changes propagate within a minute).</li>
+      </ul>
+      <p class="text-xs text-white/50">Migration: <code>scripts/add-task-settings.sql</code>.</p>
+    `,
+  },
+  s34: {
+    head: isEl ? "34. Wheel & geofence" : "34. Wheel & geofence",
+    body: isEl ? `
+      <p><a href="/admin/wheel"><code>/admin/wheel</code></a> — πρόβλημα "location_required" στο spin; ενεργοποίησε το <strong>Allow remote (DEV ONLY)</strong> για να bypass το geo-guard όταν κάνεις demo/test από μακριά. Για την πραγματική λειτουργία κράτα το OFF ώστε να σπάει μόνο μέσα στο bar (~150m).</p>
+      <ul>
+        <li>Daily limit: 1 spin/μέρα ανά χρήστη.</li>
+        <li>Staff/admin δεν μπορούν να σπάσουν (staff_role).</li>
+        <li>Το server αποθηκεύει ip_hash για abuse audit, όχι raw IP.</li>
+      </ul>
+    ` : `
+      <p><a href="/admin/wheel"><code>/admin/wheel</code></a> — hitting "location_required" on spin? Enable <strong>Allow remote (DEV ONLY)</strong> to bypass the geo-guard for demos/testing off-site. Keep it OFF in production so customers only spin inside the bar (~150m).</p>
+      <ul>
+        <li>Daily limit: 1 spin/day per user.</li>
+        <li>Staff/admin can't spin (staff_role).</li>
+        <li>Server stores ip_hash for abuse audit, never raw IP.</li>
+      </ul>
+    `,
+  },
+  s35: {
+    head: isEl ? "35. Address autocomplete στο /account" : "35. Address autocomplete on /account",
+    body: isEl ? `
+      <p>Στο popup ενεργοποίησης loyalty card, το πεδίο Διεύθυνση χρησιμοποιεί <strong>Photon by Komoot</strong> (δωρεάν OpenStreetMap API, no key). Πληκτρολογείς 3+ χαρακτήρες → dropdown με 6 προτάσεις → αυτόματη συμπλήρωση address/city/postal/country.</p>
+      <p class="text-xs text-white/50">Endpoint: <code>https://photon.komoot.io/api/?q=&lt;query&gt;</code>. CSP ήδη το επιτρέπει μέσω <code>connect-src https:</code>.</p>
+    ` : `
+      <p>On the loyalty-card activation popup, the Address field uses <strong>Photon by Komoot</strong> (free OpenStreetMap API, no key). Type 3+ chars → dropdown with 6 suggestions → auto-fills address, city, postal code, country.</p>
+      <p class="text-xs text-white/50">Endpoint: <code>https://photon.komoot.io/api/?q=&lt;query&gt;</code>. CSP already allows it via <code>connect-src https:</code>.</p>
+    `,
+  },
+  s36: {
+    head: isEl ? "36. Sitemap & SEO" : "36. Sitemap & SEO",
+    body: isEl ? `
+      <p>Δυναμικό sitemap στο <a href="/sitemap.xml"><code>/sitemap.xml</code></a> (1h cache) — περιλαμβάνει 13 στατικές σελίδες × 2 γλώσσες με <code>hreflang</code> alternates, δημόσια social cards (<code>/u/&lt;handle&gt;</code>), active events, open jobs.</p>
+      <p>Το <code>robots.txt</code> δηλώνει το sitemap και αποκλείει admin/staff/account/api/auth/table paths.</p>
+      <p class="text-sm text-amber-200/80">📌 Submit το sitemap στο <a href="https://search.google.com/search-console" target="_blank">Google Search Console</a>.</p>
+    ` : `
+      <p>Dynamic sitemap at <a href="/sitemap.xml"><code>/sitemap.xml</code></a> (1h cache) — 13 static pages × 2 languages with <code>hreflang</code> alternates, public social cards (<code>/u/&lt;handle&gt;</code>), active events, open job listings.</p>
+      <p><code>robots.txt</code> declares the sitemap and excludes admin/staff/account/api/auth/table paths.</p>
+      <p class="text-sm text-amber-200/80">📌 Submit the sitemap in <a href="https://search.google.com/search-console" target="_blank">Google Search Console</a>.</p>
+    `,
+  },
+  s37: {
+    head: isEl ? "37. Role: super_admin" : "37. Role: super_admin",
+    body: isEl ? `
+      <p>Ο ρόλος <code>super_admin</code> βλέπει ό,τι βλέπει ο admin + εσωτερικές/εμπορικές σελίδες.</p>
+      <ul>
+        <li><strong>Bootstrap</strong>: <code>scripts/add-super-admin.sql</code> αναβαθμίζει το <code>nikolaos.katsilidis@gmail.com</code>.</li>
+        <li><strong>Middleware</strong>: super_admin περνά σε admin και staff routes.</li>
+        <li><strong>Σελίδες μόνο super_admin</strong>: <code>/admin/business</code>, <code>/admin/saas-playbook</code>, <code>/admin/sales-metrics</code>, <code>/admin/cost-report</code>, <code>/admin/objections</code>, <code>/admin/venues</code>, <code>/admin/onboarding</code>.</li>
+        <li><strong>Header dropdown</strong> δείχνει 🔐 badge και amber "Admin Panel" CTA.</li>
+        <li><strong>Team chat/quest-review</strong>: όλα τα API endpoints και RLS policies αποδέχονται super_admin.</li>
+      </ul>
+      <p class="text-xs text-white/50">Migrations: <code>add-super-admin.sql</code>, <code>fix-team-chat-super-admin.sql</code>.</p>
+    ` : `
+      <p>The <code>super_admin</code> role sees everything admin sees + internal/commercial pages.</p>
+      <ul>
+        <li><strong>Bootstrap</strong>: <code>scripts/add-super-admin.sql</code> promotes <code>nikolaos.katsilidis@gmail.com</code>.</li>
+        <li><strong>Middleware</strong>: super_admin passes both admin and staff guards.</li>
+        <li><strong>Super-admin only pages</strong>: <code>/admin/business</code>, <code>/admin/saas-playbook</code>, <code>/admin/sales-metrics</code>, <code>/admin/cost-report</code>, <code>/admin/objections</code>, <code>/admin/venues</code>, <code>/admin/onboarding</code>.</li>
+        <li><strong>Header dropdown</strong> shows a 🔐 badge and amber "Admin Panel" CTA.</li>
+        <li><strong>Team chat / quest-review</strong>: API endpoints and RLS policies all accept super_admin.</li>
+      </ul>
+      <p class="text-xs text-white/50">Migrations: <code>add-super-admin.sql</code>, <code>fix-team-chat-super-admin.sql</code>.</p>
+    `,
+  },
+  s38: {
+    head: isEl ? "38. SaaS: Venues, Onboarding, Business" : "38. SaaS: Venues, Onboarding, Business",
+    body: isEl ? `
+      <p>Σετ super-admin σελίδων για να πουλάς το platform σε άλλα bars.</p>
+      <ul>
+        <li><strong>🏢 <a href="/admin/venues">My Venues</a></strong> — tracker με health-check button, launch links σε κάθε venue (Admin / Staff / /table/1 / Supabase / Cloudflare / FB App / GitHub), inline edit modal με όλα τα dashboard URLs. Αποθηκεύει URLs & IDs ΜΟΝΟ — τα secrets ζουν σε Cloudflare secrets.</li>
+        <li><strong>🏁 <a href="/admin/onboarding">Onboarding</a></strong> — φόρμα με όλα τα API keys (Supabase, VAPID, Telegram, FB, Google Wallet, Anthropic, Resend, Cloudflare) → παράγει έτοιμο bash install script + .dev.vars + wrangler secret put commands.</li>
+        <li><strong>💼 <a href="/admin/business">Business Playbook</a></strong> — 9 clusters monetization.</li>
+        <li><strong>🚀 <a href="/admin/saas-playbook">SaaS Playbook</a></strong> — single plan €1,890/season, install checklist, unit economics.</li>
+        <li><strong>📈 <a href="/admin/sales-metrics">Pitch Metrics</a></strong> — live KPIs + pitch snippet generator.</li>
+        <li><strong>💶 <a href="/admin/cost-report">Cost Report</a></strong> — €150k+ EU agency breakdown.</li>
+        <li><strong>🛡️ <a href="/admin/objections">Objection Handling</a></strong> — πώς να απαντάς στο "but you used AI, it should be cheaper".</li>
+      </ul>
+      <p class="text-xs text-white/50">Migrations: <code>add-saas-venues.sql</code>, <code>add-venue-credentials.sql</code>.</p>
+    ` : `
+      <p>Super-admin toolkit for selling the platform to other bars as SaaS.</p>
+      <ul>
+        <li><strong>🏢 <a href="/admin/venues">My Venues</a></strong> — tracker with health-check, launch links per venue (Admin / Staff / /table/1 / Supabase / Cloudflare / FB App / GitHub), inline edit modal for every dashboard URL. Stores URLs & IDs ONLY — secrets live in Cloudflare secrets.</li>
+        <li><strong>🏁 <a href="/admin/onboarding">Onboarding</a></strong> — form with every API key (Supabase, VAPID, Telegram, FB, Google Wallet, Anthropic, Resend, Cloudflare) → generates a ready-to-run bash install script + .dev.vars + wrangler secret put commands.</li>
+        <li><strong>💼 <a href="/admin/business">Business Playbook</a></strong> — 9 monetization clusters.</li>
+        <li><strong>🚀 <a href="/admin/saas-playbook">SaaS Playbook</a></strong> — single plan €1,890/season, install checklist, unit economics.</li>
+        <li><strong>📈 <a href="/admin/sales-metrics">Pitch Metrics</a></strong> — live KPIs + pitch snippet generator.</li>
+        <li><strong>💶 <a href="/admin/cost-report">Cost Report</a></strong> — €150k+ EU agency breakdown.</li>
+        <li><strong>🛡️ <a href="/admin/objections">Objection Handling</a></strong> — how to respond to "but you used AI, it should be cheaper".</li>
+      </ul>
+      <p class="text-xs text-white/50">Migrations: <code>add-saas-venues.sql</code>, <code>add-venue-credentials.sql</code>.</p>
     `,
   },
   s14: {
-    head: isEl ? "27. Επίλυση προβλημάτων" : "27. Troubleshooting",
+    head: isEl ? "39. Επίλυση προβλημάτων" : "39. Troubleshooting",
     body: isEl ? `
       <ul>
         <li><strong>Δεν λαμβάνω push σε iPhone</strong> — βεβαιώσου ότι άνοιξες από το εικονίδιο της αρχικής οθόνης, όχι από Safari. Απαιτείται iOS 16.4+.</li>
@@ -794,10 +1102,22 @@ const sections = [
   { id: "notif-scope",    icon: "🔔", tint: "bg-fuchsia-300/15", ...L.s24 },
   { id: "play-crosspromo",icon: "🎁", tint: "bg-amber-300/15",   ...L.s25 },
   { id: "team-chat",      icon: "💬", tint: "bg-sky-300/15",     ...L.s26 },
+  { id: "settings-profile", icon: "⚙️", tint: "bg-sky-300/15",    ...L.s27 },
+  { id: "social-card",    icon: "🪪", tint: "bg-fuchsia-300/15", ...L.s28 },
+  { id: "table-settings", icon: "🎛️", tint: "bg-amber-300/15",   ...L.s29 },
+  { id: "staff-sidebar",  icon: "🧭", tint: "bg-sky-300/15",     ...L.s30 },
+  { id: "referral-gate",  icon: "🎁", tint: "bg-amber-300/15",   ...L.s31 },
+  { id: "quests-ai-confirm", icon: "🎯", tint: "bg-amber-300/15", ...L.s32 },
+  { id: "tasks-admin",    icon: "✅", tint: "bg-sky-300/15",     ...L.s33 },
+  { id: "wheel-settings", icon: "🎡", tint: "bg-fuchsia-300/15", ...L.s34 },
+  { id: "address-autocomplete", icon: "📍", tint: "bg-emerald-300/15", ...L.s35 },
+  { id: "sitemap-seo",    icon: "🧭", tint: "bg-sky-300/15",     ...L.s36 },
+  { id: "super-admin",    icon: "🔐", tint: "bg-rose-300/15",    ...L.s37 },
+  { id: "saas-tooling",   icon: "🚀", tint: "bg-amber-300/15",   ...L.s38 },
   { id: "troubleshoot",   icon: "🩹", tint: "bg-red-300/15",     ...L.s14 },
 ];
 
-const tocIds = ["install","push","customer","waiter","barman","deliver","admin-overview","admin-menu","admin-qr","admin-events","admin-users","admin-tips","telegram","marketing","mkt-analytics","gamification","customer-pwa","legal","wheel","customer-dash","wallet-share","user-dossier","notif-scope","play-crosspromo","team-chat","troubleshoot"];
+const tocIds = ["install","push","customer","waiter","barman","deliver","admin-overview","admin-menu","admin-qr","admin-events","admin-users","admin-tips","telegram","marketing","mkt-analytics","gamification","customer-pwa","legal","wheel","customer-dash","wallet-share","user-dossier","notif-scope","play-crosspromo","team-chat","settings-profile","social-card","table-settings","staff-sidebar","referral-gate","quests-ai-confirm","tasks-admin","wheel-settings","address-autocomplete","sitemap-seo","super-admin","saas-tooling","troubleshoot"];
 ---
 
 <html lang={lang}>

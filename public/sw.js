@@ -31,18 +31,23 @@ self.addEventListener("push", (event) => {
     renotify: true,
     data: { url: data.url || "/staff" },
     vibrate: [120, 60, 120],
+    actions: Array.isArray(data.actions) ? data.actions : undefined,
   };
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
+  // "Later" action just dismisses.
+  if (event.action === "later") return;
   const url = event.notification.data?.url || "/staff";
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+      // Try to focus an existing tab on the same URL first.
       for (const c of list) {
-        if (c.url.includes("/staff") && "focus" in c) return c.focus();
+        if (c.url.endsWith(url) && "focus" in c) return c.focus();
       }
+      // Otherwise open a fresh window/tab at the target URL.
       return self.clients.openWindow(url);
     })
   );

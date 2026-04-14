@@ -7,11 +7,15 @@ import { withLangPrefix } from "../../i18n";
 const lang = Astro.locals.lang ?? "en";
 const isEl = lang === "el";
 
-if (Astro.locals.role !== "admin") {
+if (!["admin","super_admin"].includes(Astro.locals.role ?? "")) {
   return Astro.redirect(withLangPrefix(lang, "/admin"));
 }
 
 const today = new Date().toISOString().slice(0, 10);
+
+const { data: questSettings } = await supabaseAdmin
+  .from("quest_settings").select("require_confirmation").eq("id", 1).maybeSingle();
+const requireConfirm = questSettings?.require_confirmation !== false;
 
 const { data: quests } = await supabaseAdmin
   .from("quests")
@@ -49,9 +53,18 @@ if (ids.length > 0) {
               : "Daily quest that fires push notifications to installed users. They earn points when they claim."}
           </p>
         </div>
-        <button id="newQuestBtn" class="rounded-xl bg-amber-400 text-black px-4 py-2 text-sm font-semibold hover:bg-amber-300 transition">
-          + {isEl ? "Νέα αποστολή" : "New quest"}
-        </button>
+        <div class="flex flex-wrap gap-2 items-center">
+          <label class="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 px-3 py-2 text-xs cursor-pointer">
+            <input id="requireConfirmToggle" type="checkbox" checked={requireConfirm} class="h-3.5 w-3.5 accent-amber-400" />
+            <span class="text-white/80">{isEl ? "Απαιτείται έγκριση staff" : "Require staff confirmation"}</span>
+          </label>
+          <button id="aiBulkBtn" class="rounded-xl border border-fuchsia-400/30 bg-fuchsia-400/10 hover:bg-fuchsia-400/20 text-fuchsia-200 px-4 py-2 text-sm font-semibold transition">
+            ✨ {isEl ? "AI: φτιάξε 100" : "AI: generate 100"}
+          </button>
+          <button id="newQuestBtn" class="rounded-xl bg-amber-400 text-black px-4 py-2 text-sm font-semibold hover:bg-amber-300 transition">
+            + {isEl ? "Νέα αποστολή" : "New quest"}
+          </button>
+        </div>
       </div>
 
       <div class="space-y-3">
@@ -146,6 +159,41 @@ if (ids.length > 0) {
       }
       function closeModal() { modal.classList.add("hidden"); modal.classList.remove("flex"); }
       document.getElementById("newQuestBtn").addEventListener("click", () => openModal(null));
+
+      document.getElementById("requireConfirmToggle").addEventListener("change", async (e) => {
+        const v = e.currentTarget.checked;
+        try {
+          await fetch("/api/admin/quest-settings", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ require_confirmation: v }),
+          });
+        } catch {}
+      });
+
+      document.getElementById("aiBulkBtn").addEventListener("click", async (e) => {
+        const btn = e.currentTarget;
+        const count = prompt(isEl ? "Πόσες αποστολές να δημιουργήσω;" : "How many quests to generate?", "100");
+        if (!count) return;
+        const n = Math.max(1, Math.min(200, Number(count)));
+        if (!confirm((isEl ? `Θα δημιουργηθούν ${n} αποστολές με AI και θα προγραμματιστούν για κάθε μέρα από σήμερα. Συνέχεια;` : `${n} quests will be AI-generated and scheduled one per day starting today. Continue?`))) return;
+        btn.disabled = true; const orig = btn.textContent;
+        btn.textContent = isEl ? `⏳ Δημιουργία ${n}…` : `⏳ Generating ${n}…`;
+        try {
+          const r = await fetch("/api/admin/quests-ai-bulk", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ count: n }),
+          });
+          const j = await r.json();
+          if (!r.ok) throw new Error(j.error || "ai_failed");
+          alert((isEl ? `✓ Προστέθηκαν ${j.inserted} αποστολές (${j.first_date} → ${j.last_date}).` : `✓ Added ${j.inserted} quests (${j.first_date} → ${j.last_date}).`));
+          location.reload();
+        } catch (err) {
+          alert("⚠️ " + (err && err.message ? err.message : "AI failed"));
+        } finally {
+          btn.disabled = false; btn.textContent = orig;
+        }
+      });
       document.getElementById("qClose").addEventListener("click", closeModal);
       document.getElementById("qCancel").addEventListener("click", closeModal);
       modal.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });

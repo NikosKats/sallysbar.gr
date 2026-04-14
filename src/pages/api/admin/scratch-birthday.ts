@@ -12,7 +12,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
   const cronSecret = request.headers.get("x-cron-secret");
   const expected = import.meta.env.CRON_SECRET || "";
   const isCron = expected && cronSecret === expected;
-  if (locals.role !== "admin" && !isCron) return json({ error: "forbidden" }, 403);
+  if (!["admin","super_admin"].includes(locals.role ?? "") && !isCron) return json({ error: "forbidden" }, 403);
 
   const s = await getScratchSettings();
   if (!s.birthday_enabled) return json({ ok: true, issued: 0, reason: "disabled" });

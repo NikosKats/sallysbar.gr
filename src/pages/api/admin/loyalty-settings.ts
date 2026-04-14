@@ -2,7 +2,7 @@ import type { APIRoute } from "astro";
 import { supabaseAdmin } from "../../../lib/supabase";
 
 export const POST: APIRoute = async ({ request, locals }) => {
-  if (locals.role !== "admin") {
+  if (!["admin","super_admin"].includes(locals.role ?? "")) {
     return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403 });
   }
   let body: Record<string, unknown>;

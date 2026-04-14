@@ -5,7 +5,7 @@ const POINTS_PER_RESERVATION = 10;
 
 // PATCH — confirm or cancel a reservation (auto-awards loyalty on confirm)
 export const PATCH: APIRoute = async ({ request, locals }) => {
-  if (locals.role !== "admin") {
+  if (!["admin","super_admin"].includes(locals.role ?? "")) {
     return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403 });
   }
 
@@ -67,7 +67,7 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
 
 // DELETE — hard delete a reservation
 export const DELETE: APIRoute = async ({ request, locals }) => {
-  if (locals.role !== "admin") {
+  if (!["admin","super_admin"].includes(locals.role ?? "")) {
     return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403 });
   }
 

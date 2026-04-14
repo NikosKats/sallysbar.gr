@@ -3,7 +3,7 @@ import { supabaseAdmin } from "../../../lib/supabase";
 import { parseLoyaltyCode } from "../../../lib/loyalty";
 
 export const POST: APIRoute = async ({ request, locals }) => {
-  if (!locals.role || !["employee", "admin"].includes(locals.role)) {
+  if (!locals.role || !["employee", "admin", "super_admin"].includes(locals.role)) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
   }
 

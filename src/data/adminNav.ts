@@ -32,12 +32,14 @@ export const I = {
   chat:         `<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>`,
 };
 
-export function getAdminNavGroups(lang: "en" | "el", t: any): AdminNavGroup[] {
+export function getAdminNavGroups(lang: "en" | "el", t: any, role?: string | null): AdminNavGroup[] {
   const isEl = lang === "el";
-  return [
+  const isSuper = role === "super_admin";
+  const groups: AdminNavGroup[] = [
     { title: isEl ? "Πίνακας" : "Dashboard", items: [
       { key: "overview",  label: t.admin.nav.overview,  href: withLangPrefix(lang, "/admin"),          icon: I.overview },
       { key: "analytics", label: t.admin.nav.analytics, href: withLangPrefix(lang, "/admin/analytics"), icon: I.analytics },
+      { key: "operations-analytics", label: isEl ? "Ops Analytics (χρόνοι)" : "Ops Analytics (timings)", href: withLangPrefix(lang, "/admin/operations-analytics"), icon: I.analytics },
       { key: "calendar",  label: t.admin.nav.calendar,  href: withLangPrefix(lang, "/admin/calendar"),  icon: I.calendar },
     ]},
     { title: isEl ? "Λειτουργία" : "Operations", items: [
@@ -56,12 +58,14 @@ export function getAdminNavGroups(lang: "en" | "el", t: any): AdminNavGroup[] {
     { title: isEl ? "Περιεχόμενο" : "Content", items: [
       { key: "editMenu", label: t.admin.nav.editMenu,         href: withLangPrefix(lang, "/admin/menu"),    icon: I.editMenu },
       { key: "loyalty",  label: t.admin.nav.loyalty,          href: withLangPrefix(lang, "/admin/loyalty"), icon: I.loyalty },
+      { key: "tasks",    label: isEl ? "Tasks (πελάτη)" : "Tasks (customer)", href: withLangPrefix(lang, "/admin/tasks"), icon: I.loyalty },
       { key: "careers",  label: isEl ? "Καριέρα" : "Careers", href: withLangPrefix(lang, "/admin/careers"), icon: I.careers },
     ]},
     { title: isEl ? "Staff" : "Staff", items: [
       { key: "staff-orders",    label: t.user?.activeOrders ?? (isEl ? "Ενεργές Παραγγελίες" : "Active Orders"), href: withLangPrefix(lang, "/staff"),       icon: I.activeOrders },
       { key: "staff-new-order", label: t.user?.newOrder     ?? (isEl ? "Νέα Παραγγελία" : "New Order"),        href: withLangPrefix(lang, "/staff/order"), icon: I.newOrder },
       { key: "staff-chat",      label: isEl ? "Ομάδα (Chat)" : "Team Chat",                                    href: withLangPrefix(lang, "/staff/chat"),  icon: I.chat },
+      { key: "staff-quest-review", label: isEl ? "🎯 Quest εγκρίσεις" : "🎯 Quest approvals",                  href: withLangPrefix(lang, "/staff/quest-review"), icon: I.quests },
     ]},
     { title: isEl ? "Σύστημα" : "System", items: [
       { key: "users",   label: t.admin.nav.users,                href: withLangPrefix(lang, "/admin/users"),   icon: I.users },
@@ -70,4 +74,21 @@ export function getAdminNavGroups(lang: "en" | "el", t: any): AdminNavGroup[] {
       { key: "help",    label: isEl ? "Οδηγός" : "Help & Guide", href: withLangPrefix(lang, "/admin/help"),    icon: I.help },
     ]},
   ];
+
+  if (isSuper) {
+    groups.push({
+      title: "🔐 Super Admin",
+      items: [
+        { key: "business",       label: "💼 Business Playbook",     href: withLangPrefix(lang, "/admin/business"),       icon: I.analytics },
+        { key: "saas-playbook",  label: "🚀 SaaS Playbook",          href: withLangPrefix(lang, "/admin/saas-playbook"),  icon: I.analytics },
+        { key: "venues",         label: "🏢 My Venues",              href: withLangPrefix(lang, "/admin/venues"),         icon: I.analytics },
+        { key: "onboarding",     label: "🏁 Venue Onboarding",       href: withLangPrefix(lang, "/admin/onboarding"),     icon: I.analytics },
+        { key: "sales-metrics",  label: "📈 Pitch Metrics (SaaS)",   href: withLangPrefix(lang, "/admin/sales-metrics"),  icon: I.analytics },
+        { key: "cost-report",    label: "💶 Cost Report (EU agency)",href: withLangPrefix(lang, "/admin/cost-report"),    icon: I.analytics },
+        { key: "objections",     label: "🛡️ Objection Handling",     href: withLangPrefix(lang, "/admin/objections"),     icon: I.analytics },
+      ],
+    });
+  }
+
+  return groups;
 }

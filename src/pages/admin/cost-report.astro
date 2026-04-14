@@ -1,0 +1,439 @@
+---
+import "../../styles/global.css";
+import Header from "../../components/Header.astro";
+import AdminNav from "../../components/AdminNav.astro";
+
+if (Astro.locals.role !== "super_admin") {
+  return new Response("Forbidden", { status: 403 });
+}
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+
+type Row = [string, number, number]; // [label, hours, rate]
+type Tier = { n: number; title: string; titleEl: string; rows: Row[] };
+
+const tiers: Tier[] = [
+  { n: 1, title: "Foundation & Infrastructure", titleEl: "Υποδομή",
+    rows: [
+      ["Project scoping, architecture, stack selection", 24, 120],
+      ["Astro 5 SSR + Cloudflare Pages/Workers setup", 16, 95],
+      ["Supabase project, schema, Auth, RLS baseline", 20, 95],
+      ["Middleware: role-based auth, lang routing, edge geo", 14, 95],
+      ["i18n engine (EN/EL) + lang-prefix URL helpers", 12, 75],
+      ["Design system, Tailwind config, brand palette", 24, 75],
+      ["Shared layout: Header, Footer, AdminNav, StaffNav", 22, 75],
+      ["DevOps: Wrangler, CI/CD, environments, secrets", 10, 95],
+    ],
+  },
+  { n: 2, title: "Auth & User Management", titleEl: "Αυθεντικοποίηση & Χρήστες",
+    rows: [
+      ["Sign up / sign in / magic link / OAuth", 20, 75],
+      ["Password reset flow (forgot / set / reset pages)", 14, 75],
+      ["Role system (customer / employee / admin / super_admin)", 12, 95],
+      ["Universal /settings — 60+ field profile CRUD", 28, 75],
+      ["Avatar upload (Storage bucket, preview, delete)", 10, 75],
+      ["Card visibility per-field toggles", 10, 75],
+      ["/admin/users list, invite, edit, delete", 22, 75],
+      ["/admin/users/[id] user dossier", 16, 75],
+      ["Facebook signed_request data-deletion", 8, 95],
+    ],
+  },
+  { n: 3, title: "Customer Ordering & Table Flow", titleEl: "Παραγγελίες Πελατών",
+    rows: [
+      ["/table/[id] QR landing, token sessions, URL cleanup", 18, 95],
+      ["Welcome chooser tiles, scroll-to-top, toasts", 14, 75],
+      ["Menu renderer with categories, numbers, descriptions", 20, 75],
+      ["Multi-menu system (season, happy hour)", 18, 95],
+      ["Call-waiter endpoints + rate-limit + Telegram", 16, 95],
+      ["Pay-method sheet (card/cash) + partial payments", 14, 75],
+      ["AI chatbot integration (menu Q&A)", 22, 120],
+      ["Menu assistant backend /api/chat, prompt engineering", 14, 120],
+      ["Google-review nudge + Tripadvisor link", 4, 55],
+      ["/admin/table-settings — 6 feature toggles", 10, 75],
+    ],
+  },
+  { n: 4, title: "Staff Order Board (Operations)", titleEl: "Πίνακας Παραγγελιών Staff",
+    rows: [
+      ["/staff live order board (realtime)", 28, 95],
+      ["/staff/order new-order flow with session add-round", 24, 95],
+      ["Session lifecycle state machine", 16, 95],
+      ["Order status state machine (5 transitions)", 14, 95],
+      ["Tips tracking (per order, per waiter, split)", 12, 75],
+      ["Staff PWA (install, offline, service worker)", 18, 95],
+      ["Telegram Mini-App embedding + back-button", 12, 120],
+      ["StaffNav sidebar (clustered, colored, mobile drawer)", 10, 75],
+    ],
+  },
+  { n: 5, title: "Notifications (Push + Telegram)", titleEl: "Ειδοποιήσεις",
+    rows: [
+      ["VAPID web-push (JWT via Web Crypto)", 20, 120],
+      ["Service worker: cache, push handlers, click routing", 14, 95],
+      ["Role-scoped helpers (pushToAdmins / AllStaff)", 10, 95],
+      ["Telegram webhook + channels with inline buttons", 22, 95],
+      ["Per-order Telegram edit + deep link back", 12, 95],
+      ["Admin push preview + test-send tool", 6, 75],
+    ],
+  },
+  { n: 6, title: "Loyalty / Gamification", titleEl: "Πρόγραμμα Πιστότητας",
+    rows: [
+      ["Loyalty engine: events ledger, tiers, settings", 24, 95],
+      ["Tier system (Bronze→VIP) with perks", 14, 75],
+      ["Rewards catalog + redemption + staff confirm", 22, 75],
+      ["Birthday multiplier + double-point days", 8, 75],
+      ["Referral system + auto-claim + gating", 14, 95],
+      ["Scratch cards (signup/quest/referral, reveal)", 24, 75],
+      ["Daily Wheel of Luck (geofenced, prize pool)", 26, 95],
+      ["Tonight's Quests + progress tracking + push", 16, 75],
+      ["Loyalty card UI (physical-size flip, ISO 7810)", 20, 75],
+      ["/admin/loyalty, /admin/wheel, /admin/scratch, /admin/quests", 32, 75],
+    ],
+  },
+  { n: 7, title: "Google/Apple Wallet Integration", titleEl: "Wallet Integration",
+    rows: [
+      ["Google Wallet JWT (RS256 via Web Crypto, no Node)", 24, 120],
+      ["Wallet class + object + Add-to-Wallet button", 12, 95],
+      ["Apple Wallet .pkpass generation + signing", 20, 120],
+      ["Live card update push to wallet", 10, 120],
+    ],
+  },
+  { n: 8, title: "Reservations & Events", titleEl: "Κρατήσεις & Events",
+    rows: [
+      ["/book reservation flow with time slots", 18, 75],
+      ["Reservations API + Telegram + admin page", 16, 95],
+      ["/events listing + RSVP with points", 14, 75],
+      ["/admin/events CRUD + /admin/calendar", 20, 75],
+    ],
+  },
+  { n: 9, title: "Menu Management", titleEl: "Διαχείριση Μενού",
+    rows: [
+      ["Menu data model (menus/categories/items)", 12, 95],
+      ["/admin/menu editor: drag-reorder, image, bulk ops", 32, 75],
+      ["Menu-import helper (CSV/seed script)", 6, 75],
+      ["Public /menu page with live pricing + lang", 10, 75],
+    ],
+  },
+  { n: 10, title: "Marketing Tools", titleEl: "Marketing Tools",
+    rows: [
+      ["Marketing campaigns (QR + UTM + scan tracking)", 18, 95],
+      ["/admin/marketing campaign CRUD", 16, 75],
+      ["/admin/marketing-analytics geo + device", 16, 95],
+      ["Marketing + loyalty posters (printable A4)", 10, 75],
+      ["Coaster generator (printable grid)", 8, 75],
+      ["QR-code generator admin page", 10, 75],
+      ["/play marketing landing (animated)", 10, 75],
+      ["/membership marketing landing + live stats", 12, 75],
+    ],
+  },
+  { n: 11, title: "Social Card (Virality Feature)", titleEl: "Social Card",
+    rows: [
+      ["/u/[handle] public vCard page", 18, 75],
+      ["Handle validation, unique, UUID fallback", 6, 75],
+      ["vCard download (X-SOCIALPROFILE format)", 8, 95],
+      ["Per-field privacy toggles in settings", 10, 75],
+      ["/card marketing landing page", 12, 75],
+      ["Live QR + Share / Copy / Download on settings", 8, 75],
+      ["Bar ad block on every card", 6, 75],
+      ["\"Powered by Sally's Bar\" viral CTA", 3, 55],
+    ],
+  },
+  { n: 12, title: "Team Communication", titleEl: "Επικοινωνία Team",
+    rows: [
+      ["Team chat: schema, RLS, realtime", 14, 95],
+      ["Chat UI: messages, avatars, timestamps, badges", 18, 75],
+      ["Edit/delete with soft-delete audit trail", 10, 75],
+      ["Image upload + preview + linkify", 10, 75],
+      ["Unread badges (sidebar, header, focus)", 8, 75],
+      ["Push notifications on new messages", 6, 95],
+    ],
+  },
+  { n: 13, title: "Careers", titleEl: "Καριέρα",
+    rows: [
+      ["/careers listings + application + CV upload", 18, 75],
+      ["/admin/careers pipeline (settings, jobs, applications)", 22, 75],
+      ["Storage bucket for CVs with admin preview", 6, 75],
+    ],
+  },
+  { n: 14, title: "Analytics & Reporting", titleEl: "Analytics",
+    rows: [
+      ["/admin/analytics — dashboard with KPIs", 16, 95],
+      ["/admin/sales-metrics (super-admin)", 14, 95],
+      ["/admin/operations-analytics (lifecycle timing)", 18, 95],
+      ["Page-events logging (table_scan, card_view)", 6, 75],
+      ["Order timestamp instrumentation", 6, 75],
+      ["CSV export endpoints", 6, 75],
+      ["Pitch-snippet generator with live data", 4, 75],
+      ["/admin/business Business Playbook (super-admin)", 10, 75],
+    ],
+  },
+  { n: 15, title: "Help, Legal, Admin Niceties", titleEl: "Βοήθεια & Νομικά",
+    rows: [
+      ["/admin/help — 32-section bilingual manual", 18, 55],
+      ["/terms, /privacy, /contact legal pages", 6, 55],
+      ["/admin/overview KPIs, today's ops, quick actions", 14, 75],
+      ["/account customer dashboard with flip card", 24, 75],
+      ["Customer dropdown header (avatar, emoji menu)", 8, 55],
+    ],
+  },
+  { n: 16, title: "QA, Accessibility, Polish", titleEl: "QA & Polish",
+    rows: [
+      ["Cross-browser + iOS/Android testing", 30, 55],
+      ["Responsive design review, mobile polish", 24, 55],
+      ["Accessibility audit (WCAG 2.1 AA)", 14, 75],
+      ["Performance tuning (Lighthouse, caching)", 12, 95],
+      ["Security review (RLS, CSP, auth, rate limits)", 16, 120],
+      ["Bug fixes + iteration buffer", 40, 75],
+    ],
+  },
+  { n: 17, title: "Project Management & Documentation", titleEl: "PM & Docs",
+    rows: [
+      ["Product management (scoping, tickets, reviews)", 60, 95],
+      ["Client meetings, demos, sign-offs", 24, 95],
+      ["Technical documentation + runbook", 14, 75],
+      ["Deployment docs + handover", 8, 95],
+    ],
+  },
+];
+
+function tierSum(t: Tier) {
+  return t.rows.reduce((acc, [, h, r]) => {
+    acc.hours += h;
+    acc.cost  += h * r;
+    return acc;
+  }, { hours: 0, cost: 0 });
+}
+
+const tierTotals = tiers.map(t => ({ ...tierSum(t), n: t.n, title: t.title, titleEl: t.titleEl }));
+const totalHours = tierTotals.reduce((s, t) => s + t.hours, 0);
+const totalCost  = tierTotals.reduce((s, t) => s + t.cost,  0);
+const withOverhead = Math.round(totalCost * 1.25);
+const withVAT      = Math.round(withOverhead * 1.24);
+
+function eur(n: number) {
+  return "€" + Math.round(n).toLocaleString("en-GB");
+}
+
+const scenarios = [
+  { label: "Mid-tier Athens agency (fixed-price)",          range: "€140k–€170k", note: "net, ex VAT" },
+  { label: "Premium Athens agency (4-person squad)",         range: "€200k–€260k", note: "design-heavy" },
+  { label: "EU offshore (Poland, Portugal, Romania)",        range: "€85k–€120k",  note: "" },
+  { label: "Bulgaria / Serbia / North Macedonia",            range: "€55k–€85k",   note: "" },
+  { label: "Solo senior freelancer (6–12 months)",           range: "€55k–€95k",   note: "no PM overhead" },
+  { label: "Western Europe (Germany, Netherlands)",           range: "€220k–€380k", note: "" },
+];
+
+const T = {
+  title:  isEl ? "Αναφορά Κόστους (EU Agency)" : "Cost Report (EU Agency)",
+  kicker: "SUPER ADMIN ONLY",
+  sub:    isEl
+    ? "Αναλυτική εκτίμηση κόστους ανά feature, με ρυθμούς EU/ΕΛ agency. Χρησιμοποίησέ τη για pitch, grants, προτάσεις επενδυτών."
+    : "Feature-by-feature cost breakdown at EU/Greek agency rates. Use this for pitches, grants, investor decks.",
+  rates: isEl ? "Ρυθμοί χρέωσης" : "Billing rates",
+  junior: isEl ? "Junior" : "Junior", mid: "Mid", senior: "Senior", lead: isEl ? "Lead / Architect" : "Lead / Architect",
+  hours: isEl ? "Ώρες" : "Hours",
+  rate:  isEl ? "Ρυθμός" : "Rate",
+  cost:  isEl ? "Κόστος" : "Cost",
+  item:  isEl ? "Feature" : "Feature",
+  totals: isEl ? "Σύνολο" : "Totals",
+  net:   isEl ? "Καθαρό" : "Net",
+  overhead: isEl ? "+ 25% overhead" : "+ 25% overhead",
+  vat:   isEl ? "+ 24% ΦΠΑ" : "+ 24% VAT",
+  scenarios: isEl ? "Εύρος αγοράς" : "Market ranges",
+  notIncluded: isEl ? "Δεν περιλαμβάνονται" : "Not included",
+  extras: isEl ? [
+    "Περιεχόμενο (φωτογραφία, copywriting, branding): +€5k–€15k",
+    "Νομικά (GDPR, privacy counsel): +€2k–€5k",
+    "Hardware (NFC, thermal printer, staff phones): +€1k–€4k",
+    "Λειτουργικά κόστη: ~€75/μήνα",
+    "Υποστήριξη μετά το launch: €1.5k–€3.5k/μήνα retainer",
+  ] : [
+    "Content (photography, copywriting, branding): +€5k–€15k",
+    "Legal (GDPR, privacy counsel): +€2k–€5k",
+    "Hardware (NFC, thermal printer, staff phones): +€1k–€4k",
+    "Recurring run cost: ~€75/month",
+    "Post-launch support: €1.5k–€3.5k/mo retainer",
+  ],
+};
+---
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{T.title} — Super Admin</title>
+    <meta name="robots" content="noindex,nofollow" />
+    <style>
+      @media print {
+        @page { size: A4; margin: 12mm; }
+        .no-print { display: none !important; }
+        body { background: white !important; color: black !important; }
+        details { break-inside: avoid; page-break-inside: avoid; }
+        details > summary > span, details h2, details h3 { color: black !important; }
+        table, th, td { color: black !important; border-color: #ccc !important; }
+        .tier-card { background: white !important; border: 1px solid #ddd !important; }
+      }
+    </style>
+  </head>
+  <body class="min-h-screen bg-[#0a0a0f] text-white font-body antialiased">
+    <div class="no-print"><Header /></div>
+    <div class="h-20 no-print"></div>
+    <div class="no-print"><AdminNav active="cost-report" /></div>
+
+    <main class="mx-auto max-w-5xl px-5 py-10">
+      <div class="mb-8 flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <p class="text-xs uppercase tracking-[0.28em] text-rose-300 mb-2 flex items-center gap-2">
+            <span class="inline-block h-1.5 w-1.5 rounded-full bg-rose-400 animate-pulse"></span>
+            {T.kicker}
+          </p>
+          <h1 class="font-heading text-4xl font-bold">💶 {T.title}</h1>
+          <p class="mt-2 text-sm text-white/60 max-w-2xl">{T.sub}</p>
+        </div>
+        <button onclick="window.print()" class="no-print shrink-0 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 px-4 py-2 text-xs font-semibold">🖨 {isEl ? "Εκτύπωση / PDF" : "Print / Save PDF"}</button>
+      </div>
+
+      <!-- Billing rates -->
+      <section class="mb-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        <p class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-3">⚙️ {T.rates}</p>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+          <div><span class="text-white/50">{T.junior}</span> <span class="font-mono font-semibold">€55/h</span></div>
+          <div><span class="text-white/50">{T.mid}</span> <span class="font-mono font-semibold">€75/h</span></div>
+          <div><span class="text-white/50">{T.senior}</span> <span class="font-mono font-semibold">€95/h</span></div>
+          <div><span class="text-white/50">{T.lead}</span> <span class="font-mono font-semibold">€120/h</span></div>
+        </div>
+      </section>
+
+      <!-- Grand totals (hero) -->
+      <section class="grid md:grid-cols-3 gap-3 mb-8">
+        <div class="rounded-2xl border border-amber-400/30 bg-amber-400/[0.07] p-5">
+          <p class="text-[10px] uppercase tracking-wider text-amber-300 font-bold">{T.net}</p>
+          <p class="font-heading text-3xl font-bold mt-2">{eur(totalCost)}</p>
+          <p class="text-[11px] text-white/50 mt-1">{totalHours.toLocaleString()} {T.hours}</p>
+        </div>
+        <div class="rounded-2xl border border-fuchsia-400/30 bg-fuchsia-400/[0.07] p-5">
+          <p class="text-[10px] uppercase tracking-wider text-fuchsia-300 font-bold">{T.overhead}</p>
+          <p class="font-heading text-3xl font-bold mt-2">{eur(withOverhead)}</p>
+          <p class="text-[11px] text-white/50 mt-1">× 1.25 office / tooling / risk</p>
+        </div>
+        <div class="rounded-2xl border border-sky-400/30 bg-sky-400/[0.07] p-5">
+          <p class="text-[10px] uppercase tracking-wider text-sky-300 font-bold">{T.vat}</p>
+          <p class="font-heading text-3xl font-bold mt-2">{eur(withVAT)}</p>
+          <p class="text-[11px] text-white/50 mt-1">{isEl ? "Μικτό (τελική τιμή)" : "Gross (final price)"}</p>
+        </div>
+      </section>
+
+      <!-- Tier rollup table -->
+      <section class="mb-8 rounded-2xl border border-white/10 bg-white/[0.03] overflow-hidden">
+        <div class="px-5 py-4 border-b border-white/10">
+          <p class="text-[10px] uppercase tracking-wider text-amber-300 font-bold">📊 {T.totals} — {isEl ? "Σύνοψη ανά τομέα" : "Rollup by tier"}</p>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="text-[10px] uppercase tracking-wider text-white/40 text-left bg-black/20">
+              <tr>
+                <th class="py-2.5 px-4 font-semibold w-10">#</th>
+                <th class="py-2.5 px-4 font-semibold">{isEl ? "Τομέας" : "Tier"}</th>
+                <th class="py-2.5 px-4 font-semibold text-right">{T.hours}</th>
+                <th class="py-2.5 px-4 font-semibold text-right">{T.cost}</th>
+                <th class="py-2.5 px-4 font-semibold text-right">{isEl ? "%" : "%"}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tierTotals.map(t => (
+                <tr class="border-t border-white/5 hover:bg-white/[0.02]">
+                  <td class="py-2.5 px-4 text-white/50">{t.n}</td>
+                  <td class="py-2.5 px-4"><a href={`#tier-${t.n}`} class="hover:text-amber-200 transition">{isEl ? t.titleEl : t.title}</a></td>
+                  <td class="py-2.5 px-4 text-right font-mono">{t.hours}</td>
+                  <td class="py-2.5 px-4 text-right font-mono font-semibold">{eur(t.cost)}</td>
+                  <td class="py-2.5 px-4 text-right font-mono text-white/50">{((t.cost / totalCost) * 100).toFixed(1)}%</td>
+                </tr>
+              ))}
+              <tr class="border-t-2 border-amber-400/40 bg-amber-400/[0.06]">
+                <td class="py-3 px-4"></td>
+                <td class="py-3 px-4 font-bold text-amber-200">{T.totals}</td>
+                <td class="py-3 px-4 text-right font-mono font-bold">{totalHours}</td>
+                <td class="py-3 px-4 text-right font-mono font-bold text-amber-200">{eur(totalCost)}</td>
+                <td class="py-3 px-4 text-right font-mono">100%</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Per-tier detail -->
+      <section class="space-y-3 mb-8">
+        {tiers.map(tier => {
+          const sub = tierSum(tier);
+          return (
+            <details id={`tier-${tier.n}`} class="tier-card group rounded-2xl border border-white/10 bg-white/[0.03]" open={tier.n === 1}>
+              <summary class="cursor-pointer px-5 py-4 flex items-center justify-between gap-4">
+                <div class="min-w-0">
+                  <p class="text-[10px] uppercase tracking-wider text-white/40 font-bold">Tier {tier.n}</p>
+                  <h2 class="font-heading text-lg font-bold">{isEl ? tier.titleEl : tier.title}</h2>
+                </div>
+                <div class="flex items-center gap-4 shrink-0">
+                  <div class="text-right">
+                    <p class="text-[10px] uppercase tracking-wider text-white/40">{T.hours}</p>
+                    <p class="font-mono font-semibold">{sub.hours}</p>
+                  </div>
+                  <div class="text-right">
+                    <p class="text-[10px] uppercase tracking-wider text-amber-300">{T.cost}</p>
+                    <p class="font-mono font-bold text-amber-200">{eur(sub.cost)}</p>
+                  </div>
+                  <span class="text-white/40 group-open:rotate-180 transition-transform">▾</span>
+                </div>
+              </summary>
+              <div class="px-5 pb-5">
+                <div class="overflow-x-auto">
+                  <table class="w-full text-sm">
+                    <thead class="text-[10px] uppercase tracking-wider text-white/40 text-left">
+                      <tr>
+                        <th class="py-2 pr-3 font-semibold">{T.item}</th>
+                        <th class="py-2 pr-3 font-semibold text-right w-20">{T.hours}</th>
+                        <th class="py-2 pr-3 font-semibold text-right w-20">{T.rate}</th>
+                        <th class="py-2 font-semibold text-right w-28">{T.cost}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tier.rows.map(([label, h, r]) => (
+                        <tr class="border-t border-white/5">
+                          <td class="py-2 pr-3 text-white/85">{label}</td>
+                          <td class="py-2 pr-3 text-right font-mono text-white/70">{h}</td>
+                          <td class="py-2 pr-3 text-right font-mono text-white/50">€{r}</td>
+                          <td class="py-2 text-right font-mono font-semibold">{eur(h * r)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </details>
+          );
+        })}
+      </section>
+
+      <!-- Market scenarios -->
+      <section class="mb-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        <p class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-3">🌍 {T.scenarios}</p>
+        <div class="grid sm:grid-cols-2 gap-2 text-sm">
+          {scenarios.map(s => (
+            <div class="flex items-center justify-between gap-3 rounded-xl bg-white/[0.03] border border-white/10 px-4 py-2.5">
+              <span class="min-w-0 truncate">
+                <span class="text-white/85">{s.label}</span>
+                {s.note && <span class="text-[11px] text-white/40"> · {s.note}</span>}
+              </span>
+              <span class="font-mono font-semibold text-amber-200 shrink-0">{s.range}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <!-- Extras -->
+      <section class="rounded-2xl border border-red-400/20 bg-red-400/[0.04] p-5">
+        <p class="text-[10px] uppercase tracking-wider text-red-300 font-bold mb-3">⚠️ {T.notIncluded}</p>
+        <ul class="text-sm text-white/75 space-y-1.5 list-disc pl-5">
+          {T.extras.map(e => <li>{e}</li>)}
+        </ul>
+      </section>
+    </main>
+  </body>
+</html>

@@ -8,7 +8,7 @@ function json(obj: unknown, status = 200) {
 // Admin-only debug endpoint. Visit /api/admin/scratch-debug?email=someone@example.com (GET)
 // to see exactly what's in the DB for that user.
 export const GET: APIRoute = async ({ url, locals }) => {
-  if (locals.role !== "admin") return json({ error: "forbidden" }, 403);
+  if (!["admin","super_admin"].includes(locals.role ?? "")) return json({ error: "forbidden" }, 403);
 
   const result: Record<string, unknown> = {};
 
@@ -45,7 +45,7 @@ export const GET: APIRoute = async ({ url, locals }) => {
 
 // POST — manually fire the signup card for a user (bypass the trigger for diagnosis)
 export const POST: APIRoute = async ({ request, locals }) => {
-  if (locals.role !== "admin") return json({ error: "forbidden" }, 403);
+  if (!["admin","super_admin"].includes(locals.role ?? "")) return json({ error: "forbidden" }, 403);
   let body: any;
   try { body = await request.json(); } catch { return json({ error: "bad_json" }, 400); }
   const email = String(body.email ?? "").trim().toLowerCase();

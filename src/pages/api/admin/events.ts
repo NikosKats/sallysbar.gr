@@ -2,7 +2,7 @@ import type { APIRoute } from "astro";
 import { supabaseAdmin } from "../../../lib/supabase";
 
 function adminOnly(locals: App.Locals) {
-  return locals.role !== "admin"
+  return !["admin","super_admin"].includes(locals.role ?? "")
     ? new Response(JSON.stringify({ error: "Forbidden" }), { status: 403 })
     : null;
 }

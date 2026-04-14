@@ -25,13 +25,28 @@ const role = Astro.locals.role;
 // Social-card slug: prefer handle, fall back to first 8 chars of user id.
 import { supabaseAdmin } from "../lib/supabase";
 let cardSlug: string | null = null;
+let tonightsQuest: { id: string; title_en: string; title_el: string; claimed: boolean } | null = null;
 if (user) {
   try {
     const { data } = await supabaseAdmin.from("profiles").select("handle").eq("id", user.id).maybeSingle();
     cardSlug = ((data as any)?.handle as string | null) ?? user.id.slice(0, 8);
   } catch { cardSlug = user.id.slice(0, 8); }
+  // Tonight's quest (today's active one)
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const { data: q } = await supabaseAdmin
+      .from("quests")
+      .select("id, title_en, title_el")
+      .eq("active", true).eq("active_date", today)
+      .order("created_at", { ascending: false }).limit(1).maybeSingle();
+    if (q) {
+      const { data: c } = await supabaseAdmin
+        .from("quest_claims").select("id").eq("quest_id", q.id).eq("user_id", user.id).maybeSingle();
+      tonightsQuest = { id: q.id, title_en: q.title_en, title_el: q.title_el, claimed: !!c };
+    }
+  } catch {}
 }
-const adminGroups = role === "admin" ? getAdminNavGroups(lang as "en" | "el", t) : [];
+const adminGroups = (role === "admin" || role === "super_admin") ? getAdminNavGroups(lang as "en" | "el", t, role) : [];
 
 const isEl = lang === "el";
 const loginLabel = isEl ? "Σύνδεση" : "Sign In";
@@ -178,6 +193,26 @@ import CustomerPwa from "./CustomerPwa.astro";
                   </div>
                   <div class="mx-3 mb-1.5 border-t border-white/10"></div>
 
+                  {(role === "admin" || role === "super_admin") && (
+                    <a href={adminHref} class="mx-3 mb-1.5 flex items-center justify-between gap-2 rounded-xl bg-gradient-to-br from-amber-300 to-amber-500 text-black px-3 py-2.5 text-sm font-bold shadow-lg shadow-amber-500/20 hover:scale-[1.01] active:scale-[0.99] transition">
+                      <span class="flex items-center gap-2">
+                        {role === "super_admin" ? "🔐" : "🛠"} {isEl ? "Πίνακας Διαχείρισης" : "Admin Panel"}
+                      </span>
+                      <span class="text-base">→</span>
+                    </a>
+                  )}
+
+                  {tonightsQuest && (
+                    <a href={`/quest/${tonightsQuest.id}`} class="mx-3 mb-1.5 flex items-start gap-2.5 rounded-xl border border-fuchsia-400/30 bg-gradient-to-br from-fuchsia-500/15 via-amber-500/10 to-sky-500/10 px-3 py-2.5 text-sm hover:from-fuchsia-500/25 transition relative">
+                      <span class="text-lg shrink-0 mt-0.5">🎯</span>
+                      <div class="flex-1 min-w-0">
+                        <p class="text-[10px] uppercase tracking-wider font-bold text-fuchsia-300">{isEl ? "Αποψινή αποστολή" : "Tonight's quest"}</p>
+                        <p class="text-xs text-white truncate">{isEl ? tonightsQuest.title_el : tonightsQuest.title_en}</p>
+                      </div>
+                      {!tonightsQuest.claimed && <span class="absolute top-2 right-2 h-2 w-2 rounded-full bg-fuchsia-400 animate-pulse"></span>}
+                    </a>
+                  )}
+
                   <a href={accountHref} class="flex items-center gap-2.5 px-4 py-2.5 text-sm text-white/70 hover:text-amber-200 hover:bg-white/5 transition">
                     <span class="shrink-0 w-5 grid place-items-center">💳</span>
                     {isEl ? "Η κάρτα πιστότητας" : "My loyalty card"}
@@ -299,118 +334,149 @@ import CustomerPwa from "./CustomerPwa.astro";
   <!-- Mobile drawer — rendered OUTSIDE backdrop-blur container to avoid iOS repaint cost -->
   <div
     id="mobileMenu"
-    class="md:hidden fixed inset-0 top-0 z-40 hidden"
+    class="md:hidden fixed inset-0 z-40 hidden"
     aria-hidden="true"
   >
-    <div id="mobileMenuScrim" class="absolute inset-0 bg-black/60"></div>
+    <div id="mobileMenuScrim" class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
     <div
       id="mobileMenuPanel"
-      class="absolute inset-x-0 top-0 bg-[#0b0b10] border-b border-white/10 max-h-[100svh] overflow-y-auto overscroll-contain will-change-transform"
-      style="padding-top: calc(env(safe-area-inset-top, 0px) + 84px);"
+      class="absolute top-0 right-0 bottom-0 w-[86vw] max-w-[360px] bg-[#0b0b10] border-l border-white/10 flex flex-col will-change-transform"
+      style="padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);"
     >
-      <div class="px-3 pb-6 pt-2 flex flex-col gap-1">
+      <!-- Top bar with close -->
+      <div class="flex items-center justify-between px-4 py-3.5 border-b border-white/10 shrink-0">
+        <span class="font-heading text-base font-bold">Sally's Bar</span>
+        <button id="mobileMenuClose" aria-label="Close" class="h-9 w-9 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/70 text-2xl leading-none -mt-0.5">×</button>
+      </div>
 
-          <!-- Main nav -->
-          <div class="grid grid-cols-3 gap-1 mb-1">
-            {nav.map((i) => (
-              <a
-                href={i.href}
-                class={isActive(i.href)
-                  ? "flex flex-col items-center justify-center gap-1 rounded-xl border border-amber-400/30 bg-amber-400/10 px-2 py-3 text-xs text-amber-400 font-medium transition text-center leading-tight"
-                  : "flex flex-col items-center justify-center gap-1 rounded-xl border border-white/10 bg-white/5 px-2 py-3 text-xs text-white/70 hover:bg-white/10 hover:text-white transition text-center leading-tight"}
-              >
-                <span class="text-lg leading-none">{i.icon}</span>
-                <span>{i.label}</span>
-              </a>
-            ))}
-          </div>
+      <div class="flex-1 overflow-y-auto overscroll-contain px-3 py-3 space-y-3">
 
-          <!-- Language + login row -->
-          <div class="grid grid-cols-2 gap-1 mb-1">
-            <a href={switchHref} class="flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-xs text-white/70 hover:bg-white/10 transition">
-              {switchLabel}
+        {user && (
+          <!-- User identity card -->
+          <a href={accountHref} class="flex items-center gap-3 rounded-2xl bg-gradient-to-br from-amber-400/10 via-fuchsia-400/5 to-sky-400/10 border border-white/10 hover:border-amber-400/30 p-3 transition">
+            <div class="h-11 w-11 rounded-full bg-gradient-to-br from-sky-400 to-fuchsia-500 flex items-center justify-center text-base font-bold shrink-0">
+              {(displayName || "M").charAt(0).toUpperCase()}
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-semibold text-white truncate">{displayName}</p>
+              <p class="text-[11px] text-white/50 truncate">{user.email}</p>
+            </div>
+            {role === "super_admin" && <span class="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-rose-400/15 text-rose-300 border border-rose-400/30">🔐 Super</span>}
+            {role === "admin"       && <span class="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-400/15 text-amber-300">Admin</span>}
+            {role === "employee"    && <span class="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-sky-400/15 text-sky-300">Staff</span>}
+          </a>
+        )}
+
+        <!-- Main nav as full-width tappable rows -->
+        <nav class="space-y-1">
+          <p class="px-2 text-[10px] uppercase tracking-[0.18em] text-white/40 font-semibold">{isEl ? "Πλοήγηση" : "Navigate"}</p>
+          {nav.map((i) => (
+            <a href={i.href}
+              class={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm transition ${isActive(i.href) ? "bg-amber-400/15 text-amber-200 font-semibold border border-amber-400/30" : "text-white/85 hover:bg-white/5 active:bg-white/10"}`}>
+              <span class="text-xl w-6 text-center">{i.icon}</span>
+              <span class="flex-1">{i.label}</span>
+              {isActive(i.href) && <span class="h-1.5 w-1.5 rounded-full bg-amber-400"></span>}
             </a>
-            {!user ? (
-              <a href={loginHref} class="flex items-center justify-center rounded-xl border border-amber-400/20 bg-amber-400/5 px-3 py-2.5 text-xs text-amber-400 hover:bg-amber-400/10 transition">
-                {loginLabel}
+          ))}
+        </nav>
+
+        {user && (
+          <>
+            <!-- My stuff -->
+            <nav class="space-y-1 pt-2 border-t border-white/10">
+              <p class="px-2 pt-2 text-[10px] uppercase tracking-[0.18em] text-white/40 font-semibold">{isEl ? "Ο λογαριασμός μου" : "My account"}</p>
+              {tonightsQuest && (
+                <a href={`/quest/${tonightsQuest.id}`} class="relative flex items-start gap-2.5 rounded-xl border border-fuchsia-400/30 bg-gradient-to-br from-fuchsia-500/15 via-amber-500/10 to-sky-500/10 px-3 py-2.5 text-sm hover:from-fuchsia-500/25 transition mb-1">
+                  <span class="text-lg shrink-0 mt-0.5">🎯</span>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-[10px] uppercase tracking-wider font-bold text-fuchsia-300">{isEl ? "Αποψινή αποστολή" : "Tonight's quest"}</p>
+                    <p class="text-xs text-white truncate">{isEl ? tonightsQuest.title_el : tonightsQuest.title_en}</p>
+                  </div>
+                  {!tonightsQuest.claimed && <span class="absolute top-2 right-2 h-2 w-2 rounded-full bg-fuchsia-400 animate-pulse"></span>}
+                </a>
+              )}
+              <a href={accountHref} class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-white/85 hover:bg-white/5 transition">
+                <span class="text-lg w-6 text-center">💳</span>{isEl ? "Η κάρτα πιστότητας" : "My loyalty card"}
               </a>
-            ) : (
-              <a href={logoutHref} class="flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-xs text-white/50 hover:text-white hover:bg-white/10 transition">
-                {logoutLabel}
+              {cardSlug && (
+                <a href={`/u/${cardSlug}`} class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-white/85 hover:bg-white/5 transition">
+                  <span class="text-lg w-6 text-center">🪪</span>{isEl ? "Η κάρτα social μου" : "My social card"}
+                </a>
+              )}
+              {role === "customer" && (
+                <>
+                  <a href={withLangPrefix(lang, "/loyalty")} class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-white/85 hover:bg-white/5 transition">
+                    <span class="text-lg w-6 text-center">👑</span>{isEl ? "Ανταμοιβές" : "Rewards & Tiers"}
+                  </a>
+                  <a href={withLangPrefix(lang, "/play")} class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-white/85 hover:bg-white/5 transition">
+                    <span class="text-lg w-6 text-center">🎁</span>{isEl ? "Παιχνίδι" : "Play & quests"}
+                  </a>
+                  <a href={withLangPrefix(lang, "/book")} class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-white/85 hover:bg-white/5 transition">
+                    <span class="text-lg w-6 text-center">📅</span>{t.user.myReservations}
+                  </a>
+                </>
+              )}
+              <a href={withLangPrefix(lang, "/settings")} class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-white/85 hover:bg-white/5 transition">
+                <span class="text-lg w-6 text-center">⚙️</span>{isEl ? "Ρυθμίσεις & Προφίλ" : "Settings & Profile"}
               </a>
+            </nav>
+
+            {(role === "employee" || role === "admin" || role === "super_admin") && (
+              <nav class="space-y-1 pt-2 border-t border-white/10">
+                <p class="px-2 pt-2 text-[10px] uppercase tracking-[0.18em] text-sky-300/70 font-semibold">{t.user.staffSection}</p>
+                <a href={staffHref} class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-sky-100/85 hover:bg-sky-400/10 transition">
+                  <span class="text-lg w-6 text-center">📋</span>{t.user.activeOrders}
+                </a>
+                <a href={staffOrderHref} class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-sky-100/85 hover:bg-sky-400/10 transition">
+                  <span class="text-lg w-6 text-center">➕</span>{t.user.newOrder}
+                </a>
+                <a href={staffChatHref} class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-sky-100/85 hover:bg-sky-400/10 transition">
+                  <span class="text-lg w-6 text-center">💬</span>{isEl ? "Ομάδα (Chat)" : "Team Chat"}
+                </a>
+              </nav>
             )}
-          </div>
 
-          {user && (
-            <>
-              <!-- User header -->
-              <div class="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/3 border border-white/8">
-                <span class="text-sm font-medium text-white/80">{displayName}</span>
-                {role === "admin" && <span class="rounded-full bg-amber-400/15 px-2 py-0.5 text-xs font-semibold text-amber-400">Admin</span>}
-                {role === "employee" && <span class="rounded-full bg-sky-400/15 px-2 py-0.5 text-xs font-semibold text-sky-400">Staff</span>}
-              </div>
-
-              <!-- Customer links -->
-              <div class="grid grid-cols-2 gap-1">
-                <a href={accountHref} class="flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-xs text-white/70 hover:text-white hover:bg-white/10 transition text-center">
-                  {t.user.myAccount}
+            {(role === "admin" || role === "super_admin") && (
+              <nav class="space-y-1 pt-2 border-t border-white/10">
+                <p class="px-2 pt-2 text-[10px] uppercase tracking-[0.18em] text-amber-300/70 font-semibold">{t.user.adminSection}</p>
+                <a href={adminHref} class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-amber-100/85 hover:bg-amber-400/10 transition">
+                  <span class="text-lg w-6 text-center">🏠</span>{t.user.dashboard}
                 </a>
-                <a href={accountHref} class="flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-xs text-white/70 hover:text-white hover:bg-white/10 transition text-center">
-                  {t.user.myReservations}
+                <a href={adminReservationsHref} class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-amber-100/85 hover:bg-amber-400/10 transition">
+                  <span class="text-lg w-6 text-center">📅</span>{t.user.adminReservations}
                 </a>
-              </div>
+                <a href={adminOrdersHref} class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-amber-100/85 hover:bg-amber-400/10 transition">
+                  <span class="text-lg w-6 text-center">🧾</span>{t.user.orders}
+                </a>
+                <a href={adminMenuHref} class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-amber-100/85 hover:bg-amber-400/10 transition">
+                  <span class="text-lg w-6 text-center">📝</span>{t.user.editMenu}
+                </a>
+                <a href={adminUsersHref} class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-amber-100/85 hover:bg-amber-400/10 transition">
+                  <span class="text-lg w-6 text-center">👥</span>{t.user.users}
+                </a>
+                <a href={adminHelpHref} class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-amber-100/85 hover:bg-amber-400/10 transition">
+                  <span class="text-lg w-6 text-center">📖</span>{isEl ? "Οδηγός" : "Help & Guide"}
+                </a>
+              </nav>
+            )}
+          </>
+        )}
+      </div>
 
-              {role === "admin" && (
-                <>
-                  <p class="px-1 pt-1 text-[10px] font-semibold uppercase tracking-widest text-amber-400/50">{t.user.adminSection}</p>
-
-                  <!-- Business -->
-                  <p class="px-1 text-[9px] font-semibold uppercase tracking-widest text-white/25">{isEl ? "Επιχείρηση" : "Business"}</p>
-                  <div class="grid grid-cols-3 gap-1">
-                    <a href={adminHref}          class="flex items-center justify-center rounded-xl border border-amber-400/15 bg-amber-400/5 px-2 py-2.5 text-xs text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/10 transition text-center leading-tight">{t.user.dashboard}</a>
-                    <a href={adminAnalyticsHref} class="flex items-center justify-center rounded-xl border border-amber-400/15 bg-amber-400/5 px-2 py-2.5 text-xs text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/10 transition text-center leading-tight">{t.user.analytics}</a>
-                    <a href={adminCalendarHref}  class="flex items-center justify-center rounded-xl border border-amber-400/15 bg-amber-400/5 px-2 py-2.5 text-xs text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/10 transition text-center leading-tight">{t.user.calendar}</a>
-                  </div>
-
-                  <!-- Customers -->
-                  <p class="px-1 text-[9px] font-semibold uppercase tracking-widest text-white/25">{isEl ? "Πελάτες" : "Customers"}</p>
-                  <div class="grid grid-cols-2 gap-1">
-                    <a href={adminReservationsHref} class="flex items-center justify-center rounded-xl border border-amber-400/15 bg-amber-400/5 px-2 py-2.5 text-xs text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/10 transition text-center leading-tight">{t.user.adminReservations}</a>
-                    <a href={adminEventsHref}       class="flex items-center justify-center rounded-xl border border-amber-400/15 bg-amber-400/5 px-2 py-2.5 text-xs text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/10 transition text-center leading-tight">{t.admin.nav.events}</a>
-                    <a href={adminLoyaltyHref}      class="flex items-center justify-center rounded-xl border border-amber-400/15 bg-amber-400/5 px-2 py-2.5 text-xs text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/10 transition text-center leading-tight">{t.admin.nav.loyalty}</a>
-                    <a href={adminUsersHref}        class="flex items-center justify-center rounded-xl border border-amber-400/15 bg-amber-400/5 px-2 py-2.5 text-xs text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/10 transition text-center leading-tight">{t.user.users}</a>
-                  </div>
-
-                  <!-- Operations -->
-                  <p class="px-1 text-[9px] font-semibold uppercase tracking-widest text-white/25">{isEl ? "Λειτουργία" : "Operations"}</p>
-                  <div class="grid grid-cols-3 gap-1">
-                    <a href={adminOrdersHref} class="flex items-center justify-center rounded-xl border border-amber-400/15 bg-amber-400/5 px-2 py-2.5 text-xs text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/10 transition text-center leading-tight">{t.user.orders}</a>
-                    <a href={adminTipsHref}   class="flex items-center justify-center rounded-xl border border-amber-400/15 bg-amber-400/5 px-2 py-2.5 text-xs text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/10 transition text-center leading-tight">{t.user.tips}</a>
-                    <a href={adminMenuHref}   class="flex items-center justify-center rounded-xl border border-amber-400/15 bg-amber-400/5 px-2 py-2.5 text-xs text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/10 transition text-center leading-tight">{t.user.editMenu}</a>
-                  </div>
-
-                  <!-- Tools -->
-                  <p class="px-1 text-[9px] font-semibold uppercase tracking-widest text-white/25">{isEl ? "Εργαλεία" : "Tools"}</p>
-                  <div class="grid grid-cols-2 gap-1">
-                    <a href={adminQrHref}   class="flex items-center justify-center rounded-xl border border-amber-400/15 bg-amber-400/5 px-2 py-2.5 text-xs text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/10 transition text-center leading-tight">QR Codes</a>
-                    <a href={adminHelpHref} class="flex items-center justify-center rounded-xl border border-amber-400/15 bg-amber-400/5 px-2 py-2.5 text-xs text-amber-400/80 hover:text-amber-400 hover:bg-amber-400/10 transition text-center leading-tight">{isEl ? "Οδηγός" : "Help & Guide"}</a>
-                  </div>
-                </>
-              )}
-
-              {(role === "employee" || role === "admin") && (
-                <>
-                  <p class="px-1 pt-1 text-[10px] font-semibold uppercase tracking-widest text-sky-400/50">{t.user.staffSection}</p>
-                  <div class="grid grid-cols-2 gap-1">
-                    <a href={staffHref}      class="flex items-center justify-center rounded-xl border border-sky-400/15 bg-sky-400/5 px-2 py-2.5 text-xs text-sky-400/80 hover:text-sky-400 hover:bg-sky-400/10 transition text-center">{t.user.activeOrders}</a>
-                    <a href={staffOrderHref} class="flex items-center justify-center rounded-xl border border-sky-400/15 bg-sky-400/5 px-2 py-2.5 text-xs text-sky-400/80 hover:text-sky-400 hover:bg-sky-400/10 transition text-center">{t.user.newOrder}</a>
-                  </div>
-                </>
-              )}
-            </>
-          )}
-
-        </div>
+      <!-- Footer actions -->
+      <div class="shrink-0 border-t border-white/10 p-3 space-y-2">
+        <a href={switchHref} class="flex items-center justify-center gap-2 rounded-xl bg-white/5 hover:bg-white/10 px-3 py-2.5 text-sm text-white/80 transition">
+          🌐 {switchLabel}
+        </a>
+        {!user ? (
+          <a href={loginHref} class="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-amber-300 to-amber-500 text-black px-3 py-3 text-sm font-bold shadow-lg shadow-amber-500/20 transition">
+            🔑 {loginLabel}
+          </a>
+        ) : (
+          <a href={logoutHref} class="flex items-center justify-center gap-2 rounded-xl bg-white/5 hover:bg-white/10 px-3 py-2.5 text-sm text-white/55 transition">
+            ↩ {logoutLabel}
+          </a>
+        )}
       </div>
     </div>
   </div>
@@ -444,6 +510,8 @@ import CustomerPwa from "./CustomerPwa.astro";
     });
 
     scrim?.addEventListener("click", closeMenu);
+    document.getElementById("mobileMenuClose")?.addEventListener("click", closeMenu);
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeMenu(); });
 
     menu?.addEventListener("click", (e) => {
       const a = e.target.closest("a");

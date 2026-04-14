@@ -3,7 +3,7 @@ import { supabaseAdmin } from "../../../lib/supabase";
 
 // POST — award (positive) or deduct (negative) loyalty points
 export const POST: APIRoute = async ({ request, locals }) => {
-  if (locals.role !== "admin") {
+  if (!["admin","super_admin"].includes(locals.role ?? "")) {
     return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403 });
   }
 

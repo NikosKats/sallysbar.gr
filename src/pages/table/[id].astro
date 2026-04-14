@@ -83,6 +83,11 @@ for (const c of categories) {
     <script is:inline>
       // Logged-in guests get a scratch card on first table QR scan of the day (server dedupes).
       fetch("/api/loyalty/check-in", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" }).catch(() => {});
+      // Sales metric: table QR scan.
+      try {
+        const tnum = (window.location.pathname.match(/\/table\/(\d+)/) || [])[1] || "";
+        fetch("/api/event", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind: "table_scan", ref_id: tnum }) }).catch(() => {});
+      } catch {}
 
       // ── Daily Wheel of Luck ─────────────────────────────────────────
       (async function () {

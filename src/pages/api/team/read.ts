@@ -14,7 +14,7 @@ export const GET: APIRoute = async ({ locals }) => {
   if (!locals.user) return json({ unread: 0 });
   const { data: me } = await supabaseAdmin
     .from("profiles").select("role").eq("id", locals.user.id).maybeSingle();
-  if (!me || !["employee", "admin"].includes(me.role)) return json({ unread: 0 });
+  if (!me || !["employee", "admin", "super_admin"].includes(me.role)) return json({ unread: 0 });
 
   const { data: read } = await supabaseAdmin
     .from("team_reads").select("last_read_at").eq("user_id", locals.user.id).maybeSingle();

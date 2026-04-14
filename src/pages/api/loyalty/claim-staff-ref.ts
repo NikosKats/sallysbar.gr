@@ -22,7 +22,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
   // Verify the staff user exists and actually has staff/admin role.
   const { data: staffProfile } = await supabaseAdmin
     .from("profiles").select("id, role").eq("id", staff_id).maybeSingle();
-  if (!staffProfile || !["employee", "admin"].includes(staffProfile.role)) {
+  if (!staffProfile || !["employee", "admin", "super_admin"].includes(staffProfile.role)) {
     return json({ error: "not_staff" }, 400);
   }
 

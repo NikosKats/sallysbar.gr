@@ -1,0 +1,261 @@
+---
+import "../../styles/global.css";
+import Header from "../../components/Header.astro";
+import AdminNav from "../../components/AdminNav.astro";
+
+if (Astro.locals.role !== "super_admin") {
+  return new Response("Forbidden", { status: 403 });
+}
+
+// Single-plan strategy: one price, everything included.
+// Simpler to sell, simpler to deploy, no feature-gating required.
+const tiers = [
+  { key: "full", name: "Full Platform", setup: 890, seasonal: 1890, monthly: 299,
+    bullets: [
+      "Menu + QR table ordering",
+      "Loyalty card, tiers, rewards",
+      "Daily Wheel, Scratch cards, Quests",
+      "Team chat + push notifications",
+      "Telegram order flow",
+      "Google / Apple Wallet cards",
+      "Social card (viral virality)",
+      "Analytics + reporting",
+      "Staff enrollment",
+      "Bilingual EN/EL",
+      "Priority support",
+    ],
+    color: "from-amber-400 to-amber-600", featured: true },
+];
+
+const models = [
+  { t: "Per-venue isolated installs", note: "What you're doing today", pros: ["Zero refactor needed", "Customer owns data", "Zero blast radius", "Sold as 'your private platform'"], cons: ["2-4h install each", "N places to fix a bug", "Fragmented billing"] },
+  { t: "Shared multi-tenant",         note: "2-3 weeks to build", pros: ["One deploy → all venues", "Consolidated billing", "SQL-insert onboarding", "Cross-venue analytics"], cons: ["Refactor required", "Noisy-neighbor risk", "Shared blast radius"] },
+];
+
+const checklist = [
+  { stage: "1. Code & infra (~1h scripted)", items: [
+    "Clone repo into venue's GitHub / new Cloudflare Pages project",
+    "Create Supabase project (free tier to start)",
+    "Run all SQL migrations in /scripts in order",
+    "Set env vars: Supabase URL/keys, VAPID pair, Telegram tokens",
+    "Point domain DNS to Cloudflare"
+  ]},
+  { stage: "2. Branding (~30min)", items: [
+    "Edit src/data/site.ts (name, address, socials, maps URL)",
+    "Replace icon-*.png + apple-touch-icon",
+    "Tweak Tailwind palette if custom accent color requested",
+  ]},
+  { stage: "3. Content (~1h with customer)", items: [
+    "Import menu from CSV or photo-to-text",
+    "Configure loyalty tiers + rewards catalog",
+    "Create Telegram channels for barman + waiter",
+    "Generate table QR codes via /admin/qrcodes",
+    "Print table cards + starter loyalty cards",
+  ]},
+  { stage: "4. Staff onboarding (~30min call)", items: [
+    "Invite first admin via /admin/users",
+    "Walk through /admin/overview, /staff, /admin/help",
+    "Record Loom they can replay later",
+    "Enable push notifications on their staff phone",
+  ]},
+  { stage: "5. Go live (~30min)", items: [
+    "End-to-end test of /table/1 flow",
+    "Run one test order through the full lifecycle",
+    "Send welcome email with URLs + credentials",
+    "Add to your /admin/venues tracker",
+  ]},
+];
+
+const costPerVenue = [
+  ["Cloudflare Pages + Workers",       "€0 (free tier ~10k req/day)"],
+  ["Supabase free tier",                "€0 (500MB DB, 1GB storage)"],
+  ["Supabase Pro (when needed)",        "€25/mo per project"],
+  ["Domain",                            "~€1/mo amortized"],
+  ["Resend email (100/day free)",       "€0–€20/mo"],
+  ["Push VAPID / Telegram",             "€0"],
+  ["Total run cost",                    "€0–€45/mo per venue"],
+];
+
+const margins = [
+  { tier: "Full Platform (€1,890/season)", cost: "~€45/mo", profit: "~€1,350 profit / season / venue" },
+  { tier: "Setup fee (one-time)",           cost: "~4h work", profit: "€890 one-time / venue" },
+];
+
+const scale = [
+  { venues: 5,   mrr: "€9.5k/yr · +€4.5k setup", label: "Side income" },
+  { venues: 15,  mrr: "€28k/yr · +€13k setup",   label: "Half a salary covered" },
+  { venues: 30,  mrr: "€57k/yr · +€27k setup",   label: "Quit your job number" },
+  { venues: 60,  mrr: "€113k/yr · +€53k setup",  label: "Real business" },
+  { venues: 120, mrr: "€227k/yr · +€107k setup", label: "Consider hiring / selling" },
+];
+
+const legal = [
+  ["Service Agreement (1-page)",       "What you deliver · uptime · support hours · termination · liability cap (1× annual)"],
+  ["GDPR Data Processing Agreement",   "Template from EDPB or Iubenda (~€30). Reused across venues."],
+  ["Privacy Policy (per install)",     "Auto-generated from site.ts + template. Already half-built at /privacy."],
+  ["Terms of Service",                 "Already at /terms — update once per product name."],
+];
+---
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>SaaS Playbook — Super Admin</title>
+    <meta name="robots" content="noindex,nofollow" />
+  </head>
+  <body class="min-h-screen bg-[#0a0a0f] text-white font-body antialiased">
+    <Header />
+    <div class="h-20"></div>
+    <AdminNav active="saas-playbook" />
+
+    <main class="mx-auto max-w-5xl px-5 py-10">
+      <div class="mb-8">
+        <p class="text-xs uppercase tracking-[0.28em] text-rose-300 mb-2 flex items-center gap-2">
+          <span class="inline-block h-1.5 w-1.5 rounded-full bg-rose-400 animate-pulse"></span>
+          SUPER ADMIN ONLY
+        </p>
+        <h1 class="font-heading text-4xl font-bold">🚀 SaaS Playbook</h1>
+        <p class="mt-2 text-sm text-white/60 max-w-2xl">How you turn Sally's platform into a real SaaS: deployment model, pricing, install checklist, unit economics, legal.</p>
+      </div>
+
+      <!-- Pricing: single plan -->
+      <section class="mb-10">
+        <h2 class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-4">💰 One plan, everything included</h2>
+        <div class="rounded-2xl border border-amber-400/50 bg-gradient-to-br from-amber-500/15 via-fuchsia-500/5 to-sky-500/5 p-6 relative">
+          <span class="absolute -top-3 right-6 text-[10px] font-bold uppercase tracking-wider bg-gradient-to-br from-amber-300 to-amber-500 text-black px-3 py-1 rounded-full shadow-lg shadow-amber-500/30">Full platform</span>
+          <div class="grid md:grid-cols-[1fr_1.4fr] gap-6 items-start">
+            <div>
+              <p class="font-heading text-5xl font-bold bg-gradient-to-br from-white to-amber-100 bg-clip-text text-transparent">€1,890</p>
+              <p class="text-sm text-white/55 mt-1">per season (6 months · May → Oct)</p>
+              <p class="text-xs text-white/40 mt-3">or <span class="font-mono text-white/70">€299/mo</span> year-round</p>
+              <p class="text-xs text-white/40 mt-1">one-time setup <span class="font-mono text-amber-200">€890</span> (covers your ~4h install)</p>
+              <p class="mt-5 text-[11px] text-white/50 leading-relaxed">Cash flow tip: bill the full €1,890 in April so the money arrives <em class="text-white/70">before</em> the bar opens its season. No refunds after setup.</p>
+            </div>
+            <div>
+              <p class="text-[11px] uppercase tracking-wider text-amber-200/80 font-bold mb-2">Everything included</p>
+              <ul class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-sm text-white/85">
+                {tiers[0].bullets.map(b => <li>✓ {b}</li>)}
+              </ul>
+            </div>
+          </div>
+        </div>
+        <p class="mt-3 text-xs text-white/45">💡 One plan = one sell, one deploy, one support story. No feature-gating code, no "upgrade to Pro" nagging, no complex tier logic.</p>
+      </section>
+
+      <!-- Deployment models -->
+      <section class="mb-10">
+        <h2 class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-4">🏗️ Deployment models</h2>
+        <div class="grid md:grid-cols-2 gap-3">
+          {models.map(m => (
+            <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+              <p class="font-heading text-lg font-bold">{m.t}</p>
+              <p class="text-xs text-amber-200/70 mt-0.5">{m.note}</p>
+              <div class="mt-3 grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <p class="text-[10px] uppercase tracking-wider text-emerald-300 font-bold mb-1">Pros</p>
+                  <ul class="text-white/75 space-y-0.5 text-xs">{m.pros.map(p => <li>+ {p}</li>)}</ul>
+                </div>
+                <div>
+                  <p class="text-[10px] uppercase tracking-wider text-red-300 font-bold mb-1">Cons</p>
+                  <ul class="text-white/75 space-y-0.5 text-xs">{m.cons.map(p => <li>− {p}</li>)}</ul>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <p class="mt-3 text-xs text-white/50">💡 <strong class="text-amber-200">Hybrid recommendation:</strong> Start with per-venue installs (5 venues). Build multi-tenant after. Keep isolated as the Signature/Enterprise tier.</p>
+      </section>
+
+      <!-- Install checklist -->
+      <section class="mb-10">
+        <h2 class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-4">📋 Install checklist (~4 hours per venue)</h2>
+        <div class="space-y-3">
+          {checklist.map(c => (
+            <details class="rounded-2xl border border-white/10 bg-white/[0.03] overflow-hidden" open>
+              <summary class="cursor-pointer px-5 py-3 font-semibold text-white/90 hover:bg-white/[0.02]">{c.stage}</summary>
+              <ul class="px-5 pb-4 space-y-1.5 text-sm text-white/75">
+                {c.items.map(i => <li class="flex items-start gap-2"><span class="text-white/30 shrink-0">□</span><span>{i}</span></li>)}
+              </ul>
+            </details>
+          ))}
+        </div>
+        <p class="mt-3 text-xs text-white/45">→ Use <a href="/admin/onboarding" class="text-amber-200 underline">/admin/onboarding</a> to auto-generate the install script for each new venue.</p>
+      </section>
+
+      <!-- Unit economics -->
+      <section class="mb-10 grid md:grid-cols-2 gap-3">
+        <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+          <h3 class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-3">💸 Cost per venue</h3>
+          <table class="w-full text-sm">
+            <tbody>
+              {costPerVenue.map(([k, v]) => (
+                <tr class="border-t border-white/5 first:border-0">
+                  <td class="py-1.5 text-white/70">{k}</td>
+                  <td class="py-1.5 text-right font-mono text-white/90">{v}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div class="rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.05] p-5">
+          <h3 class="text-[10px] uppercase tracking-wider text-emerald-300 font-bold mb-3">📈 Margins</h3>
+          <table class="w-full text-sm">
+            <tbody>
+              {margins.map(m => (
+                <tr class="border-t border-white/5 first:border-0">
+                  <td class="py-1.5 text-white/80">{m.tier}</td>
+                  <td class="py-1.5 text-right text-white/60 font-mono text-xs">{m.cost}</td>
+                  <td class="py-1.5 text-right text-emerald-200 font-mono font-semibold">{m.profit}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Scale table -->
+      <section class="mb-10 rounded-2xl border border-amber-400/30 bg-gradient-to-br from-amber-500/10 via-fuchsia-500/5 to-sky-500/5 p-5">
+        <h3 class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-3">📊 Where the money is</h3>
+        <table class="w-full text-sm">
+          <tbody>
+            {scale.map(s => (
+              <tr class="border-t border-white/10 first:border-0">
+                <td class="py-2 font-mono font-semibold">{s.venues} venues</td>
+                <td class="py-2 text-right font-mono text-amber-200">{s.mrr}</td>
+                <td class="py-2 text-right text-white/55 text-xs">{s.label}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Legal essentials -->
+      <section class="mb-10 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        <h3 class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-3">⚖️ Legal essentials before customer #2</h3>
+        <table class="w-full text-sm">
+          <tbody>
+            {legal.map(([k, v]) => (
+              <tr class="border-t border-white/5 first:border-0">
+                <td class="py-2 pr-4 font-semibold text-white/90 w-[40%]">{k}</td>
+                <td class="py-2 text-white/65">{v}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p class="mt-3 text-xs text-white/45">Total legal spend to get started: <strong class="text-white/70">€500–€1,500</strong> (Greek lawyer reviews once, reuse templates forever).</p>
+      </section>
+
+      <!-- What to build next -->
+      <section class="mb-10 rounded-2xl border border-fuchsia-400/25 bg-fuchsia-400/[0.05] p-5">
+        <h3 class="text-[10px] uppercase tracking-wider text-fuchsia-300 font-bold mb-3">🔧 What to build next (ranked by ROI)</h3>
+        <ol class="space-y-2 text-sm text-white/80 list-decimal pl-5">
+          <li><strong>Onboarding CLI / dashboard</strong> — 1-2 days. Without this, you'll never scale past 5 venues. <a href="/admin/onboarding" class="text-amber-200 underline">→ /admin/onboarding</a></li>
+          <li><strong>Venues tracker</strong> — 1 day. One page listing every venue you run, SSO into each admin panel. <a href="/admin/venues" class="text-amber-200 underline">→ /admin/venues</a></li>
+          <li><strong>Backup & migration tooling</strong> — 1 day. Nightly Supabase backup to cold bucket, "restore from backup" one-click.</li>
+          <li><strong>Auto-update pipeline</strong> — 2-3 days. GitHub Action deploys `main` to every venue's Pages project. Frozen-version escape hatch per venue.</li>
+          <li><strong>Stripe billing with seasonal logic</strong> — 1-2 days. Subscriptions with venue_id metadata, middleware suspends on payment fail, customer portal.</li>
+        </ol>
+      </section>
+    </main>
+  </body>
+</html>

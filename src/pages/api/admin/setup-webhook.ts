@@ -1,7 +1,7 @@
 import type { APIRoute } from "astro";
 
 export const GET: APIRoute = async ({ request, locals }) => {
-  if (locals.role !== "admin") {
+  if (!["admin","super_admin"].includes(locals.role ?? "")) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
   }
 

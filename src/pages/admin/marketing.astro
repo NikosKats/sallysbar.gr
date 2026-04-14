@@ -8,7 +8,7 @@ import { site } from "../../data/site";
 const lang = Astro.locals.lang ?? "en";
 const isEl = lang === "el";
 
-if (Astro.locals.role !== "admin") {
+if (!["admin","super_admin"].includes(Astro.locals.role ?? "")) {
   return Astro.redirect(withLangPrefix(lang, "/admin"));
 }
 

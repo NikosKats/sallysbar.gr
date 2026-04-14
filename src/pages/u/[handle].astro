@@ -214,7 +214,8 @@ const T = {
       <p class="text-[10px] text-white/25 text-center">sallysbar.gr · {isEl ? "Πάτα το κουμπί «Κοινοποίησε» για να στείλεις αυτή την κάρτα" : "Tap Share to send this card to a friend"}</p>
     </main>
 
-    <script is:inline define:vars={{ cardUrl, personName, isEl }}>
+    <script is:inline define:vars={{ cardUrl, personName, isEl, handleRef: profile.handle ?? profile.id.slice(0, 8) }}>
+      fetch("/api/event", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind: "card_view", ref_id: handleRef }) }).catch(() => {});
       const share = document.getElementById("shareBtn");
       share?.addEventListener("click", async () => {
         const data = { title: personName + " — Sally's Bar", text: (isEl ? "Κοίτα την κάρτα μου:" : "Check out my card:"), url: cardUrl };

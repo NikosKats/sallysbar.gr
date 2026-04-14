@@ -2,7 +2,7 @@ import type { APIRoute } from "astro";
 import { supabaseAdmin } from "../../../lib/supabase";
 
 export const DELETE: APIRoute = async ({ locals }) => {
-  if (locals.role !== "admin") {
+  if (!["admin","super_admin"].includes(locals.role ?? "")) {
     return json({ error: "Forbidden" }, 403);
   }
 

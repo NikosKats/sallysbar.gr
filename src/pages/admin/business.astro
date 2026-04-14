@@ -1,0 +1,266 @@
+---
+import "../../styles/global.css";
+import Header from "../../components/Header.astro";
+import AdminNav from "../../components/AdminNav.astro";
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+
+// Super-admin only
+if (Astro.locals.role !== "super_admin") {
+  return new Response("Forbidden", { status: 403 });
+}
+
+const clusters = [
+  { n: 1, icon: "💻", title: "The Code (software as product)",
+    margin: "85–95%", status: "primary",
+    items: [
+      ["SaaS subscription", "€99–€349/mo per venue", "Low risk · 3–6 mo to revenue"],
+      ["One-off licenses", "€3k–€8k perpetual", "No MRR"],
+      ["White-label", "Agency rebrand", "Slow sales cycle"],
+      ["Open-source + paid hosting", "€49–€99/mo managed", "Scales long-tail"],
+      ["Exit / acquisition", "€50k–€200k once", "18+ mo to liquidity"],
+    ],
+  },
+  { n: 2, icon: "📊", title: "The Data (aggregated insights)",
+    margin: "70–95%", status: "unlock-later",
+    items: [
+      ["Venue benchmarks", "€50/mo add-on per customer", "Needs 15+ venues"],
+      ["Tourism reports", "€200–€800 quarterly", "Kefalonia tourism board, Hotel assoc."],
+      ["Supplier analytics", "€500–€2k/quarter", "Distilleries, beer distributors"],
+      ["Foot-traffic heatmaps", "€1k+ per report", "Real-estate buyers"],
+      ["Loyalty data licensing", "€5k+ one-time", "POS partners"],
+      ["Paid API access", "€0.01–€0.05/call", "Booking aggregators"],
+    ],
+  },
+  { n: 3, icon: "🎯", title: "The Attention (ad real-estate)",
+    margin: "90%+", status: "side-revenue",
+    items: [
+      ["Featured tiles on /play, /card, /u/...", "€30–€80/mo per partner", "Surf school, boats, restaurants"],
+      ["Sponsored wheel prizes", "€150–€400/mo per sponsor", "Prize slot on daily wheel"],
+      ["Menu promo slots", "€200+/mo per brand", "Distillery pairing shout-outs"],
+      ["Geo-triggered offers", "€0.10–€0.30 CPM", "Tourist-language triggered"],
+      ["Event hosting on /events", "€20–€50 per listing", "Third-party venues"],
+    ],
+  },
+  { n: 4, icon: "🤝", title: "The Referrals (affiliate)",
+    margin: "100%", status: "quick-win",
+    items: [
+      ["Kefalonia BnB bookings", "5–10% per booking", "Already half-built"],
+      ["Restaurant bookings", "€1–€3 per reservation", "Partner with Skala restaurants"],
+      ["Boat/tour sales", "10–15% commission", "Tile on /play"],
+      ["Taxi/transfer services", "€0.50–€2 per ride", "'Call a cab' button"],
+      ["Cross-bar swaps", "Cash or points", "Off-night traffic sharing"],
+    ],
+  },
+  { n: 5, icon: "🛠️", title: "The Services (your hourly)",
+    margin: "100% of rate", status: "bridge-income",
+    items: [
+      ["Freelance dev work", "$80–$150/hr", "Portfolio-driven, immediate"],
+      ["Onboarding / installation", "€490–€1,490 per venue", "Included in SaaS setup fee"],
+      ["Custom integrations", "€80–€150/hr", "POS, printers, Telegram, quirks"],
+      ["Consulting on gamification", "€150–€300/hr", "Strategy calls"],
+      ["Priority support packages", "€200–€500/mo", "Optional tier add-on"],
+      ["Custom data reports", "€500–€3k each", "For chains wanting analysis"],
+    ],
+  },
+  { n: 6, icon: "🎁", title: "The Hardware (physical goods)",
+    margin: "40–90%", status: "high-margin-upsell",
+    items: [
+      ["NFC loyalty cards (preprinted)", "Buy €0.50–€2, sell €10–€15", "80% margin · recurring"],
+      ["Table QR codes laminated", "€0.20 cost, €3–€5 each", "90% margin"],
+      ["Campaign QR coasters", "€0.05 cost, €0.50 each (box)", "Wear out = reorders"],
+      ["NFC tap points for bar counter", "€3 → €30–€50", "90% margin"],
+      ["Branded staff phones (used Android)", "€150 → €250–€350", "40% margin"],
+      ["Receipt printers & thermal tickets", "Resale margin", "20–40% margin"],
+    ],
+  },
+  { n: 7, icon: "🎓", title: "The Knowledge (what you learned)",
+    margin: "95%+", status: "passive",
+    items: [
+      ["Course on Astro + Cloudflare + Supabase", "€29–€99 × 100–500 sales", "Gumroad/Udemy"],
+      ["YouTube channel (solo-dev + SaaS)", "€500–€5k/mo at 10k+ subs", "Sponsorships"],
+      ["Blog / newsletter case study", "€100–€2k/mo sponsors", "sallysbar.gr story"],
+      ["Speaking at meetups", "Free → lead gen", "Astro/Cloudflare users"],
+      ["Templates on ThemeForest/Pipet", "€49–€129 passive", "Strip down to starter"],
+    ],
+  },
+  { n: 8, icon: "🏗️", title: "The Verticals (same code, new market)",
+    margin: "Same SaaS × N", status: "year-2",
+    items: [
+      ["Cocktail bars / lounges", "Current ✅", "Sally's"],
+      ["Restaurants", "2 wks adapt", "10× bigger market"],
+      ["Cafés", "1 wk", "Low ARPU, huge volume"],
+      ["Hair salons", "3 wks (booking swap)", "Underserved"],
+      ["Small hotels / guesthouses", "4 wks", "Perfect for Ionian islands"],
+      ["Gyms / yoga studios", "3 wks", "Loyalty-first"],
+      ["Food trucks", "1 wk", "Viral potential"],
+    ],
+  },
+  { n: 9, icon: "🔐", title: "The Network (later-stage moat)",
+    margin: "Exponential", status: "year-3",
+    items: [
+      ["Inter-venue loyalty", "Higher ARPU per venue", "Points across network"],
+      ["Marketplace fees", "2–5% take", "Tourist books any 'Sally' venue"],
+      ["Universal guest card", "Upsell opportunity", "One card, all bars"],
+      ["Cross-venue analytics", "Chain-level pricing", "Benchmarking"],
+      ["Acquire competitors", "Roll-up play", "Fold into platform"],
+    ],
+  },
+];
+
+const statusColor: Record<string, string> = {
+  "primary":            "bg-amber-400/20 text-amber-200 border-amber-400/40",
+  "quick-win":          "bg-emerald-400/20 text-emerald-200 border-emerald-400/40",
+  "side-revenue":       "bg-sky-400/20 text-sky-200 border-sky-400/40",
+  "bridge-income":      "bg-fuchsia-400/20 text-fuchsia-200 border-fuchsia-400/40",
+  "high-margin-upsell": "bg-rose-400/20 text-rose-200 border-rose-400/40",
+  "unlock-later":       "bg-white/10 text-white/60 border-white/20",
+  "passive":            "bg-white/10 text-white/60 border-white/20",
+  "year-2":             "bg-white/10 text-white/50 border-white/15",
+  "year-3":             "bg-white/10 text-white/40 border-white/10",
+};
+const statusLabel: Record<string, string> = {
+  "primary":            "PRIMARY",
+  "quick-win":          "QUICK WIN",
+  "side-revenue":       "SIDE",
+  "bridge-income":      "BRIDGE",
+  "high-margin-upsell": "UPSELL",
+  "unlock-later":       "UNLOCK LATER",
+  "passive":            "PASSIVE",
+  "year-2":             "YEAR 2+",
+  "year-3":             "YEAR 3+",
+};
+---
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Business Playbook — Super Admin</title>
+    <meta name="robots" content="noindex,nofollow" />
+  </head>
+  <body class="min-h-screen bg-[#0a0a0f] text-white font-body antialiased">
+    <Header />
+    <div class="h-20"></div>
+    <AdminNav active="business" />
+
+    <main class="mx-auto max-w-5xl px-5 py-10">
+      <div class="mb-8 flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <p class="text-xs uppercase tracking-[0.28em] text-rose-300 mb-2 flex items-center gap-2">
+            <span class="inline-block h-1.5 w-1.5 rounded-full bg-rose-400 animate-pulse"></span>
+            SUPER ADMIN ONLY
+          </p>
+          <h1 class="font-heading text-4xl font-bold">💼 Business Playbook</h1>
+          <p class="mt-2 text-sm text-white/60 max-w-2xl">
+            9 monetization clusters. Each = a different asset you can sell. Focus on 2–3 clusters at a time.
+          </p>
+        </div>
+        <div class="text-right text-xs text-white/40">
+          <p>{isEl ? "Εσωτερικό έγγραφο" : "Internal document"}</p>
+          <p class="mt-1">{isEl ? "Μη κοινοποιείται" : "Do not share"}</p>
+        </div>
+      </div>
+
+      <!-- Focus reminder -->
+      <section class="mb-8 rounded-2xl border border-amber-400/30 bg-gradient-to-br from-amber-500/10 via-fuchsia-500/5 to-sky-500/5 p-5">
+        <p class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-2">⭐ Year-1 focus</p>
+        <div class="grid sm:grid-cols-3 gap-3 text-sm">
+          <div><span class="font-bold text-amber-200">#1 Code (SaaS)</span> — main engine</div>
+          <div><span class="font-bold text-fuchsia-200">#5 Services</span> — bridge income while SaaS ramps</div>
+          <div><span class="font-bold text-emerald-200">#4 Referrals (Kefalonia BnB)</span> — free money once signed</div>
+        </div>
+      </section>
+
+      <!-- Clusters -->
+      <section class="space-y-4">
+        {clusters.map(c => (
+          <details class="group rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur" open={c.n <= 3}>
+            <summary class="cursor-pointer px-5 py-4 flex items-center justify-between gap-4">
+              <div class="flex items-center gap-3 min-w-0">
+                <span class="text-2xl shrink-0">{c.icon}</span>
+                <div class="min-w-0">
+                  <h3 class="font-heading text-lg font-bold">Cluster {c.n} — {c.title}</h3>
+                  <p class="text-xs text-white/50 mt-0.5">Margin: <span class="text-white/75 font-semibold">{c.margin}</span></p>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
+                <span class={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${statusColor[c.status]}`}>{statusLabel[c.status]}</span>
+                <span class="text-white/40 group-open:rotate-180 transition-transform">▾</span>
+              </div>
+            </summary>
+            <div class="px-5 pb-5">
+              <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                  <thead class="text-[10px] uppercase tracking-wider text-white/40 text-left">
+                    <tr>
+                      <th class="py-2 pr-3 font-semibold">Model</th>
+                      <th class="py-2 pr-3 font-semibold">Pricing / example</th>
+                      <th class="py-2 font-semibold">Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {c.items.map(([m, p, n]) => (
+                      <tr class="border-t border-white/5">
+                        <td class="py-2 pr-3 font-medium text-white/90">{m}</td>
+                        <td class="py-2 pr-3 text-white/75">{p}</td>
+                        <td class="py-2 text-white/55">{n}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </details>
+        ))}
+      </section>
+
+      <!-- 18-month plan -->
+      <section class="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        <p class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-3">📆 18-month plan</p>
+        <div class="grid md:grid-cols-3 gap-4 text-sm text-white/75 leading-relaxed">
+          <div>
+            <h4 class="font-heading font-bold text-white">Month 1–3</h4>
+            <ul class="mt-2 space-y-1.5 list-disc pl-5">
+              <li>Wire up multi-tenant (<code class="text-[12px]">venue_id</code> on every query, subdomain routing)</li>
+              <li>Stripe Checkout + subscription webhooks</li>
+              <li>Product landing page at separate domain</li>
+              <li>Sally's case study with 30-day real numbers</li>
+              <li>Freelance 10 hrs/week for cash</li>
+            </ul>
+          </div>
+          <div>
+            <h4 class="font-heading font-bold text-white">Month 4–9</h4>
+            <ul class="mt-2 space-y-1.5 list-disc pl-5">
+              <li>Land 3 local Kefalonia bars @ 50% discount year 1</li>
+              <li>Testimonials → pitch 3–5 more at full price</li>
+              <li>Sign Kefalonia BnB affiliate deal</li>
+              <li>Goal: €1,500–€3,000 MRR</li>
+            </ul>
+          </div>
+          <div>
+            <h4 class="font-heading font-bold text-white">Month 10–18</h4>
+            <ul class="mt-2 space-y-1.5 list-disc pl-5">
+              <li>20–30 venues = €4–€8k MRR</li>
+              <li>Add NFC card resale (high-margin upsell)</li>
+              <li>Unlock data reports once 15+ venues</li>
+              <li>Decide: scale solo, hire, or exit</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- Reality check -->
+      <section class="mt-6 rounded-2xl border border-red-400/20 bg-red-400/[0.04] p-5">
+        <p class="text-[10px] uppercase tracking-wider text-red-300 font-bold mb-2">⚠️ Reality check</p>
+        <ul class="text-sm text-white/70 space-y-1.5 leading-relaxed list-disc pl-5">
+          <li><strong>15–25 paying venues</strong> is the threshold where this replaces a job.</li>
+          <li><strong>Support is the real job.</strong> Build a Notion help center + Loom tutorials or you'll be on WhatsApp at 1am.</li>
+          <li><strong>Don't undersell.</strong> Bars pay €200+/mo for worse tools.</li>
+          <li><strong>Pick ONE vertical first.</strong> Bars → cocktail bars → cafés → restaurants.</li>
+          <li><strong>Multi-tenant before customer #2</strong> or you'll regret it for years.</li>
+        </ul>
+      </section>
+    </main>
+  </body>
+</html>

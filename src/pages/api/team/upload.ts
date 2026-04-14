@@ -11,7 +11,7 @@ export const POST: APIRoute = async ({ locals, request }) => {
   if (!locals.user) return json({ error: "Unauthorized" }, 401);
   const { data: me } = await supabaseAdmin
     .from("profiles").select("role").eq("id", locals.user.id).maybeSingle();
-  if (!me || !["employee", "admin"].includes(me.role)) return json({ error: "Forbidden" }, 403);
+  if (!me || !["employee", "admin", "super_admin"].includes(me.role)) return json({ error: "Forbidden" }, 403);
 
   let fd: FormData;
   try { fd = await request.formData(); } catch { return json({ error: "bad_form" }, 400); }

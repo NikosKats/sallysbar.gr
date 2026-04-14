@@ -215,9 +215,25 @@ function autoIsDone(key: string, c: Context): boolean {
   }
 }
 
+// Cache disabled keys (1 minute TTL — admin toggles propagate fast enough).
+let _disabledKeysCache: { keys: Set<string>; at: number } | null = null;
+export async function getDisabledTodoKeys(): Promise<Set<string>> {
+  if (_disabledKeysCache && Date.now() - _disabledKeysCache.at < 60_000) return _disabledKeysCache.keys;
+  const { data } = await supabaseAdmin.from("task_settings").select("task_key, enabled").eq("enabled", false);
+  const keys = new Set((data ?? []).map((r: any) => r.task_key as string));
+  _disabledKeysCache = { keys, at: Date.now() };
+  return keys;
+}
+export function clearDisabledTodoCache() { _disabledKeysCache = null; }
+
+export async function getEnabledTodos(): Promise<TodoDef[]> {
+  const off = await getDisabledTodoKeys();
+  return TODOS.filter(t => !off.has(t.key));
+}
+
 export async function getTodoStates(userId: string): Promise<TodoState[]> {
-  const c = await loadContext(userId);
-  return TODOS.map(t => {
+  const [c, off] = await Promise.all([loadContext(userId), getDisabledTodoKeys()]);
+  return TODOS.filter(t => !off.has(t.key)).map(t => {
     const completed = c.alreadyCompleted.get(t.key);
     if (completed && completed.status !== "revoked") {
       return { key: t.key, status: "completed", claimed_at: completed.claimed_at };
@@ -237,6 +253,8 @@ export async function attemptClaim(
 ): Promise<{ ok: true; points: number } | { ok: false; error: string }> {
   const def = TODOS.find(t => t.key === key);
   if (!def) return { ok: false, error: "unknown_todo" };
+  const off = await getDisabledTodoKeys();
+  if (off.has(key)) return { ok: false, error: "task_disabled" };
 
   // Already claimed?
   const { data: existing } = await supabaseAdmin

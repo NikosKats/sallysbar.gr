@@ -1,0 +1,557 @@
+---
+import "../../styles/global.css";
+import Header from "../../components/Header.astro";
+import AdminNav from "../../components/AdminNav.astro";
+import { supabaseAdmin } from "../../lib/supabase";
+
+if (Astro.locals.role !== "super_admin") {
+  return new Response("Forbidden", { status: 403 });
+}
+
+// Load existing venues for the tracker
+const { data: venues } = await supabaseAdmin
+  .from("saas_venues")
+  .select("*")
+  .order("created_at", { ascending: false });
+
+const venueList = (venues ?? []) as any[];
+
+const migrations = [
+  "create-menus-table.sql",
+  "create-menu-tables.sql",
+  "create-waiter-calls-table.sql",
+  "create-push-subscriptions-table.sql",
+  "add-campaign-scans.sql",
+  "add-loyalty-card-profile.sql",
+  "add-loyalty-linkage.sql",
+  "add-loyalty-extensions.sql",
+  "add-birthday-lock.sql",
+  "add-signup-abuse-guard.sql",
+  "scratch-full-setup.sql",
+  "add-scratch-settings.sql",
+  "add-scratch-quests.sql",
+  "add-scratch-signup-toggle.sql",
+  "add-wheel-settings.sql",
+  "add-wheel-spins.sql",
+  "add-marketing-campaigns.sql",
+  "add-todo-completions.sql",
+  "add-reservation-telegram-columns.sql",
+  "add-careers-settings-and-cv.sql",
+  "add-job-applications.sql",
+  "add-job-listings.sql",
+  "add-staff-referral.sql",
+  "add-team-chat.sql",
+  "add-team-chat-crud.sql",
+  "add-profile-fields.sql",
+  "add-profile-card.sql",
+  "add-card-visibility.sql",
+  "add-table-page-settings.sql",
+  "add-page-events.sql",
+  "add-order-timings.sql",
+];
+
+const statusColors: Record<string, string> = {
+  prospect:   "bg-white/10 text-white/70 border-white/15",
+  onboarding: "bg-amber-400/15 text-amber-200 border-amber-400/30",
+  live:       "bg-emerald-400/15 text-emerald-200 border-emerald-400/30",
+  paused:     "bg-sky-400/15 text-sky-200 border-sky-400/30",
+  churned:    "bg-red-400/15 text-red-200 border-red-400/30",
+};
+
+// Single-plan pricing: one tier, everything included. Simpler to sell, simpler to deploy.
+const PLAN = { setup: 890, seasonal: 1890, monthly: 299 };
+const tierPrices: Record<string, { setup: number; seasonal: number; monthly: number }> = {
+  full: PLAN,
+  // legacy values retained so older saved records don't break
+  starter: PLAN, pro: PLAN, signature: PLAN,
+};
+
+const apiKeyGroups = [
+  {
+    title: "Supabase (required)",
+    url: "https://supabase.com/dashboard/new",
+    note: "Create a new EU project (eu-central-1 Frankfurt). Copy from Settings → API.",
+    fields: [
+      ["supabase_url",            "PUBLIC_SUPABASE_URL",       "https://<ref>.supabase.co"],
+      ["supabase_anon_key",       "PUBLIC_SUPABASE_ANON_KEY",  "eyJ…  (safe for client)"],
+      ["supabase_service_key",    "SUPABASE_SERVICE_ROLE_KEY", "eyJ…  (server only!)"],
+    ],
+  },
+  {
+    title: "VAPID push keys (required)",
+    url: "",
+    note: "Generate once per venue: `npx web-push generate-vapid-keys`.",
+    fields: [
+      ["vapid_public",  "VAPID_PUBLIC_KEY",  "B… (web push public)"],
+      ["vapid_private", "VAPID_PRIVATE_KEY", "w… (web push private)"],
+      ["vapid_subject", "VAPID_SUBJECT",     "mailto:admin@<domain>"],
+    ],
+  },
+  {
+    title: "Telegram bot (required for order notifications)",
+    url: "https://t.me/BotFather",
+    note: "Talk to @BotFather → /newbot. Then create 2 channels, add the bot as admin, and copy their chat IDs (use @RawDataBot).",
+    fields: [
+      ["tg_bot_token",   "TELEGRAM_BOT_TOKEN",        "123456:ABC…"],
+      ["tg_barman_chat", "TELEGRAM_BARMAN_CHAT_ID",   "-100…"],
+      ["tg_waiter_chat", "TELEGRAM_WAITER_CHAT_ID",   "-100…"],
+    ],
+  },
+  {
+    title: "Facebook login (optional — enables FB sign-in)",
+    url: "https://developers.facebook.com/apps/",
+    note: "Create a Consumer app → add Facebook Login → OAuth redirect: https://<domain>/auth/fb/callback",
+    fields: [
+      ["fb_app_id",     "FB_APP_ID",     "1234…"],
+      ["fb_app_secret", "FB_APP_SECRET", "(secret)"],
+    ],
+  },
+  {
+    title: "Google Wallet (optional — for Google Pay card)",
+    url: "https://console.cloud.google.com/apis/credentials",
+    note: "Create a service account, download the JSON key, paste the private_key value.",
+    fields: [
+      ["gw_issuer_id",         "GOOGLE_WALLET_ISSUER_ID",         "3388000…"],
+      ["gw_service_account",   "GOOGLE_WALLET_SERVICE_ACCOUNT",    "wallet@project.iam.gserviceaccount.com"],
+      ["gw_private_key",       "GOOGLE_WALLET_PRIVATE_KEY",        "-----BEGIN PRIVATE KEY-----\\n…"],
+    ],
+  },
+  {
+    title: "Anthropic (optional — menu AI chatbot)",
+    url: "https://console.anthropic.com/settings/keys",
+    note: "Create an API key. Set usage limit to protect against abuse.",
+    fields: [
+      ["anthropic_key", "ANTHROPIC_API_KEY", "sk-ant-…"],
+    ],
+  },
+  {
+    title: "Resend email (optional — transactional email)",
+    url: "https://resend.com/api-keys",
+    note: "Verify the venue's domain for DKIM, then generate an API key.",
+    fields: [
+      ["resend_key",    "RESEND_API_KEY",    "re_…"],
+      ["resend_from",   "RESEND_FROM",       "Sally's Bar <hello@sallysbar.gr>"],
+    ],
+  },
+  {
+    title: "Cloudflare deployment (required)",
+    url: "https://dash.cloudflare.com/profile/api-tokens",
+    note: "Create an API token with Pages:Edit scope (needed for wrangler deploys on behalf of the account).",
+    fields: [
+      ["cf_account_id", "CLOUDFLARE_ACCOUNT_ID", "32-char hex"],
+      ["cf_api_token",  "CLOUDFLARE_API_TOKEN",  "(wrangler login also works)"],
+    ],
+  },
+];
+---
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Onboarding — Super Admin</title>
+    <meta name="robots" content="noindex,nofollow" />
+  </head>
+  <body class="min-h-screen bg-[#0a0a0f] text-white font-body antialiased">
+    <Header />
+    <div class="h-20"></div>
+    <AdminNav active="onboarding" />
+
+    <main class="mx-auto max-w-5xl px-5 py-10">
+      <div class="mb-8">
+        <p class="text-xs uppercase tracking-[0.28em] text-rose-300 mb-2 flex items-center gap-2">
+          <span class="inline-block h-1.5 w-1.5 rounded-full bg-rose-400 animate-pulse"></span>
+          SUPER ADMIN ONLY
+        </p>
+        <h1 class="font-heading text-4xl font-bold">🚀 Venue Onboarding</h1>
+        <p class="mt-2 text-sm text-white/60 max-w-2xl">Fill the form → get a personalised install script + DNS/Supabase instructions. Save the venue to track it.</p>
+      </div>
+
+      <div class="grid lg:grid-cols-[1.2fr_1fr] gap-6">
+        <!-- Form -->
+        <section class="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+          <h2 class="font-heading text-lg font-bold mb-4">📝 Venue details</h2>
+          <form id="venueForm" class="space-y-3 text-sm">
+            <div class="grid sm:grid-cols-2 gap-3">
+              <label class="block">
+                <span class="text-xs text-white/60 mb-1 block">Slug <span class="text-red-400">*</span></span>
+                <input name="slug" required pattern="[a-z0-9\-]{2,40}" placeholder="ionas-bar" class="w-full rounded-xl bg-white/5 border border-white/15 px-3 py-2 focus:border-amber-400/60 focus:outline-none text-sm" />
+                <span class="text-[10px] text-white/40">lowercase, digits, dashes · 2-40 chars</span>
+              </label>
+              <label class="block">
+                <span class="text-xs text-white/60 mb-1 block">Display name <span class="text-red-400">*</span></span>
+                <input name="display_name" required placeholder="Ionas Bar" class="w-full rounded-xl bg-white/5 border border-white/15 px-3 py-2 focus:border-amber-400/60 focus:outline-none text-sm" />
+              </label>
+            </div>
+            <label class="block">
+              <span class="text-xs text-white/60 mb-1 block">Domain (their live URL)</span>
+              <input name="domain" placeholder="ionasbar.gr" class="w-full rounded-xl bg-white/5 border border-white/15 px-3 py-2 focus:border-amber-400/60 focus:outline-none text-sm" />
+            </label>
+            <div class="grid sm:grid-cols-3 gap-3">
+              <label class="block">
+                <span class="text-xs text-white/60 mb-1 block">Contact name</span>
+                <input name="contact_name" class="w-full rounded-xl bg-white/5 border border-white/15 px-3 py-2 focus:border-amber-400/60 focus:outline-none text-sm" />
+              </label>
+              <label class="block">
+                <span class="text-xs text-white/60 mb-1 block">Email</span>
+                <input name="contact_email" type="email" class="w-full rounded-xl bg-white/5 border border-white/15 px-3 py-2 focus:border-amber-400/60 focus:outline-none text-sm" />
+              </label>
+              <label class="block">
+                <span class="text-xs text-white/60 mb-1 block">Phone</span>
+                <input name="contact_phone" class="w-full rounded-xl bg-white/5 border border-white/15 px-3 py-2 focus:border-amber-400/60 focus:outline-none text-sm" />
+              </label>
+            </div>
+            <div class="grid sm:grid-cols-3 gap-3">
+              <label class="block">
+                <span class="text-xs text-white/60 mb-1 block">Plan</span>
+                <select name="tier" class="w-full rounded-xl bg-white/5 border border-white/15 px-3 py-2 focus:border-amber-400/60 focus:outline-none text-sm">
+                  <option value="full" selected>Full Platform · €1,890/season</option>
+                </select>
+              </label>
+              <label class="block">
+                <span class="text-xs text-white/60 mb-1 block">Status</span>
+                <select name="status" class="w-full rounded-xl bg-white/5 border border-white/15 px-3 py-2 focus:border-amber-400/60 focus:outline-none text-sm">
+                  <option value="prospect">Prospect</option>
+                  <option value="onboarding" selected>Onboarding</option>
+                  <option value="live">Live</option>
+                  <option value="paused">Paused</option>
+                  <option value="churned">Churned</option>
+                </select>
+              </label>
+              <label class="block">
+                <span class="text-xs text-white/60 mb-1 block">Billing</span>
+                <select name="billing_model" class="w-full rounded-xl bg-white/5 border border-white/15 px-3 py-2 focus:border-amber-400/60 focus:outline-none text-sm">
+                  <option value="seasonal_annual" selected>Seasonal annual</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="annual">Annual (year-round)</option>
+                </select>
+              </label>
+            </div>
+            <div class="grid sm:grid-cols-2 gap-3">
+              <label class="block">
+                <span class="text-xs text-white/60 mb-1 block">Season start</span>
+                <input name="season_start" type="date" class="w-full rounded-xl bg-white/5 border border-white/15 px-3 py-2 focus:border-amber-400/60 focus:outline-none text-sm [color-scheme:dark]" />
+              </label>
+              <label class="block">
+                <span class="text-xs text-white/60 mb-1 block">Season end</span>
+                <input name="season_end" type="date" class="w-full rounded-xl bg-white/5 border border-white/15 px-3 py-2 focus:border-amber-400/60 focus:outline-none text-sm [color-scheme:dark]" />
+              </label>
+            </div>
+            <div class="grid sm:grid-cols-2 gap-3">
+              <label class="block">
+                <span class="text-xs text-white/60 mb-1 block">Supabase project ref</span>
+                <input name="supabase_ref" placeholder="abcd1234" class="w-full rounded-xl bg-white/5 border border-white/15 px-3 py-2 focus:border-amber-400/60 focus:outline-none text-sm font-mono" />
+              </label>
+              <label class="block">
+                <span class="text-xs text-white/60 mb-1 block">Cloudflare Pages project</span>
+                <input name="pages_project" placeholder="ionasbar" class="w-full rounded-xl bg-white/5 border border-white/15 px-3 py-2 focus:border-amber-400/60 focus:outline-none text-sm font-mono" />
+              </label>
+            </div>
+            <label class="block">
+              <span class="text-xs text-white/60 mb-1 block">Notes</span>
+              <textarea name="notes" rows="2" class="w-full rounded-xl bg-white/5 border border-white/15 px-3 py-2 focus:border-amber-400/60 focus:outline-none text-sm"></textarea>
+            </label>
+
+            <!-- API keys & integrations -->
+            <details class="rounded-xl border border-amber-400/25 bg-amber-400/[0.04] overflow-hidden">
+              <summary class="cursor-pointer px-4 py-3 flex items-center justify-between gap-3 hover:bg-amber-400/[0.07] transition">
+                <div>
+                  <p class="text-xs font-bold uppercase tracking-wider text-amber-200">🔑 API keys & integrations</p>
+                  <p class="text-[11px] text-white/55 mt-0.5">Paste values here → get a ready-to-deploy .dev.vars in the script.</p>
+                </div>
+                <span class="text-white/40 text-sm">▾</span>
+              </summary>
+              <div class="px-4 pb-4 pt-1 space-y-4">
+                {apiKeyGroups.map(g => (
+                  <div class="rounded-lg bg-black/20 border border-white/5 p-3">
+                    <div class="flex items-start justify-between gap-3 mb-2">
+                      <div class="min-w-0">
+                        <p class="text-[11px] font-bold text-amber-200">{g.title}</p>
+                        <p class="text-[10px] text-white/50 mt-0.5 leading-relaxed">{g.note}</p>
+                      </div>
+                      {g.url && <a href={g.url} target="_blank" rel="noopener" class="shrink-0 text-[10px] text-sky-300 hover:text-sky-200 underline underline-offset-2">open ↗</a>}
+                    </div>
+                    <div class="space-y-1.5">
+                      {g.fields.map(([name, envVar, placeholder]) => (
+                        <label class="block">
+                          <span class="text-[10px] font-mono text-white/45">{envVar}</span>
+                          <input name={`env_${name}`} placeholder={placeholder} class="w-full rounded-md bg-white/5 border border-white/10 px-2 py-1.5 text-xs font-mono placeholder:text-white/20 focus:outline-none focus:border-amber-400/50" />
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </details>
+
+            <div class="flex gap-2 pt-2">
+              <button type="button" id="generateBtn" class="flex-1 rounded-xl bg-gradient-to-br from-amber-300 to-amber-500 text-black font-bold px-4 py-2.5 text-sm shadow-lg shadow-amber-500/20 hover:scale-[1.01] active:scale-[0.99] transition">⚡ Generate install script</button>
+              <button type="button" id="saveBtn" class="rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 px-4 py-2.5 text-sm font-semibold">💾 Save venue</button>
+            </div>
+            <p id="formMsg" class="hidden text-xs"></p>
+          </form>
+        </section>
+
+        <!-- Script preview -->
+        <section class="rounded-2xl border border-white/10 bg-black/40 overflow-hidden flex flex-col">
+          <div class="px-5 py-3 border-b border-white/10 flex items-center justify-between">
+            <p class="text-[10px] uppercase tracking-wider text-amber-300 font-bold">🖥 Install script</p>
+            <div class="flex gap-2">
+              <button id="copyScript" class="rounded-lg bg-white/10 hover:bg-white/20 px-2 py-1 text-[10px] font-semibold">📋 Copy</button>
+              <button id="dlScript" class="rounded-lg bg-white/10 hover:bg-white/20 px-2 py-1 text-[10px] font-semibold">⬇ .sh</button>
+            </div>
+          </div>
+          <pre id="scriptBlock" class="flex-1 overflow-auto p-4 text-[11px] leading-relaxed text-emerald-200/90 font-mono whitespace-pre-wrap">Fill the form and click "Generate install script" — the full bash script + checklist will appear here, ready to copy-paste into your terminal.</pre>
+        </section>
+      </div>
+
+      <!-- Venue tracker -->
+      <section class="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] overflow-hidden">
+        <div class="px-5 py-4 border-b border-white/10 flex items-center justify-between">
+          <p class="text-[10px] uppercase tracking-wider text-amber-300 font-bold">🏢 Your venues ({venueList.length})</p>
+          <p class="text-[11px] text-white/40">Live revenue: €{venueList.filter(v => v.status === "live").reduce((s, v) => s + (v.recurring_eur ?? 0), 0).toLocaleString("en-GB")}</p>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="text-[10px] uppercase tracking-wider text-white/40 text-left">
+              <tr>
+                <th class="py-2 px-4">Slug</th>
+                <th class="py-2 px-4">Name</th>
+                <th class="py-2 px-4">Tier</th>
+                <th class="py-2 px-4">Status</th>
+                <th class="py-2 px-4">Contact</th>
+                <th class="py-2 px-4">Season</th>
+                <th class="py-2 px-4 text-right">MRR/Yr</th>
+                <th class="py-2 px-4"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {venueList.length === 0 && (
+                <tr><td colspan="8" class="text-center text-white/40 text-xs py-8 italic">No venues yet. Fill the form above and save your first one.</td></tr>
+              )}
+              {venueList.map(v => (
+                <tr class="border-t border-white/5 hover:bg-white/[0.02]">
+                  <td class="py-2 px-4 font-mono text-xs text-white/80">{v.slug}</td>
+                  <td class="py-2 px-4">
+                    <div class="font-semibold">{v.display_name}</div>
+                    {v.domain && <a href={`https://${v.domain}`} target="_blank" class="text-[11px] text-sky-300/70 hover:text-sky-200">{v.domain} ↗</a>}
+                  </td>
+                  <td class="py-2 px-4 capitalize text-white/70">{v.tier}</td>
+                  <td class="py-2 px-4">
+                    <span class={`inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${statusColors[v.status] ?? statusColors.prospect}`}>{v.status}</span>
+                  </td>
+                  <td class="py-2 px-4 text-xs text-white/65">
+                    {v.contact_name && <div>{v.contact_name}</div>}
+                    {v.contact_email && <a href={`mailto:${v.contact_email}`} class="text-white/45 hover:text-amber-200">{v.contact_email}</a>}
+                  </td>
+                  <td class="py-2 px-4 text-xs text-white/55">
+                    {v.season_start && v.season_end ? `${v.season_start.slice(5)} → ${v.season_end.slice(5)}` : "—"}
+                  </td>
+                  <td class="py-2 px-4 text-right font-mono text-amber-200">{v.recurring_eur ? `€${v.recurring_eur.toLocaleString("en-GB")}` : "—"}</td>
+                  <td class="py-2 px-4 text-right">
+                    <button data-slug={v.slug} class="delete-venue text-white/40 hover:text-red-300 text-xs">🗑</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script is:inline define:vars={{ tierPrices, migrations }}>
+      const form = document.getElementById("venueForm");
+      const scriptBlock = document.getElementById("scriptBlock");
+      const msg = document.getElementById("formMsg");
+
+      function readForm() {
+        const fd = new FormData(form);
+        const data = {};
+        const env = {};
+        for (const [k, v] of fd.entries()) {
+          const s = String(v);
+          if (k.startsWith("env_")) env[k.slice(4)] = s;
+          else data[k] = s;
+        }
+        data.env = env;
+        return data;
+      }
+      const ENV_MAP = {
+        supabase_url:           "PUBLIC_SUPABASE_URL",
+        supabase_anon_key:      "PUBLIC_SUPABASE_ANON_KEY",
+        supabase_service_key:   "SUPABASE_SERVICE_ROLE_KEY",
+        vapid_public:           "VAPID_PUBLIC_KEY",
+        vapid_private:          "VAPID_PRIVATE_KEY",
+        vapid_subject:          "VAPID_SUBJECT",
+        tg_bot_token:           "TELEGRAM_BOT_TOKEN",
+        tg_barman_chat:         "TELEGRAM_BARMAN_CHAT_ID",
+        tg_waiter_chat:         "TELEGRAM_WAITER_CHAT_ID",
+        fb_app_id:              "FB_APP_ID",
+        fb_app_secret:          "FB_APP_SECRET",
+        gw_issuer_id:           "GOOGLE_WALLET_ISSUER_ID",
+        gw_service_account:     "GOOGLE_WALLET_SERVICE_ACCOUNT",
+        gw_private_key:         "GOOGLE_WALLET_PRIVATE_KEY",
+        anthropic_key:          "ANTHROPIC_API_KEY",
+        resend_key:             "RESEND_API_KEY",
+        resend_from:            "RESEND_FROM",
+        cf_account_id:          "CLOUDFLARE_ACCOUNT_ID",
+        cf_api_token:           "CLOUDFLARE_API_TOKEN",
+      };
+      const SERVER_ONLY = new Set([
+        "SUPABASE_SERVICE_ROLE_KEY","VAPID_PRIVATE_KEY","TELEGRAM_BOT_TOKEN",
+        "TELEGRAM_BARMAN_CHAT_ID","TELEGRAM_WAITER_CHAT_ID",
+        "FB_APP_SECRET","GOOGLE_WALLET_PRIVATE_KEY","GOOGLE_WALLET_SERVICE_ACCOUNT",
+        "GOOGLE_WALLET_ISSUER_ID","ANTHROPIC_API_KEY","RESEND_API_KEY","RESEND_FROM",
+        "CLOUDFLARE_ACCOUNT_ID","CLOUDFLARE_API_TOKEN",
+      ]);
+
+      function buildScript(d) {
+        const slug = d.slug || "newvenue";
+        const name = d.display_name || slug;
+        const domain = d.domain || `${slug}.yourplatform.app`;
+        const pages = d.pages_project || slug;
+        const tier = tierPrices[d.tier] || tierPrices.starter;
+
+        return `#!/usr/bin/env bash
+# ─────────────────────────────────────────────────────────────────────────
+# Install ${name} (${slug}) — ${d.tier.toUpperCase()} tier
+# Setup: €${tier.setup} · Seasonal: €${tier.seasonal}/yr · Monthly: €${tier.monthly}
+# Generated: ${new Date().toISOString()}
+# ─────────────────────────────────────────────────────────────────────────
+set -euo pipefail
+
+SLUG="${slug}"
+NAME="${name}"
+DOMAIN="${domain}"
+PAGES_PROJECT="${pages}"
+
+# ── 1. Clone repo into a new workspace ───────────────────────────────────
+mkdir -p ~/venues && cd ~/venues
+git clone https://github.com/NikosKats/sallysbar.gr.git "$SLUG"
+cd "$SLUG"
+
+# ── 2. Create Cloudflare Pages project ───────────────────────────────────
+npx wrangler pages project create "$PAGES_PROJECT" --production-branch=main
+
+# ── 3. Create Supabase project manually ──────────────────────────────────
+#     → https://supabase.com/dashboard/new
+#     Name:    ${name}
+#     Region:  eu-central-1 (Frankfurt)
+#     Copy: PROJECT_REF, URL, ANON_KEY, SERVICE_ROLE_KEY
+#     Then paste them below and rerun.
+
+${
+  d.env.supabase_url
+    ? `# Values pre-filled from the onboarding form.`
+    : `read -p "Supabase URL: " SUPA_URL
+read -p "Supabase ANON_KEY: " SUPA_ANON
+read -p "Supabase SERVICE_ROLE_KEY: " SUPA_SVC`
+}
+
+# ── 4. Run all SQL migrations in order ───────────────────────────────────
+# Open the Supabase SQL editor and run each file from scripts/ in this order:
+${migrations.map(m => `#   - scripts/${m}`).join("\n")}
+
+# ── 5. Generate .dev.vars (local dev + reference) ────────────────────────
+cat > .dev.vars <<'EOF'
+${Object.entries(ENV_MAP).map(([k, envVar]) => `${envVar}=${d.env[k] || ""}`).join("\n")}
+EOF
+
+echo "✓ .dev.vars written."
+
+# ── 6. Customize branding ────────────────────────────────────────────────
+# Edit src/data/site.ts:
+#   - name: "$NAME"
+#   - domain: "$DOMAIN"
+#   - address, hours, socials, mapsShareUrl, reviews
+# Replace icons in public/:
+#   - icon-1024.png, icon-customer-192.png, icon-customer-512.png
+#   - apple-touch-icon.png
+
+# ── 7. Build + deploy ────────────────────────────────────────────────────
+npm install
+npm run build
+
+# Upload secrets to Cloudflare Pages (one per line; values piped via heredoc).
+${Object.entries(ENV_MAP)
+  .filter(([k]) => d.env[k])
+  .map(([k, envVar]) => `npx wrangler pages secret put ${envVar} --project-name="$PAGES_PROJECT" <<< '${d.env[k].replace(/'/g, "'\\''")}'`)
+  .join("\n") || '# (no secrets filled in the form — paste them into /admin/onboarding first)'}
+
+npx wrangler pages deploy ./dist --project-name="$PAGES_PROJECT" --branch=main
+
+# ── 8. Point DNS ─────────────────────────────────────────────────────────
+# In Cloudflare DNS for $DOMAIN:
+#   CNAME  @  $PAGES_PROJECT.pages.dev  (proxied)
+#   CNAME  www  $PAGES_PROJECT.pages.dev  (proxied)
+
+# ── 9. Seed first admin + menu ───────────────────────────────────────────
+# SQL (replace email):
+#   insert into auth.users (email) values ('owner@${domain}');
+#   update profiles set role='admin' where id = (select id from auth.users where email='owner@${domain}');
+# Or invite via /admin/users after first deploy.
+
+# ── 10. Handover ─────────────────────────────────────────────────────────
+echo "✓ $NAME is live at https://$DOMAIN"
+echo "  Admin panel: https://$DOMAIN/admin"
+echo "  Test QR:     https://$DOMAIN/table/1"
+echo "  Staff login: https://$DOMAIN/login"
+echo ""
+echo "Next steps (customer-assisted, ~1h):"
+echo "  • Import menu via /admin/menu"
+echo "  • Configure loyalty tiers at /admin/loyalty"
+echo "  • Generate + print table QRs at /admin/qrcodes"
+echo "  • Set up Telegram channels for barman + waiter"
+echo "  • Enable push notifications on staff phone"
+`;
+      }
+
+      document.getElementById("generateBtn").addEventListener("click", () => {
+        const d = readForm();
+        if (!d.slug) { msg.textContent = "⚠️ slug required"; msg.className = "text-xs text-red-300"; return; }
+        scriptBlock.textContent = buildScript(d);
+        msg.textContent = "✓ Script generated below";
+        msg.className = "text-xs text-emerald-300";
+      });
+
+      document.getElementById("copyScript").addEventListener("click", async () => {
+        try { await navigator.clipboard.writeText(scriptBlock.textContent); } catch {}
+      });
+
+      document.getElementById("dlScript").addEventListener("click", () => {
+        const d = readForm();
+        const blob = new Blob([scriptBlock.textContent], { type: "text/x-shellscript" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `install-${d.slug || "venue"}.sh`;
+        a.click();
+      });
+
+      document.getElementById("saveBtn").addEventListener("click", async () => {
+        const d = readForm();
+        const tier = tierPrices[d.tier] || tierPrices.starter;
+        d.setup_fee_eur = tier.setup;
+        d.recurring_eur = d.billing_model === "monthly" ? tier.monthly * 6 : tier.seasonal;
+        try {
+          const r = await fetch("/api/venues/save", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(d) });
+          const j = await r.json();
+          if (!r.ok) throw new Error(j.error || "save failed");
+          msg.textContent = "✓ Venue saved";
+          msg.className = "text-xs text-emerald-300";
+          setTimeout(() => location.reload(), 800);
+        } catch (e) {
+          msg.textContent = "⚠️ " + (e.message || "save failed");
+          msg.className = "text-xs text-red-300";
+        }
+      });
+
+      document.querySelectorAll(".delete-venue").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const slug = btn.getAttribute("data-slug");
+          if (!confirm(`Delete venue record ${slug}? (only removes the tracking row, not the actual deployment)`)) return;
+          await fetch("/api/venues/save", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug }) });
+          location.reload();
+        });
+      });
+    </script>
+  </body>
+</html>

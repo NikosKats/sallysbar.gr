@@ -39,7 +39,7 @@ export const PATCH: APIRoute = async ({ request, cookies }) => {
 
     await supabaseAdmin
       .from("orders")
-      .update({ status: "paid" })
+      .update({ status: "paid", paid_at: new Date().toISOString() })
       .eq("session_id", session_id)
       .eq("status", "delivered");
 
@@ -138,7 +138,7 @@ export const PATCH: APIRoute = async ({ request, cookies }) => {
       }
 
       if (ordersToPay.length > 0) {
-        await supabaseAdmin.from("orders").update({ status: "paid" }).in("id", ordersToPay);
+        await supabaseAdmin.from("orders").update({ status: "paid", paid_at: new Date().toISOString() }).in("id", ordersToPay);
         await awardPointsForOrderIds(ordersToPay);
         const { data: paidRows } = await supabaseAdmin
           .from("orders")
@@ -209,7 +209,7 @@ export const PATCH: APIRoute = async ({ request, cookies }) => {
     if (order.status !== "delivered") {
       return json({ error: "Only delivered orders can be marked as paid" }, 400);
     }
-    await supabaseAdmin.from("orders").update({ status: "paid" }).eq("id", id);
+    await supabaseAdmin.from("orders").update({ status: "paid", paid_at: new Date().toISOString() }).eq("id", id);
     await pushOrderStatus({ id: order.id, table_number: order.table_number, status: "paid" });
     await awardPointsForOrderIds([id]);
 

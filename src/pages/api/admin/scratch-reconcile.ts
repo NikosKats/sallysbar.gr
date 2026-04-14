@@ -9,7 +9,7 @@ function json(obj: unknown, status = 200) {
 // (because the earlier reveal endpoint silently failed when it tried to write
 // a non-existent `meta` column) and credit the points now.
 export const POST: APIRoute = async ({ locals }) => {
-  if (locals.role !== "admin") return json({ error: "forbidden" }, 403);
+  if (!["admin","super_admin"].includes(locals.role ?? "")) return json({ error: "forbidden" }, 403);
 
   const { data: cards } = await supabaseAdmin
     .from("scratch_cards")

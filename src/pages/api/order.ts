@@ -7,7 +7,7 @@ export type OrderItem = { name: string; qty: number; price_cents: number };
 
 export const POST: APIRoute = async ({ request, locals }) => {
   // Only authenticated staff can submit orders
-  if (!locals.role || !["employee", "admin"].includes(locals.role)) {
+  if (!locals.role || !["employee", "admin", "super_admin"].includes(locals.role)) {
     return json({ error: "Unauthorized" }, 401);
   }
 

@@ -1,0 +1,225 @@
+---
+import "../../styles/global.css";
+import Header from "../../components/Header.astro";
+import AdminNav from "../../components/AdminNav.astro";
+import { supabaseAdmin } from "../../lib/supabase";
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+
+const url = new URL(Astro.request.url);
+const rangeDays = Math.max(1, Math.min(365, Number(url.searchParams.get("days") ?? 30)));
+const since = new Date(Date.now() - rangeDays * 86400_000).toISOString();
+
+// ── Waiter-call response (customer → waiter ack) ─────────────────────────────
+const { data: waiterCalls } = await supabaseAdmin
+  .from("waiter_calls")
+  .select("called_at, acknowledged_at")
+  .gte("called_at", since);
+
+// ── Order lifecycle ─────────────────────────────────────────────────────────
+const { data: orders } = await supabaseAdmin
+  .from("orders")
+  .select("id, status, created_at, prepared_at, ready_at, delivered_at, paid_at, total_cents")
+  .gte("created_at", since);
+
+const rows = (orders ?? []) as any[];
+
+function durSec(a: string | null, b: string | null) {
+  if (!a || !b) return null;
+  return (new Date(b).getTime() - new Date(a).getTime()) / 1000;
+}
+
+// Durations for each leg
+const legs = {
+  call_to_ack:     (waiterCalls ?? []).map((w: any) => durSec(w.called_at, w.acknowledged_at)).filter((x: number | null): x is number => x !== null && x >= 0),
+  placed_to_prep:  rows.map(r => durSec(r.created_at, r.prepared_at)).filter((x): x is number => x !== null && x >= 0),
+  prep_to_ready:   rows.map(r => durSec(r.prepared_at, r.ready_at)).filter((x): x is number => x !== null && x >= 0),
+  ready_to_delv:   rows.map(r => durSec(r.ready_at, r.delivered_at)).filter((x): x is number => x !== null && x >= 0),
+  delv_to_paid:    rows.map(r => durSec(r.delivered_at, r.paid_at)).filter((x): x is number => x !== null && x >= 0),
+  placed_to_delv:  rows.map(r => durSec(r.created_at, r.delivered_at)).filter((x): x is number => x !== null && x >= 0),
+  placed_to_paid:  rows.map(r => durSec(r.created_at, r.paid_at)).filter((x): x is number => x !== null && x >= 0),
+};
+
+function stats(arr: number[]) {
+  if (!arr.length) return { n: 0, avg: 0, p50: 0, p90: 0, max: 0 };
+  const sorted = [...arr].sort((a, b) => a - b);
+  const sum = sorted.reduce((s, x) => s + x, 0);
+  const p = (q: number) => sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * q))];
+  return { n: arr.length, avg: sum / arr.length, p50: p(0.5), p90: p(0.9), max: sorted[sorted.length - 1] };
+}
+
+const S = {
+  callAck:   stats(legs.call_to_ack),
+  placed:    stats(legs.placed_to_prep),
+  prep:      stats(legs.prep_to_ready),
+  deliver:   stats(legs.ready_to_delv),
+  pay:       stats(legs.delv_to_paid),
+  e2e:       stats(legs.placed_to_delv),
+  e2ePaid:   stats(legs.placed_to_paid),
+};
+
+// Status breakdown
+const byStatus = rows.reduce<Record<string, number>>((acc, r) => {
+  acc[r.status] = (acc[r.status] ?? 0) + 1;
+  return acc;
+}, {});
+
+const now = Date.now();
+const stuck = rows.filter(r => {
+  if (!["pending","preparing","ready"].includes(r.status)) return false;
+  const age = now - new Date(r.created_at).getTime();
+  return age > 15 * 60_000;
+}).length;
+
+function fmtDur(sec: number) {
+  if (!sec || sec < 0) return "—";
+  if (sec < 60) return `${Math.round(sec)}s`;
+  if (sec < 3600) return `${Math.floor(sec / 60)}m ${Math.round(sec % 60)}s`;
+  return `${Math.floor(sec / 3600)}h ${Math.floor((sec % 3600) / 60)}m`;
+}
+
+const T = {
+  title: isEl ? "Operations Analytics" : "Operations Analytics",
+  kicker: isEl ? "Ροή παραγγελίας & χρόνοι απόκρισης" : "Order flow & response times",
+  sub: isEl
+    ? "Από την κλήση του πελάτη μέχρι την πληρωμή — κάθε βήμα χρονομετρημένο. Εντόπισε bottlenecks."
+    : "From customer call to paid — every step timed. Find your bottlenecks.",
+  legs: isEl ? [
+    { key: "callAck",   label: "📞 Πελάτης → Σερβιτόρος (ack)",     hint: "Πότε ο σερβιτόρος επιβεβαιώνει το κάλεσμα.", color: "sky" },
+    { key: "placed",    label: "🍸 Παραγγελία → Μπάρμαν",            hint: "Πότε ο μπάρμαν ανοίγει την παραγγελία.",   color: "emerald" },
+    { key: "prep",      label: "👨‍🍳 Μπάρμαν prep → Ready",          hint: "Χρόνος ετοιμασίας ποτών/φαγητού.",         color: "amber" },
+    { key: "deliver",   label: "🚀 Ready → Παραδόθηκε",              hint: "Χρόνος από έτοιμο μέχρι στο τραπέζι.",      color: "fuchsia" },
+    { key: "pay",       label: "💶 Παραδόθηκε → Πληρωμή",            hint: "Πόσο κάθεται ο πελάτης πριν πληρώσει.",     color: "rose" },
+  ] : [
+    { key: "callAck",   label: "📞 Customer call → Waiter ack",      hint: "Time to acknowledge a table call.",        color: "sky" },
+    { key: "placed",    label: "🍸 Placed → Barman accepted",        hint: "Time before barman opens the ticket.",     color: "emerald" },
+    { key: "prep",      label: "👨‍🍳 Barman prep → Ready",            hint: "Time spent preparing drinks/food.",        color: "amber" },
+    { key: "deliver",   label: "🚀 Ready → Delivered",               hint: "Time from ready to table.",                color: "fuchsia" },
+    { key: "pay",       label: "💶 Delivered → Paid",                hint: "How long the guest sits before paying.",   color: "rose" },
+  ],
+  e2e:       isEl ? "Placed → Παραδόθηκε (end-to-end)" : "Placed → Delivered (end-to-end)",
+  e2ePaid:   isEl ? "Placed → Πληρωμή"                 : "Placed → Paid",
+  range:     isEl ? "Εύρος" : "Range",
+  n:         isEl ? "Δείγμα" : "Sample",
+  avg:       "avg",
+  p50:       "p50",
+  p90:       "p90",
+  max:       "max",
+  stuckHead: isEl ? "⚠️ Stuck παραγγελίες" : "⚠️ Stuck orders",
+  stuckSub:  isEl ? "Ενεργές πάνω από 15 λεπτά" : "Open > 15 minutes",
+  status:    isEl ? "Ανάλυση κατάστασης" : "Status breakdown",
+};
+
+const tintClasses: Record<string, { border: string; bg: string; dot: string }> = {
+  sky:     { border: "border-sky-400/25",     bg: "bg-sky-400/[0.06]",     dot: "text-sky-300" },
+  emerald: { border: "border-emerald-400/25", bg: "bg-emerald-400/[0.06]", dot: "text-emerald-300" },
+  amber:   { border: "border-amber-400/25",   bg: "bg-amber-400/[0.06]",   dot: "text-amber-300" },
+  fuchsia: { border: "border-fuchsia-400/25", bg: "bg-fuchsia-400/[0.06]", dot: "text-fuchsia-300" },
+  rose:    { border: "border-rose-400/25",    bg: "bg-rose-400/[0.06]",    dot: "text-rose-300" },
+};
+---
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{T.title} — Sally's Bar Admin</title>
+    <meta name="robots" content="noindex,nofollow" />
+  </head>
+  <body class="min-h-screen bg-[#0a0a0f] text-white font-body antialiased">
+    <Header />
+    <div class="h-20"></div>
+    <AdminNav active="operations-analytics" />
+
+    <main class="mx-auto max-w-6xl px-5 py-10">
+      <div class="mb-8 flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <p class="text-xs uppercase tracking-[0.28em] text-amber-200/80 mb-2">{T.kicker}</p>
+          <h1 class="font-heading text-4xl font-bold">{T.title}</h1>
+          <p class="mt-2 text-sm text-white/60 max-w-2xl">{T.sub}</p>
+        </div>
+        <div class="flex items-center gap-2">
+          {[["1","24h"],["7","7d"],["30","30d"],["90","90d"]].map(([d, lbl]) => (
+            <a href={`?days=${d}`} class={`rounded-lg px-3 py-1.5 text-xs font-semibold border transition ${String(rangeDays) === d ? "bg-amber-400/20 border-amber-400/50 text-amber-200" : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10"}`}>{lbl}</a>
+          ))}
+        </div>
+      </div>
+
+      <!-- End-to-end hero -->
+      <section class="grid md:grid-cols-2 gap-3 mb-8">
+        <div class="rounded-2xl border border-amber-400/25 bg-gradient-to-br from-amber-500/10 via-fuchsia-500/5 to-sky-500/5 p-5">
+          <p class="text-[10px] uppercase tracking-wider text-amber-300 font-bold">🎯 {T.e2e}</p>
+          <p class="font-heading text-4xl font-bold mt-2">{fmtDur(S.e2e.avg)}</p>
+          <p class="text-[11px] text-white/55 mt-1">p50 {fmtDur(S.e2e.p50)} · p90 {fmtDur(S.e2e.p90)} · max {fmtDur(S.e2e.max)} · n={S.e2e.n}</p>
+        </div>
+        <div class="rounded-2xl border border-rose-400/25 bg-rose-400/[0.06] p-5">
+          <p class="text-[10px] uppercase tracking-wider text-rose-300 font-bold">💶 {T.e2ePaid}</p>
+          <p class="font-heading text-4xl font-bold mt-2">{fmtDur(S.e2ePaid.avg)}</p>
+          <p class="text-[11px] text-white/55 mt-1">p50 {fmtDur(S.e2ePaid.p50)} · p90 {fmtDur(S.e2ePaid.p90)} · max {fmtDur(S.e2ePaid.max)} · n={S.e2ePaid.n}</p>
+        </div>
+      </section>
+
+      <!-- Per-leg cards -->
+      <section class="grid md:grid-cols-2 lg:grid-cols-3 gap-3 mb-8">
+        {T.legs.map(l => {
+          const st = (S as any)[l.key];
+          const tc = tintClasses[l.color];
+          return (
+            <div class={`rounded-2xl border ${tc.border} ${tc.bg} p-5`}>
+              <p class={`text-[10px] uppercase tracking-wider font-bold ${tc.dot}`}>{l.label}</p>
+              <p class="font-heading text-3xl font-bold mt-2">{fmtDur(st.avg)}</p>
+              <p class="text-[11px] text-white/50 mt-1">{l.hint}</p>
+              <div class="mt-3 grid grid-cols-4 gap-1 text-[10px] text-white/60">
+                <div><span class="text-white/40">{T.p50}</span> {fmtDur(st.p50)}</div>
+                <div><span class="text-white/40">{T.p90}</span> {fmtDur(st.p90)}</div>
+                <div><span class="text-white/40">{T.max}</span> {fmtDur(st.max)}</div>
+                <div><span class="text-white/40">{T.n}</span> {st.n}</div>
+              </div>
+            </div>
+          );
+        })}
+      </section>
+
+      <!-- Status breakdown + stuck orders -->
+      <section class="grid md:grid-cols-2 gap-3 mb-8">
+        <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+          <p class="text-[10px] uppercase tracking-wider text-white/50 font-bold mb-3">{T.status}</p>
+          <div class="space-y-1.5 text-sm">
+            {Object.entries(byStatus).sort((a, b) => b[1] - a[1]).map(([s, n]) => (
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-white/75 capitalize">{s}</span>
+                <span class="font-mono font-semibold">{n}</span>
+              </div>
+            ))}
+            {Object.keys(byStatus).length === 0 && <p class="text-white/40 text-xs italic">{isEl ? "Δεν υπάρχουν παραγγελίες στο εύρος." : "No orders in this range."}</p>}
+          </div>
+        </div>
+        <div class={`rounded-2xl border ${stuck > 0 ? "border-red-400/40 bg-red-400/10" : "border-emerald-400/25 bg-emerald-400/[0.06]"} p-5`}>
+          <p class={`text-[10px] uppercase tracking-wider font-bold ${stuck > 0 ? "text-red-300" : "text-emerald-300"}`}>{T.stuckHead}</p>
+          <p class="font-heading text-4xl font-bold mt-2">{stuck}</p>
+          <p class="text-[11px] text-white/55 mt-1">{T.stuckSub}</p>
+        </div>
+      </section>
+
+      <!-- Pitch snippet -->
+      <section class="rounded-2xl border border-amber-400/30 bg-gradient-to-br from-amber-500/10 via-fuchsia-500/5 to-sky-500/5 p-5">
+        <p class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-2">📈 {isEl ? "Pitch snippet" : "Pitch snippet"}</p>
+        <pre id="pitchBlock" class="whitespace-pre-wrap text-sm text-white/85 font-mono bg-black/30 rounded-xl p-4 leading-relaxed">{`📍 Sally's Bar — last ${rangeDays}d ops metrics
+⚡ Avg waiter response: ${fmtDur(S.callAck.avg)} (n=${S.callAck.n})
+🍸 Avg prep time: ${fmtDur(S.prep.avg)} (p90 ${fmtDur(S.prep.p90)})
+🚀 Avg delivery time: ${fmtDur(S.deliver.avg)}
+🎯 End-to-end order: ${fmtDur(S.e2e.avg)}
+✅ p90 ${fmtDur(S.e2e.p90)} — consistent even on busy nights.`}</pre>
+        <button id="copyPitch" class="mt-3 rounded-xl bg-white/10 hover:bg-white/20 px-3 py-1.5 text-xs font-semibold">📋 {isEl ? "Αντιγραφή" : "Copy"}</button>
+      </section>
+    </main>
+
+    <script is:inline>
+      const btn = document.getElementById("copyPitch");
+      btn?.addEventListener("click", async () => {
+        const text = document.getElementById("pitchBlock")?.textContent ?? "";
+        try { await navigator.clipboard.writeText(text); btn.textContent = "✓ Copied"; setTimeout(() => btn.textContent = "📋 Copy", 1500); } catch {}
+      });
+    </script>
+  </body>
+</html>

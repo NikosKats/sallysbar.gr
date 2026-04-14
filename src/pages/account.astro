@@ -5,7 +5,7 @@ import Footer from "../components/Footer.astro";
 import { createSupabaseServerClient, supabaseAdmin } from "../lib/supabase";
 import { withLangPrefix, dict } from "../i18n";
 import { getTiers, getRewards, currentTier, nextTier } from "../lib/loyalty";
-import { TODOS, getTodoStates } from "../lib/todos";
+import { TODOS, getTodoStates, getEnabledTodos } from "../lib/todos";
 
 const user = Astro.locals.user;
 const lang = Astro.locals.lang ?? "en";
@@ -166,12 +166,14 @@ const { count: visitsCount } = await supabaseAdmin
 
 const vapidPublicKey = import.meta.env.VAPID_PUBLIC_KEY ?? "";
 
-// Todos state
-const todoStates = await getTodoStates(user.id);
+// Todos state — admin can disable individual tasks via /admin/tasks
+const enabledTodos = await getEnabledTodos();
+const enabledTodoKeys = new Set(enabledTodos.map(t => t.key));
+const todoStates = (await getTodoStates(user.id)).filter(s => enabledTodoKeys.has(s.key));
 const todoStateByKey = new Map(todoStates.map(s => [s.key, s]));
 const todosCompleted = todoStates.filter(s => s.status === "completed").length;
-const totalTodoPoints = TODOS.reduce((s, t) => s + t.points, 0);
-const earnedTodoPoints = TODOS.filter(t => todoStateByKey.get(t.key)?.status === "completed").reduce((s, t) => s + t.points, 0);
+const totalTodoPoints = enabledTodos.reduce((s, t) => s + t.points, 0);
+const earnedTodoPoints = enabledTodos.filter(t => todoStateByKey.get(t.key)?.status === "completed").reduce((s, t) => s + t.points, 0);
 
 function reasonLabel(r: string | null): string {
   if (!r) return isEl ? "Πόντοι" : "Points";
@@ -301,16 +303,16 @@ function statusLabel(s: string) {
         <div class="flex items-center justify-between gap-2 flex-wrap mb-2">
           <div>
             <p class="text-[10px] uppercase tracking-[0.24em] text-amber-300 font-bold">🎯 {isEl ? "Αποστολές σου" : "My Tasks"}</p>
-            <h2 class="font-heading text-xl font-bold mt-1">{todosCompleted} / {TODOS.length} {isEl ? "ολοκληρωμένες" : "completed"} <span class="text-sm font-normal text-white/50">· {earnedTodoPoints} / {totalTodoPoints} pts</span></h2>
+            <h2 class="font-heading text-xl font-bold mt-1">{todosCompleted} / {enabledTodos.length} {isEl ? "ολοκληρωμένες" : "completed"} <span class="text-sm font-normal text-white/50">· {earnedTodoPoints} / {totalTodoPoints} pts</span></h2>
           </div>
           <div class="text-xs text-white/50">{isEl ? "Πάτα για διεκδίκηση" : "Tap to claim"}</div>
         </div>
         <div class="w-full h-1.5 rounded-full bg-white/5 overflow-hidden mb-4">
-          <div class="h-full rounded-full bg-gradient-to-r from-amber-400 to-fuchsia-500" style={"width:" + Math.round((todosCompleted / TODOS.length) * 100) + "%"}></div>
+          <div class="h-full rounded-full bg-gradient-to-r from-amber-400 to-fuchsia-500" style={"width:" + Math.round((todosCompleted / enabledTodos.length) * 100) + "%"}></div>
         </div>
 
         {(["onboarding","achievement","social"] as const).map(cat => {
-          const items = TODOS.filter(t => t.category === cat);
+          const items = enabledTodos.filter(t => t.category === cat);
           const title = cat === "onboarding" ? (isEl ? "Ξεκίνημα" : "Onboarding")
                       : cat === "achievement" ? (isEl ? "Επιτεύγματα" : "Achievements")
                       : (isEl ? "Κοινωνικά" : "Social");
@@ -998,9 +1000,13 @@ function statusLabel(s: string) {
                   <option value="non_binary" selected={profile?.gender === "non_binary"}>{isEl ? "Μη δυαδικό" : "Non-binary"}</option>
                   <option value="prefer_not_to_say" selected={profile?.gender === "prefer_not_to_say"}>{isEl ? "Προτιμώ να μην απαντήσω" : "Prefer not to say"}</option>
                 </select></label>
-              <label class="block sm:col-span-2"><span class="text-xs text-white/50">{isEl ? "Διεύθυνση" : "Address"}</span>
-                <input name="address" required minlength="2" maxlength="200" value={profile?.address ?? ""}
-                  class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400/50" /></label>
+              <label class="block sm:col-span-2 relative"><span class="text-xs text-white/50">{isEl ? "Διεύθυνση" : "Address"}</span>
+                <input id="addrInput" name="address" required minlength="2" maxlength="200" value={profile?.address ?? ""} autocomplete="off"
+                  placeholder={isEl ? "Πληκτρολόγησε για αυτόματη συμπλήρωση…" : "Type to autocomplete…"}
+                  class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400/50" />
+                <ul id="addrSuggest" class="hidden absolute left-0 right-0 z-10 mt-1 max-h-60 overflow-y-auto rounded-xl border border-white/15 bg-[#16161f] shadow-2xl text-sm"></ul>
+                <span class="text-[10px] text-white/35 mt-0.5 block">{isEl ? "Δωρεάν αναζήτηση από OpenStreetMap" : "Free search via OpenStreetMap"}</span>
+              </label>
               <label class="block"><span class="text-xs text-white/50">{isEl ? "Πόλη" : "City"}</span>
                 <input name="city" required minlength="2" maxlength="80" value={profile?.city ?? ""}
                   class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400/50" /></label>
@@ -1033,6 +1039,67 @@ function statusLabel(s: string) {
     )}
 
   <script is:inline>
+    // ── Address autocomplete (free, no API key — Photon by Komoot, OSM data) ──
+    (function () {
+      const input = document.getElementById("addrInput");
+      const list  = document.getElementById("addrSuggest");
+      if (!input || !list) return;
+      const isEl = document.documentElement.lang === "el";
+      const fmCity   = document.querySelector('input[name="city"]');
+      const fmPostal = document.querySelector('input[name="postal_code"]');
+      const fmCountry= document.querySelector('select[name="country"]');
+
+      function setCountrySelect(name) {
+        if (!fmCountry || !name) return;
+        const opt = Array.from(fmCountry.options).find(o => o.value && o.value.toLowerCase() === name.toLowerCase());
+        if (opt) fmCountry.value = opt.value;
+      }
+
+      function render(items) {
+        if (!items.length) { list.classList.add("hidden"); return; }
+        list.innerHTML = items.map((it, i) => {
+          const p = it.properties || {};
+          const main = [p.name, p.housenumber, p.street].filter(Boolean).join(" ").trim() || p.name || "—";
+          const sub  = [p.postcode, p.city, p.state, p.country].filter(Boolean).join(", ");
+          return `<li data-i="${i}" class="cursor-pointer px-3 py-2 hover:bg-amber-400/15 border-b border-white/5 last:border-0">
+            <div class="text-white">${main.replace(/</g,"&lt;")}</div>
+            <div class="text-[11px] text-white/50">${sub.replace(/</g,"&lt;")}</div>
+          </li>`;
+        }).join("");
+        list.classList.remove("hidden");
+        list.querySelectorAll("li").forEach(li => {
+          li.addEventListener("mousedown", (e) => {
+            e.preventDefault();
+            const it = items[Number(li.getAttribute("data-i"))];
+            const p  = it.properties || {};
+            input.value = [p.name, p.housenumber, p.street].filter(Boolean).join(" ").trim() || p.name || "";
+            if (fmCity   && p.city)     fmCity.value     = p.city;
+            if (fmPostal && p.postcode) fmPostal.value   = p.postcode;
+            if (p.country) setCountrySelect(p.country);
+            list.classList.add("hidden");
+          });
+        });
+      }
+
+      let timer = null, lastQ = "";
+      input.addEventListener("input", () => {
+        const q = input.value.trim();
+        if (q.length < 3 || q === lastQ) return;
+        lastQ = q;
+        clearTimeout(timer);
+        timer = setTimeout(async () => {
+          try {
+            const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=6&lang=${isEl ? "default" : "en"}`;
+            const r = await fetch(url);
+            const j = await r.json();
+            render(j.features || []);
+          } catch {}
+        }, 250);
+      });
+      input.addEventListener("blur", () => setTimeout(() => list.classList.add("hidden"), 150));
+      input.addEventListener("focus", () => { if (list.children.length) list.classList.remove("hidden"); });
+    })();
+
     (function () {
       const isEl = document.documentElement.lang === "el";
       const link = document.getElementById("refLink")?.textContent?.trim() || "";

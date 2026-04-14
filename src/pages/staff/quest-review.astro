@@ -1,0 +1,209 @@
+---
+import "../../styles/global.css";
+import Header from "../../components/Header.astro";
+import StaffPwa from "../../components/StaffPwa.astro";
+import StaffNav from "../../components/StaffNav.astro";
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+const role = (Astro.locals.role === "admin" || Astro.locals.role === "super_admin" ? "admin" : "employee") as "admin" | "employee";
+const tokenFromUrl = new URL(Astro.request.url).searchParams.get("token") ?? "";
+
+const T = {
+  title:    isEl ? "Έγκριση αποστολών" : "Quest approvals",
+  sub:      isEl ? "Σαρώνεις το QR του πελάτη και επιβεβαιώνεις." : "Scan the customer's QR or tap a row to approve.",
+  empty:    isEl ? "Καμία αποστολή σε αναμονή. 🎉" : "No pending claims. 🎉",
+  approve:  isEl ? "✓ Έγκριση" : "✓ Approve",
+  reject:   isEl ? "✗ Απόρριψη" : "✗ Reject",
+  scan:     isEl ? "📷 Σάρωση QR" : "📷 Scan QR",
+  table:    isEl ? "Τραπέζι" : "Table",
+};
+---
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{T.title} — Sally's Staff</title>
+    <meta name="robots" content="noindex,nofollow" />
+    <StaffPwa />
+  </head>
+  <body class="min-h-screen bg-[#0a0a0f] text-white font-body antialiased">
+    <Header />
+    <div class="h-20"></div>
+    <StaffNav active="staff-quest-review" role={role} />
+
+    <main class="mx-auto max-w-3xl px-5 py-8">
+      <div class="mb-6 flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <p class="text-xs uppercase tracking-[0.24em] text-fuchsia-300 mb-1">{isEl ? "Tonight's Quest" : "Tonight's Quest"}</p>
+          <h1 class="font-heading text-3xl font-bold">🎯 {T.title}</h1>
+          <p class="mt-1 text-sm text-white/55">{T.sub}</p>
+        </div>
+        <button id="scanBtn" class="rounded-xl bg-gradient-to-br from-fuchsia-400 to-fuchsia-600 text-white px-4 py-2.5 text-sm font-bold shadow-lg shadow-fuchsia-500/20 hover:scale-[1.01] active:scale-[0.99] transition">{T.scan}</button>
+      </div>
+
+      <div id="banner" class="hidden mb-4 rounded-xl px-4 py-2 text-sm"></div>
+
+      <div id="claimsList" class="space-y-3">
+        <p class="text-center text-white/40 text-sm py-10" id="emptyState">⏳ {isEl ? "Φόρτωση…" : "Loading…"}</p>
+      </div>
+    </main>
+
+    <!-- QR scanner modal -->
+    <dialog id="scanModal" class="rounded-3xl bg-[#0e0e16] border border-white/15 p-0 backdrop:bg-black/80" style="max-width:480px;width:95vw;">
+      <div class="p-5">
+        <div class="flex items-center justify-between mb-3">
+          <p class="font-heading text-lg font-bold">📷 {T.scan}</p>
+          <button id="closeScan" class="text-white/50 hover:text-white text-2xl leading-none">×</button>
+        </div>
+        <video id="scanVideo" autoplay playsinline muted class="w-full rounded-xl bg-black aspect-square object-cover"></video>
+        <p class="mt-3 text-xs text-white/55 text-center">{isEl ? "Στόχευσε το QR του πελάτη." : "Point at the customer's QR."}</p>
+        <p id="scanMsg" class="mt-2 text-xs text-center text-amber-200 hidden"></p>
+      </div>
+    </dialog>
+
+    <script is:inline define:vars={{ isEl, tokenFromUrl }}>
+      const list = document.getElementById("claimsList");
+      const empty = document.getElementById("emptyState");
+      const banner = document.getElementById("banner");
+
+      function flash(text, ok = true) {
+        banner.textContent = text;
+        banner.className = `mb-4 rounded-xl px-4 py-2 text-sm ${ok ? "border border-emerald-400/30 bg-emerald-400/10 text-emerald-200" : "border border-red-400/30 bg-red-400/10 text-red-200"}`;
+        banner.classList.remove("hidden");
+        setTimeout(() => banner.classList.add("hidden"), 2500);
+      }
+
+      function timeLeft(iso) {
+        const ms = new Date(iso).getTime() - Date.now();
+        if (ms <= 0) return "0:00";
+        const s = Math.round(ms / 1000), m = Math.floor(s / 60), x = s % 60;
+        return `${m}:${String(x).padStart(2,"0")}`;
+      }
+
+      function row(c) {
+        const q = c.quest || {};
+        const u = c.user  || {};
+        const title = isEl ? (q.title_el || q.title_en) : (q.title_en || "Quest");
+        const reward = isEl ? (q.reward_label_el || `+${q.reward_points} πόντοι`) : (q.reward_label_en || `+${q.reward_points} pts`);
+        const initials = (u.full_name || "M").trim().split(/\s+/).map(s => s[0]).join("").slice(0,2).toUpperCase();
+        const avatar = u.avatar_url
+          ? `<img src="${u.avatar_url}" class="h-12 w-12 rounded-full object-cover ring-2 ring-white/10" />`
+          : `<div class="h-12 w-12 rounded-full bg-gradient-to-br from-amber-300 to-fuchsia-500 flex items-center justify-center font-bold text-white">${initials}</div>`;
+        return `
+          <article class="rounded-2xl border border-white/10 bg-white/[0.03] p-4" data-claim-id="${c.id}">
+            <div class="flex items-start gap-3">
+              ${avatar}
+              <div class="flex-1 min-w-0">
+                <p class="font-bold text-white truncate">${u.full_name || "Member"}</p>
+                <p class="text-sm text-amber-200 mt-0.5 truncate">🎯 ${title}</p>
+                <p class="text-[11px] text-white/55 mt-0.5">🏆 ${reward}${c.table_number ? ` · 🪑 ${c.table_number}` : ""}</p>
+              </div>
+              <span class="shrink-0 font-mono text-[11px] text-fuchsia-300 px-2 py-0.5 rounded-full bg-fuchsia-400/10 self-start">⏱ <span class="time-left">${timeLeft(c.expires_at)}</span></span>
+            </div>
+            <div class="mt-3 grid grid-cols-2 gap-2">
+              <button class="reject-btn rounded-xl border border-red-400/30 bg-red-400/10 hover:bg-red-400/20 text-red-200 px-3 py-2.5 text-sm font-semibold transition">✗ ${isEl ? "Απόρριψη" : "Reject"}</button>
+              <button class="approve-btn rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 text-white px-3 py-2.5 text-sm font-bold shadow-lg shadow-emerald-500/20 hover:scale-[1.01] active:scale-[0.99] transition">✓ ${isEl ? "Έγκριση" : "Approve"}</button>
+            </div>
+          </article>`;
+      }
+
+      async function refresh() {
+        try {
+          const r = await fetch("/api/quests/review");
+          const j = await r.json();
+          const claims = j.claims || [];
+          if (!claims.length) {
+            list.innerHTML = `<p class="text-center text-white/40 text-sm py-10">${isEl ? "Καμία αποστολή σε αναμονή. 🎉" : "No pending claims. 🎉"}</p>`;
+            return;
+          }
+          list.innerHTML = claims.map(row).join("");
+          list.querySelectorAll("[data-claim-id]").forEach(card => {
+            const id = card.getAttribute("data-claim-id");
+            card.querySelector(".approve-btn").addEventListener("click", () => act("approve", { claim_id: id }));
+            card.querySelector(".reject-btn") .addEventListener("click", async () => {
+              const reason = prompt(isEl ? "Λόγος απόρριψης (προαιρετικός):" : "Reason for rejection (optional):", "") ?? "";
+              act("reject", { claim_id: id, reason });
+            });
+          });
+        } catch {}
+      }
+      async function act(action, payload) {
+        try {
+          const r = await fetch("/api/quests/review", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action, ...payload }),
+          });
+          const j = await r.json();
+          if (!r.ok) { flash("⚠️ " + (j.error || "failed"), false); return; }
+          flash(action === "approve" ? `✓ ${isEl ? "Εγκρίθηκε" : "Approved"}${j.points ? ` (+${j.points} pts)` : ""}` : (isEl ? "✗ Απορρίφθηκε" : "✗ Rejected"));
+          refresh();
+        } catch { flash("⚠️ Network error", false); }
+      }
+      refresh();
+      setInterval(refresh, 6000);
+
+      // ── QR scanner ─────────────────────────────────────────────────────
+      const scanBtn  = document.getElementById("scanBtn");
+      const modal    = document.getElementById("scanModal");
+      const video    = document.getElementById("scanVideo");
+      const closeBtn = document.getElementById("closeScan");
+      const scanMsg  = document.getElementById("scanMsg");
+      let mediaStream = null;
+      let detector = null;
+      let scanning = false;
+
+      async function startScan() {
+        modal.showModal();
+        scanMsg.classList.add("hidden");
+        try {
+          mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+          video.srcObject = mediaStream;
+          if ("BarcodeDetector" in window) {
+            detector = new window.BarcodeDetector({ formats: ["qr_code"] });
+            scanning = true; loop();
+          } else {
+            scanMsg.textContent = isEl ? "Ο browser δεν υποστηρίζει σάρωση. Πάτα τη σειρά για χειροκίνητη έγκριση." : "Browser doesn't support scanning — tap a row to approve manually.";
+            scanMsg.classList.remove("hidden");
+          }
+        } catch (e) {
+          scanMsg.textContent = "⚠️ " + (e.message || "camera failed");
+          scanMsg.classList.remove("hidden");
+        }
+      }
+      async function loop() {
+        if (!scanning || !detector) return;
+        try {
+          const codes = await detector.detect(video);
+          for (const c of codes) {
+            const v = c.rawValue || "";
+            const m = v.match(/[?&]token=([a-f0-9]{16,64})/i);
+            if (m) {
+              scanning = false;
+              await act("approve", { token: m[1] });
+              stopScan();
+              return;
+            }
+          }
+        } catch {}
+        requestAnimationFrame(loop);
+      }
+      function stopScan() {
+        scanning = false;
+        if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+        modal.close();
+      }
+      scanBtn?.addEventListener("click", startScan);
+      closeBtn?.addEventListener("click", stopScan);
+      modal.addEventListener("close", () => { if (mediaStream) mediaStream.getTracks().forEach(t => t.stop()); });
+
+      // If we landed here with ?token=... (staff manually opened the customer's QR URL), auto-approve.
+      if (tokenFromUrl) {
+        if (confirm(isEl ? "Έγκριση του τρέχοντος αιτήματος;" : "Approve this claim?")) {
+          act("approve", { token: tokenFromUrl });
+        }
+      }
+    </script>
+  </body>
+</html>

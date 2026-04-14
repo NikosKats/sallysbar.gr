@@ -6,7 +6,7 @@ function json(obj: unknown, status = 200) {
 }
 
 export const POST: APIRoute = async ({ request, locals }) => {
-  if (locals.role !== "admin") return json({ error: "forbidden" }, 403);
+  if (!["admin","super_admin"].includes(locals.role ?? "")) return json({ error: "forbidden" }, 403);
 
   let body: any;
   try { body = await request.json(); } catch { return json({ error: "bad_json" }, 400); }

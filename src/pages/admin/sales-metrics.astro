@@ -1,0 +1,273 @@
+---
+import "../../styles/global.css";
+import Header from "../../components/Header.astro";
+import AdminNav from "../../components/AdminNav.astro";
+import { supabaseAdmin } from "../../lib/supabase";
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+
+if (Astro.locals.role !== "super_admin") {
+  return new Response("Forbidden", { status: 403 });
+}
+
+const url = new URL(Astro.request.url);
+const rangeDays = Math.max(1, Math.min(365, Number(url.searchParams.get("days") ?? 30)));
+const since = new Date(Date.now() - rangeDays * 86400_000).toISOString();
+
+// ── Fetch ────────────────────────────────────────────────────────────────────
+async function count(table: string, filter?: (q: any) => any) {
+  let q = supabaseAdmin.from(table).select("id", { count: "exact", head: true }).gte("created_at", since);
+  if (filter) q = filter(q);
+  const { count } = await q;
+  return count ?? 0;
+}
+
+const [
+  tableScans, cardViews,
+  signups, cardMembers,
+  totalMembersAll, totalMembersWithCard,
+  orders, paidOrders,
+  loyaltyEvents,
+  wheelSpins, scratchRevealed,
+  referrals,
+  waiterCalls, teamMessages,
+] = await Promise.all([
+  supabaseAdmin.from("page_events").select("id", { count: "exact", head: true }).gte("created_at", since).eq("kind", "table_scan").then(r => r.count ?? 0),
+  supabaseAdmin.from("page_events").select("id", { count: "exact", head: true }).gte("created_at", since).eq("kind", "card_view").then(r => r.count ?? 0),
+  count("profiles"),
+  count("profiles", q => q.not("card_issued_at", "is", null)),
+  supabaseAdmin.from("profiles").select("id", { count: "exact", head: true }).then(r => r.count ?? 0),
+  supabaseAdmin.from("profiles").select("id", { count: "exact", head: true }).not("card_issued_at", "is", null).then(r => r.count ?? 0),
+  count("orders"),
+  supabaseAdmin.from("orders").select("id, total_cents, status", { count: "exact" }).gte("created_at", since).eq("status", "paid").then(r => ({ count: r.count ?? 0, total: (r.data ?? []).reduce((s: number, o: any) => s + (o.total_cents ?? 0), 0) })),
+  supabaseAdmin.from("loyalty_events").select("id, points, reason", { count: "exact" }).gte("created_at", since).then(r => ({ count: r.count ?? 0, rows: r.data ?? [] })),
+  count("wheel_spins").catch(() => 0),
+  supabaseAdmin.from("scratch_cards").select("id", { count: "exact", head: true }).gte("created_at", since).not("revealed_at", "is", null).then(r => r.count ?? 0, () => 0),
+  supabaseAdmin.from("loyalty_events").select("id", { count: "exact", head: true }).gte("created_at", since).like("reason", "referral:%").then(r => r.count ?? 0),
+  supabaseAdmin.from("waiter_calls").select("id, called_at, acknowledged_at").gte("called_at", since).then(r => r.data ?? []),
+  count("team_messages"),
+]);
+
+// ── Derive ──────────────────────────────────────────────────────────────────
+const paidCount = (paidOrders as any).count;
+const paidTotal = (paidOrders as any).total;
+const avgTicket = paidCount > 0 ? paidTotal / paidCount : 0;
+const pointsAwarded = ((loyaltyEvents as any).rows as any[]).reduce((s, r) => s + (r.points ?? 0), 0);
+const memberConversion = tableScans > 0 ? (signups / tableScans) * 100 : 0;
+const cardActivation = signups > 0 ? (cardMembers / signups) * 100 : 0;
+const overallMemberRate = totalMembersAll > 0 ? (totalMembersWithCard / totalMembersAll) * 100 : 0;
+
+// Waiter response time avg (acknowledged - called)
+const ackRows = (waiterCalls as any[]).filter((w: any) => w.acknowledged_at);
+const avgAckSeconds = ackRows.length
+  ? ackRows.reduce((s: number, w: any) => s + (new Date(w.acknowledged_at).getTime() - new Date(w.called_at).getTime()), 0) / ackRows.length / 1000
+  : 0;
+
+// ── Order lifecycle timings (shared with /admin/operations-analytics) ─────────
+const { data: lifecycleOrders } = await supabaseAdmin
+  .from("orders")
+  .select("created_at, prepared_at, ready_at, delivered_at, paid_at")
+  .gte("created_at", since);
+
+function durSec(a: string | null, b: string | null): number | null {
+  if (!a || !b) return null;
+  const d = (new Date(b).getTime() - new Date(a).getTime()) / 1000;
+  return d >= 0 ? d : null;
+}
+function avgOf(arr: (number | null)[]): number {
+  const xs = arr.filter((x): x is number => x !== null);
+  return xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : 0;
+}
+
+const loRows = (lifecycleOrders ?? []) as any[];
+const avgPrepTime = avgOf(loRows.map(r => durSec(r.prepared_at, r.ready_at)));
+const avgDeliverTime = avgOf(loRows.map(r => durSec(r.ready_at, r.delivered_at)));
+const avgEndToEnd = avgOf(loRows.map(r => durSec(r.created_at, r.delivered_at)));
+const avgPlacedToPaid = avgOf(loRows.map(r => durSec(r.created_at, r.paid_at)));
+
+function fmt(n: number) { return new Intl.NumberFormat(isEl ? "el-GR" : "en-GB").format(Math.round(n)); }
+function eur(cents: number) { return (cents / 100).toFixed(2) + " €"; }
+function pct(n: number) { return n.toFixed(1) + "%"; }
+function duration(sec: number) {
+  if (!sec) return "—";
+  if (sec < 60) return `${Math.round(sec)}s`;
+  if (sec < 3600) return `${Math.floor(sec / 60)}m ${Math.round(sec % 60)}s`;
+  return `${Math.floor(sec / 3600)}h ${Math.floor((sec % 3600) / 60)}m`;
+}
+
+const T = {
+  title: isEl ? "Στατιστικά Πώλησης SaaS" : "Sales / SaaS Metrics",
+  kicker: isEl ? "Για pitch & marketing" : "For pitch & marketing",
+  sub: isEl ? "Live αριθμοί από το Sally's — χρησιμοποίησέ τους ως case study για νέα bars." : "Live numbers from Sally's — use them as a case study to pitch other bars.",
+  range: isEl ? "Εύρος" : "Range",
+  d7: "7d", d30: "30d", d90: "90d", dAll: isEl ? "Όλα" : "All",
+};
+
+// Pitch snippet
+const pitch = [
+  `📍 Sally's Bar · Skala, Kefalonia`,
+  `📅 Last ${rangeDays} days`,
+  `🔗 ${fmt(tableScans)} table QR scans · ${fmt(cardViews)} social-card views`,
+  memberConversion > 0 ? `👑 ${pct(memberConversion)} scan-to-signup rate` : "",
+  paidCount > 0 ? `🍸 ${fmt(paidCount)} paid orders · avg ${eur(avgTicket)}` : "",
+  avgAckSeconds > 0 ? `⚡ ${duration(avgAckSeconds)} avg waiter response` : "",
+  avgPrepTime > 0 ? `👨‍🍳 ${duration(avgPrepTime)} avg prep time` : "",
+  avgEndToEnd > 0 ? `🎯 ${duration(avgEndToEnd)} avg order-to-table (end-to-end)` : "",
+  avgPlacedToPaid > 0 ? `💶 ${duration(avgPlacedToPaid)} avg placed-to-paid` : "",
+  pointsAwarded > 0 ? `⭐ ${fmt(pointsAwarded)} loyalty points awarded` : "",
+  referrals > 0 ? `🎁 ${fmt(referrals)} referral signups` : "",
+  "🚀 Built in-house · powered by Sally's Bar platform.",
+].filter(Boolean).join("\n");
+---
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{T.title} — Sally's Bar Admin</title>
+    <meta name="robots" content="noindex,nofollow" />
+  </head>
+  <body class="min-h-screen bg-[#0a0a0f] text-white font-body antialiased">
+    <Header />
+    <div class="h-20"></div>
+    <AdminNav active="sales-metrics" />
+
+    <main class="mx-auto max-w-6xl px-5 py-10">
+      <div class="mb-8 flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <p class="text-xs uppercase tracking-[0.28em] text-amber-200/80 mb-2">{T.kicker}</p>
+          <h1 class="font-heading text-4xl font-bold">{T.title}</h1>
+          <p class="mt-2 text-sm text-white/60 max-w-2xl">{T.sub}</p>
+        </div>
+        <div class="flex items-center gap-2">
+          {[["7","7d"],["30","30d"],["90","90d"],["365","1y"]].map(([d, lbl]) => (
+            <a href={`?days=${d}`} class={`rounded-lg px-3 py-1.5 text-xs font-semibold border transition ${String(rangeDays) === d ? "bg-amber-400/20 border-amber-400/50 text-amber-200" : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10"}`}>{lbl}</a>
+          ))}
+        </div>
+      </div>
+
+      <!-- Hero KPIs -->
+      <section class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+        <div class="rounded-2xl border border-sky-400/20 bg-sky-400/[0.06] p-4">
+          <p class="text-[10px] uppercase tracking-wider text-sky-300 font-bold">{isEl ? "Σαρώσεις QR" : "Table QR scans"}</p>
+          <p class="font-heading text-3xl font-bold mt-1">{fmt(tableScans)}</p>
+        </div>
+        <div class="rounded-2xl border border-fuchsia-400/20 bg-fuchsia-400/[0.06] p-4">
+          <p class="text-[10px] uppercase tracking-wider text-fuchsia-300 font-bold">{isEl ? "Προβολές Social Card" : "Social card views"}</p>
+          <p class="font-heading text-3xl font-bold mt-1">{fmt(cardViews)}</p>
+        </div>
+        <div class="rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.06] p-4">
+          <p class="text-[10px] uppercase tracking-wider text-emerald-300 font-bold">{isEl ? "Νέα μέλη" : "New members"}</p>
+          <p class="font-heading text-3xl font-bold mt-1">{fmt(signups)}</p>
+          <p class="text-[11px] text-white/50 mt-1">{pct(memberConversion)} {isEl ? "από scans" : "scan-to-signup"}</p>
+        </div>
+        <div class="rounded-2xl border border-amber-400/20 bg-amber-400/[0.06] p-4">
+          <p class="text-[10px] uppercase tracking-wider text-amber-300 font-bold">{isEl ? "Ενεργές κάρτες" : "Activated cards"}</p>
+          <p class="font-heading text-3xl font-bold mt-1">{fmt(cardMembers)}</p>
+          <p class="text-[11px] text-white/50 mt-1">{pct(cardActivation)} {isEl ? "των νέων μελών" : "of signups"}</p>
+        </div>
+      </section>
+
+      <!-- Operations -->
+      <section class="grid md:grid-cols-3 gap-3 mb-8">
+        <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          <p class="text-[10px] uppercase tracking-wider text-white/50 font-bold">{isEl ? "Συνολικές παραγγελίες" : "Total orders"}</p>
+          <p class="font-heading text-2xl font-bold mt-1">{fmt(orders)}</p>
+          <p class="text-[11px] text-white/45 mt-1">{fmt(paidCount)} {isEl ? "πληρωμένες" : "paid"} · avg {eur(avgTicket)}</p>
+        </div>
+        <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          <p class="text-[10px] uppercase tracking-wider text-white/50 font-bold">⚡ {isEl ? "Μέσος χρόνος απόκρισης" : "Avg waiter response"}</p>
+          <p class="font-heading text-2xl font-bold mt-1">{duration(avgAckSeconds)}</p>
+          <p class="text-[11px] text-white/45 mt-1">{ackRows.length} / {(waiterCalls as any[]).length} {isEl ? "κλήσεις με ack" : "calls ack'd"}</p>
+        </div>
+        <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          <p class="text-[10px] uppercase tracking-wider text-white/50 font-bold">💬 {isEl ? "Team chat μηνύματα" : "Team chat messages"}</p>
+          <p class="font-heading text-2xl font-bold mt-1">{fmt(teamMessages)}</p>
+        </div>
+      </section>
+
+      <!-- Engagement -->
+      <section class="grid md:grid-cols-4 gap-3 mb-8">
+        <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          <p class="text-[10px] uppercase tracking-wider text-white/50 font-bold">⭐ {isEl ? "Πόντοι απονεμήθηκαν" : "Points awarded"}</p>
+          <p class="font-heading text-2xl font-bold mt-1">{fmt(pointsAwarded)}</p>
+        </div>
+        <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          <p class="text-[10px] uppercase tracking-wider text-white/50 font-bold">🎡 {isEl ? "Περιστροφές Ρόδας" : "Wheel spins"}</p>
+          <p class="font-heading text-2xl font-bold mt-1">{fmt(wheelSpins)}</p>
+        </div>
+        <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          <p class="text-[10px] uppercase tracking-wider text-white/50 font-bold">🎫 {isEl ? "Scratch cards που ανοίχτηκαν" : "Scratch cards revealed"}</p>
+          <p class="font-heading text-2xl font-bold mt-1">{fmt(scratchRevealed)}</p>
+        </div>
+        <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          <p class="text-[10px] uppercase tracking-wider text-white/50 font-bold">🎁 {isEl ? "Referral εγγραφές" : "Referral signups"}</p>
+          <p class="font-heading text-2xl font-bold mt-1">{fmt(referrals)}</p>
+        </div>
+      </section>
+
+      <!-- Operations timings (pitch gold) -->
+      <section class="mb-8">
+        <div class="flex items-center justify-between gap-3 mb-3">
+          <p class="text-[10px] uppercase tracking-wider text-amber-300 font-bold">⚙️ {isEl ? "Χρόνοι λειτουργίας" : "Operation timings"}</p>
+          <a href={(isEl ? "/el" : "") + "/admin/operations-analytics"} class="text-xs text-white/50 hover:text-amber-200 transition">{isEl ? "Αναλυτικά →" : "Detailed breakdown →"}</a>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div class="rounded-2xl border border-sky-400/20 bg-sky-400/[0.06] p-4">
+            <p class="text-[10px] uppercase tracking-wider text-sky-300 font-bold">📞 {isEl ? "Απόκριση σερβιτόρου" : "Waiter response"}</p>
+            <p class="font-heading text-2xl font-bold mt-1">{duration(avgAckSeconds)}</p>
+            <p class="text-[10px] text-white/45 mt-1">{ackRows.length} / {(waiterCalls as any[]).length} ack'd</p>
+          </div>
+          <div class="rounded-2xl border border-amber-400/20 bg-amber-400/[0.06] p-4">
+            <p class="text-[10px] uppercase tracking-wider text-amber-300 font-bold">👨‍🍳 {isEl ? "Μέσος χρόνος prep" : "Avg prep time"}</p>
+            <p class="font-heading text-2xl font-bold mt-1">{duration(avgPrepTime)}</p>
+            <p class="text-[10px] text-white/45 mt-1">{isEl ? "barman accepted → ready" : "barman accepted → ready"}</p>
+          </div>
+          <div class="rounded-2xl border border-fuchsia-400/20 bg-fuchsia-400/[0.06] p-4">
+            <p class="text-[10px] uppercase tracking-wider text-fuchsia-300 font-bold">🚀 {isEl ? "Χρόνος παράδοσης" : "Delivery time"}</p>
+            <p class="font-heading text-2xl font-bold mt-1">{duration(avgDeliverTime)}</p>
+            <p class="text-[10px] text-white/45 mt-1">{isEl ? "ready → στο τραπέζι" : "ready → table"}</p>
+          </div>
+          <div class="rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.06] p-4">
+            <p class="text-[10px] uppercase tracking-wider text-emerald-300 font-bold">🎯 {isEl ? "End-to-end" : "End-to-end"}</p>
+            <p class="font-heading text-2xl font-bold mt-1">{duration(avgEndToEnd)}</p>
+            <p class="text-[10px] text-white/45 mt-1">{isEl ? "παραγγελία → παραδόθηκε" : "placed → delivered"}</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- All-time snapshot -->
+      <section class="rounded-2xl border border-white/10 bg-white/[0.03] p-5 mb-8">
+        <p class="text-[10px] uppercase tracking-wider text-white/50 font-bold mb-3">📊 {isEl ? "Όλων των εποχών" : "All-time snapshot"}</p>
+        <div class="grid sm:grid-cols-3 gap-4 text-sm">
+          <div><span class="text-white/50">{isEl ? "Συνολικά profiles" : "Total profiles"}:</span> <span class="font-semibold text-white">{fmt(totalMembersAll)}</span></div>
+          <div><span class="text-white/50">{isEl ? "Με κάρτα μέλους" : "With loyalty card"}:</span> <span class="font-semibold text-white">{fmt(totalMembersWithCard)} <span class="text-emerald-300 text-xs">({pct(overallMemberRate)})</span></span></div>
+          <div><span class="text-white/50">{isEl ? "Εύρος ανάλυσης" : "Analysis range"}:</span> <span class="font-semibold text-white">{rangeDays}d</span></div>
+        </div>
+      </section>
+
+      <!-- Pitch snippet -->
+      <section class="rounded-2xl border border-amber-400/30 bg-gradient-to-br from-amber-500/10 via-fuchsia-500/5 to-sky-500/5 p-5">
+        <div class="flex items-start justify-between gap-3 flex-wrap mb-3">
+          <div>
+            <p class="text-[10px] uppercase tracking-wider text-amber-300 font-bold">🚀 {isEl ? "Pitch snippet" : "Pitch snippet"}</p>
+            <p class="text-sm text-white/60 mt-1">{isEl ? "Αντιγράφεις και επικολλάς σε Instagram, email, προτάσεις." : "Copy-paste into Instagram, email, proposals."}</p>
+          </div>
+          <div class="flex gap-2">
+            <button id="copyPitch" class="rounded-xl bg-white/10 hover:bg-white/20 px-3 py-1.5 text-xs font-semibold">📋 {isEl ? "Αντιγραφή" : "Copy"}</button>
+            <a id="dlCsv" href={`/api/admin/sales-metrics-csv?days=${rangeDays}`} class="rounded-xl bg-white/10 hover:bg-white/20 px-3 py-1.5 text-xs font-semibold">⬇ CSV</a>
+          </div>
+        </div>
+        <pre id="pitchBlock" class="whitespace-pre-wrap text-sm text-white/85 font-mono bg-black/30 rounded-xl p-4 leading-relaxed">{pitch}</pre>
+      </section>
+    </main>
+
+    <script is:inline>
+      const btn = document.getElementById("copyPitch");
+      btn?.addEventListener("click", async () => {
+        const text = document.getElementById("pitchBlock")?.textContent ?? "";
+        try { await navigator.clipboard.writeText(text); btn.textContent = "✓ Copied"; setTimeout(() => btn.textContent = "📋 Copy", 1500); } catch {}
+      });
+    </script>
+  </body>
+</html>

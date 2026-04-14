@@ -15,18 +15,19 @@ export const POST: APIRoute = async ({ locals, request }) => {
 
   const { data: me } = await supabaseAdmin
     .from("profiles").select("role, full_name").eq("id", locals.user.id).maybeSingle();
-  if (!me || !["employee", "admin"].includes(me.role)) return json({ error: "Forbidden" }, 403);
+  if (!me || !["employee", "admin", "super_admin"].includes(me.role)) return json({ error: "Forbidden" }, 403);
 
   let body: any;
   try { body = await request.json(); } catch { return json({ error: "Invalid JSON" }, 400); }
   const text = typeof body?.body === "string" ? body.body.trim() : "";
   const imageUrl = typeof body?.image_url === "string" ? body.image_url.trim().slice(0, 500) : "";
+  const replyTo = typeof body?.reply_to === "string" && /^[0-9a-f-]{36}$/i.test(body.reply_to) ? body.reply_to : null;
   if ((!text && !imageUrl) || text.length > 2000) return json({ error: "Invalid body" }, 400);
 
   const { data: msg, error } = await supabaseAdmin
     .from("team_messages")
-    .insert({ user_id: locals.user.id, body: text || "", image_url: imageUrl || null })
-    .select("id, user_id, body, created_at, image_url")
+    .insert({ user_id: locals.user.id, body: text || "", image_url: imageUrl || null, reply_to: replyTo })
+    .select("id, user_id, body, created_at, image_url, reply_to")
     .single();
   if (error || !msg) return json({ error: "Insert failed" }, 500);
 
@@ -35,7 +36,7 @@ export const POST: APIRoute = async ({ locals, request }) => {
     const keys = vapid();
     if (!keys) return;
     const { data: team } = await supabaseAdmin
-      .from("profiles").select("id").in("role", ["employee", "admin"]);
+      .from("profiles").select("id").in("role", ["employee", "admin", "super_admin"]);
     const ids = (team ?? []).map((p: any) => p.id).filter((id: string) => id !== locals.user!.id);
     if (!ids.length) return;
     const { data: subs } = await supabaseAdmin

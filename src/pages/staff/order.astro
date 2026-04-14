@@ -11,7 +11,7 @@ const lang = Astro.locals.lang ?? "en";
 const t = dict[lang];
 const isEl = lang === "el";
 const user = Astro.locals.user;
-const role = (Astro.locals.role === "admin" ? "admin" : "employee") as "admin" | "employee";
+const role = (Astro.locals.role === "admin" || Astro.locals.role === "super_admin" ? "admin" : "employee") as "admin" | "employee";
 
 // Team-chat unread count for sidebar badge
 let teamUnread = 0;

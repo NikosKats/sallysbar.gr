@@ -7,7 +7,7 @@ function json(obj: unknown, status = 200) {
 }
 
 export const POST: APIRoute = async ({ request, locals }) => {
-  if (locals.role !== "admin") return json({ error: "forbidden" }, 403);
+  if (!["admin","super_admin"].includes(locals.role ?? "")) return json({ error: "forbidden" }, 403);
 
   let body: any;
   try { body = await request.json(); } catch { return json({ error: "bad_json" }, 400); }
@@ -29,7 +29,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
   // We query the two sets separately (Supabase filtering with NOT IN on uuids is fiddly)
   // and filter client-side: cheaper than a stored procedure and fine for the scale.
   const { data: staffIds } = await supabaseAdmin
-    .from("profiles").select("id").in("role", ["employee", "admin"]);
+    .from("profiles").select("id").in("role", ["employee", "admin", "super_admin"]);
   const staffSet = new Set((staffIds ?? []).map((u: any) => u.id));
 
   const { data: allSubs } = await supabaseAdmin
@@ -39,10 +39,14 @@ export const POST: APIRoute = async ({ request, locals }) => {
   if (!subs || subs.length === 0) return json({ ok: true, sent: 0, failed: 0 });
 
   const payload = {
-    title: q.title_en,
+    title: `🎯 ${q.title_en}`,
     body:  q.description_en ?? (q.reward_label_en ? `Complete for ${q.reward_label_en}` : `Complete for +${q.reward_points} pts`),
-    url:   q.cta_url || "/loyalty",
+    url:   `/quest/${q.id}?from=push`,
     tag:   `quest-${q.id}`,
+    actions: [
+      { action: "open",  title: "Open quest" },
+      { action: "later", title: "Later" },
+    ],
   };
 
   let sent = 0, failed = 0;

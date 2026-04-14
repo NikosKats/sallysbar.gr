@@ -47,13 +47,13 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   // Protect admin routes
   const isAdminRoute = ADMIN_ROUTES.some((r) => pathname.startsWith(r));
-  if (isAdminRoute && locals.role !== "admin") {
+  if (isAdminRoute && !["admin", "super_admin"].includes(locals.role ?? "")) {
     return redirect(`/login?next=${encodeURIComponent(pathname)}`);
   }
 
   // Protect staff routes
   const isStaffRoute = STAFF_ROUTES.some((r) => pathname.startsWith(r));
-  if (isStaffRoute && !["employee", "admin"].includes(locals.role ?? "")) {
+  if (isStaffRoute && !["employee", "admin", "super_admin"].includes(locals.role ?? "")) {
     return redirect(`/login?next=${encodeURIComponent(pathname)}`);
   }
 

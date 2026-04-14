@@ -13,7 +13,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
   const secret = request.headers.get("x-cron-secret");
   const expected = import.meta.env.CRON_SECRET || "";
   const isCron = expected && secret === expected;
-  if (locals.role !== "admin" && !isCron) return json({ error: "forbidden" }, 403);
+  if (!["admin","super_admin"].includes(locals.role ?? "") && !isCron) return json({ error: "forbidden" }, 403);
 
   // Greece TZ → today's MM-DD
   const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Athens" }));

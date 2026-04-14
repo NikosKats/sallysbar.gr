@@ -14,7 +14,7 @@ function slugify(s: string) {
 }
 
 export const POST: APIRoute = async ({ request, locals }) => {
-  if (locals.role !== "admin") return json({ error: "forbidden" }, 403);
+  if (!["admin","super_admin"].includes(locals.role ?? "")) return json({ error: "forbidden" }, 403);
 
   let body: any;
   try { body = await request.json(); } catch { return json({ error: "bad_json" }, 400); }
@@ -54,7 +54,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
 };
 
 export const DELETE: APIRoute = async ({ url, locals }) => {
-  if (locals.role !== "admin") return json({ error: "forbidden" }, 403);
+  if (!["admin","super_admin"].includes(locals.role ?? "")) return json({ error: "forbidden" }, 403);
   const id = url.searchParams.get("id");
   if (!id) return json({ error: "missing_id" }, 400);
   const { error } = await supabaseAdmin.from("campaigns").delete().eq("id", id);

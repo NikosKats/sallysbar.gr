@@ -73,7 +73,7 @@ async function handleUpdate(body: Record<string, unknown>): Promise<Response> {
   if (action === "preparing") {
     await supabaseAdmin
       .from("orders")
-      .update({ status: "preparing" })
+      .update({ status: "preparing", prepared_at: new Date().toISOString() })
       .eq("id", orderId);
 
     await editMessageText(
@@ -104,7 +104,7 @@ async function handleUpdate(body: Record<string, unknown>): Promise<Response> {
   if (action === "ready") {
     await supabaseAdmin
       .from("orders")
-      .update({ status: "ready" })
+      .update({ status: "ready", ready_at: new Date().toISOString() })
       .eq("id", orderId);
 
     await editMessageText(
@@ -140,7 +140,7 @@ async function handleUpdate(body: Record<string, unknown>): Promise<Response> {
   if (action === "delivered") {
     await supabaseAdmin
       .from("orders")
-      .update({ status: "delivered" })
+      .update({ status: "delivered", delivered_at: new Date().toISOString() })
       .eq("id", orderId);
 
     await editMessageText(

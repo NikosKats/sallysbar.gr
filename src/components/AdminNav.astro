@@ -25,7 +25,7 @@ const switchHref = otherLang === "en"
 const switchLabel = isEl ? "English" : "Ελληνικά";
 const switchFlag  = isEl ? "🇬🇧" : "🇬🇷";
 
-const groups = getAdminNavGroups(lang as "en" | "el", t);
+const groups = getAdminNavGroups(lang as "en" | "el", t, Astro.locals.role);
 
 const activeItem = groups.flatMap(g => g.items).find(i => i.key === active);
 ---
