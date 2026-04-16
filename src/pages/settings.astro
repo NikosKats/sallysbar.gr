@@ -12,13 +12,17 @@ if (!user) {
   return Astro.redirect(isEl ? "/el/login?next=/settings" : "/login?next=/settings");
 }
 
-// Try full select first; fall back if handle/card_public columns don't exist yet.
-let { data: profile } = await supabaseAdmin
-  .from("profiles")
-  .select("id, full_name, role, phone, gender, birthday, country, city, address, postal_code, bio, avatar_url, socials, marketing_consent, created_at, handle, card_public, card_visibility, card_issued_at")
-  .eq("id", user.id)
-  .maybeSingle();
-if (!profile) {
+// Single select with a column fallback if the new columns aren't migrated yet.
+let profile: any = null;
+try {
+  const r = await supabaseAdmin
+    .from("profiles")
+    .select("id, full_name, role, phone, gender, birthday, country, city, address, postal_code, bio, avatar_url, socials, marketing_consent, created_at, handle, card_public, card_visibility, card_issued_at")
+    .eq("id", user.id)
+    .maybeSingle();
+  profile = r.data;
+  if (!profile && r.error) throw r.error;
+} catch {
   const fb = await supabaseAdmin
     .from("profiles")
     .select("id, full_name, role, phone, gender, birthday, country, city, address, postal_code, bio, avatar_url, socials, marketing_consent, created_at")

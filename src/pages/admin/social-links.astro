@@ -1,0 +1,136 @@
+---
+import "../../styles/global.css";
+import AdminNav from "../../components/AdminNav.astro";
+import { supabaseAdmin } from "../../lib/supabase";
+import { withLangPrefix } from "../../i18n";
+
+export const prerender = false;
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+
+if (!["admin", "super_admin"].includes(Astro.locals.role ?? "")) {
+  return Astro.redirect(withLangPrefix(lang, "/admin"));
+}
+
+const { data: linked } = await supabaseAdmin
+  .from("profiles")
+  .select("id, full_name, messenger_id, instagram_id, social_opt_in_at")
+  .or("messenger_id.not.is.null,instagram_id.not.is.null")
+  .order("social_opt_in_at", { ascending: false });
+
+const { data: recentEvents } = await supabaseAdmin
+  .from("social_webhook_events")
+  .select("platform, event_type, sender_id, ref, matched_user_id, created_at")
+  .order("created_at", { ascending: false })
+  .limit(20);
+
+const messengerLinked = (linked ?? []).filter(u => !!u.messenger_id).length;
+const instagramLinked = (linked ?? []).filter(u => !!u.instagram_id).length;
+---
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <title>{isEl ? "Social Links" : "Social Links"} — Admin</title>
+    <meta name="robots" content="noindex,nofollow" />
+  </head>
+  <body class="min-h-screen bg-[#0b0b10] text-white">
+    <AdminNav active="social-links" />
+    <main class="mx-auto max-w-5xl px-5 py-10">
+      <h1 class="font-heading text-3xl md:text-4xl font-bold">🔗 {isEl ? "Social Links — Ρυθμίσεις & Διαγνωστικά" : "Social Links — diagnostics"}</h1>
+      <p class="mt-2 text-sm text-white/60 max-w-2xl">
+        {isEl
+          ? "Πελάτες που έχουν συνδέσει Messenger ή Instagram για να λαμβάνουν καμπάνιες σε αυτά τα κανάλια."
+          : "Customers who've linked their Messenger or Instagram so bulk campaigns on those channels can reach them."}
+      </p>
+
+      <section class="mt-6 grid sm:grid-cols-3 gap-3">
+        <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          <p class="text-[10px] uppercase tracking-wider text-white/50">{isEl ? "Συνολικά opt-ins" : "Total opt-ins"}</p>
+          <p class="font-heading text-3xl font-bold mt-1">{linked?.length ?? 0}</p>
+        </div>
+        <div class="rounded-2xl border border-blue-400/20 bg-blue-400/[0.06] p-4">
+          <p class="text-[10px] uppercase tracking-wider text-blue-300">📘 Messenger</p>
+          <p class="font-heading text-3xl font-bold mt-1">{messengerLinked}</p>
+        </div>
+        <div class="rounded-2xl border border-fuchsia-400/20 bg-fuchsia-400/[0.06] p-4">
+          <p class="text-[10px] uppercase tracking-wider text-fuchsia-300">📸 Instagram</p>
+          <p class="font-heading text-3xl font-bold mt-1">{instagramLinked}</p>
+        </div>
+      </section>
+
+      <!-- Webhook config -->
+      <section class="mt-8 rounded-2xl border border-amber-400/30 bg-amber-400/[0.05] p-5 text-sm">
+        <p class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-2">⚙️ {isEl ? "Ρύθμιση Meta webhook" : "Meta webhook setup"}</p>
+        <p class="text-white/80 mb-2">{isEl ? "Στο Meta App Dashboard → Webhooks → Messenger / Instagram, βάλε:" : "In Meta App Dashboard → Webhooks → Messenger / Instagram, use:"}</p>
+        <div class="space-y-1.5 font-mono text-xs bg-black/40 rounded-lg p-3">
+          <div><span class="text-white/50">Callback URL:</span> <span class="text-emerald-300">https://sallysbar.gr/api/social/meta-webhook</span></div>
+          <div><span class="text-white/50">Verify Token:</span> <span class="text-white/80">META_WEBHOOK_VERIFY_TOKEN (ο δικός σου)</span></div>
+          <div><span class="text-white/50">{isEl ? "Γεγονότα:" : "Subscriptions:"}</span> <span class="text-white/80">messages, messaging_postbacks, messaging_referrals</span></div>
+        </div>
+      </section>
+
+      <!-- Linked users -->
+      <section class="mt-8">
+        <h2 class="text-[11px] uppercase tracking-wider text-white/55 font-bold mb-3">{isEl ? "Συνδεδεμένοι χρήστες" : "Linked users"}</h2>
+        <div class="rounded-2xl border border-white/10 bg-white/[0.03] overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="text-[11px] uppercase tracking-wider text-white/55">
+              <tr class="border-b border-white/10">
+                <th class="text-left py-2 px-3">{isEl ? "Όνομα" : "Name"}</th>
+                <th class="text-left py-2 px-3">📘 Messenger PSID</th>
+                <th class="text-left py-2 px-3">📸 Instagram ID</th>
+                <th class="text-left py-2 px-3">{isEl ? "Πότε" : "When"}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(linked ?? []).length === 0 ? (
+                <tr><td colspan="4" class="py-8 text-center text-white/40">{isEl ? "Κανείς δεν έχει συνδέσει ακόμη." : "No one's linked yet."}</td></tr>
+              ) : (linked ?? []).map((u: any) => (
+                <tr class="border-b border-white/5">
+                  <td class="py-2 px-3">{u.full_name ?? <span class="text-white/40">—</span>}</td>
+                  <td class="py-2 px-3 font-mono text-xs text-white/70">{u.messenger_id ?? <span class="text-white/30">—</span>}</td>
+                  <td class="py-2 px-3 font-mono text-xs text-white/70">{u.instagram_id ?? <span class="text-white/30">—</span>}</td>
+                  <td class="py-2 px-3 text-xs text-white/60">{u.social_opt_in_at ? new Date(u.social_opt_in_at).toLocaleString() : "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Recent webhook events -->
+      <section class="mt-8">
+        <h2 class="text-[11px] uppercase tracking-wider text-white/55 font-bold mb-3">{isEl ? "Πρόσφατα events webhook" : "Recent webhook events"}</h2>
+        <div class="rounded-2xl border border-white/10 bg-white/[0.03] overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="text-[11px] uppercase tracking-wider text-white/55">
+              <tr class="border-b border-white/10">
+                <th class="text-left py-2 px-3">Platform</th>
+                <th class="text-left py-2 px-3">Type</th>
+                <th class="text-left py-2 px-3">Sender ID</th>
+                <th class="text-left py-2 px-3">Ref</th>
+                <th class="text-left py-2 px-3">Matched?</th>
+                <th class="text-left py-2 px-3">When</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(recentEvents ?? []).length === 0 ? (
+                <tr><td colspan="6" class="py-8 text-center text-white/40">{isEl ? "Δεν έχουν φτάσει events ακόμη." : "No events yet."}</td></tr>
+              ) : (recentEvents ?? []).map((e: any) => (
+                <tr class="border-b border-white/5">
+                  <td class="py-2 px-3">{e.platform}</td>
+                  <td class="py-2 px-3 text-xs text-white/70">{e.event_type}</td>
+                  <td class="py-2 px-3 font-mono text-xs text-white/70">{e.sender_id ?? "—"}</td>
+                  <td class="py-2 px-3 font-mono text-xs text-white/70">{e.ref ?? "—"}</td>
+                  <td class="py-2 px-3">{e.matched_user_id ? <span class="text-emerald-300">✓</span> : <span class="text-white/30">—</span>}</td>
+                  <td class="py-2 px-3 text-xs text-white/60">{new Date(e.created_at).toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

@@ -7,24 +7,54 @@ if (Astro.locals.role !== "super_admin") {
   return new Response("Forbidden", { status: 403 });
 }
 
-// Single-plan strategy: one price, everything included.
-// Simpler to sell, simpler to deploy, no feature-gating required.
-const tiers = [
-  { key: "full", name: "Full Platform", setup: 890, seasonal: 1890, monthly: 299,
-    bullets: [
-      "Menu + QR table ordering",
-      "Loyalty card, tiers, rewards",
-      "Daily Wheel, Scratch cards, Quests",
-      "Team chat + push notifications",
-      "Telegram order flow",
-      "Google / Apple Wallet cards",
-      "Social card (viral virality)",
-      "Analytics + reporting",
-      "Staff enrollment",
-      "Bilingual EN/EL",
-      "Priority support",
-    ],
-    color: "from-amber-400 to-amber-600", featured: true },
+// Two-plan strategy: seasonal (6mo) for tourist-driven venues, year-round (12mo) for city bars.
+// Same feature set — only commitment + price differ.
+const bullets = [
+  "Menu + QR table ordering",
+  "Loyalty card, tiers, rewards",
+  "Daily Wheel, Scratch cards, Quests",
+  "Team chat + push notifications",
+  "Telegram order flow",
+  "Google / Apple Wallet cards",
+  "Social card (viral virality)",
+  "Analytics + reporting",
+  "Staff enrollment",
+  "Bilingual EN/EL",
+  "Marketing automation (WhatsApp/SMS/Push/Email)",
+  "Priority support",
+];
+
+const plans = [
+  {
+    key: "seasonal",
+    name: "Seasonal — 6 months",
+    tagline: "For tourist / island / beach venues",
+    window: "May → October",
+    setup: 850,
+    total: 1380,
+    discount_total: 690,
+    discount_pct: 50,
+    monthlyEquiv: 230,
+    effective_mo: "€230/mo list · €115/mo early-bird",
+    billing: "Billed once in April — money arrives before the season opens. All figures net; +24% VAT added.",
+    featured: false,
+    color: "from-sky-400 to-sky-600",
+  },
+  {
+    key: "yearround",
+    name: "Year-round — 12 months",
+    tagline: "For city bars / cafés open all year",
+    window: "12-month commitment",
+    setup: 850,
+    total: 2400,
+    discount_total: 1104,
+    discount_pct: 54,
+    monthlyEquiv: 200,
+    effective_mo: "€200/mo list · €92/mo early-bird",
+    billing: "12-month commitment · 20% cheaper than 2× seasonal · paid upfront (€2,400 list / €1,104 early-bird). All figures net; +24% VAT added.",
+    featured: true,
+    color: "from-amber-400 to-amber-600",
+  },
 ];
 
 const models = [
@@ -76,17 +106,22 @@ const costPerVenue = [
   ["Total run cost",                    "€0–€45/mo per venue"],
 ];
 
+// All numbers below calculated from the EARLY-BIRD (actual) prices, not the list anchor.
 const margins = [
-  { tier: "Full Platform (€1,890/season)", cost: "~€45/mo", profit: "~€1,350 profit / season / venue" },
-  { tier: "Setup fee (one-time)",           cost: "~4h work", profit: "€890 one-time / venue" },
+  { tier: "Seasonal €690 · 6 mo (early-bird)",      cost: "~€42/mo infra + support (6 mo)",  profit: "~€438 profit / season / venue" },
+  { tier: "Year-round €1,104 · 12 mo (early-bird)", cost: "~€42/mo infra + support",          profit: "~€600 profit / yr / venue" },
+  { tier: "Setup fee (fixed, every plan)",          cost: "~4h work",                         profit: "€850 one-time / venue" },
 ];
 
+// Blended 50/50 seasonal (€690) + year-round (€1,104) = avg €897/venue/yr rev at early-bird.
+// Setup is a fixed €850 on every plan, paid once per new venue.
 const scale = [
-  { venues: 5,   mrr: "€9.5k/yr · +€4.5k setup", label: "Side income" },
-  { venues: 15,  mrr: "€28k/yr · +€13k setup",   label: "Half a salary covered" },
-  { venues: 30,  mrr: "€57k/yr · +€27k setup",   label: "Quit your job number" },
-  { venues: 60,  mrr: "€113k/yr · +€53k setup",  label: "Real business" },
-  { venues: 120, mrr: "€227k/yr · +€107k setup", label: "Consider hiring / selling" },
+  { venues: 10,  mrr: "€8.9k/yr · +€8.5k setup",  label: "Covers your phone bill" },
+  { venues: 25,  mrr: "€22.4k/yr · +€21k setup", label: "Covers the fixed burn" },
+  { venues: 50,  mrr: "€44.9k/yr · +€42k setup", label: "Side income (both)" },
+  { venues: 100, mrr: "€89.7k/yr · +€85k setup", label: "Half-salary both partners" },
+  { venues: 200, mrr: "€179.4k/yr · +€170k setup", label: "Quit-your-job number" },
+  { venues: 400, mrr: "€358.8k/yr · +€340k setup", label: "Consider hiring / selling" },
 ];
 
 const legal = [
@@ -95,56 +130,122 @@ const legal = [
   ["Privacy Policy (per install)",     "Auto-generated from site.ts + template. Already half-built at /privacy."],
   ["Terms of Service",                 "Already at /terms — update once per product name."],
 ];
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
 ---
-<html lang="en">
+<html lang={lang}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>SaaS Playbook — Super Admin</title>
     <meta name="robots" content="noindex,nofollow" />
+    <style>
+      @media print {
+        body { background: white !important; color: black !important; }
+        .no-print { display: none !important; }
+        details { break-inside: avoid; page-break-inside: avoid; }
+        details[open] summary { page-break-after: avoid; }
+        * { color: black !important; background-image: none !important; }
+        a { color: black !important; text-decoration: none !important; }
+      }
+    </style>
   </head>
   <body class="min-h-screen bg-[#0a0a0f] text-white font-body antialiased">
-    <Header />
-    <div class="h-20"></div>
-    <AdminNav active="saas-playbook" />
+    <div class="no-print"><Header /></div>
+    <div class="h-20 no-print"></div>
+    <div class="no-print"><AdminNav active="saas-playbook" /></div>
 
     <main class="mx-auto max-w-5xl px-5 py-10">
-      <div class="mb-8">
-        <p class="text-xs uppercase tracking-[0.28em] text-rose-300 mb-2 flex items-center gap-2">
-          <span class="inline-block h-1.5 w-1.5 rounded-full bg-rose-400 animate-pulse"></span>
-          SUPER ADMIN ONLY
-        </p>
-        <h1 class="font-heading text-4xl font-bold">🚀 SaaS Playbook</h1>
-        <p class="mt-2 text-sm text-white/60 max-w-2xl">How you turn Sally's platform into a real SaaS: deployment model, pricing, install checklist, unit economics, legal.</p>
+      <div class="mb-8 flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <p class="text-xs uppercase tracking-[0.28em] text-rose-300 mb-2 flex items-center gap-2">
+            <span class="inline-block h-1.5 w-1.5 rounded-full bg-rose-400 animate-pulse"></span>
+            {isEl ? "ΜΟΝΟ SUPER ADMIN" : "SUPER ADMIN ONLY"}
+          </p>
+          <h1 class="font-heading text-4xl font-bold">{isEl ? "🚀 SaaS Playbook" : "🚀 SaaS Playbook"}</h1>
+          <p class="mt-2 text-sm text-white/60 max-w-2xl">{isEl ? "Πώς μετατρέπεις την πλατφόρμα του Sally σε πραγματικό SaaS: μοντέλο deployment, τιμολόγηση, checklist εγκατάστασης, unit economics, νομικά." : "How you turn Sally's platform into a real SaaS: deployment model, pricing, install checklist, unit economics, legal."}</p>
+        </div>
+        <button onclick="window.print()" class="no-print shrink-0 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 px-4 py-2 text-xs font-semibold text-white">🖨 {isEl ? "Εκτύπωση / PDF" : "Print / Save PDF"}</button>
       </div>
 
-      <!-- Pricing: single plan -->
+      <!-- Pricing: two plans -->
       <section class="mb-10">
-        <h2 class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-4">💰 One plan, everything included</h2>
-        <div class="rounded-2xl border border-amber-400/50 bg-gradient-to-br from-amber-500/15 via-fuchsia-500/5 to-sky-500/5 p-6 relative">
-          <span class="absolute -top-3 right-6 text-[10px] font-bold uppercase tracking-wider bg-gradient-to-br from-amber-300 to-amber-500 text-black px-3 py-1 rounded-full shadow-lg shadow-amber-500/30">Full platform</span>
-          <div class="grid md:grid-cols-[1fr_1.4fr] gap-6 items-start">
-            <div>
-              <p class="font-heading text-5xl font-bold bg-gradient-to-br from-white to-amber-100 bg-clip-text text-transparent">€1,890</p>
-              <p class="text-sm text-white/55 mt-1">per season (6 months · May → Oct)</p>
-              <p class="text-xs text-white/40 mt-3">or <span class="font-mono text-white/70">€299/mo</span> year-round</p>
-              <p class="text-xs text-white/40 mt-1">one-time setup <span class="font-mono text-amber-200">€890</span> (covers your ~4h install)</p>
-              <p class="mt-5 text-[11px] text-white/50 leading-relaxed">Cash flow tip: bill the full €1,890 in April so the money arrives <em class="text-white/70">before</em> the bar opens its season. No refunds after setup.</p>
-            </div>
-            <div>
-              <p class="text-[11px] uppercase tracking-wider text-amber-200/80 font-bold mb-2">Everything included</p>
-              <ul class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-sm text-white/85">
-                {tiers[0].bullets.map(b => <li>✓ {b}</li>)}
-              </ul>
-            </div>
-          </div>
+        <h2 class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-4">{isEl ? "💰 Δύο plans, ίδια πλατφόρμα" : "💰 Two plans, same platform"}</h2>
+
+        <div class="mb-4 rounded-2xl border border-emerald-400/30 bg-emerald-400/[0.06] p-4 text-sm text-white/80">
+          <p class="font-bold text-emerald-200 mb-1">🎯 Dual pricing — list + early-bird discount</p>
+          <p>
+            <strong>List price</strong> (marketing anchor): Seasonal <strong>€1,380</strong> · Year-round <strong>€2,400</strong>.
+            <strong>Early-bird (what customers actually pay):</strong> Seasonal <strong>€690</strong> (−50%) · Year-round <strong>€1,104</strong> (−54% · 20% cheaper than 2× seasonal).
+            Setup €850 is a <strong>fixed one-time fee</strong> on every plan — no discounts, no waivers.
+            All margins, scale milestones and break-even numbers below are computed from the <strong>early-bird prices</strong>.
+            <br/><span class="text-white/70">All prices are net (ex. VAT). <strong>+24% VAT</strong> is added at checkout.</span>
+          </p>
         </div>
-        <p class="mt-3 text-xs text-white/45">💡 One plan = one sell, one deploy, one support story. No feature-gating code, no "upgrade to Pro" nagging, no complex tier logic.</p>
+
+        <div class="grid md:grid-cols-2 gap-4">
+          {plans.map(p => (
+            <div class={`rounded-2xl border p-6 relative ${p.featured ? "border-amber-400/60 bg-gradient-to-br from-amber-500/15 via-fuchsia-500/5 to-sky-500/5" : "border-white/10 bg-white/[0.03]"}`}>
+              {p.featured && (
+                <span class="absolute -top-3 right-6 text-[10px] font-bold uppercase tracking-wider bg-gradient-to-br from-amber-300 to-amber-500 text-black px-3 py-1 rounded-full shadow-lg shadow-amber-500/30">{isEl ? "Καλύτερη αξία" : "Best value"}</span>
+              )}
+              <p class="text-[11px] uppercase tracking-wider text-amber-200/80 font-bold">{p.name}</p>
+              <p class="text-xs text-white/55 mt-0.5">{p.tagline} · {p.window}</p>
+              <div class="mt-4 flex items-end gap-3 flex-wrap">
+                <p class="font-heading text-5xl font-bold bg-gradient-to-br from-white to-amber-100 bg-clip-text text-transparent leading-none"><s class="text-white/30 text-3xl font-normal">€{p.total.toLocaleString("en-GB")}</s></p>
+                <p class="font-heading text-5xl font-bold text-emerald-300 leading-none">€{p.discount_total.toLocaleString("en-GB")}</p>
+              </div>
+              <p class="mt-1 text-[11px] text-white/55">net price · + 24% VAT</p>
+              <p class="mt-2 text-xs"><span class="rounded-full bg-emerald-400/20 border border-emerald-400/40 text-emerald-300 px-2 py-0.5 font-bold">−{p.discount_pct}% EARLY-BIRD</span> <span class="text-white/50 ml-2">{isEl ? "λίστα τιμή €" : "list price €"}{p.total.toLocaleString("en-GB")}</span></p>
+              <p class="text-sm text-white/55 mt-2">{p.effective_mo}</p>
+
+              {/* First-payment breakdown with VAT */}
+              <div class="mt-4 rounded-xl border border-white/10 bg-black/30 p-3 text-xs">
+                <div class="flex items-center justify-between py-1 border-b border-white/5">
+                  <span class="text-white/75">🔧 Installation (one-time)</span>
+                  <span class="font-mono text-white">€{p.setup} <span class="text-white/45">net</span></span>
+                </div>
+                <div class="flex items-center justify-between py-1 border-b border-white/5">
+                  <span class="text-white/75">🔁 Subscription ({p.key === "seasonal" ? "6 mo" : "12 mo"})</span>
+                  <span class="font-mono text-emerald-300">€{p.discount_total.toLocaleString("en-GB")} <span class="text-white/45">net</span></span>
+                </div>
+                <div class="flex items-center justify-between py-1 text-white/70">
+                  <span>Subtotal net</span>
+                  <span class="font-mono">€{(p.discount_total + p.setup).toLocaleString("en-GB")}</span>
+                </div>
+                <div class="flex items-center justify-between py-1 text-white/70">
+                  <span>+ 24% VAT</span>
+                  <span class="font-mono">€{Math.round((p.discount_total + p.setup) * 0.24).toLocaleString("en-GB")}</span>
+                </div>
+                <div class="flex items-center justify-between pt-2 mt-1 border-t border-white/10 text-amber-200 font-bold">
+                  <span>Total 1st payment (incl. VAT)</span>
+                  <span class="font-mono">€{Math.round((p.discount_total + p.setup) * 1.24).toLocaleString("en-GB")}</span>
+                </div>
+                <div class="flex items-center justify-between pt-2 mt-2 border-t border-white/10 text-sky-200">
+                  <span>Renewal ({p.key === "seasonal" ? "next season" : "year 2+"}) · no install</span>
+                  <span class="font-mono">€{Math.round(p.discount_total * 1.24).toLocaleString("en-GB")} <span class="text-white/45 font-normal">incl. VAT</span></span>
+                </div>
+              </div>
+
+              <p class="mt-4 text-[11px] text-white/50 leading-relaxed">{p.billing}</p>
+            </div>
+          ))}
+        </div>
+
+        <div class="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+          <p class="text-[11px] uppercase tracking-wider text-amber-200/80 font-bold mb-2">{isEl ? "Όλα περιλαμβάνονται και στα δύο plans" : "Everything included in both plans"}</p>
+          <ul class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-1 text-sm text-white/85">
+            {bullets.map(b => <li>✓ {b}</li>)}
+          </ul>
+        </div>
+
+        <p class="mt-3 text-xs text-white/45">💡 Same feature set on both plans — only commitment length differs. Seasonal customers churn at Oct 31; year-round gives compounding MRR and is a better sale for city venues.</p>
       </section>
 
       <!-- Deployment models -->
       <section class="mb-10">
-        <h2 class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-4">🏗️ Deployment models</h2>
+        <h2 class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-4">{isEl ? "🏗️ Μοντέλα Deployment" : "🏗️ Deployment models"}</h2>
         <div class="grid md:grid-cols-2 gap-3">
           {models.map(m => (
             <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
@@ -168,7 +269,7 @@ const legal = [
 
       <!-- Install checklist -->
       <section class="mb-10">
-        <h2 class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-4">📋 Install checklist (~4 hours per venue)</h2>
+        <h2 class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-4">{isEl ? "📋 Checklist Εγκατάστασης (~4 ώρες ανά venue)" : "📋 Install checklist (~4 hours per venue)"}</h2>
         <div class="space-y-3">
           {checklist.map(c => (
             <details class="rounded-2xl border border-white/10 bg-white/[0.03] overflow-hidden" open>
@@ -185,7 +286,7 @@ const legal = [
       <!-- Unit economics -->
       <section class="mb-10 grid md:grid-cols-2 gap-3">
         <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-          <h3 class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-3">💸 Cost per venue</h3>
+          <h3 class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-3">{isEl ? "💸 Κόστος ανά venue" : "💸 Cost per venue"}</h3>
           <table class="w-full text-sm">
             <tbody>
               {costPerVenue.map(([k, v]) => (
@@ -215,7 +316,7 @@ const legal = [
 
       <!-- Scale table -->
       <section class="mb-10 rounded-2xl border border-amber-400/30 bg-gradient-to-br from-amber-500/10 via-fuchsia-500/5 to-sky-500/5 p-5">
-        <h3 class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-3">📊 Where the money is</h3>
+        <h3 class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-3">{isEl ? "📊 Πού είναι τα λεφτά" : "📊 Where the money is"}</h3>
         <table class="w-full text-sm">
           <tbody>
             {scale.map(s => (
@@ -231,7 +332,7 @@ const legal = [
 
       <!-- Legal essentials -->
       <section class="mb-10 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-        <h3 class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-3">⚖️ Legal essentials before customer #2</h3>
+        <h3 class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-3">{isEl ? "⚖️ Νομικά απαραίτητα πριν τον πελάτη #2" : "⚖️ Legal essentials before customer #2"}</h3>
         <table class="w-full text-sm">
           <tbody>
             {legal.map(([k, v]) => (

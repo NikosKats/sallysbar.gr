@@ -8,6 +8,7 @@ declare namespace App {
     session: import("@supabase/supabase-js").Session | null;
     role: "customer" | "employee" | "admin" | "super_admin" | null;
     lang: "en" | "el";
+    handle?: string | null;
   }
 }
 
@@ -26,4 +27,14 @@ interface ImportMetaEnv {
   readonly VAPID_SUBJECT: string;
   readonly TABLE_SECRET: string;
   readonly ANTHROPIC_API_KEY: string;
+  readonly VONAGE_API_KEY: string;
+  readonly VONAGE_SIGNATURE_SECRET: string;
+  readonly VONAGE_BRAND_NAME: string;
+  readonly VONAGE_MESSAGES_API_KEY: string;
+  readonly VONAGE_MESSAGES_API_SECRET: string;
+  readonly VONAGE_MESSAGES_BASE: string;
+  readonly VONAGE_WA_FROM: string;
+  readonly VONAGE_SMS_FROM: string;
+  readonly MARKETING_CRON_TOKEN: string;
+  readonly ADMIN_DIGEST_TO: string;
 }

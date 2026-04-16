@@ -1,0 +1,325 @@
+---
+import "../../styles/global.css";
+import Header from "../../components/Header.astro";
+import Footer from "../../components/Footer.astro";
+import { site } from "../../data/site";
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+
+const waUrl = `https://wa.me/${site.phoneE164.replace(/\D/g, "")}?text=${encodeURIComponent(isEl ? "Γεια σας, θέλω να δω το PistotitaOS σε σύγκριση με άλλα." : "Hi — I'd like to compare PistotitaOS with other tools.")}`;
+
+type Cell = "yes" | "partial" | "no" | "paid";
+type Row = { feature: string; desc?: string; values: Cell[] };
+
+const competitors = ["PistotitaOS", "Toast / Square", "Loyverse / Revo", "Fivestars / Yotpo", "e-Food / Wolt apps", "DIY (Typeform / Mailchimp)"];
+
+const sections: { title: string; rows: Row[] }[] = [
+  {
+    title: isEl ? "Παραγγελίες & Operations" : "Ordering & operations",
+    rows: [
+      { feature: isEl ? "QR παραγγελίες ανά τραπέζι" : "QR ordering per table",        values: ["yes", "paid",   "paid",   "no",     "partial","no"] },
+      { feature: isEl ? "Staff app (waiter/barman/deliver)" : "Staff app (waiter/barman/deliver)", values: ["yes", "yes",    "yes",    "no",     "no",     "no"] },
+      { feature: isEl ? "Timestamps (prepared/ready/delivered)" : "Order timing analytics",        values: ["yes", "paid",   "no",     "no",     "no",     "no"] },
+      { feature: isEl ? "Telegram order bot" : "Telegram order bot",                 values: ["yes", "no",     "no",     "no",     "no",     "no"] },
+      { feature: isEl ? "Προμήθεια ανά παραγγελία" : "Per-order commission",           desc: isEl ? "Κόστος που τρώει το περιθώριο" : "Eats your margin", values: ["no",  "paid",   "no",     "no",     "paid",   "no"] },
+    ],
+  },
+  {
+    title: isEl ? "Πιστότητα & Κάρτες" : "Loyalty & cards",
+    rows: [
+      { feature: isEl ? "Ψηφιακή κάρτα μέλους" : "Digital loyalty card",               values: ["yes", "partial","yes",    "yes",    "no",     "no"] },
+      { feature: isEl ? "Apple & Google Wallet passes" : "Apple & Google Wallet passes", values: ["yes", "paid",   "no",     "paid",   "no",     "no"] },
+      { feature: isEl ? "Tiers & rewards catalog" : "Tiers & rewards catalog",        values: ["yes", "paid",   "partial","yes",    "no",     "no"] },
+      { feature: isEl ? "Referral πόντοι (ref links)" : "Referral points (per-user link)",  values: ["yes", "no",     "no",     "partial","no",     "no"] },
+      { feature: isEl ? "Social Card /u/handle" : "Social Card /u/handle",             values: ["yes", "no",     "no",     "no",     "no",     "no"] },
+    ],
+  },
+  {
+    title: isEl ? "Gamification" : "Gamification",
+    rows: [
+      { feature: isEl ? "Daily Wheel of Luck (casino-grade)" : "Daily Wheel of Luck (casino-grade)", values: ["yes", "no", "no", "no", "no", "no"] },
+      { feature: isEl ? "Scratch cards (editable pool)" : "Scratch cards (editable pool)", values: ["yes", "no", "no", "partial", "no", "no"] },
+      { feature: isEl ? "AI-generated nightly Quests" : "AI-generated nightly Quests",    values: ["yes", "no", "no", "no", "no", "no"] },
+      { feature: isEl ? "Staff-confirm QR scanner" : "Staff-confirm QR scanner",        values: ["yes", "no", "no", "no", "no", "no"] },
+    ],
+  },
+  {
+    title: isEl ? "Marketing automation" : "Marketing automation",
+    rows: [
+      { feature: isEl ? "WhatsApp + SMS αυτοματισμοί" : "WhatsApp + SMS automation",   values: ["yes", "paid",   "no", "paid", "no", "partial"] },
+      { feature: isEl ? "Web push notifications" : "Web push notifications",           values: ["yes", "partial","no", "partial","no", "no"] },
+      { feature: isEl ? "Transactional email (Resend)" : "Transactional email",         values: ["yes", "paid",   "no", "yes",   "no", "paid"] },
+      { feature: isEl ? "Υπενθύμιση κράτησης 2h πριν" : "2h reservation reminder",     values: ["yes", "no",     "no", "no",    "no", "no"] },
+      { feature: isEl ? "Birthday, re-engagement, win-back" : "Birthday / re-engagement / win-back", values: ["yes", "paid", "no", "yes", "no", "paid"] },
+      { feature: isEl ? "Trackable QR καμπάνιες" : "Trackable QR campaigns",           values: ["yes", "no", "no", "no", "no", "partial"] },
+    ],
+  },
+  {
+    title: isEl ? "Κρατήσεις & events" : "Reservations & events",
+    rows: [
+      { feature: isEl ? "Public booking form + Turnstile" : "Public booking form",     values: ["yes", "paid",   "partial","no","no","paid"] },
+      { feature: isEl ? "Events calendar + RSVP" : "Events calendar + RSVP",          values: ["yes", "no",     "no",     "no","no","no"] },
+      { feature: isEl ? "Per-venue Telegram κανάλια" : "Per-venue Telegram channels", values: ["yes", "no",     "no",     "no","no","no"] },
+    ],
+  },
+  {
+    title: isEl ? "Πλατφόρμα & data" : "Platform & data",
+    rows: [
+      { feature: isEl ? "PWA (install χωρίς App Store)" : "PWA (install, no App Store)", values: ["yes", "no", "no", "no", "yes", "no"] },
+      { feature: isEl ? "Bilingual EN/EL out of the box" : "Bilingual EN/EL out of the box", values: ["yes", "no", "no", "no", "yes", "no"] },
+      { feature: isEl ? "CSV export (δεδομένα δικά σου)" : "CSV export (you own the data)", values: ["yes", "partial", "yes", "partial", "no", "yes"] },
+      { feature: isEl ? "GDPR DPA + privacy baseline" : "GDPR DPA + privacy baseline", values: ["yes", "yes", "yes", "yes", "yes", "partial"] },
+      { feature: isEl ? "Αποκλειστικότητα ανά περιοχή" : "Territorial exclusivity",    values: ["yes", "no", "no", "no", "no", "no"] },
+    ],
+  },
+  {
+    title: isEl ? "Εμπορικά" : "Commercial",
+    rows: [
+      { feature: isEl ? "Σταθερή τιμή (χωρίς revenue share)" : "Flat price (no revenue share)", values: ["yes", "no",     "yes",    "yes",    "no",     "yes"] },
+      { feature: isEl ? "Setup σε ~4 ώρες" : "Setup in ~4 hours",                     values: ["yes", "partial","partial","partial","yes",    "no"] },
+      { feature: isEl ? "Priority support (άμεσα WhatsApp)" : "Priority support (direct WhatsApp)", values: ["yes", "no", "no", "no", "no", "no"] },
+      { feature: isEl ? "Χωρίς lock-in μετά το 1ο έτος" : "No lock-in after Y1",      values: ["yes", "partial","yes",    "partial","partial","yes"] },
+    ],
+  },
+];
+
+const advantages = [
+  { icon: "🧩", title: isEl ? "Ένα σύστημα, όχι 5 tabs" : "One system, not five tabs",
+    desc: isEl ? "Παραγγελίες + loyalty + games + marketing + κρατήσεις — κάτω από ένα login, με κοινά δεδομένα." : "Ordering + loyalty + games + marketing + reservations — one login, one data model." },
+  { icon: "🎰", title: isEl ? "Casino-grade παιχνίδια" : "Casino-grade games",
+    desc: isEl ? "Wheel, Scratch, AI Quests. Κανένας ανταγωνιστής στην ΕΛ αγορά δεν έχει αυτό το stack." : "Wheel, Scratch, AI Quests. No Greek rival has this stack." },
+  { icon: "🤖", title: isEl ? "Marketing που τρέχει μόνο του" : "Marketing on autopilot",
+    desc: isEl ? "10 έτοιμα triggers: γενέθλια, 2h reminder, κριτικές, win-back. WhatsApp/SMS/Push/Email." : "10 built-in triggers: birthday, 2h reminder, review nudge, win-back. WhatsApp/SMS/Push/Email." },
+  { icon: "💸", title: isEl ? "0% προμήθεια παραγγελίας" : "0% per-order commission",
+    desc: isEl ? "Πληρώνεις σταθερή συνδρομή. Δεν κόβουμε ποσοστό από τις παραγγελίες σου όπως Wolt/Toast." : "Flat subscription. We don't take a cut of each order like Wolt/Toast." },
+  { icon: "🏝️", title: isEl ? "Seasonal plan — μοναδικό" : "Seasonal plan — unique",
+    desc: isEl ? "6-μηνο plan για τουριστικά μαγαζιά. Κανένας ανταγωνιστής δεν το προσφέρει, πληρώνεις 12-μηνο ακόμα κι όταν είσαι κλειστός." : "6-month plan for tourist venues. Rivals force you to pay 12 months even when you're closed." },
+  { icon: "🔒", title: isEl ? "Αποκλειστικότητα ανά περιοχή" : "Territorial exclusivity",
+    desc: isEl ? "Ένα μαγαζί ανά ZIP. Ο ανταγωνιστής σου στον δρόμο δεν μπορεί να πάρει τα ίδια εργαλεία." : "One venue per ZIP. Your competitor down the street can't get the same tools." },
+  { icon: "⚡", title: isEl ? "Live σε 48 ώρες" : "Live in 48 hours",
+    desc: isEl ? "Το στήνουμε εμείς. Δεν χρειάζεσαι dev ομάδα ή συντήρηση." : "We install it. No dev team, no maintenance headaches." },
+  { icon: "🇬🇷", title: isEl ? "EN/EL από την αρχή" : "EN/EL from day one",
+    desc: isEl ? "Πλήρης διπλή γλώσσα σε κάθε σελίδα και κάθε email. Ιδανικό για τουρίστες UK/DE/IT." : "Full bilingual across every page and email. Perfect for UK/DE/IT tourists." },
+];
+
+const pitfalls = [
+  { title: isEl ? "Toast / Square" : "Toast / Square",
+    pro: isEl ? "POS ώριμο, επώνυμο, καλό αν έχεις ήδη το hardware τους." : "Mature POS, known brand, good if you're already on their hardware.",
+    con: isEl ? "Καμία gamification. Loyalty & marketing είναι paid add-ons. Υψηλό συνολικό κόστος, US-first." : "Zero gamification. Loyalty & marketing are paid add-ons. High total cost, US-first.", },
+  { title: isEl ? "Loyverse / Revo" : "Loyverse / Revo",
+    pro: isEl ? "Φτηνό POS με βασικό loyalty. Καλό για καφέ/take-away." : "Cheap POS with basic loyalty. OK for cafés / takeaway.",
+    con: isEl ? "Δεν έχει marketing automation, games, QR ordering σε τραπέζι, WhatsApp." : "No marketing automation, games, table QR ordering, or WhatsApp.", },
+  { title: isEl ? "Fivestars / Yotpo" : "Fivestars / Yotpo",
+    pro: isEl ? "Καλά loyalty campaigns με e-commerce προσανατολισμό." : "Solid loyalty campaigns, e-commerce-focused.",
+    con: isEl ? "Δεν καλύπτει POS/παραγγελίες/κρατήσεις/games. Ακριβό για bar, στήνεται σε εβδομάδες." : "No POS/ordering/reservations/games. Pricey for a bar, weeks to onboard.", },
+  { title: isEl ? "e-Food / Wolt apps" : "e-Food / Wolt apps",
+    pro: isEl ? "Όγκος delivery παραγγελιών — έτοιμο κοινό." : "Delivery volume — audience is ready.",
+    con: isEl ? "15–30% προμήθεια ανά παραγγελία. Οι πελάτες ανήκουν σε αυτούς, όχι σε σένα." : "15–30% per-order commission. Customers belong to them, not you.", },
+  { title: isEl ? "DIY (Typeform + Mailchimp + Canva)" : "DIY (Typeform + Mailchimp + Canva)",
+    pro: isEl ? "Ευέλικτο, φτηνό ξεκίνημα." : "Flexible, cheap start.",
+    con: isEl ? "5 εργαλεία που δεν συνομιλούν. Κόπος συντήρησης, κανένα gamification, κανένα analytics." : "5 tools that don't talk to each other. Maintenance hell, no gamification, no analytics.", },
+];
+
+function cellMark(c: Cell) {
+  if (c === "yes") return { icon: "✓", cls: "text-emerald-300 bg-emerald-400/15 border-emerald-400/30", label: "Yes" };
+  if (c === "partial") return { icon: "~", cls: "text-amber-300 bg-amber-400/15 border-amber-400/30", label: "Partial" };
+  if (c === "paid") return { icon: "€", cls: "text-sky-300 bg-sky-400/15 border-sky-400/30", label: "Paid add-on" };
+  return { icon: "✗", cls: "text-rose-300 bg-rose-400/15 border-rose-400/30", label: "No" };
+}
+---
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PistotitaOS vs {isEl ? "ανταγωνιστές" : "the competition"}</title>
+    <meta name="description" content={isEl
+      ? "Αναλυτική σύγκριση του PistotitaOS με Toast, Loyverse, Fivestars, e-Food, Mailchimp. Τι παίρνεις μέσα, τι πληρώνεις extra, γιατί είμαστε διαφορετικοί."
+      : "Feature-by-feature comparison of PistotitaOS vs Toast, Loyverse, Fivestars, e-Food, Mailchimp. What's included, what others charge extra for, why we win."} />
+  </head>
+  <body class="min-h-screen bg-[#0a0a0f] text-white font-body antialiased">
+    <Header />
+    <div class="h-20"></div>
+
+    <!-- HERO -->
+    <section class="relative overflow-hidden">
+      <div class="absolute inset-0 pointer-events-none" aria-hidden="true">
+        <div class="absolute -top-40 -left-40 h-[26rem] w-[26rem] rounded-full bg-amber-500/20 blur-3xl"></div>
+        <div class="absolute top-20 -right-40 h-[30rem] w-[30rem] rounded-full bg-fuchsia-500/15 blur-3xl"></div>
+      </div>
+      <div class="relative mx-auto max-w-5xl px-5 pt-10 pb-12 md:pt-16 md:pb-16 text-center">
+        <p class="text-[11px] uppercase tracking-[0.28em] text-amber-300/90 font-bold">
+          {isEl ? "PistotitaOS vs ο κόσμος" : "PistotitaOS vs the world"}
+        </p>
+        <h1 class="mt-4 font-heading text-4xl md:text-5xl font-bold leading-tight max-w-3xl mx-auto bg-gradient-to-br from-white via-amber-100 to-amber-300 bg-clip-text text-transparent">
+          {isEl ? "Γιατί δεν φτάνει ένα POS + ένα Mailchimp" : "Why a POS + Mailchimp isn't enough"}
+        </h1>
+        <p class="mt-5 text-lg text-white/75 max-w-2xl mx-auto leading-relaxed">
+          {isEl
+            ? "Δες feature-by-feature πού κερδίζει το PistotitaOS απέναντι σε Toast, Loyverse, Fivestars, e-Food και DIY stacks."
+            : "See feature-by-feature where PistotitaOS wins against Toast, Loyverse, Fivestars, e-Food, and DIY stacks."}
+        </p>
+        <div class="mt-6 flex flex-wrap justify-center gap-2 text-xs">
+          <span class="rounded-full border border-emerald-400/40 bg-emerald-400/10 text-emerald-300 px-3 py-1">✓ {isEl ? "Περιλαμβάνεται" : "Included"}</span>
+          <span class="rounded-full border border-amber-400/40 bg-amber-400/10 text-amber-300 px-3 py-1">~ {isEl ? "Μερικώς" : "Partial"}</span>
+          <span class="rounded-full border border-sky-400/40 bg-sky-400/10 text-sky-300 px-3 py-1">€ {isEl ? "Paid add-on" : "Paid add-on"}</span>
+          <span class="rounded-full border border-rose-400/40 bg-rose-400/10 text-rose-300 px-3 py-1">✗ {isEl ? "Δεν υπάρχει" : "Not available"}</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ADVANTAGES GRID -->
+    <section class="mx-auto max-w-6xl px-5 py-10">
+      <h2 class="font-heading text-3xl md:text-4xl font-bold text-center">{isEl ? "Το ανταγωνιστικό μας πλεονέκτημα" : "Our competitive edge"}</h2>
+      <div class="mt-8 grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {advantages.map(a => (
+          <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-5 hover:bg-white/[0.05] transition">
+            <p class="text-3xl">{a.icon}</p>
+            <h3 class="font-heading text-base font-bold mt-3">{a.title}</h3>
+            <p class="text-sm text-white/65 mt-2 leading-relaxed">{a.desc}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <!-- FEATURE MATRIX -->
+    <section class="mx-auto max-w-6xl px-5 py-12">
+      <h2 class="font-heading text-3xl md:text-4xl font-bold text-center">{isEl ? "Πίνακας σύγκρισης" : "Feature matrix"}</h2>
+      <p class="text-center text-sm text-white/55 mt-3 max-w-2xl mx-auto">
+        {isEl ? "Κύλισε οριζόντια σε κινητό. Οι πληροφορίες είναι ενημερωμένες με βάση τα δημόσια pricing pages τον Απρίλιο 2026." : "Scroll horizontally on mobile. Data compiled from public pricing pages as of April 2026."}
+      </p>
+
+      <div class="mt-8 space-y-10">
+        {sections.map(s => (
+          <div>
+            <h3 class="font-heading text-xl font-bold mb-3">{s.title}</h3>
+            <div class="rounded-2xl border border-white/10 bg-white/[0.03] overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead class="text-[11px] uppercase tracking-wider text-white/55">
+                  <tr class="border-b border-white/10">
+                    <th class="text-left py-3 px-4 min-w-[240px]">Feature</th>
+                    {competitors.map((c, i) => (
+                      <th class={`py-3 px-3 text-center min-w-[100px] ${i === 0 ? "text-amber-300" : "text-white/60"}`}>{c}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {s.rows.map(r => (
+                    <tr class="border-b border-white/5">
+                      <td class="py-2.5 px-4">
+                        <p class="text-white/90">{r.feature}</p>
+                        {r.desc && <p class="text-[11px] text-white/45 mt-0.5">{r.desc}</p>}
+                      </td>
+                      {r.values.map((v, i) => {
+                        const m = cellMark(v);
+                        return (
+                          <td class={`py-2.5 px-3 text-center ${i === 0 ? "bg-amber-400/[0.04]" : ""}`}>
+                            <span class={`inline-flex items-center justify-center w-7 h-7 rounded-full border text-sm font-bold ${m.cls}`} title={m.label}>{m.icon}</span>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <!-- PER-COMPETITOR PROS/CONS -->
+    <section class="mx-auto max-w-6xl px-5 py-12">
+      <h2 class="font-heading text-3xl md:text-4xl font-bold text-center">{isEl ? "Τι προσφέρει κάθε ανταγωνιστής" : "Honest take on each competitor"}</h2>
+      <p class="text-center text-sm text-white/55 mt-3 max-w-2xl mx-auto">
+        {isEl ? "Δεν λέμε ότι όλοι είναι κακοί — λέμε πότε έχει νόημα να πας αλλού." : "We're not saying they're all bad — we're saying when it makes sense to pick them instead."}
+      </p>
+      <div class="mt-8 grid md:grid-cols-2 gap-4">
+        {pitfalls.map(p => (
+          <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+            <h3 class="font-heading text-lg font-bold">{p.title}</h3>
+            <div class="mt-3 grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <p class="text-[10px] uppercase tracking-wider text-emerald-300 font-bold mb-1">{isEl ? "Πού κερδίζει" : "Where it wins"}</p>
+                <p class="text-white/75 leading-relaxed">{p.pro}</p>
+              </div>
+              <div>
+                <p class="text-[10px] uppercase tracking-wider text-rose-300 font-bold mb-1">{isEl ? "Πού χάνει" : "Where it loses"}</p>
+                <p class="text-white/75 leading-relaxed">{p.con}</p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <!-- PRICING COMPARISON -->
+    <section class="mx-auto max-w-6xl px-5 py-12">
+      <div class="rounded-3xl border border-amber-400/30 bg-gradient-to-br from-amber-500/10 via-fuchsia-500/5 to-sky-500/5 p-6 md:p-10">
+        <h2 class="font-heading text-3xl md:text-4xl font-bold text-center">{isEl ? "Τι θα πλήρωνες αλλού για τα ίδια" : "What you'd pay elsewhere for the same"}</h2>
+        <p class="text-center text-sm text-white/60 mt-3 max-w-2xl mx-auto">
+          {isEl ? "Για να φτάσεις στο ίδιο feature-set, συνδυάζοντας ξεχωριστά εργαλεία:" : "To hit the same feature set by stitching separate tools:"}
+        </p>
+        <div class="mt-8 grid md:grid-cols-2 gap-4">
+          <div class="rounded-2xl border border-white/10 bg-black/30 p-5">
+            <p class="text-[11px] uppercase tracking-wider text-rose-300 font-bold">{isEl ? "Συνδυασμός ανταγωνιστών" : "Stitched competitor stack"}</p>
+            <ul class="mt-3 space-y-1.5 text-sm text-white/80">
+              <li class="flex justify-between gap-4"><span>Toast POS / Square for Restaurants</span><span class="font-mono text-white/60">~€79/mo</span></li>
+              <li class="flex justify-between gap-4"><span>Fivestars / Yotpo Loyalty</span><span class="font-mono text-white/60">~€59/mo</span></li>
+              <li class="flex justify-between gap-4"><span>Mailchimp + Twilio / WhatsApp BSP</span><span class="font-mono text-white/60">~€45/mo</span></li>
+              <li class="flex justify-between gap-4"><span>Typeform + Calendly (bookings)</span><span class="font-mono text-white/60">~€30/mo</span></li>
+              <li class="flex justify-between gap-4"><span>Canva Pro (coasters/posters)</span><span class="font-mono text-white/60">~€12/mo</span></li>
+              <li class="flex justify-between gap-4"><span>{isEl ? "Games: δεν υπάρχει εναλλακτική" : "Games: no real alternative"}</span><span class="font-mono text-rose-300">—</span></li>
+            </ul>
+            <div class="mt-4 pt-3 border-t border-white/10 flex justify-between font-bold">
+              <span>{isEl ? "Σύνολο" : "Total"}</span>
+              <span class="font-mono text-rose-300">~€225+/mo · ~€2,700/yr</span>
+            </div>
+            <p class="text-[11px] text-white/45 mt-2">
+              {isEl ? "+ setup 20–40 ώρες · καμία ενοποίηση · καμία προστασία περιοχής · χωρίς games." : "+ 20–40 hr setup · zero integration · no territory protection · no games."}
+            </p>
+          </div>
+
+          <div class="rounded-2xl border border-amber-400/50 bg-gradient-to-br from-amber-500/15 to-emerald-500/5 p-5">
+            <p class="text-[11px] uppercase tracking-wider text-emerald-300 font-bold">{isEl ? "PistotitaOS (early-bird, όλα μέσα)" : "PistotitaOS (early-bird, all in)"}</p>
+            <ul class="mt-3 space-y-1.5 text-sm text-white/90">
+              <li class="flex justify-between gap-4"><span>{isEl ? "Seasonal 6mo (net)" : "Seasonal 6mo (net)"}</span><span class="font-mono text-emerald-300">€115/mo equiv.</span></li>
+              <li class="flex justify-between gap-4"><span>{isEl ? "Year-round 12mo (net)" : "Year-round 12mo (net)"}</span><span class="font-mono text-emerald-300">€99/mo equiv.</span></li>
+              <li class="flex justify-between gap-4"><span>{isEl ? "Setup (άπαξ, σταθερό)" : "Setup (one-time, fixed)"}</span><span class="font-mono text-white/70">€850 net</span></li>
+              <li class="flex justify-between gap-4"><span>{isEl ? "Games / QR / WhatsApp / Wallet / κρατήσεις" : "Games / QR / WhatsApp / Wallet / bookings"}</span><span class="text-emerald-300 font-bold">✓ all in</span></li>
+            </ul>
+            <div class="mt-4 pt-3 border-t border-white/10 flex justify-between font-bold">
+              <span>{isEl ? "Σύνολο (ετήσιο, net)" : "Total (annual, net)"}</span>
+              <span class="font-mono text-emerald-300">€690–€1,188</span>
+            </div>
+            <p class="text-[11px] text-white/55 mt-2">
+              {isEl ? "+ €850 setup σταθερό · 1 login · αποκλειστικότητα περιοχής · όλα τα games μέσα." : "+ €850 fixed setup · one login · territorial exclusivity · all games included."}
+            </p>
+          </div>
+        </div>
+
+        <p class="mt-6 text-center text-xs text-white/50">
+          {isEl ? "Όλες οι τιμές net. +24% ΦΠΑ προστίθεται στη χρέωση." : "All prices net. +24% VAT added at checkout."}
+        </p>
+      </div>
+    </section>
+
+    <!-- FINAL CTA -->
+    <section class="mx-auto max-w-4xl px-5 py-16">
+      <div class="rounded-3xl border border-amber-400/40 bg-gradient-to-br from-amber-500/20 via-fuchsia-500/10 to-sky-500/10 p-8 md:p-10 text-center">
+        <h2 class="font-heading text-3xl md:text-4xl font-bold leading-tight">
+          {isEl ? "Έτοιμος να σταματήσεις να πληρώνεις 5 εργαλεία;" : "Ready to stop paying for 5 tools?"}
+        </h2>
+        <p class="mt-4 text-white/80 max-w-xl mx-auto">
+          {isEl ? "Ένα demo 10 λεπτών, μια απόφαση, 48 ώρες για να είσαι live." : "One 10-minute demo, one decision, 48 hours to go live."}
+        </p>
+        <div class="mt-6 flex flex-wrap items-center justify-center gap-3">
+          <a href={waUrl} class="rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 hover:from-amber-300 hover:to-amber-500 text-black font-bold px-6 py-3 shadow-xl shadow-amber-500/30 transition">{isEl ? "💬 Κλείσε demo" : "💬 Book a demo"}</a>
+          <a href="/pistotita-os" class="rounded-2xl border border-white/15 bg-white/5 hover:bg-white/10 px-6 py-3 font-semibold transition">{isEl ? "← Πίσω στο PistotitaOS" : "← Back to PistotitaOS"}</a>
+        </div>
+      </div>
+    </section>
+
+    <Footer />
+  </body>
+</html>

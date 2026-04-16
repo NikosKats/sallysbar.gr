@@ -1,0 +1,289 @@
+---
+import "../../styles/global.css";
+import AdminNav from "../../components/AdminNav.astro";
+import { withLangPrefix } from "../../i18n";
+
+export const prerender = false;
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+
+if (Astro.locals.role !== "super_admin") {
+  return Astro.redirect(withLangPrefix(lang, "/admin"));
+}
+
+// ── Territorial pipeline (static seed — wire to DB later when we add a `pistotita_leads` table) ──
+type Status = "locked" | "negotiating" | "prospect" | "cold" | "lost";
+type Lead = {
+  venue: string;
+  area: string;
+  postal: string;
+  type: "seasonal" | "yearround";
+  plan_list: number;
+  plan_price: number;
+  setup: number;
+  contact: string;
+  channel: "WhatsApp" | "Call" | "Email" | "In-person";
+  nextStep: string;
+  status: Status;
+  signedOn?: string;
+};
+
+const leads: Lead[] = [
+  { venue: "Sally's Bar",          area: "Skala, Kefalonia",      postal: "28200", type: "seasonal",  plan_list: 2592, plan_price: 1890, setup: 890, contact: "Sally",      channel: "In-person", nextStep: "Live — use as case study", status: "locked",       signedOn: "2024-05-01" },
+];
+
+const statusLabel: Record<Status, string> = {
+  locked:      isEl ? "✅ Κλειδωμένος" : "✅ Locked",
+  negotiating: isEl ? "🤝 Διαπραγμάτευση" : "🤝 Negotiating",
+  prospect:    isEl ? "🎯 Prospect" : "🎯 Prospect",
+  cold:        isEl ? "❄️ Cold" : "❄️ Cold",
+  lost:        isEl ? "💀 Χάθηκε" : "💀 Lost",
+};
+
+const statusColor: Record<Status, string> = {
+  locked:      "border-emerald-400/40 bg-emerald-400/10 text-emerald-300",
+  negotiating: "border-amber-400/40 bg-amber-400/10 text-amber-300",
+  prospect:    "border-sky-400/40 bg-sky-400/10 text-sky-300",
+  cold:        "border-white/15 bg-white/5 text-white/60",
+  lost:        "border-rose-400/40 bg-rose-400/10 text-rose-300",
+};
+
+const eur = (n: number) => "€" + Math.round(n).toLocaleString("en-GB");
+
+// KPIs
+const signedVenues  = leads.filter(l => l.status === "locked").length;
+const negotiating   = leads.filter(l => l.status === "negotiating").length;
+const prospects     = leads.filter(l => l.status === "prospect" || l.status === "cold").length;
+const signedRev     = leads.filter(l => l.status === "locked").reduce((s, l) => s + l.plan_price + l.setup, 0);
+const pipelineRev   = leads.filter(l => l.status === "negotiating" || l.status === "prospect").reduce((s, l) => s + l.plan_price + l.setup, 0);
+const lockedTerritories = [...new Set(leads.filter(l => l.status === "locked").map(l => `${l.area}/${l.postal}`))];
+
+// Pitch scripts (copy-paste for WhatsApp / calls)
+const scripts = [
+  {
+    title: isEl ? "WhatsApp — πρώτη προσέγγιση" : "WhatsApp — first approach",
+    body: isEl
+      ? "Γεια! Είμαι από το Sally's Bar στην Κεφαλονιά. Φτιάξαμε μια πλατφόρμα που κάνει QR παραγγελίες + κάρτα πιστότητας + WhatsApp marketing για το μπαρ μας — και τη δίνουμε σε άλλους ιδιοκτήτες. Δίνουμε μόνο σε ΕΝΑ μαγαζί ανά περιοχή, οπότε αν σε ενδιαφέρει θα ήθελα να σου δείξω πριν την πάρει ο διπλανός σου. sallysbar.gr/pistotita-os"
+      : "Hi! I'm from Sally's Bar in Kefalonia. We built a platform that handles QR ordering + loyalty + WhatsApp marketing for our bar — and we're licensing it to other owners. We only sign ONE venue per area, so if you're interested I'd love to show you before your neighbour grabs it. sallysbar.gr/pistotita-os",
+  },
+  {
+    title: isEl ? "Call opener (20 δευτ.)" : "Call opener (20 sec)",
+    body: isEl
+      ? "Ένα δευτερόλεπτο — δουλεύω με bars/cafés σε όλη την Ελλάδα και δίνουμε ένα σύστημα που ήδη τρέχει στο Sally's Bar Κεφαλονιάς. Πιστότητα, QR παραγγελίες, αυτόματο WhatsApp στα γενέθλια/κρατήσεις. Το αστείο είναι ότι δίνουμε ΜΟΝΟ σε ένα μαγαζί ανά γειτονιά — οπότε αν σας ενδιαφέρει να δείτε, ένα demo 10 λεπτών;"
+      : "One second — I work with bars/cafés across Greece, we license a system that already runs at Sally's Bar Kefalonia. Loyalty, QR ordering, automatic WhatsApp on birthdays/reservations. The catch is we only sign ONE venue per neighbourhood — so if you're curious, 10-minute demo?",
+  },
+  {
+    title: isEl ? "Objection — «Πόσο κοστίζει;»" : "Objection — “How much?”",
+    body: isEl
+      ? "Early-bird: €1,890 για 6 μήνες (seasonal) ή €2,988 για όλο τον χρόνο. Το setup είναι άπαξ €890 κι έχει μέσα εγκατάσταση, μενού, εκπαίδευση. Χωρίς προμήθεια ανά παραγγελία. Λίστα τιμή μετά τον 10ο πελάτη: €2,592 / €5,189."
+      : "Early-bird: €1,890 for 6 months (seasonal) or €2,988 year-round. €890 one-time setup covers install, menu, training. No per-order commission. List price after customer #10 is €2,592 / €5,189.",
+  },
+  {
+    title: isEl ? "Objection — «Να το σκεφτώ»" : "Objection — “Let me think”",
+    body: isEl
+      ? "Φυσικά. Μόνο να ξέρεις: αν άλλος ιδιοκτήτης στην περιοχή σου κλείσει πρώτος, η περιοχή κλειδώνει και δεν μπορώ να σου δώσω το ίδιο σύστημα για 12 μήνες. Πες μου ποιος/ποια είναι ο άμεσος ανταγωνιστής σου δίπλα και σου λέω αν έχω ήδη συζητήσει μαζί τους."
+      : "Of course. Just so you know: if another owner in your area signs first, the territory locks and I can't give you the same system for 12 months. Tell me who your closest rival is and I'll tell you whether I've already been in touch with them.",
+  },
+];
+
+const steps = [
+  { step: "1", title: isEl ? "Σκαν περιοχής" : "Scout the area",           desc: isEl ? "10–20 μαγαζιά ανά γύρο στο Google Maps. Σημείωσε δρόμο + ZIP." : "10–20 venues per sweep on Google Maps. Note street + postal code." },
+  { step: "2", title: isEl ? "Προ-ταξινόμηση" : "Pre-qualify",              desc: isEl ? "Ελέγξτε Instagram/Facebook — ενεργό, σύγχρονο, με πελατεία." : "Check their Instagram/Facebook — active, modern, real traffic." },
+  { step: "3", title: isEl ? "WhatsApp 1ο μήνυμα" : "WhatsApp first-touch", desc: isEl ? "Χρήση έτοιμου script παρακάτω." : "Use the script below." },
+  { step: "4", title: isEl ? "Demo 10 λεπτών" : "10-min demo",               desc: isEl ? "Live στο sallysbar.gr — δείξε menu, loyalty, quests, analytics." : "Live on sallysbar.gr — show menu, loyalty, quests, analytics." },
+  { step: "5", title: isEl ? "Κλείσιμο + παραδοτέα" : "Close + deliverables", desc: isEl ? "Υπογραφή, €890 setup, 48h go-live." : "Sign, €890 setup, 48h go-live." },
+  { step: "6", title: isEl ? "Κλείδωμα περιοχής" : "Lock the territory",   desc: isEl ? "Σημείωσε εδώ στο dashboard — η περιοχή βγαίνει off-limits." : "Mark it here on the dashboard — area goes off-limits." },
+];
+---
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PistotitaOS — Sales Dashboard</title>
+    <meta name="robots" content="noindex,nofollow" />
+  </head>
+  <body class="min-h-screen bg-[#0b0b10] text-white">
+    <AdminNav active="pistotita-os" />
+
+    <main class="mx-auto max-w-6xl px-5 py-10">
+      <!-- Header -->
+      <div class="mb-8 flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <p class="text-xs uppercase tracking-[0.28em] text-rose-300 mb-2 flex items-center gap-2">
+            <span class="inline-block h-1.5 w-1.5 rounded-full bg-rose-400 animate-pulse"></span>
+            SUPER ADMIN ONLY
+          </p>
+          <h1 class="font-heading text-4xl font-bold">🚀 PistotitaOS — Sales Dashboard</h1>
+          <p class="mt-2 text-sm text-white/60 max-w-2xl">
+            {isEl
+              ? "Καμπάνιες, αποκλειστικότητες περιοχών, pipeline από prospects προς υπογραφή."
+              : "Campaigns, territorial exclusivity, pipeline from prospect → signed owner."}
+          </p>
+        </div>
+        <div class="flex gap-2">
+          <a href={withLangPrefix(lang, "/pistotita-os")} target="_blank" class="rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 px-4 py-2 text-xs font-semibold">👁 {isEl ? "Δες το landing" : "View landing page"}</a>
+          <button onclick="window.print()" class="no-print rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 px-4 py-2 text-xs font-semibold">🖨 Print</button>
+        </div>
+      </div>
+
+      <!-- KPI cards -->
+      <section class="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-8">
+        <div class="rounded-2xl border border-emerald-400/30 bg-emerald-400/[0.06] p-5">
+          <p class="text-[10px] uppercase tracking-wider text-emerald-200 font-bold">{isEl ? "Υπογεγραμμένα" : "Signed venues"}</p>
+          <p class="font-heading text-3xl font-bold mt-2">{signedVenues}</p>
+          <p class="text-xs text-white/55 mt-1">{eur(signedRev)} {isEl ? "κλειδωμένα" : "locked in"}</p>
+        </div>
+        <div class="rounded-2xl border border-amber-400/30 bg-amber-400/[0.06] p-5">
+          <p class="text-[10px] uppercase tracking-wider text-amber-200 font-bold">{isEl ? "Διαπραγμάτευση" : "In negotiation"}</p>
+          <p class="font-heading text-3xl font-bold mt-2">{negotiating}</p>
+          <p class="text-xs text-white/55 mt-1">{isEl ? "στο closing stage" : "close stage"}</p>
+        </div>
+        <div class="rounded-2xl border border-sky-400/30 bg-sky-400/[0.06] p-5">
+          <p class="text-[10px] uppercase tracking-wider text-sky-200 font-bold">{isEl ? "Prospects" : "Prospects"}</p>
+          <p class="font-heading text-3xl font-bold mt-2">{prospects}</p>
+          <p class="text-xs text-white/55 mt-1">{eur(pipelineRev)} {isEl ? "στο pipeline" : "in pipeline"}</p>
+        </div>
+        <div class="rounded-2xl border border-rose-400/30 bg-rose-400/[0.06] p-5">
+          <p class="text-[10px] uppercase tracking-wider text-rose-200 font-bold">{isEl ? "Κλειδωμένες περιοχές" : "Locked territories"}</p>
+          <p class="font-heading text-3xl font-bold mt-2">{lockedTerritories.length}</p>
+          <p class="text-xs text-white/55 mt-1 truncate">{lockedTerritories.slice(0, 2).join(" · ") || "—"}</p>
+        </div>
+      </section>
+
+      <!-- Pipeline table -->
+      <section class="mb-10">
+        <div class="flex items-end justify-between gap-4 flex-wrap mb-4">
+          <div>
+            <p class="text-[10px] uppercase tracking-wider text-amber-300 font-bold">📋 {isEl ? "Pipeline" : "Pipeline"}</p>
+            <h2 class="font-heading text-2xl font-bold mt-1">{isEl ? "Lead tracking ανά περιοχή" : "Leads by territory"}</h2>
+          </div>
+        </div>
+
+        <div class="rounded-2xl border border-white/10 bg-white/[0.03] overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="text-[11px] uppercase tracking-wider text-white/55">
+              <tr class="border-b border-white/10">
+                <th class="text-left py-3 px-4">Venue</th>
+                <th class="text-left py-3 px-4">Area / ZIP</th>
+                <th class="text-left py-3 px-4">Plan</th>
+                <th class="text-right py-3 px-4">Price</th>
+                <th class="text-left py-3 px-4">Contact / Channel</th>
+                <th class="text-left py-3 px-4">Next step</th>
+                <th class="text-left py-3 px-4">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {leads.map(l => (
+                <tr class="border-b border-white/5 align-top">
+                  <td class="py-3 px-4 font-bold">{l.venue}</td>
+                  <td class="py-3 px-4 text-white/70">{l.area}<br/><span class="text-xs text-white/40">{l.postal}</span></td>
+                  <td class="py-3 px-4 text-white/70">{l.type === "seasonal" ? "Seasonal 6mo" : "Year-round 12mo"}</td>
+                  <td class="py-3 px-4 text-right font-mono">
+                    <div class="text-emerald-300 font-bold">{eur(l.plan_price)}</div>
+                    <div class="text-xs text-white/40"><s>{eur(l.plan_list)}</s> + {eur(l.setup)} setup</div>
+                  </td>
+                  <td class="py-3 px-4 text-white/70 text-xs">{l.contact}<br/><span class="text-white/40">{l.channel}</span></td>
+                  <td class="py-3 px-4 text-white/70 text-xs">{l.nextStep}{l.signedOn ? ` · signed ${l.signedOn}` : ""}</td>
+                  <td class="py-3 px-4"><span class={`rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${statusColor[l.status]}`}>{statusLabel[l.status]}</span></td>
+                </tr>
+              ))}
+              {leads.length === 0 && (
+                <tr><td colspan="7" class="py-8 px-4 text-center text-white/40">{isEl ? "Δεν υπάρχουν leads ακόμη — ξεκίνα με scout." : "No leads yet — start scouting."}</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <p class="mt-2 text-xs text-white/45">
+          {isEl
+            ? "ℹ️ Αυτή η λίστα είναι στατική αυτή τη στιγμή. Όταν έχει νόημα, συνδέουμε πίνακα pistotita_leads στο Supabase για CRUD."
+            : "ℹ️ List is currently static. When it's worth wiring, we'll back it with a pistotita_leads Supabase table for CRUD."}
+        </p>
+      </section>
+
+      <!-- Sales process -->
+      <section class="mb-10">
+        <p class="text-[10px] uppercase tracking-wider text-amber-300 font-bold">🛠 {isEl ? "Διαδικασία πώλησης — 6 βήματα" : "Sales process — 6 steps"}</p>
+        <h2 class="font-heading text-2xl font-bold mt-1 mb-4">{isEl ? "Από Google Maps μέχρι locked territory" : "From Google Maps to a locked territory"}</h2>
+        <ol class="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {steps.map(s => (
+            <li class="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+              <p class="text-2xl font-heading font-bold text-amber-300">{s.step}</p>
+              <p class="font-bold mt-1">{s.title}</p>
+              <p class="text-sm text-white/65 mt-1 leading-relaxed">{s.desc}</p>
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      <!-- Pitch scripts -->
+      <section class="mb-10">
+        <p class="text-[10px] uppercase tracking-wider text-amber-300 font-bold">💬 {isEl ? "Scripts — copy/paste" : "Scripts — copy/paste"}</p>
+        <h2 class="font-heading text-2xl font-bold mt-1 mb-4">{isEl ? "WhatsApp & call openers + αντιρρήσεις" : "WhatsApp & call openers + objections"}</h2>
+        <div class="grid md:grid-cols-2 gap-3">
+          {scripts.map(s => (
+            <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+              <p class="font-bold text-amber-200">{s.title}</p>
+              <p class="mt-2 text-sm text-white/80 leading-relaxed whitespace-pre-wrap">{s.body}</p>
+              <button class="js-copy mt-3 rounded-lg bg-white/10 hover:bg-white/20 px-3 py-1.5 text-xs font-semibold" data-text={s.body}>📋 {isEl ? "Αντιγραφή" : "Copy"}</button>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <!-- Pricing cheatsheet -->
+      <section class="mb-10 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        <p class="text-[10px] uppercase tracking-wider text-amber-300 font-bold">💰 {isEl ? "Cheat sheet τιμών" : "Pricing cheat sheet"}</p>
+        <div class="mt-3 grid md:grid-cols-2 gap-4 text-sm">
+          <div>
+            <p class="font-bold text-white">🏝️ Seasonal · 6 μήνες</p>
+            <ul class="mt-2 space-y-1 text-white/75 list-disc pl-5">
+              <li>Early-bird: <strong class="text-emerald-300">€1,890</strong> (−27%)</li>
+              <li>List: <strong>€2,592</strong></li>
+              <li>+ €890 setup (άπαξ)</li>
+              <li>Χρέωση άπαξ τον Απρίλιο</li>
+            </ul>
+          </div>
+          <div>
+            <p class="font-bold text-white">🏙️ Year-round · 12 μήνες</p>
+            <ul class="mt-2 space-y-1 text-white/75 list-disc pl-5">
+              <li>Early-bird: <strong class="text-emerald-300">€2,988</strong> (−42%)</li>
+              <li>List: <strong>€5,189</strong></li>
+              <li>+ €890 setup (άπαξ)</li>
+              <li>€249/μήνα ή €2,988 μπροστά</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- Territory playbook -->
+      <section class="mb-10 rounded-2xl border border-rose-400/20 bg-rose-400/[0.04] p-5">
+        <p class="text-[10px] uppercase tracking-wider text-rose-300 font-bold">🔒 {isEl ? "Κανόνες αποκλειστικότητας" : "Territory rules"}</p>
+        <ul class="mt-3 text-sm text-white/80 space-y-1.5 list-disc pl-5">
+          <li><strong>{isEl ? "Ένα μαγαζί ανά ZIP/δρόμο" : "One venue per ZIP/street"}</strong> — {isEl ? "το σημείο lock είναι ο ταχυδρομικός κώδικας + κύρια οδός." : "lock granularity is postal code + main street."}</li>
+          <li><strong>{isEl ? "12 μήνες κλείδωμα" : "12-month lock"}</strong> — {isEl ? "ξεκινά από την ημέρα υπογραφής." : "starts on signing day."}</li>
+          <li><strong>{isEl ? "Ανανέωση = διατήρηση" : "Renewal = retention"}</strong> — {isEl ? "αν ο πελάτης ανανεώσει, η περιοχή παραμένει κλειδωμένη." : "if the customer renews, territory stays locked."}</li>
+          <li><strong>{isEl ? "Μη ανανέωση = ξεκλειδώνει" : "No renewal = unlocks"}</strong> — {isEl ? "η περιοχή ανοίγει ξανά 30 ημέρες μετά τη λήξη." : "territory reopens 30 days after expiration."}</li>
+          <li><strong>{isEl ? "Ανταγωνιστικό veto" : "Competitor veto"}</strong> — {isEl ? "ο πελάτης μπορεί να σημειώσει έναν δίπλα competitor που θέλει να αποκλείσει· κοστίζει +€500/έτος." : "customer can flag one specific nearby rival to block; costs +€500/year."}</li>
+        </ul>
+      </section>
+    </main>
+
+    <script is:inline>
+      document.querySelectorAll(".js-copy").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const text = btn.getAttribute("data-text") || "";
+          try {
+            await navigator.clipboard.writeText(text);
+            const orig = btn.textContent;
+            btn.textContent = "✓ Copied";
+            setTimeout(() => { btn.textContent = orig; }, 1500);
+          } catch {
+            btn.textContent = "⚠ Copy failed";
+          }
+        });
+      });
+    </script>
+  </body>
+</html>

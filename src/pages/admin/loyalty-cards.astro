@@ -1,0 +1,184 @@
+---
+import "../../styles/global.css";
+import AdminNav from "../../components/AdminNav.astro";
+import { supabaseAdmin } from "../../lib/supabase";
+import { withLangPrefix } from "../../i18n";
+
+export const prerender = false;
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+
+if (!["admin", "super_admin"].includes(Astro.locals.role ?? "")) {
+  return Astro.redirect(withLangPrefix(lang, "/admin"));
+}
+
+// All activated loyalty cards
+const { data: cards } = await supabaseAdmin
+  .from("profiles")
+  .select("id, full_name, phone, city, country, birthday, marketing_consent, messenger_id, instagram_id, card_issued_at")
+  .not("card_issued_at", "is", null)
+  .order("card_issued_at", { ascending: false });
+
+// Tier thresholds + points per user from loyalty_events
+const { data: tiers } = await supabaseAdmin.from("loyalty_tiers").select("key, label_en, label_el, icon, color, threshold").order("threshold", { ascending: true });
+const { data: events } = await supabaseAdmin.from("loyalty_events").select("user_id, points");
+
+const pointsByUser = new Map<string, number>();
+for (const e of events ?? []) {
+  pointsByUser.set(e.user_id, (pointsByUser.get(e.user_id) ?? 0) + Number(e.points ?? 0));
+}
+
+const thresholds = (tiers ?? []).map((t: any, i: number, arr: any[]) => ({
+  key: t.key, label_en: t.label_en, label_el: t.label_el, icon: t.icon, color: t.color,
+  min: Number(t.threshold),
+  max: i < arr.length - 1 ? Number(arr[i + 1].threshold) - 1 : Number.MAX_SAFE_INTEGER,
+}));
+
+function tierOf(pts: number) {
+  return thresholds.find((t: any) => pts >= t.min && pts <= t.max) ?? thresholds[0];
+}
+
+const list = (cards ?? []).map((c: any) => {
+  const pts = pointsByUser.get(c.id) ?? 0;
+  return { ...c, points: pts, tier: tierOf(pts) };
+});
+
+const total = list.length;
+const withConsent = list.filter(c => c.marketing_consent).length;
+const withPhone = list.filter(c => !!c.phone).length;
+const tierCounts: Record<string, number> = {};
+for (const c of list) tierCounts[c.tier?.key ?? "bronze"] = (tierCounts[c.tier?.key ?? "bronze"] ?? 0) + 1;
+---
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <title>{isEl ? "Κάρτες Πιστότητας" : "Loyalty Cards"} — Admin</title>
+    <meta name="robots" content="noindex,nofollow" />
+  </head>
+  <body class="min-h-screen bg-[#0b0b10] text-white">
+    <AdminNav active="loyalty-cards" />
+    <main class="mx-auto max-w-6xl px-5 py-10">
+      <h1 class="font-heading text-3xl md:text-4xl font-bold">💳 {isEl ? "Κάρτες Πιστότητας" : "Loyalty Cards"}</h1>
+      <p class="mt-2 text-sm text-white/60 max-w-2xl">
+        {isEl
+          ? "Κάθε ενεργοποιημένη κάρτα μέλους. Tier, πόντοι, στοιχεία επικοινωνίας, συγκατάθεση marketing."
+          : "Every activated member card. Tier, points, contact details, marketing consent."}
+      </p>
+
+      <!-- KPIs -->
+      <section class="mt-6 grid sm:grid-cols-4 gap-3">
+        <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          <p class="text-[10px] uppercase tracking-wider text-white/50">{isEl ? "Σύνολο κάρτες" : "Total cards"}</p>
+          <p class="font-heading text-3xl font-bold mt-1">{total}</p>
+        </div>
+        <div class="rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.06] p-4">
+          <p class="text-[10px] uppercase tracking-wider text-emerald-300">{isEl ? "Συγκατάθεση marketing" : "Marketing consent"}</p>
+          <p class="font-heading text-3xl font-bold mt-1">{withConsent}</p>
+          <p class="text-[10px] text-white/45 mt-1">{total > 0 ? Math.round((withConsent / total) * 100) : 0}%</p>
+        </div>
+        <div class="rounded-2xl border border-sky-400/20 bg-sky-400/[0.06] p-4">
+          <p class="text-[10px] uppercase tracking-wider text-sky-300">{isEl ? "Με τηλέφωνο" : "With phone"}</p>
+          <p class="font-heading text-3xl font-bold mt-1">{withPhone}</p>
+        </div>
+        <div class="rounded-2xl border border-amber-400/20 bg-amber-400/[0.06] p-4">
+          <p class="text-[10px] uppercase tracking-wider text-amber-300">{isEl ? "Σύνολο πόντων" : "Total points"}</p>
+          <p class="font-heading text-3xl font-bold mt-1">{list.reduce((s, c) => s + c.points, 0).toLocaleString("en-GB")}</p>
+        </div>
+      </section>
+
+      <!-- Tier distribution -->
+      <section class="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+        <p class="text-[10px] uppercase tracking-wider text-white/55 font-bold mb-2">{isEl ? "Κατανομή tier" : "Tier distribution"}</p>
+        <div class="flex flex-wrap gap-3">
+          {thresholds.map((t: any) => (
+            <div class="flex items-center gap-2 text-sm">
+              <span class="text-lg">{t.icon}</span>
+              <span style={`color:${t.color}`} class="font-semibold">{isEl ? t.label_el : t.label_en}</span>
+              <span class="font-mono text-white/70">{tierCounts[t.key] ?? 0}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <!-- Filters -->
+      <div class="mt-6 flex flex-wrap gap-2 items-center">
+        <input id="search" type="text" placeholder={isEl ? "Αναζήτηση ονόματος / τηλεφώνου / πόλης…" : "Search name / phone / city…"} class="flex-1 min-w-[220px] rounded-lg bg-black/40 border border-white/10 px-3 py-2 text-sm" />
+        <select id="tier-filter" class="rounded-lg bg-black/40 border border-white/10 px-3 py-2 text-sm">
+          <option value="">{isEl ? "Όλα τα tiers" : "All tiers"}</option>
+          {thresholds.map((t: any) => <option value={t.key}>{t.icon} {isEl ? t.label_el : t.label_en}</option>)}
+        </select>
+        <label class="flex items-center gap-2 text-sm text-white/70">
+          <input id="consent-filter" type="checkbox" class="h-4 w-4 accent-emerald-500" />
+          {isEl ? "Μόνο με συγκατάθεση" : "Only with consent"}
+        </label>
+      </div>
+
+      <!-- Table -->
+      <section class="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead class="text-[11px] uppercase tracking-wider text-white/55">
+            <tr class="border-b border-white/10">
+              <th class="text-left py-2 px-3">{isEl ? "Όνομα" : "Name"}</th>
+              <th class="text-left py-2 px-3">Tier</th>
+              <th class="text-right py-2 px-3">{isEl ? "Πόντοι" : "Points"}</th>
+              <th class="text-left py-2 px-3">{isEl ? "Τηλέφωνο" : "Phone"}</th>
+              <th class="text-left py-2 px-3">{isEl ? "Πόλη" : "City"}</th>
+              <th class="text-left py-2 px-3">🎂</th>
+              <th class="text-left py-2 px-3">{isEl ? "Marketing" : "Marketing"}</th>
+              <th class="text-left py-2 px-3">Social</th>
+              <th class="text-left py-2 px-3">{isEl ? "Εκδόθηκε" : "Issued"}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {list.length === 0 ? (
+              <tr><td colspan="9" class="py-10 text-center text-white/40">{isEl ? "Δεν υπάρχουν ενεργοποιημένες κάρτες." : "No activated cards yet."}</td></tr>
+            ) : list.map((c: any) => (
+              <tr class="border-b border-white/5"
+                  data-tier={c.tier?.key ?? ""}
+                  data-consent={c.marketing_consent ? "1" : "0"}
+                  data-search={[(c.full_name ?? ""), (c.phone ?? ""), (c.city ?? "")].join(" ")}>
+                <td class="py-2 px-3">
+                  <a href={`/admin/users?q=${encodeURIComponent(c.full_name ?? c.id)}`} class="hover:text-amber-200">{c.full_name ?? <span class="text-white/40">—</span>}</a>
+                </td>
+                <td class="py-2 px-3"><span style={`color:${c.tier?.color ?? "#888"}`}>{c.tier?.icon} {isEl ? c.tier?.label_el : c.tier?.label_en}</span></td>
+                <td class="py-2 px-3 text-right font-mono">{c.points.toLocaleString("en-GB")}</td>
+                <td class="py-2 px-3 font-mono text-xs text-white/70">{c.phone ?? "—"}</td>
+                <td class="py-2 px-3 text-white/70">{c.city ?? "—"}</td>
+                <td class="py-2 px-3 text-xs text-white/70">{c.birthday ? c.birthday.slice(5) : "—"}</td>
+                <td class="py-2 px-3">{c.marketing_consent ? <span class="text-emerald-300">✓</span> : <span class="text-white/30">—</span>}</td>
+                <td class="py-2 px-3 text-xs">
+                  {c.messenger_id && <span title="Messenger linked" class="text-blue-300">📘</span>}
+                  {c.instagram_id && <span title="Instagram linked" class="text-fuchsia-300 ml-1">📸</span>}
+                  {!c.messenger_id && !c.instagram_id && <span class="text-white/25">—</span>}
+                </td>
+                <td class="py-2 px-3 text-xs text-white/60">{new Date(c.card_issued_at).toLocaleDateString(isEl ? "el-GR" : "en-GB")}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+    </main>
+
+    <script is:inline>
+      function applyFilters() {
+        const q = document.getElementById("search").value.toLowerCase().trim();
+        const tier = document.getElementById("tier-filter").value;
+        const consentOnly = document.getElementById("consent-filter").checked;
+        document.querySelectorAll("tbody tr[data-tier]").forEach((r) => {
+          const hay = (r.getAttribute("data-search") ?? "").toLowerCase();
+          const rowTier = r.getAttribute("data-tier");
+          const rowConsent = r.getAttribute("data-consent") === "1";
+          const pass =
+            (q === "" || hay.includes(q)) &&
+            (tier === "" || rowTier === tier) &&
+            (!consentOnly || rowConsent);
+          r.style.display = pass ? "" : "none";
+        });
+      }
+      document.getElementById("search").addEventListener("input", applyFilters);
+      document.getElementById("tier-filter").addEventListener("change", applyFilters);
+      document.getElementById("consent-filter").addEventListener("change", applyFilters);
+    </script>
+  </body>
+</html>

@@ -1,0 +1,321 @@
+---
+import "../../styles/global.css";
+import AdminNav from "../../components/AdminNav.astro";
+import { supabaseAdmin } from "../../lib/supabase";
+import { withLangPrefix } from "../../i18n";
+
+export const prerender = false;
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+
+if (!["admin", "super_admin"].includes(Astro.locals.role ?? "")) {
+  return Astro.redirect(withLangPrefix(lang, "/admin"));
+}
+
+const { data: triggers } = await supabaseAdmin
+  .from("marketing_triggers").select("*").order("key", { ascending: true });
+
+const { data: recent } = await supabaseAdmin
+  .from("marketing_log")
+  .select("trigger_key, success, sent_at")
+  .order("sent_at", { ascending: false })
+  .limit(200);
+
+const lastRunMap: Record<string, string> = {};
+const successCountMap: Record<string, number> = {};
+for (const r of recent ?? []) {
+  if (!lastRunMap[r.trigger_key]) lastRunMap[r.trigger_key] = r.sent_at;
+  if (r.success) successCountMap[r.trigger_key] = (successCountMap[r.trigger_key] ?? 0) + 1;
+}
+
+const META: Record<string, { title: string; desc: string; runnable: boolean }> = {
+  reservation_confirmed: { title: "✅ Reservation confirmed", desc: "Sent right after a reservation is booked.", runnable: false },
+  reservation_reminder_2h: { title: "⏰ 2h reservation reminder", desc: "Nudges the guest ~2h before arrival.", runnable: true },
+  birthday: { title: "🎂 Birthday wish", desc: "Fires on the user's birthday (MM-DD match). Cooldown 350 days.", runnable: true },
+  review_nudge: { title: "⭐ Review nudge", desc: "Asks for a Google review X hours after a paid order.", runnable: true },
+  inactive_30d: { title: "🌱 Re-engagement — 30 days", desc: "First gentle ping for users inactive 30d.", runnable: true },
+  inactive_60d: { title: "🌿 Re-engagement — 60 days", desc: "Second-touch offer for 60d-inactive users.", runnable: true },
+  inactive_90d: { title: "🌳 Win-back — 90 days", desc: "Stronger offer / scratch card for 90d-inactive users.", runnable: true },
+  happy_hour_local: { title: "🍹 Happy-hour push", desc: "Push to all opted-in users during happy hour.", runnable: true },
+  group_booking_bonus: { title: "🥂 Group booking bonus", desc: "Fires on confirmed reservations with party size ≥ 6.", runnable: false },
+  admin_weekly_digest: { title: "📊 Admin weekly digest", desc: "Weekly KPI email to admins (Mon morning).", runnable: true },
+};
+
+const CHANNELS = ["whatsapp", "sms", "viber_service", "messenger", "instagram", "push", "email"];
+const CHANNEL_LABEL: Record<string, string> = {
+  whatsapp:      "💬 WhatsApp",
+  sms:           "📱 SMS",
+  viber_service: "🟣 Viber",
+  messenger:     "📘 Messenger",
+  instagram:     "📸 Instagram",
+  push:          "🔔 Push notification",
+  email:         "✉️ Email",
+};
+
+// Per-trigger form fields — maps user-friendly labels to JSON keys.
+type Field = { key: string; label: string; hint?: string; type: "number" | "hour" | "days" | "hours" | "minutes"; min?: number; max?: number; default: number };
+const FIELDS: Record<string, Field[]> = {
+  reservation_confirmed: [],
+  reservation_reminder_2h: [
+    { key: "lead_minutes", label: "How long before arrival?", hint: "Minutes before the reservation time.", type: "minutes", min: 15, max: 1440, default: 120 },
+  ],
+  birthday: [
+    { key: "send_hour",   label: "What hour of the day?", hint: "Local time (0–23). Message fires only when the cron runs during this hour.", type: "hour", default: 11 },
+    { key: "cooldown_days", label: "Don't repeat for (days)", hint: "Prevents double-sending. 350 = once per year.", type: "days", min: 1, max: 400, default: 350 },
+  ],
+  review_nudge: [
+    { key: "delay_hours",   label: "Wait how long after a paid order?", hint: "Hours to wait before asking for a review.", type: "hours", min: 1, max: 168, default: 24 },
+    { key: "cooldown_days", label: "Don't ask same user more than once in (days)", type: "days", min: 1, max: 365, default: 60 },
+  ],
+  inactive_30d: [
+    { key: "cooldown_days", label: "Cooldown (days)", hint: "Don't ping the same user more than once per this window.", type: "days", min: 1, max: 365, default: 45 },
+  ],
+  inactive_60d: [
+    { key: "cooldown_days", label: "Cooldown (days)", type: "days", min: 1, max: 365, default: 60 },
+  ],
+  inactive_90d: [
+    { key: "cooldown_days", label: "Cooldown (days)", type: "days", min: 1, max: 365, default: 90 },
+  ],
+  happy_hour_local: [
+    { key: "send_hour",     label: "Fire at which hour?", hint: "Local time, 0–23. Push goes out at this hour.", type: "hour", default: 18 },
+    { key: "cooldown_days", label: "Don't repeat more than once per (days)", type: "days", min: 1, max: 30, default: 1 },
+  ],
+  group_booking_bonus: [
+    { key: "min_party", label: "Minimum party size", hint: "Only parties this big or larger get the bonus.", type: "number", min: 2, max: 50, default: 6 },
+  ],
+  admin_weekly_digest: [
+    { key: "send_hour", label: "Monday send hour", hint: "Local time, 0–23. Digest goes out Monday at this hour.", type: "hour", default: 9 },
+  ],
+};
+---
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Marketing Automation — Admin</title>
+    <meta name="robots" content="noindex,nofollow" />
+  </head>
+  <body class="min-h-screen bg-[#0b0b10] text-white">
+    <AdminNav active="marketing-automation" />
+    <main class="mx-auto max-w-5xl px-4 py-8 text-center">
+      <h1 class="text-2xl md:text-3xl font-semibold">⚙️ Marketing Automation</h1>
+      <p class="mt-2 text-white/70 text-sm max-w-2xl mx-auto">
+        {isEl
+          ? "Ενεργοποίησε/απενεργοποίησε αυτοματισμούς, άλλαξε κανάλι, ή τρέξε χειροκίνητα ένα trigger."
+          : "Toggle triggers, switch channel, edit settings (JSON), or run one manually."}
+      </p>
+
+      <div class="mt-4 rounded-xl border border-amber-400/30 bg-amber-400/5 p-4 text-sm text-amber-100/90 text-left max-w-2xl mx-auto">
+        <b>Cron:</b> configure a Cloudflare Cron Trigger hitting
+        <code class="text-amber-300">/api/cron/marketing?token=…</code> every 15 minutes.
+        Secret: <code class="text-amber-300">MARKETING_CRON_TOKEN</code>.
+      </div>
+
+      <div class="mt-6 flex flex-wrap items-center justify-center gap-2">
+        <button id="js-enable-all" class="rounded-lg bg-emerald-600 hover:bg-emerald-500 px-4 py-2 text-white text-sm font-medium">
+          {isEl ? "✅ Ενεργοποίηση όλων" : "✅ Enable all"}
+        </button>
+        <button id="js-disable-all" class="rounded-lg bg-red-600 hover:bg-red-500 px-4 py-2 text-white text-sm font-medium">
+          {isEl ? "⛔ Απενεργοποίηση όλων" : "⛔ Disable all"}
+        </button>
+        <span id="js-bulk-status" class="text-xs text-white/60"></span>
+      </div>
+
+      <div class="mt-6 space-y-4">
+        {(triggers ?? []).map((t: any) => {
+          const meta = META[t.key] ?? { title: t.key, desc: "", runnable: false };
+          return (
+            <section class="rounded-2xl border border-white/10 bg-white/5 p-4 text-left" data-trigger={t.key}>
+              <header class="flex items-start justify-between gap-3">
+                <div>
+                  <h2 class="font-semibold text-lg">{meta.title}</h2>
+                  <p class="text-white/60 text-sm mt-0.5">{meta.desc}</p>
+                </div>
+                <label class="inline-flex items-center gap-2 cursor-pointer shrink-0">
+                  <input type="checkbox" class="js-enabled h-5 w-5 accent-pink-500" checked={t.enabled} />
+                  <span class="text-sm">{isEl ? "Ενεργό" : "Enabled"}</span>
+                </label>
+              </header>
+
+              <div class="mt-4">
+                <label class="text-sm block">
+                  <span class="block text-white/60 mb-1">{isEl ? "Κανάλι αποστολής" : "Send via"}</span>
+                  <select class="js-channel w-full md:w-64 rounded-lg bg-black/40 border border-white/10 px-3 py-2">
+                    {CHANNELS.map(c => <option value={c} selected={t.channel === c}>{CHANNEL_LABEL[c] ?? c}</option>)}
+                  </select>
+                </label>
+              </div>
+
+              {(FIELDS[t.key] ?? []).length > 0 && (
+                <div class="mt-4">
+                  <p class="text-[11px] uppercase tracking-wider text-white/50 font-bold mb-2">{isEl ? "Ρυθμίσεις" : "Settings"}</p>
+                  <div class="grid sm:grid-cols-2 gap-3">
+                    {(FIELDS[t.key] ?? []).map(f => {
+                      const cur = (t.settings ?? {})[f.key];
+                      const val = typeof cur === "number" ? cur : f.default;
+                      const unit = f.type === "hour" ? ":00" : f.type === "days" ? (isEl ? " ημέρες" : " days") : f.type === "hours" ? (isEl ? " ώρες" : " hours") : f.type === "minutes" ? (isEl ? " λεπτά" : " min") : "";
+                      return (
+                        <div class="rounded-xl border border-white/10 bg-black/20 p-3">
+                          <label class="block text-sm">
+                            <span class="block text-white/85 font-medium">{f.label}</span>
+                            {f.hint && <span class="block text-[11px] text-white/50 mt-0.5">{f.hint}</span>}
+                            <div class="mt-2 flex items-center gap-2">
+                              <input
+                                type="number"
+                                class="js-field flex-1 rounded-lg bg-black/40 border border-white/10 px-3 py-2 text-white"
+                                data-key={f.key}
+                                value={val}
+                                min={f.min ?? 0}
+                                max={f.max}
+                                step="1"
+                              />
+                              <span class="text-xs text-white/50 shrink-0">{unit.trim()}</span>
+                            </div>
+                          </label>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <details class="mt-3 text-xs">
+                <summary class="cursor-pointer text-white/40 hover:text-white/70 select-none">⚙️ {isEl ? "Προχωρημένα (raw JSON)" : "Advanced (raw JSON)"}</summary>
+                <textarea class="js-settings mt-2 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2 font-mono text-xs text-white/80" rows="3">{JSON.stringify(t.settings ?? {}, null, 2)}</textarea>
+                <p class="mt-1 text-white/40">{isEl ? "Ενημερώνεται αυτόματα όταν αλλάζεις τα πεδία πιο πάνω." : "Auto-synced with the fields above."}</p>
+              </details>
+
+              <div class="mt-3 flex flex-wrap items-center gap-2 text-xs">
+                <input
+                  class="js-test-to flex-1 min-w-[160px] rounded-lg bg-black/40 border border-white/10 px-3 py-1.5 text-white placeholder-white/40"
+                  type="text"
+                  placeholder={isEl ? "Τηλ./email για δοκιμή (π.χ. +3069… ή you@…)" : "Phone / email for test (+3069… or you@…)"}
+                />
+                <button class="js-test rounded-lg bg-amber-500 hover:bg-amber-400 px-3 py-1.5 text-black font-medium">{isEl ? "🧪 Δοκιμαστική αποστολή" : "🧪 Test send"}</button>
+              </div>
+
+              <footer class="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-white/50">
+                <span>
+                  {isEl ? "Τελευταίο:" : "Last run:"} {lastRunMap[t.key] ? new Date(lastRunMap[t.key]).toLocaleString() : "—"}
+                  {"  ·  "} {isEl ? "επιτυχείς:" : "successes:"} {successCountMap[t.key] ?? 0}
+                </span>
+                <div class="flex gap-2">
+                  <button class="js-save rounded-lg bg-white/10 hover:bg-white/20 px-3 py-1.5 text-white">{isEl ? "Αποθήκευση" : "Save"}</button>
+                  {meta.runnable && (
+                    <button class="js-run rounded-lg bg-pink-600 hover:bg-pink-500 px-3 py-1.5 text-white">{isEl ? "Τρέξε τώρα" : "Run now"}</button>
+                  )}
+                </div>
+              </footer>
+
+              <p class="js-status mt-2 text-xs"></p>
+            </section>
+          );
+        })}
+      </div>
+    </main>
+
+    <script is:inline>
+      // Read settings from friendly form fields first, then merge with raw-JSON overrides.
+      function readSettings(card) {
+        let settings = {};
+        try { settings = JSON.parse(card.querySelector(".js-settings")?.value || "{}"); } catch {}
+        card.querySelectorAll(".js-field").forEach((el) => {
+          const k = el.getAttribute("data-key");
+          if (!k) return;
+          const raw = el.value.trim();
+          if (raw === "") return;
+          const n = Number(raw);
+          if (!Number.isNaN(n)) settings[k] = n;
+        });
+        return settings;
+      }
+      function syncJsonTextarea(card) {
+        const ta = card.querySelector(".js-settings");
+        if (!ta) return;
+        try {
+          const s = readSettings(card);
+          ta.value = JSON.stringify(s, null, 2);
+        } catch {}
+      }
+      document.querySelectorAll("[data-trigger]").forEach((card) => {
+        card.querySelectorAll(".js-field").forEach((el) => {
+          el.addEventListener("input", () => syncJsonTextarea(card));
+          el.addEventListener("change", () => syncJsonTextarea(card));
+        });
+      });
+
+      async function bulkToggle(enabled) {
+        const bulkStatus = document.getElementById("js-bulk-status");
+        const cards = document.querySelectorAll("[data-trigger]");
+        if (bulkStatus) bulkStatus.textContent = (enabled ? "Enabling" : "Disabling") + " " + cards.length + "…";
+        let ok = 0, fail = 0;
+        for (const card of cards) {
+          const key = card.getAttribute("data-trigger");
+          const channel = card.querySelector(".js-channel").value;
+          const settings = readSettings(card);
+          const r = await fetch("/api/admin/marketing-trigger-toggle", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "save", key, enabled, channel, settings }),
+          });
+          const j = await r.json().catch(() => ({}));
+          if (j.ok) {
+            ok++;
+            const cb = card.querySelector(".js-enabled");
+            if (cb) cb.checked = enabled;
+          } else fail++;
+        }
+        if (bulkStatus) bulkStatus.textContent = "Done. " + ok + " updated" + (fail ? ", " + fail + " failed" : "") + ".";
+      }
+
+      document.getElementById("js-enable-all")?.addEventListener("click", () => bulkToggle(true));
+      document.getElementById("js-disable-all")?.addEventListener("click", () => bulkToggle(false));
+
+      document.addEventListener("click", async (e) => {
+        const t = e.target;
+        if (!(t instanceof HTMLElement)) return;
+        const card = t.closest("[data-trigger]");
+        if (!card) return;
+        const key = card.getAttribute("data-trigger");
+        const status = card.querySelector(".js-status");
+        const show = (msg, ok) => { if (status) { status.textContent = msg; status.className = "js-status mt-2 text-xs " + (ok ? "text-emerald-300" : "text-red-300"); } };
+
+        if (t.classList.contains("js-save")) {
+          const enabled = card.querySelector(".js-enabled").checked;
+          const channel = card.querySelector(".js-channel").value;
+          const settings = readSettings(card);
+          const r = await fetch("/api/admin/marketing-trigger-toggle", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "save", key, enabled, channel, settings }),
+          });
+          const j = await r.json().catch(() => ({}));
+          show(j.ok ? "Saved." : ("Error: " + (j.error ?? r.status)), !!j.ok);
+        }
+
+        if (t.classList.contains("js-test")) {
+          const to = card.querySelector(".js-test-to").value.trim();
+          if (!to) { show("Enter a phone or email first.", false); return; }
+          const channel = card.querySelector(".js-channel").value;
+          show("Sending test…", true);
+          const r = await fetch("/api/admin/marketing-trigger-toggle", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "test", key, to, channel }),
+          });
+          const j = await r.json().catch(() => ({}));
+          show(j.ok ? ("Test sent via " + channel + ".") : ("Error: " + (j.error ?? r.status)), !!j.ok);
+        }
+
+        if (t.classList.contains("js-run")) {
+          show("Running…", true);
+          const r = await fetch("/api/admin/marketing-trigger-toggle", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "run", key }),
+          });
+          const j = await r.json().catch(() => ({}));
+          if (j.ok) show(`Sent ${j.result?.sent ?? 0}, skipped ${j.result?.skipped ?? 0}, errors ${j.result?.errors ?? 0}.`, true);
+          else show("Error: " + (j.error ?? r.status), false);
+        }
+      });
+    </script>
+  </body>
+</html>

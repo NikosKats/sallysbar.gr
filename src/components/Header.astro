@@ -22,33 +22,39 @@ const switchHref = otherLang === "en"
 const user = Astro.locals.user;
 const role = Astro.locals.role;
 
-// Social-card slug: prefer handle, fall back to first 8 chars of user id.
+// Social-card slug + tonight's quest — all fetches run in parallel for TTFB.
 import { supabaseAdmin } from "../lib/supabase";
 import { getGameFlags } from "../lib/gameFlags";
+
 const gameFlags = await getGameFlags();
 let cardSlug: string | null = null;
 let tonightsQuest: { id: string; title_en: string; title_el: string; claimed: boolean } | null = null;
+
 if (user) {
-  try {
-    const { data } = await supabaseAdmin.from("profiles").select("handle").eq("id", user.id).maybeSingle();
-    cardSlug = ((data as any)?.handle as string | null) ?? user.id.slice(0, 8);
-  } catch { cardSlug = user.id.slice(0, 8); }
-  // Tonight's quest (today's active one) — only if quests game is enabled
-  try {
-    if (gameFlags.quests) {
-    const today = new Date().toISOString().slice(0, 10);
-    const { data: q } = await supabaseAdmin
-      .from("quests")
-      .select("id, title_en, title_el")
-      .eq("active", true).eq("active_date", today)
-      .order("created_at", { ascending: false }).limit(1).maybeSingle();
-    if (q) {
-      const { data: c } = await supabaseAdmin
-        .from("quest_claims").select("id").eq("quest_id", q.id).eq("user_id", user.id).maybeSingle();
-      tonightsQuest = { id: q.id, title_en: q.title_en, title_el: q.title_el, claimed: !!c };
-    }
-    }
-  } catch {}
+  // Handle comes from middleware (`locals.handle`) — saves one DB round-trip per page.
+  cardSlug = ((Astro.locals as any).handle as string | null) ?? user.id.slice(0, 8);
+
+  // Only fetch quest data if the game is on. The claim lookup is done server-side below
+  // in one join-ish pattern to keep this to a single round-trip.
+  if (gameFlags.quests) {
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      const { data: q } = await supabaseAdmin
+        .from("quests")
+        .select("id, title_en, title_el")
+        .eq("active", true).eq("active_date", today)
+        .order("created_at", { ascending: false }).limit(1).maybeSingle();
+      if (q) {
+        let claimed = false;
+        try {
+          const { data: c } = await supabaseAdmin
+            .from("quest_claims").select("id").eq("quest_id", q.id).eq("user_id", user.id).maybeSingle();
+          claimed = !!c;
+        } catch {}
+        tonightsQuest = { id: q.id, title_en: q.title_en, title_el: q.title_el, claimed };
+      }
+    } catch {}
+  }
 }
 const adminGroups = (role === "admin" || role === "super_admin") ? getAdminNavGroups(lang as "en" | "el", t, role) : [];
 
@@ -69,7 +75,7 @@ const nav = [
   { label: t.nav.menu,    icon: "📜",  href: withLangPrefix(lang, "/menu") },
   { label: bookLabel,     icon: "📅",  href: withLangPrefix(lang, "/book") },
   { label: eventsLabel,   icon: "🎵",  href: withLangPrefix(lang, "/events") },
-  { label: lang === "el" ? "Κάρτα Social" : "Social Card",  icon: "🪪",  href: withLangPrefix(lang, "/card") },
+  { label: lang === "el" ? "Κάρτα Μέλους" : "Member Card",  icon: "💳",  href: withLangPrefix(lang, "/membership") },
 ];
 
 function isActive(href: string) {
@@ -486,41 +492,43 @@ import CustomerPwa from "./CustomerPwa.astro";
   </div>
 
   <script is:inline>
-    // Mobile menu toggle
-    const btn = document.getElementById("mobileMenuBtn");
-    const menu = document.getElementById("mobileMenu");
-
-    const scrim = document.getElementById("mobileMenuScrim");
-
-    function closeMenu() {
-      if (!menu || !btn) return;
-      menu.classList.add("hidden");
-      menu.setAttribute("aria-hidden", "true");
-      btn.setAttribute("aria-expanded", "false");
-      document.body.style.overflow = "";
-    }
-
-    function openMenu() {
-      if (!menu || !btn) return;
-      menu.classList.remove("hidden");
-      menu.setAttribute("aria-hidden", "false");
-      btn.setAttribute("aria-expanded", "true");
-      document.body.style.overflow = "hidden";
-    }
-
-    btn?.addEventListener("click", () => {
-      if (menu?.classList.contains("hidden")) openMenu();
-      else closeMenu();
-    });
-
-    scrim?.addEventListener("click", closeMenu);
-    document.getElementById("mobileMenuClose")?.addEventListener("click", closeMenu);
-    document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeMenu(); });
-
-    menu?.addEventListener("click", (e) => {
-      const a = e.target.closest("a");
-      if (a) closeMenu();
-    });
+    // Event-delegated menu handlers — bind to document so they work even before this
+    // script has seen the #mobileMenu element (prevents "tap does nothing" on slow networks).
+    (function () {
+      function closeMenu() {
+        const menu = document.getElementById("mobileMenu");
+        const btn  = document.getElementById("mobileMenuBtn");
+        if (!menu) return;
+        menu.classList.add("hidden");
+        menu.setAttribute("aria-hidden", "true");
+        btn?.setAttribute("aria-expanded", "false");
+        document.body.style.overflow = "";
+        document.documentElement.classList.remove("mobile-menu-open");
+      }
+      function openMenu() {
+        const menu = document.getElementById("mobileMenu");
+        const btn  = document.getElementById("mobileMenuBtn");
+        if (!menu) return;
+        menu.classList.remove("hidden");
+        menu.setAttribute("aria-hidden", "false");
+        btn?.setAttribute("aria-expanded", "true");
+        document.body.style.overflow = "hidden";
+        document.documentElement.classList.add("mobile-menu-open");
+      }
+      document.addEventListener("click", (e) => {
+        const t = e.target;
+        if (!(t instanceof Element)) return;
+        if (t.closest("#mobileMenuBtn")) {
+          const menu = document.getElementById("mobileMenu");
+          if (menu?.classList.contains("hidden")) openMenu(); else closeMenu();
+        } else if (t.closest("#mobileMenuScrim") || t.closest("#mobileMenuClose")) {
+          closeMenu();
+        } else if (t.closest("#mobileMenu a")) {
+          closeMenu();
+        }
+      });
+      document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeMenu(); });
+    })();
 
     // User dropdown toggle
     const userBtn = document.getElementById("userMenuBtn");

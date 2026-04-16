@@ -1,0 +1,733 @@
+---
+import "../../styles/global.css";
+import AdminNav from "../../components/AdminNav.astro";
+
+export const prerender = false;
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+
+if (Astro.locals.role !== "super_admin") {
+  return new Response("Forbidden", { status: 403 });
+}
+
+const eur = (n: number) => "€" + Math.round(n).toLocaleString("en-GB");
+
+const startupCosts = [
+  ["GEMI registration + IKE incorporation", 70, 70],
+  ["e-YMS standard statute (no notary)", 0, 0],
+  ["Paid-in capital (recoverable, sits in bank)", 5000, 1000],
+  ["Chamber of Commerce registration", 50, 50],
+  ["Legal review (SLA, DPA, dunning, ToS)", 1200, 1200],
+  ["Accountant onboarding / setup", 250, 150],
+  ["Domain + registered trademark (Class 9/42)", 900, 250],
+  ["Business bank account opening", 0, 0],
+  ["Branding refresh + landing page polish", 800, 300],
+  ["Virtual office (12 mo prepaid)", 588, 156],
+  ["Initial marketing collateral (print + digital)", 600, 200],
+  ["Contingency buffer", 1000, 400],
+];
+const startupTotalC = startupCosts.reduce((s, r) => s + (r[1] as number), 0);
+const startupTotalL = startupCosts.reduce((s, r) => s + (r[2] as number), 0);
+
+const fixedCosts = [
+  ["EFKA — two non-salaried founders (Cat 1)", 560, 560, "55%"],
+  ["Accountant (monthly retainer)", 150, 150, "15%"],
+  ["Virtual office (BCO Porto Center tier)", 49, 49, "5%"],
+  ["Cloudflare Pages + Workers + R2", 20, 40, "3%"],
+  ["Supabase Pro", 25, 60, "4%"],
+  ["Transactional email (Resend)", 20, 40, "3%"],
+  ["Vonage Messages credit reserve", 30, 60, "4%"],
+  ["Domain + SSL + misc SaaS", 10, 20, "1%"],
+  ["Bookkeeping software (λογιστικό πρόγραμμα)", 20, 30, "2%"],
+  ["Bank fees (IBAN, transfers)", 10, 20, "1%"],
+  ["Legal/GDPR retainer (pro-rated)", 50, 80, "5%"],
+  ["Insurance (PI, from 30 venues)", 0, 50, "2%"],
+];
+const fixedTotalLow = fixedCosts.reduce((s, r) => s + (r[1] as number), 0);
+const fixedTotalHigh = fixedCosts.reduce((s, r) => s + (r[2] as number), 0);
+
+const variableCosts = [
+  ["Telegram bot + bot hosting", 0, "Shared infra"],
+  ["Onboarding call (video conferencing)", 0, "Shared infra"],
+  ["Per-venue Supabase storage (media)", 24, "€2/mo × 12"],
+  ["Outbound WhatsApp/SMS credits", 180, "~€15/mo via Vonage"],
+  ["Transactional email quota (Resend)", 60, "~€5/mo"],
+  ["Customer-support time (remote)", 180, "~2h/mo × €75 internal"],
+  ["Onboarding labor (time, not cash)", 0, "4h × €75 = labor only"],
+  ["Payment processing (bank transfer)", 0, "EFT = €0"],
+  ["NFC / print collateral (optional upsell)", 60, "Reorder reserve"],
+];
+const variableTotal = variableCosts.reduce((s, r) => s + (r[1] as number), 0);
+
+// Recomputed at new pricing — blended €897/venue/yr (50/50 seasonal €690 + year-round €1,104).
+const scaleMilestones = [
+  { v: 1,   rev:    939, tot: 12_820, gp: -11_881 },
+  { v: 10,  rev:  9_390, tot: 17_356, gp:  -7_966 },
+  { v: 25,  rev: 23_475, tot: 24_916, gp:  -1_441 },
+  { v: 50,  rev: 46_950, tot: 37_516, gp:   9_434 },
+  { v: 100, rev: 93_900, tot: 62_716, gp:  31_184 },
+  { v: 120, rev:112_680, tot: 72_796, gp:  39_884 },
+  { v: 200, rev:187_800, tot:113_116, gp:  74_684 },
+  { v: 400, rev:375_600, tot:213_916, gp: 161_684 },
+];
+
+// Recomputed: blended €897 sub/venue/yr + €850 fixed setup paid on signing.
+// Setup fee gives a huge Y1 cash boost: 40 venues × €850 = €34k extra on top of €38k subscriptions.
+const scenarios = [
+  { name: "A · Conservative", pace: "2/mo",    y1Venues: 20, y1Rev: 35_780, y1Net: 23_500,  y3Net: 18_000, cashBE: "month 2", halfSal: "month 48" },
+  { name: "B · Realistic",    pace: "4/mo",    y1Venues: 40, y1Rev: 71_560, y1Net: 53_440,  y3Net: 38_000, cashBE: "month 1", halfSal: "month 36" },
+  { name: "C · Aggressive",   pace: "8/mo+ref", y1Venues: 80, y1Rev:143_120, y1Net:110_000, y3Net: 78_000, cashBE: "month 1", halfSal: "month 24" },
+];
+
+// Recomputed at new pricing. Scenario B: 4 venues/mo avg, mix 50% seasonal + 50% year-round.
+// Each new seasonal: €850 setup + €690 sub = €1,540 cash on signing.
+// Each new year-round: €850 setup + €1,104 sub = €1,954 cash on signing.
+// Blended new-venue cash: ~€1,747. All paid upfront. Q4 slows to ~3 venues/mo.
+const cashflow = [
+  { m: "Jan", v:  4, rev: 7_156, cost: 1_070, net:  6_086, cum:  6_086 },
+  { m: "Feb", v:  8, rev: 7_156, cost: 1_158, net:  5_998, cum: 12_084 },
+  { m: "Mar", v: 12, rev: 7_156, cost: 1_246, net:  5_910, cum: 17_994 },
+  { m: "Apr", v: 16, rev: 7_156, cost: 1_334, net:  5_822, cum: 23_816 },
+  { m: "May", v: 20, rev: 7_156, cost: 1_422, net:  5_734, cum: 29_550 },
+  { m: "Jun", v: 24, rev: 7_156, cost: 1_510, net:  5_646, cum: 35_196 },
+  { m: "Jul", v: 27, rev: 5_367, cost: 1_576, net:  3_791, cum: 38_987 },
+  { m: "Aug", v: 30, rev: 5_367, cost: 1_642, net:  3_725, cum: 42_712 },
+  { m: "Sep", v: 33, rev: 5_367, cost: 1_708, net:  3_659, cum: 46_371 },
+  { m: "Oct", v: 36, rev: 5_367, cost: 1_774, net:  3_593, cum: 49_964 },
+  { m: "Nov", v: 38, rev: 3_578, cost: 1_818, net:  1_760, cum: 51_724 },
+  { m: "Dec", v: 40, rev: 3_578, cost: 1_862, net:  1_716, cum: 53_440 },
+];
+
+// Recomputed at new pricing: blended GP €519/venue/yr vs €1,896 at old pricing.
+const breakEvens = [
+  { k: "Cover fixed monthly burn",       current: "24 venues",   repriced: "—",           time: "month 12–18" },
+  { k: "Recover startup cash",           current: "30–40 venues", repriced: "—",          time: "month 24"    },
+  { k: "One partner €1,500/mo take-home", current: "70 venues",  repriced: "—",           time: "month 36–42" },
+  { k: "Both partners €1,500/mo each",   current: "120 venues",  repriced: "—",           time: "month 48"    },
+  { k: "Both partners full-time €38k/yr", current: "225+ venues", repriced: "—",          time: "month 60+"   },
+];
+
+const funding = [
+  ["Personal runway — 6 mo living / founder", 10_000, 10_000, "Outside the business"],
+  ["Paid-in capital (recoverable)",            5_000,  1_000,  "Sits in company bank"],
+  ["Startup costs (net spend)",                4_500,  2_000,  "Incorporation + legal + branding"],
+  ["3 months operating buffer",                3_000,  2_500,  "Covers fixed burn before first cash in"],
+];
+const fundTotalC = funding.reduce((s, r) => s + (r[1] as number), 0);
+const fundTotalL = funding.reduce((s, r) => s + (r[2] as number), 0);
+---
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Financial Model & Break-Even — Admin</title>
+    <meta name="robots" content="noindex,nofollow" />
+    <style>
+      @media print {
+        body { background: white !important; color: black !important; }
+        .no-print { display: none !important; }
+        .fin-card { break-inside: avoid; page-break-inside: avoid; border-color: #ccc !important; background: white !important; }
+        table, thead, tbody, tr, th, td { color: black !important; background: white !important; }
+        h1, h2, h3, h4 { color: black !important; }
+      }
+    </style>
+  </head>
+  <body class="min-h-screen bg-[#0b0b10] text-white">
+    <AdminNav active="financial-model" />
+
+    <main class="mx-auto max-w-5xl px-5 py-10">
+      <!-- Header -->
+      <div class="mb-8 flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <p class="text-xs uppercase tracking-[0.28em] text-rose-300 mb-2 flex items-center gap-2">
+            <span class="inline-block h-1.5 w-1.5 rounded-full bg-rose-400 animate-pulse"></span>
+            SUPER ADMIN ONLY
+          </p>
+          <h1 class="font-heading text-4xl font-bold">📊 Financial Model & Break-Even Analysis</h1>
+          <p class="mt-2 text-sm text-white/60 max-w-3xl">
+            Hospitality SaaS Platform · Greece — Thessaloniki — IKE — Two Co-founders.
+            Complete cost inventory · Break-even · Cash flow timeline. Companion to the Operating Plan. Prepared April 2026.
+          </p>
+        </div>
+        <div class="text-right text-xs text-white/40">
+          <button onclick="window.print()" class="no-print mb-2 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 px-4 py-2 text-xs font-semibold text-white">🖨 Print / Save PDF</button>
+          <p>{isEl ? "Εσωτερικό έγγραφο" : "Internal document"}</p>
+          <p class="mt-1">{isEl ? "Μην το κοινοποιείς" : "Do not share"}</p>
+        </div>
+      </div>
+
+      <!-- Contents -->
+      <section class="fin-card mb-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        <p class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-3">📑 {isEl ? "Περιεχόμενα" : "Contents"}</p>
+        <ol class="grid sm:grid-cols-2 gap-1.5 text-sm text-white/80 list-decimal pl-5">
+          <li><a href="#s1" class="hover:text-amber-200">{isEl ? "Βασικά νούμερα & συμπέρασμα" : "Headline numbers & verdict"}</a></li>
+          <li><a href="#s2" class="hover:text-amber-200">{isEl ? "Κόστος ανάπτυξης (sunk)" : "Build cost (sunk investment)"}</a></li>
+          <li><a href="#s3" class="hover:text-amber-200">{isEl ? "Κόστη έναρξης (άπαξ)" : "Startup costs (one-time)"}</a></li>
+          <li><a href="#s4" class="hover:text-amber-200">{isEl ? "Σταθερά λειτουργικά κόστη" : "Fixed operating costs"}</a></li>
+          <li><a href="#s5" class="hover:text-amber-200">{isEl ? "Μεταβλητά κόστη (ανά venue)" : "Variable operating costs (per venue)"}</a></li>
+          <li><a href="#s6" class="hover:text-amber-200">{isEl ? "Συνολικά κόστη σε κάθε κλίμακα" : "Total cost stack at each scale"}</a></li>
+          <li><a href="#s7" class="hover:text-amber-200">{isEl ? "Ανάλυση break-even" : "Break-even analysis"}</a></li>
+          <li><a href="#s8" class="hover:text-amber-200">{isEl ? "Τρία ρεαλιστικά σενάρια" : "Three realistic ramp scenarios"}</a></li>
+          <li><a href="#s9" class="hover:text-amber-200">{isEl ? "Μηνιαία cash flow (Y1)" : "Month-by-month cash flow (Year 1)"}</a></li>
+          <li><a href="#s10" class="hover:text-amber-200">{isEl ? "Πότε γίνεται κερδοφόρα;" : "When does it become profitable?"}</a></li>
+          <li><a href="#s11" class="hover:text-amber-200">{isEl ? "Ανάλυση ευαισθησίας" : "Sensitivity analysis"}</a></li>
+          <li><a href="#s12" class="hover:text-amber-200">{isEl ? "Πώς γρηγορότερα σε κέρδος" : "How to get to profitability faster"}</a></li>
+          <li><a href="#s13" class="hover:text-amber-200">{isEl ? "Απαιτήσεις χρηματοδότησης" : "Funding requirements"}</a></li>
+          <li><a href="#s13b" class="hover:text-amber-200">📈 {isEl ? "ROI στο build της πλατφόρμας" : "ROI on the platform build"}</a></li>
+          <li><a href="#s14" class="hover:text-amber-200">{isEl ? "Εκτελεστικό συμπέρασμα" : "Executive conclusion"}</a></li>
+        </ol>
+      </section>
+
+      <!-- 1. Headline -->
+      <section id="s1" class="fin-card mb-8 rounded-2xl border border-amber-400/30 bg-amber-400/[0.05] p-5">
+        <h2 class="font-heading text-2xl font-bold mb-3">{isEl ? "1. Βασικά Νούμερα & Συμπέρασμα" : "1. Headline Numbers & Verdict"}</h2>
+        <p class="text-sm text-white/80 leading-relaxed">
+          {isEl
+            ? <>Με τη νέα τιμολόγηση (Seasonal €690, Year-round €1,104 — 20% φθηνότερα από 2× seasonal, <strong>Setup €850 σταθερό σε κάθε plan</strong>), η επιχείρηση χρειάζεται <strong>€4,000–€7,500</strong> για να ξεκινήσει συν τα €187,615 της ήδη χτισμένης πλατφόρμας. Σταθερό μηνιαίο burn: <strong>€1,026/μήνα</strong>. Recurring GP ανά venue: <strong>€519/έτος</strong> — αλλά κάθε <em>νέα</em> πώληση δίνει <strong>~€1,747 cash on signing</strong> (€850 setup + upfront συνδρομή). Το setup fee κυριαρχεί στα Y1 οικονομικά → cash break-even τραβιέται μπροστά στον <strong>μήνα 1–2</strong>. Recurring break-even (Y2+): ~24 venues. Half-salary και για τους δύο partners: ~120 venues. Πλήρες εισόδημα: 225+ venues.</>
+            : <>Under the new pricing (Seasonal €690, Year-round €1,104 — 20% cheaper than 2× seasonal, <strong>Setup €850 fixed on every plan</strong>), the business needs <strong>€4,000–€7,500</strong> to launch plus the €187,615 already-built platform IP. Fixed monthly burn is <strong>€1,026/mo</strong>. Recurring GP per venue: <strong>€519/yr</strong> — but each <em>new</em> sale delivers <strong>~€1,747 cash on signing</strong> (€850 setup + upfront subscription). Setup fee dominates Y1 economics → cash break-even pulled forward to <strong>month 1–2</strong>. Recurring break-even (Y2+): ~24 venues. Half-salary both partners: ~120 venues. Full income: 225+ venues.</>}
+        </p>
+
+        <div class="grid sm:grid-cols-3 gap-3 mt-4">
+          <div class="rounded-xl border border-white/10 bg-white/[0.04] p-4 text-center">
+            <p class="text-[10px] uppercase tracking-wider text-amber-200/80">{isEl ? "Μετρητά για launch" : "Cash to launch"}</p>
+            <p class="font-heading text-3xl font-bold mt-1">€4.5k</p>
+            <p class="text-xs text-white/55 mt-1">{isEl ? "+ €5k ανακτήσιμο κεφάλαιο" : "+ €5k recoverable capital"}</p>
+          </div>
+          <div class="rounded-xl border border-white/10 bg-white/[0.04] p-4 text-center">
+            <p class="text-[10px] uppercase tracking-wider text-amber-200/80">{isEl ? "Σταθερό μηνιαίο burn" : "Fixed monthly burn"}</p>
+            <p class="font-heading text-3xl font-bold mt-1">~€1,026</p>
+            <p class="text-xs text-white/55 mt-1">{isEl ? "ΕΦΚΑ + λογιστής + infra" : "EFKA + accountant + infra"}</p>
+          </div>
+          <div class="rounded-xl border border-white/10 bg-white/[0.04] p-4 text-center">
+            <p class="text-[10px] uppercase tracking-wider text-amber-200/80">{isEl ? "Gross margin / venue" : "Gross margin / venue"}</p>
+            <p class="font-heading text-3xl font-bold mt-1">79–83%</p>
+            <p class="text-xs text-white/55 mt-1">{isEl ? "Εξαιρετικό για SaaS" : "Exceptional for SaaS"}</p>
+          </div>
+        </div>
+
+        <div class="mt-4 grid sm:grid-cols-2 gap-3 text-sm">
+          {breakEvens.map(b => (
+            <div class="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+              <p class="font-bold text-white">{b.k}</p>
+              <p class="text-xs text-white/60 mt-0.5">Current: <span class="text-amber-200">{b.current}</span> · Repriced: <span class="text-emerald-300">{b.repriced}</span> · {b.time}</p>
+            </div>
+          ))}
+        </div>
+
+        <p class="mt-4 text-sm text-white/75 leading-relaxed">
+          {isEl
+            ? <><strong>Συμπέρασμα.</strong> Οικονομικά υγιής με χαμηλές απαιτήσεις κεφαλαίου και ξεκάθαρο μαθηματικό μονοπάτι προς κερδοφορία. Η πλατφόρμα €187,615 είναι sunk — ένα one-time δώρο στο μοντέλο που οι ανταγωνιστές πρέπει να αντιγράψουν. Από εδώ, τα μετρητά που χρειάζονται είναι λίγα (€4k–€7.5k) και το σταθερό κόστος κυριαρχείται από λίγες γραμμές (ΕΦΚΑ + λογιστής + virtual office = ~80%). Ο κυρίαρχος κίνδυνος είναι ο ρυθμός, όχι τα οικονομικά.</>
+            : <><strong>Verdict.</strong> Financially sound with low capital requirements and a clear mathematical path to profitability. The €187,615 platform is sunk — a one-time gift to the business model competitors must replicate. From here, cash needed is small (€4k–€7.5k) and fixed cost is dominated by a handful of line items (EFKA + accountant + virtual office = ~80%). Every €1,890 seasonal sale produces ~€1,485 in pre-tax profit before fixed-cost allocation. The dominant risk is pace, not finance.</>}
+        </p>
+      </section>
+
+      <!-- 2. Build cost -->
+      <section id="s2" class="fin-card mb-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        <h2 class="font-heading text-2xl font-bold mb-3">{isEl ? "2. Κόστος Ανάπτυξης (Sunk Investment)" : "2. Build Cost (Sunk Investment)"}</h2>
+        <p class="text-sm text-white/80 leading-relaxed">
+          The platform is already built. At EU agency rates it represents <strong>2,185 hours</strong> = <strong>€187,615 net / €290,804 gross</strong>.
+          <strong>Cash impact: €0.</strong> It is the company's founding IP contribution and the moat against any competitor.
+        </p>
+        <ul class="mt-3 space-y-1.5 text-sm text-white/75 list-disc pl-5">
+          <li><strong>Accounting:</strong> under Greek GAAP internally-developed software is typically expensed as incurred. Discuss capitalisation with your λογιστής — creates depreciation over 3–5 years.</li>
+          <li><strong>Tax:</strong> zero unless capitalised (then depreciation is deductible).</li>
+          <li><strong>Valuation:</strong> €187,615–€290,804 of demonstrable IP; useful for grants and any future sale.</li>
+          <li><strong>Strategic:</strong> estimated 12–18 months head-start in the Greek hospitality vertical.</li>
+          <li><strong>All break-even calcs below exclude the build cost</strong> — the cash is already spent.</li>
+        </ul>
+      </section>
+
+      <!-- 3. Startup costs -->
+      <section id="s3" class="fin-card mb-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        <h2 class="font-heading text-2xl font-bold mb-3">{isEl ? "3. Κόστη Έναρξης (Άπαξ)" : "3. Startup Costs (One-Time)"}</h2>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="text-[11px] uppercase tracking-wider text-white/60">
+              <tr class="border-b border-white/10">
+                <th class="text-left py-2 px-3">Line item</th>
+                <th class="text-right py-2 px-3">Conservative</th>
+                <th class="text-right py-2 px-3">Lean</th>
+              </tr>
+            </thead>
+            <tbody>
+              {startupCosts.map(([label, c, l]) => (
+                <tr class="border-b border-white/5">
+                  <td class="py-2 px-3 text-white/80">{label}</td>
+                  <td class="py-2 px-3 text-right font-mono text-white/85">{eur(c as number)}</td>
+                  <td class="py-2 px-3 text-right font-mono text-emerald-300">{eur(l as number)}</td>
+                </tr>
+              ))}
+              <tr class="border-t-2 border-amber-400/40 bg-amber-400/[0.04]">
+                <td class="py-2 px-3 font-bold">TOTAL</td>
+                <td class="py-2 px-3 text-right font-mono font-bold text-amber-200">{eur(startupTotalC)}</td>
+                <td class="py-2 px-3 text-right font-mono font-bold text-emerald-300">{eur(startupTotalL)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="mt-3 text-sm text-white/70">
+          <strong>Recommended path:</strong> lean column except on legal (never cut GDPR corners). Pay €5,000 paid-in capital (signals seriousness on GEMI).
+          Pick virtual office @ €49/mo (prestige address) once signed.
+          <strong>Target: ~€4,500 net spend + €5,000 recoverable capital = €9,500 cash in founder accounts on day 1.</strong>
+        </p>
+      </section>
+
+      <!-- 4. Fixed costs -->
+      <section id="s4" class="fin-card mb-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        <h2 class="font-heading text-2xl font-bold mb-3">{isEl ? "4. Σταθερά Λειτουργικά Κόστη (Ανεξάρτητα Venues)" : "4. Fixed Operating Costs (Independent of Venues)"}</h2>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="text-[11px] uppercase tracking-wider text-white/60">
+              <tr class="border-b border-white/10">
+                <th class="text-left py-2 px-3">Line item</th>
+                <th class="text-right py-2 px-3">Low €/mo</th>
+                <th class="text-right py-2 px-3">High €/mo</th>
+                <th class="text-right py-2 px-3">% of burn</th>
+              </tr>
+            </thead>
+            <tbody>
+              {fixedCosts.map(([label, lo, hi, pct]) => (
+                <tr class="border-b border-white/5">
+                  <td class="py-2 px-3 text-white/80">{label}</td>
+                  <td class="py-2 px-3 text-right font-mono">{eur(lo as number)}</td>
+                  <td class="py-2 px-3 text-right font-mono">{eur(hi as number)}</td>
+                  <td class="py-2 px-3 text-right text-white/60">{pct}</td>
+                </tr>
+              ))}
+              <tr class="border-t-2 border-amber-400/40 bg-amber-400/[0.04]">
+                <td class="py-2 px-3 font-bold">TOTAL</td>
+                <td class="py-2 px-3 text-right font-mono font-bold text-amber-200">{eur(fixedTotalLow)}</td>
+                <td class="py-2 px-3 text-right font-mono font-bold text-amber-200">{eur(fixedTotalHigh)}</td>
+                <td class="py-2 px-3"></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="mt-4 rounded-xl border border-rose-400/20 bg-rose-400/[0.04] p-4 text-sm text-white/80">
+          <p class="font-bold text-rose-200 mb-1">⚠️ 80% of fixed cost = two line items</p>
+          <ul class="space-y-0.5 list-disc pl-5 text-white/75">
+            <li>EFKA for two founders: €560/mo → <strong>55%</strong></li>
+            <li>Accountant + virtual office: €199/mo → <strong>19%</strong></li>
+            <li>Everything else combined: ~€267/mo → 26%</li>
+          </ul>
+          <p class="mt-2 text-white/70">You cannot meaningfully reduce burn — only grow revenue past it.</p>
+        </div>
+        <div class="mt-4 text-sm text-white/70">
+          <p class="font-bold text-white mb-1">What's NOT in the table (common mistakes)</p>
+          <ul class="space-y-0.5 list-disc pl-5">
+            <li>Founder salaries (IKE founders take dividends @ 22% CIT + 5% WHT — not salary).</li>
+            <li>Home utilities / personal mobile / home office furniture (all personal, not deductible).</li>
+            <li>Stripe / payment-processor fees: €0 — bank-transfer billing saves €170–€4k/yr.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 5. Variable costs -->
+      <section id="s5" class="fin-card mb-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        <h2 class="font-heading text-2xl font-bold mb-3">{isEl ? "5. Μεταβλητά Λειτουργικά Κόστη (Ανά Venue)" : "5. Variable Operating Costs (Per Venue)"}</h2>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="text-[11px] uppercase tracking-wider text-white/60">
+              <tr class="border-b border-white/10">
+                <th class="text-left py-2 px-3">Line item</th>
+                <th class="text-right py-2 px-3">€/venue/year</th>
+                <th class="text-left py-2 px-3">Note</th>
+              </tr>
+            </thead>
+            <tbody>
+              {variableCosts.map(([label, n, note]) => (
+                <tr class="border-b border-white/5">
+                  <td class="py-2 px-3 text-white/80">{label}</td>
+                  <td class="py-2 px-3 text-right font-mono">{eur(n as number)}</td>
+                  <td class="py-2 px-3 text-white/55 text-xs">{note}</td>
+                </tr>
+              ))}
+              <tr class="border-t-2 border-amber-400/40 bg-amber-400/[0.04]">
+                <td class="py-2 px-3 font-bold">TOTAL cash cost / venue / year</td>
+                <td class="py-2 px-3 text-right font-mono font-bold text-amber-200">{eur(variableTotal)}</td>
+                <td class="py-2 px-3 text-xs text-white/55">Excludes founder labor time</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="mt-4 grid sm:grid-cols-2 gap-3 text-sm">
+          <div class="rounded-xl border border-sky-400/20 bg-sky-400/[0.04] p-4">
+            <p class="text-[11px] uppercase tracking-wider text-sky-200/80 font-bold mb-1">Seasonal (6 mo) · new pricing</p>
+            <p class="text-white/80">Revenue: <strong>€690</strong> + €850 setup · Variable cost: <strong>€252</strong></p>
+            <p class="text-emerald-300 font-bold">Gross profit: €438 subs + €850 setup · margin 63% recurring</p>
+          </div>
+          <div class="rounded-xl border border-amber-400/20 bg-amber-400/[0.04] p-4">
+            <p class="text-[11px] uppercase tracking-wider text-amber-200/80 font-bold mb-1">Year-round (12 mo) · new pricing</p>
+            <p class="text-white/80">Revenue: <strong>€1,104</strong> + €850 setup · Variable cost: <strong>€504</strong></p>
+            <p class="text-emerald-300 font-bold">Gross profit: €600 subs + €850 setup · margin 54% recurring</p>
+          </div>
+        </div>
+        <p class="mt-3 text-sm text-white/70">
+          <strong>Onboarding labor:</strong> ~4h of founder time/venue (€300 @ €75/h internal). Not a cash cost — but caps two-founder
+          install capacity at <strong>8–12 new venues / month</strong>. At the new aggressive price, install capacity becomes the binding
+          growth constraint <em>and</em> the sales pace is more forgiving — cheaper price = easier to close more per month.
+        </p>
+      </section>
+
+      <!-- 6. Scale stack -->
+      <section id="s6" class="fin-card mb-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        <h2 class="font-heading text-2xl font-bold mb-3">{isEl ? "6. Συνολικά Κόστη σε Κάθε Κλίμακα" : "6. Total Cost Stack at Each Scale"}</h2>
+        <p class="text-sm text-white/70 mb-3">Mid-range fixed cost (€12,316/yr) + €504/yr/venue. EFKA category upgrades at 60 and 120 venues.</p>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="text-[11px] uppercase tracking-wider text-white/60">
+              <tr class="border-b border-white/10">
+                <th class="text-left py-2 px-3">Venues</th>
+                <th class="text-right py-2 px-3">Revenue / yr</th>
+                <th class="text-right py-2 px-3">Total cost / yr</th>
+                <th class="text-right py-2 px-3">Gross profit</th>
+                <th class="text-right py-2 px-3">After CIT 22% + WHT 5%</th>
+              </tr>
+            </thead>
+            <tbody>
+              {scaleMilestones.map(r => {
+                const net = r.gp > 0 ? Math.round(r.gp * 0.78 * 0.95) : r.gp;
+                return (
+                  <tr class="border-b border-white/5">
+                    <td class="py-2 px-3 font-bold">{r.v}</td>
+                    <td class="py-2 px-3 text-right font-mono">{eur(r.rev)}</td>
+                    <td class="py-2 px-3 text-right font-mono text-white/70">{eur(r.tot)}</td>
+                    <td class={`py-2 px-3 text-right font-mono font-bold ${r.gp >= 0 ? "text-emerald-300" : "text-rose-300"}`}>{eur(r.gp)}</td>
+                    <td class={`py-2 px-3 text-right font-mono ${net >= 0 ? "text-emerald-300/80" : "text-rose-300/80"}`}>{eur(net)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 7. Break-even -->
+      <section id="s7" class="fin-card mb-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        <h2 class="font-heading text-2xl font-bold mb-3">{isEl ? "7. Ανάλυση Break-Even — Τέσσερα Σημεία" : "7. Break-Even Analysis — Four Meaningful Points"}</h2>
+        <div class="grid md:grid-cols-2 gap-3 text-sm">
+          <div class="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+            <p class="font-bold text-white">#1 · Cover monthly fixed costs</p>
+            <p class="text-white/70 mt-1">Burn €1,026 ÷ €43 GP/venue/mo (blended) = <strong class="text-amber-200">~24 venues</strong>.</p>
+          </div>
+          <div class="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+            <p class="font-bold text-white">#2 · Recover startup cash</p>
+            <p class="text-white/70 mt-1">€4.5k–€7.5k spent ÷ ~€250 net profit/venue/yr at small scale = <strong class="text-amber-200">~30 venues × 12 mo</strong>.</p>
+          </div>
+          <div class="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+            <p class="font-bold text-white">#3 · One partner draws €1,500/mo</p>
+            <p class="text-white/70 mt-1">€24,290 pre-tax + €12,316 fixed ÷ €519 GP/venue = <strong class="text-amber-200">~70 venues</strong>.</p>
+          </div>
+          <div class="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+            <p class="font-bold text-white">#4 · Both partners €1,500/mo each</p>
+            <p class="text-white/70 mt-1">€48,580 pre-tax + €13,116 fixed ÷ €519 = <strong class="text-amber-200">~120 venues</strong>.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 8. Scenarios -->
+      <section id="s8" class="fin-card mb-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        <h2 class="font-heading text-2xl font-bold mb-3">{isEl ? "8. Τρία Ρεαλιστικά Σενάρια Ανάπτυξης" : "8. Three Realistic Ramp Scenarios"}</h2>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="text-[11px] uppercase tracking-wider text-white/60">
+              <tr class="border-b border-white/10">
+                <th class="text-left py-2 px-3">Scenario</th>
+                <th class="text-left py-2 px-3">Pace</th>
+                <th class="text-right py-2 px-3">Y1 venues</th>
+                <th class="text-right py-2 px-3">Y1 revenue</th>
+                <th class="text-right py-2 px-3">Y1 net cash</th>
+                <th class="text-right py-2 px-3">Y3 net / partner</th>
+                <th class="text-left py-2 px-3">Cash BE</th>
+                <th class="text-left py-2 px-3">Half-salary both</th>
+              </tr>
+            </thead>
+            <tbody>
+              {scenarios.map(s => (
+                <tr class={`border-b border-white/5 ${s.name.startsWith("B") ? "bg-amber-400/[0.04]" : ""}`}>
+                  <td class="py-2 px-3 font-bold">{s.name}</td>
+                  <td class="py-2 px-3 text-white/70">{s.pace}</td>
+                  <td class="py-2 px-3 text-right font-mono">{s.y1Venues}</td>
+                  <td class="py-2 px-3 text-right font-mono">{eur(s.y1Rev)}</td>
+                  <td class={`py-2 px-3 text-right font-mono ${s.y1Net >= 0 ? "text-emerald-300" : "text-rose-300"}`}>{eur(s.y1Net)}</td>
+                  <td class="py-2 px-3 text-right font-mono text-emerald-300">{eur(s.y3Net)}</td>
+                  <td class="py-2 px-3 text-white/70">{s.cashBE}</td>
+                  <td class="py-2 px-3 text-white/70">{s.halfSal}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p class="mt-3 text-xs text-white/55">Scenario B is the <strong class="text-amber-200">planning baseline</strong>. Scenario C requires a working referral/partnership channel and multi-tenant rebuild in months 4–6.</p>
+      </section>
+
+      <!-- 9. Cash flow -->
+      <section id="s9" class="fin-card mb-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        <h2 class="font-heading text-2xl font-bold mb-3">{isEl ? "9. Μηνιαία Cash Flow (Έτος 1, Σενάριο B)" : "9. Month-by-Month Cash Flow (Year 1, Scenario B)"}</h2>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="text-[11px] uppercase tracking-wider text-white/60">
+              <tr class="border-b border-white/10">
+                <th class="text-left py-2 px-3">Month</th>
+                <th class="text-right py-2 px-3">Venues</th>
+                <th class="text-right py-2 px-3">Revenue</th>
+                <th class="text-right py-2 px-3">Cost</th>
+                <th class="text-right py-2 px-3">Net</th>
+                <th class="text-right py-2 px-3">Cumulative</th>
+              </tr>
+            </thead>
+            <tbody>
+              {cashflow.map(r => (
+                <tr class={`border-b border-white/5 ${r.m === "Apr" ? "bg-emerald-400/[0.08]" : ""}`}>
+                  <td class="py-2 px-3 font-bold">{r.m}</td>
+                  <td class="py-2 px-3 text-right font-mono">{r.v}</td>
+                  <td class="py-2 px-3 text-right font-mono">{eur(r.rev)}</td>
+                  <td class="py-2 px-3 text-right font-mono text-white/60">{eur(r.cost)}</td>
+                  <td class={`py-2 px-3 text-right font-mono ${r.net >= 0 ? "text-emerald-300" : "text-rose-300"}`}>{eur(r.net)}</td>
+                  <td class={`py-2 px-3 text-right font-mono font-bold ${r.cum >= 0 ? "text-emerald-300" : "text-rose-300"}`}>{eur(r.cum)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <ul class="mt-3 text-sm text-white/70 space-y-1 list-disc pl-5">
+          <li><strong>Setup fee (€850) on every signing</strong> drives Y1 cash, not subscription renewal.</li>
+          <li>Cash positive from month 1: 4 venues × €1,789 cash on signing = €7,156 inflow vs €1,070 burn.</li>
+          <li>Q4 slows to ~3 venues/mo as winter approaches.</li>
+          <li>Y1 ends: 40 venues · ~<strong>€53.4k cash</strong> pre-tax. CIT installments paid through Y2.</li>
+          <li><strong>The setup fee is the engine</strong> — it converts every new sale into immediate margin.</li>
+        </ul>
+        <div class="mt-3 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.04] p-3 text-sm">
+          <p class="text-emerald-200 font-bold">Year 1 tax-adjusted cash (Scenario B):</p>
+          <p class="text-white/75">Pre-tax ~€53,440 · −CIT 22% €11,757 · retained €41,683. If distributed: −5% WHT → <strong>~€19,800 / founder</strong>. <span class="text-white/55">Recommendation: retain a working capital buffer (~€20k), distribute the rest starting Y2.</span></p>
+        </div>
+      </section>
+
+      <!-- 10. When profitable -->
+      <section id="s10" class="fin-card mb-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        <h2 class="font-heading text-2xl font-bold mb-3">{isEl ? "10. Πότε γίνεται κερδοφόρα η Επιχείρηση;" : "10. When Does the Business Become Profitable?"}</h2>
+        <div class="grid md:grid-cols-3 gap-3 text-sm">
+          <div class="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+            <p class="text-[11px] uppercase tracking-wider text-sky-200/80 font-bold">Cash-flow positive</p>
+            <p class="text-white/80 mt-1">~22 venues · <strong class="text-emerald-300">month 8–12</strong></p>
+          </div>
+          <div class="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+            <p class="text-[11px] uppercase tracking-wider text-amber-200/80 font-bold">Accounting-profitable</p>
+            <p class="text-white/80 mt-1">~30 venues full-year · <strong class="text-emerald-300">end of Y1 / early Y2</strong></p>
+          </div>
+          <div class="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+            <p class="text-[11px] uppercase tracking-wider text-rose-200/80 font-bold">Founder lifestyle</p>
+            <p class="text-white/80 mt-1">
+              Side €500–€800 : <strong>40–55 venues</strong><br>
+              Half €1,500/mo (both) : <strong>110</strong><br>
+              Full €3,000+/mo (both) : <strong>200+</strong>
+            </p>
+          </div>
+        </div>
+        <ul class="mt-4 text-sm text-white/75 space-y-1.5 list-disc pl-5">
+          <li><strong>Months 1–18 — Building phase.</strong> Profitable but little/no draw. The cheap price buys easier sales but slower income.</li>
+          <li><strong>Months 19–36 — Income phase.</strong> Each partner draws €500–€1,500/mo as the book approaches 80 venues.</li>
+          <li><strong>Months 36–60 — Replacement phase.</strong> Reach 150–200 venues to cover both founders at ~€3k/mo each.</li>
+          <li><strong>Months 60+ — Wealth-building.</strong> Requires multi-tenant rebuild, hiring a sales hand, or expanding beyond Greece.</li>
+        </ul>
+      </section>
+
+      <!-- 11. Sensitivity -->
+      <section id="s11" class="fin-card mb-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        <h2 class="font-heading text-2xl font-bold mb-3">{isEl ? "11. Ανάλυση Ευαισθησίας — Τι Μπορεί να Πάει Στραβά" : "11. Sensitivity Analysis — What Could Go Wrong"}</h2>
+        <div class="space-y-3 text-sm">
+          <div class="rounded-xl border border-rose-400/20 bg-rose-400/[0.04] p-4">
+            <p class="font-bold text-rose-200">⚠️ 1. Slow acquisition (1/mo instead of 2/mo)</p>
+            <p class="text-white/75 mt-1">Y1: 12 venues · €22,680 rev · +€2,300 net. Half-salary delayed to month 36. <strong>Mitigation:</strong> ≥6 months runway before launch.</p>
+          </div>
+          <div class="rounded-xl border border-rose-400/20 bg-rose-400/[0.04] p-4">
+            <p class="font-bold text-rose-200">⚠️ 2. High churn (30% seasonal non-renewal)</p>
+            <p class="text-white/75 mt-1">Y2 revenue €32k instead of €45k. Half-salary delayed 6–9 months. <strong>Mitigation:</strong> collect renewal signals Sep · 10% renewal discount · over-deliver in summer.</p>
+          </div>
+          <div class="rounded-xl border border-rose-400/20 bg-rose-400/[0.04] p-4">
+            <p class="font-bold text-rose-200">⚠️ 3. Late payments (20% at 60+ days)</p>
+            <p class="text-white/75 mt-1">Working capital +€8–€12k at 30 venues. Bad debt ~5% of AR annually. <strong>Mitigation:</strong> kill-switch day 37, no exceptions · full annual prepay.</p>
+          </div>
+          <div class="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+            <p class="font-bold text-white/80">4. Cost inflation (5% vs 3% annually)</p>
+            <p class="text-white/70 mt-1">Y3 fixed €13,800 vs €13,400 — minor. Not a critical sensitivity.</p>
+          </div>
+          <div class="rounded-xl border border-amber-400/30 bg-amber-400/[0.06] p-4">
+            <p class="font-bold text-amber-200">🌪️ Compound worst case (all four hitting)</p>
+            <p class="text-white/75 mt-1">Y1 net ~−€3,000 (founder injection). Y2 net ~+€4,000. Half-salary delayed to month 42–48. <strong>Business survives with €10k injection; profitability by Year 4.</strong></p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 12. Levers -->
+      <section id="s12" class="fin-card mb-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        <h2 class="font-heading text-2xl font-bold mb-3">{isEl ? "12. Πώς να Φτάσεις στην Κερδοφορία Γρηγορότερα" : "12. How to Get to Profitability Faster"}</h2>
+        <ol class="space-y-3 text-sm text-white/80 list-decimal pl-5">
+          <li><strong class="text-amber-200">Reprice now.</strong> Seasonal €1,890 → €2,592; year-round €2,988 → €5,189. +30% revenue / same cost. Half-salary moves month 24 → 18. <em>Biggest single lever.</em></li>
+          <li><strong class="text-amber-200">Shift mix to year-round.</strong> €1,906 GP vs €1,272. 70/30 year/seasonal adds ~€95/venue/yr. Saves ~2 months per milestone.</li>
+          <li><strong class="text-amber-200">Physical-goods upsells (already built collateral).</strong> NFC loyalty cards (€1.50 cost · sell €12 each) · printable campaign coasters (5c cost · €0.50 each) · branded A4 posters. A venue reordering a 500-card batch + 2,000 coasters/yr adds <strong>€5k–€6.5k revenue · ~80% margin</strong>. 30% of venues opt in → +€150–€200/venue/yr blended.</li>
+          <li><strong class="text-amber-200">Multi-tenant earlier.</strong> 2–3 weeks · 0 cash. Removes the 8–12 venues/month install ceiling. Do weeks 16–20 once 5 venues stable.</li>
+          <li><strong class="text-amber-200">Referral program.</strong> 1 month free per successful referral (~€158 CAC). 30% of venues refer 1/yr → +30% growth rate. Y2 onwards.</li>
+          <li><strong class="text-amber-200">EFKA optimisation.</strong> If one founder has salaried parallel work, ~€280/mo savings = 1.5 extra venues of profit. Validate with λογιστής.</li>
+        </ol>
+        <p class="mt-3 text-sm text-emerald-300">Combined: both-founder full-time milestone moves <strong>month 30–42 → month 18–24</strong>.</p>
+      </section>
+
+      <!-- 13. Funding -->
+      <section id="s13" class="fin-card mb-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        <h2 class="font-heading text-2xl font-bold mb-3">{isEl ? "13. Απαιτήσεις Χρηματοδότησης" : "13. Funding Requirements"}</h2>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="text-[11px] uppercase tracking-wider text-white/60">
+              <tr class="border-b border-white/10">
+                <th class="text-left py-2 px-3">Line</th>
+                <th class="text-right py-2 px-3">Conservative</th>
+                <th class="text-right py-2 px-3">Lean</th>
+                <th class="text-left py-2 px-3">Note</th>
+              </tr>
+            </thead>
+            <tbody>
+              {funding.map(([label, c, l, note]) => (
+                <tr class="border-b border-white/5">
+                  <td class="py-2 px-3 text-white/80">{label}</td>
+                  <td class="py-2 px-3 text-right font-mono">{eur(c as number)}</td>
+                  <td class="py-2 px-3 text-right font-mono text-emerald-300">{eur(l as number)}</td>
+                  <td class="py-2 px-3 text-xs text-white/55">{note}</td>
+                </tr>
+              ))}
+              <tr class="border-t-2 border-amber-400/40 bg-amber-400/[0.04]">
+                <td class="py-2 px-3 font-bold">TOTAL on day 1</td>
+                <td class="py-2 px-3 text-right font-mono font-bold text-amber-200">{eur(fundTotalC)}</td>
+                <td class="py-2 px-3 text-right font-mono font-bold text-emerald-300">{eur(fundTotalL)}</td>
+                <td class="py-2 px-3"></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="mt-3 text-sm text-white/80 font-bold">Need outside funding? Almost certainly no — and almost certainly should not seek any.</p>
+        <ul class="mt-2 text-sm text-white/70 list-disc pl-5 space-y-1">
+          <li>Cash BE in month 3 — too fast to interest VC.</li>
+          <li>Greek hospitality SaaS TAM is too small for VC-scale outcomes.</li>
+          <li>Working capital too small to justify ~7% bank APR + collateral.</li>
+          <li><strong>Grants worth applying for:</strong> ESPA 2021–2027 SME Digital Transformation (€18k, 50–80% cover), DYPA Νεοφυής Επιχειρηματικότητα (~€600/mo × 12), Regional Central Macedonia dev funds.</li>
+          <li><strong>Bootstrapping is the right call.</strong> €10k–€15k/founder cash + 6 mo rent covered = sufficient.</li>
+        </ul>
+      </section>
+
+      <!-- 13b. Platform Build ROI -->
+      <section id="s13b" class="fin-card mb-8 rounded-2xl border border-fuchsia-400/30 bg-gradient-to-br from-fuchsia-500/[0.06] via-amber-500/[0.04] to-sky-500/[0.04] p-5">
+        <h2 class="font-heading text-2xl font-bold mb-1">{isEl ? "📈 ROI στο Build της Πλατφόρμας" : "📈 ROI on the platform build"}</h2>
+        <p class="text-sm text-white/70 mb-4">When does the cumulative net cash to founders cover the €187,615 net / €290,804 gross EU-agency value of the 2,185-hour platform build?</p>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="text-[11px] uppercase tracking-wider text-white/55">
+              <tr class="border-b border-white/10">
+                <th class="text-left py-2 px-3">Year</th>
+                <th class="text-right py-2 px-3">New venues</th>
+                <th class="text-right py-2 px-3">Total book</th>
+                <th class="text-right py-2 px-3">Pre-tax net</th>
+                <th class="text-right py-2 px-3">After-tax distributable</th>
+                <th class="text-right py-2 px-3">Cumulative</th>
+                <th class="text-left py-2 px-3">Build recovered?</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-b border-white/5"><td class="py-2 px-3 font-bold">Y1</td><td class="py-2 px-3 text-right font-mono">40</td><td class="py-2 px-3 text-right font-mono">40</td><td class="py-2 px-3 text-right font-mono">€53,440</td><td class="py-2 px-3 text-right font-mono">€39,600</td><td class="py-2 px-3 text-right font-mono font-bold">€39,600</td><td class="py-2 px-3 text-white/55 text-xs">no</td></tr>
+              <tr class="border-b border-white/5"><td class="py-2 px-3 font-bold">Y2</td><td class="py-2 px-3 text-right font-mono">48</td><td class="py-2 px-3 text-right font-mono">88</td><td class="py-2 px-3 text-right font-mono">€77,850</td><td class="py-2 px-3 text-right font-mono">€57,700</td><td class="py-2 px-3 text-right font-mono font-bold">€97,300</td><td class="py-2 px-3 text-white/55 text-xs">no</td></tr>
+              <tr class="border-b border-white/5"><td class="py-2 px-3 font-bold">Y3</td><td class="py-2 px-3 text-right font-mono">48</td><td class="py-2 px-3 text-right font-mono">136</td><td class="py-2 px-3 text-right font-mono">€104,000</td><td class="py-2 px-3 text-right font-mono">€77,000</td><td class="py-2 px-3 text-right font-mono font-bold">€174,300</td><td class="py-2 px-3 text-emerald-300 text-xs font-bold">net €187,615 ≈ Y3</td></tr>
+              <tr class="border-b border-white/5"><td class="py-2 px-3 font-bold">Y4</td><td class="py-2 px-3 text-right font-mono">48</td><td class="py-2 px-3 text-right font-mono">184</td><td class="py-2 px-3 text-right font-mono">€122,500</td><td class="py-2 px-3 text-right font-mono">€90,800</td><td class="py-2 px-3 text-right font-mono font-bold">€265,100</td><td class="py-2 px-3 text-white/55 text-xs">approaching gross</td></tr>
+              <tr class="border-b border-white/5 bg-emerald-400/[0.05]"><td class="py-2 px-3 font-bold">Y5</td><td class="py-2 px-3 text-right font-mono">48</td><td class="py-2 px-3 text-right font-mono">232</td><td class="py-2 px-3 text-right font-mono">€141,000</td><td class="py-2 px-3 text-right font-mono">€104,500</td><td class="py-2 px-3 text-right font-mono font-bold text-emerald-300">€369,600</td><td class="py-2 px-3 text-emerald-300 text-xs font-bold">✅ gross €290,804 cleared</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="mt-5 grid md:grid-cols-3 gap-3 text-sm">
+          <div class="rounded-xl border border-emerald-400/30 bg-emerald-400/[0.05] p-4">
+            <p class="text-[11px] uppercase tracking-wider text-emerald-300 font-bold">B · Realistic (4/mo)</p>
+            <p class="text-white/80 mt-1">Net €187,615: <strong>~Year 3</strong></p>
+            <p class="text-white/80">Gross €290,804: <strong>~Year 4.5</strong></p>
+          </div>
+          <div class="rounded-xl border border-amber-400/30 bg-amber-400/[0.05] p-4">
+            <p class="text-[11px] uppercase tracking-wider text-amber-300 font-bold">A · Conservative (2/mo)</p>
+            <p class="text-white/80 mt-1">Net: <strong>Year 6+</strong></p>
+            <p class="text-white/80">Gross: <strong>Year 8+</strong></p>
+          </div>
+          <div class="rounded-xl border border-sky-400/30 bg-sky-400/[0.05] p-4">
+            <p class="text-[11px] uppercase tracking-wider text-sky-300 font-bold">C · Aggressive (8/mo + ref)</p>
+            <p class="text-white/80 mt-1">Net: <strong>~Year 2</strong></p>
+            <p class="text-white/80">Gross: <strong>~Year 2.5</strong></p>
+          </div>
+        </div>
+
+        <div class="mt-5 rounded-xl border border-white/10 bg-black/20 p-4 text-xs text-white/70 space-y-1.5">
+          <p><strong class="text-white/85">⚠️ Three caveats:</strong></p>
+          <ul class="list-disc pl-5 space-y-1">
+            <li><strong>The build cost is sunk</strong> — no cash needs to flow back. This is notional ROI on time, useful for grants / fundraising / future sale narrative.</li>
+            <li><strong>Gross (€290,804) includes 24% VAT.</strong> If you'd actually invoiced an agency, you'd remit the VAT to the state — so the meaningful recovery target is the <strong>net €187,615</strong>, which lands ~12 months earlier in every scenario.</li>
+            <li><strong>The €850 setup fee carries this math.</strong> Without it (recurring only at €561 GP/venue/yr), gross recovery stretches to Year 7+ in Scenario B. <em>Never discount the setup fee.</em></li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 14. Conclusion -->
+      <section id="s14" class="fin-card mb-8 rounded-2xl border border-amber-400/30 bg-gradient-to-br from-amber-500/15 via-fuchsia-500/5 to-sky-500/5 p-5">
+        <h2 class="font-heading text-2xl font-bold mb-3">{isEl ? "14. Εκτελεστικό Συμπέρασμα" : "14. Executive Conclusion"}</h2>
+        <p class="text-sm text-white/85 leading-relaxed">
+          At the new pricing (Seasonal €690, Year-round €1,104, Setup €850 fixed) — cash break-even <strong>month 1–2</strong>, accounting profitability Year 1, half-salary (€1,500/mo each) month 36, full-time (€38k/yr each) month 60+.
+          Total launch cash unchanged: €4,500 business + €5,000 recoverable capital + 6 mo personal runway per founder.
+          <br/><strong>The strategic bet:</strong> low recurring price closes the deal, the €850 setup gives you immediate margin and Y1 working capital.
+        </p>
+
+        <div class="mt-4 grid md:grid-cols-2 gap-3 text-sm">
+          <div class="rounded-xl border border-emerald-400/20 bg-emerald-400/[0.05] p-4">
+            <p class="font-bold text-emerald-200 mb-1">✅ Why it works</p>
+            <ul class="list-disc pl-5 space-y-0.5 text-white/75">
+              <li>€187,615 platform already built — 12+ months head-start.</li>
+              <li>58–63% recurring gross margins (bank-transfer billing).</li>
+              <li>Price is now below every named competitor (Toast, Fivestars, Yotpo).</li>
+              <li>Customer prepayment eliminates most working capital.</li>
+              <li>200-venue ambition is &lt;2% of Greek hospitality market.</li>
+            </ul>
+          </div>
+          <div class="rounded-xl border border-rose-400/20 bg-rose-400/[0.05] p-4">
+            <p class="font-bold text-rose-200 mb-1">⚠️ What could kill it</p>
+            <ul class="list-disc pl-5 space-y-0.5 text-white/75">
+              <li>Can't consistently sell <strong>4+ venues/month</strong> (sales execution).</li>
+              <li>Year-end churn &gt;25% collapses the compounding effect.</li>
+              <li>Founder burnout across the 18–24 months before real income.</li>
+              <li>Install capacity caps at 8–12/mo without multi-tenant rebuild.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="mt-4 rounded-xl border border-amber-400/40 bg-amber-400/[0.08] p-4">
+          <p class="font-bold text-amber-200 mb-1">🎯 The single most important action right now</p>
+          <p class="text-white/85">
+            <strong>Defend the €850 setup fee — never discount it.</strong> It's what makes Y1 cash positive from month 1 and funds Y2 expansion. Cheap recurring + premium setup is the real model: the recurring price closes the deal, the setup pays the bills.
+          </p>
+        </div>
+
+        <div class="mt-4 text-sm text-white/80">
+          <p class="font-bold text-white mb-1">📅 Recommended Year 1 financial plan (€850 setup model)</p>
+          <ul class="list-disc pl-5 space-y-1">
+            <li><strong>Month 0:</strong> spend €4,500 cash + €5,000 capital + each founder has €15k personal runway.</li>
+            <li><strong>Months 1–3:</strong> sign 12 venues · ~€21k cash banked from setup + subscriptions.</li>
+            <li><strong>Months 4–6:</strong> 12 more venues · cumulative cash ~€35k.</li>
+            <li><strong>Months 7–12:</strong> 16 more (Q4 slows) · end Y1: <strong>40 venues · ~€53k cash pre-tax</strong>.</li>
+            <li><strong>Y2 Jan:</strong> distribute Y1 profits (~€19,800/founder after WHT) — meaningful first income.</li>
+            <li><strong>Y2:</strong> 100 venues target · both founders drawing ~€1,500/mo · pure recurring kicks in as setup runs out at scale.</li>
+            <li><strong>Y3:</strong> 150–200 venues · half-salary each · multi-tenant rebuild.</li>
+            <li><strong>Y4–5:</strong> 250–400 venues · full-time income · first hire.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- Disclaimer -->
+      <section class="mb-10 rounded-xl border border-white/10 bg-white/[0.02] p-4 text-xs text-white/45 leading-relaxed">
+        <strong class="text-white/70">Disclaimer.</strong> Uses 2025–2026 published Greek tax and EFKA rates and reasonable estimates of operating costs based on Thessaloniki market norms. Actual results will vary based on customer acquisition pace, churn, exact accountant/software pricing, and individual circumstances. Validate all figures with a Thessaloniki-based λογιστής before any commitment. The author is not a Greek tax or financial professional and accepts no liability for decisions taken based on this document.
+      </section>
+    </main>
+  </body>
+</html>

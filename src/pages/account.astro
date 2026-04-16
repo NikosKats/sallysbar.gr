@@ -18,7 +18,7 @@ const isEl = lang === "el";
 const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
 const { data: profile } = await supabase
   .from("profiles")
-  .select("full_name, role, created_at, birthday, birthday_updated_at, card_issued_at, phone, country, gender, address, city, postal_code")
+  .select("full_name, role, created_at, birthday, birthday_updated_at, card_issued_at, phone, country, gender, address, city, postal_code, messenger_id, instagram_id, avatar_url, bio, handle")
   .eq("id", user.id)
   .single();
 
@@ -66,6 +66,23 @@ const { data: loyaltyEvents } = await supabaseAdmin
 
 const loyaltyBalance = (loyaltyEvents ?? []).reduce((s, e) => s + e.points, 0);
 const hasCard = !!profile?.card_issued_at;
+
+// Booster #3 — profile completion (7 slots, each 14% of the bar).
+// Missing slots become CTA chips the user can tap to fill.
+const pageHandle = import.meta.env.PUBLIC_FB_PAGE_HANDLE ?? "sallysbar";
+const igHandle   = import.meta.env.PUBLIC_IG_HANDLE ?? "sallys_bar";
+const completionSlots = [
+  { key: "phone",      done: !!profile?.phone,      label: isEl ? "📱 Τηλέφωνο"  : "📱 Phone",        href: "#cardForm",   hint: isEl ? "Για υπενθυμίσεις" : "For reminders",      points: 0 },
+  { key: "birthday",   done: !!profile?.birthday,   label: isEl ? "🎂 Γενέθλια"  : "🎂 Birthday",     href: "#cardForm",   hint: isEl ? "Δωρεάν cocktail" : "Free cocktail",        points: 0 },
+  { key: "city",       done: !!profile?.city,       label: isEl ? "🏙️ Πόλη"      : "🏙️ City",         href: "#cardForm",   hint: isEl ? "Τοπικές προσφορές" : "Local offers",        points: 0 },
+  { key: "avatar",     done: !!profile?.avatar_url, label: isEl ? "🖼️ Avatar"    : "🖼️ Avatar",       href: "/settings",   hint: isEl ? "Για την social card" : "For your social card", points: 0 },
+  { key: "bio",        done: !!profile?.bio,        label: isEl ? "✍️ Σύντομο bio" : "✍️ Short bio",  href: "/settings",   hint: isEl ? "Για την social card" : "For your social card", points: 0 },
+  { key: "messenger",  done: !!profile?.messenger_id, label: isEl ? "📘 Messenger" : "📘 Messenger",  href: user ? `https://m.me/${pageHandle}?ref=user_${user.id}` : "#", hint: isEl ? "+20 πόντοι, αυτόματες κρατήσεις" : "+20 points, booking perks", points: 20 },
+  { key: "instagram",  done: !!profile?.instagram_id, label: isEl ? "📸 Instagram" : "📸 Instagram",  href: user ? `https://ig.me/m/${igHandle}?ref=user_${user.id}` : "#", hint: isEl ? "+20 πόντοι, VIP events" : "+20 points, VIP events",       points: 20 },
+];
+const completionDone = completionSlots.filter(s => s.done).length;
+const completionTotal = completionSlots.length;
+const completionPct = Math.round((completionDone / completionTotal) * 100);
 
 const COUNTRIES: Array<{ code: string; en: string; el: string }> = [
   { code: "GR", en: "Greece", el: "Ελλάδα" },
@@ -246,6 +263,42 @@ function statusLabel(s: string) {
         </div>
       </section>
 
+      {hasCard && completionPct < 100 && (
+        <section class="order-4 rounded-2xl border border-fuchsia-400/30 bg-gradient-to-br from-fuchsia-500/[0.08] via-amber-500/[0.04] to-transparent p-5">
+          <div class="flex items-center justify-between gap-3 mb-3">
+            <div>
+              <p class="text-[10px] uppercase tracking-[0.22em] text-fuchsia-200/80 font-bold">
+                {isEl ? "🎯 Ολοκλήρωσε το προφίλ σου" : "🎯 Complete your profile"}
+              </p>
+              <p class="text-sm text-white/70 mt-0.5">
+                {isEl
+                  ? `${completionDone}/${completionTotal} βήματα · ξεκλείδωσε έξτρα πόντους & VIP perks`
+                  : `${completionDone}/${completionTotal} steps · unlock extra points & VIP perks`}
+              </p>
+            </div>
+            <div class="text-right shrink-0">
+              <p class="font-heading text-3xl font-bold text-fuchsia-200">{completionPct}%</p>
+            </div>
+          </div>
+          <div class="h-2 w-full rounded-full bg-black/40 overflow-hidden">
+            <div class="h-full bg-gradient-to-r from-fuchsia-500 to-amber-400 transition-all" style={`width:${completionPct}%`}></div>
+          </div>
+          <div class="mt-4 flex flex-wrap gap-2">
+            {completionSlots.filter(s => !s.done).map(s => (
+              <a href={s.href} target={s.href.startsWith("http") ? "_blank" : "_self"} rel={s.href.startsWith("http") ? "noopener" : ""}
+                 class="group inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] hover:border-fuchsia-400/40 px-3 py-2 text-sm transition">
+                <span>{s.label}</span>
+                {s.points > 0 && (
+                  <span class="rounded-full bg-emerald-400/20 border border-emerald-400/40 text-emerald-300 text-[10px] font-bold px-1.5 py-0.5">+{s.points}</span>
+                )}
+                <span class="text-[11px] text-white/40 hidden sm:inline">· {s.hint}</span>
+                <span class="text-white/40 group-hover:text-white/70">→</span>
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
+
       {!hasCard && (
         <div class="order-4 rounded-2xl border border-amber-400/40 bg-gradient-to-br from-amber-500/10 via-amber-400/5 to-transparent p-6 space-y-4">
           <div class="flex items-start gap-4">
@@ -399,23 +452,27 @@ function statusLabel(s: string) {
               <h2 class="font-heading text-2xl font-bold mt-1">
                 <span id="scratchCount">{(unrevealedCards ?? []).length}</span> {isEl ? "κάρτες" : "cards"}
               </h2>
-              <p class="text-sm text-white/70 mt-1">{isEl ? "Πάτα για να αποκαλύψεις." : "Tap any card to reveal."}</p>
+              <p class="text-sm text-white/70 mt-1">{isEl ? "Ξύσε την κάρτα με το δάχτυλο για να αποκαλύψεις." : "Scratch with your finger to reveal."}</p>
             </div>
           </div>
           <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {(unrevealedCards ?? []).map((c: any) => (
-              <button type="button" class="scratch-card group relative aspect-[4/3] rounded-2xl border border-white/10 bg-gradient-to-br from-fuchsia-500/20 via-amber-400/20 to-cyan-400/20 overflow-hidden hover:scale-[1.02] active:scale-[0.99] transition"
-                data-id={c.id}>
-                <div class="absolute inset-0 flex flex-col items-center justify-center text-center p-3 scratch-cover">
-                  <span class="text-3xl">🎫</span>
-                  <p class="mt-1 text-xs font-bold tracking-wider uppercase text-white/90">{isEl ? "Πάτα για αποκάλυψη" : "Tap to reveal"}</p>
-                </div>
-                <div class="absolute inset-0 flex flex-col items-center justify-center text-center p-3 bg-gradient-to-br from-amber-300 to-amber-500 text-black scratch-reveal opacity-0 pointer-events-none">
-                  <span class="text-2xl scratch-emoji">🎁</span>
+              <div class="scratch-card group relative aspect-[4/3] rounded-2xl border border-white/10 bg-gradient-to-br from-amber-300 to-amber-500 overflow-hidden select-none touch-none"
+                data-id={c.id} style="user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;">
+                <!-- Prize layer (underneath) -->
+                <div class="absolute inset-0 flex flex-col items-center justify-center text-center p-3 text-black pointer-events-none">
+                  <span class="text-3xl scratch-emoji">🎁</span>
                   <p class="mt-1 text-base font-black scratch-label">—</p>
                   <p class="mt-0.5 text-[10px] uppercase tracking-wider scratch-meta opacity-70"></p>
                 </div>
-              </button>
+                <!-- Scratch-off canvas (on top) -->
+                <canvas class="scratch-canvas absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing" style="touch-action:none;"></canvas>
+                <!-- Hint label (shown over canvas before user starts) -->
+                <div class="scratch-hint absolute inset-0 flex flex-col items-center justify-center text-center p-3 pointer-events-none">
+                  <span class="text-2xl">🪙</span>
+                  <p class="mt-1 text-[11px] font-bold tracking-wider uppercase text-white/80 drop-shadow">{isEl ? "Ξύσε εδώ" : "Scratch here"}</p>
+                </div>
+              </div>
             ))}
           </div>
         </section>
@@ -850,6 +907,113 @@ function statusLabel(s: string) {
         </section>
       )}
 
+      <!-- Social linking: Messenger + Instagram ref-link opt-in -->
+      {hasCard && (
+        <section class="order-9 space-y-3">
+          <h2 class="text-sm font-semibold text-white/50 uppercase tracking-widest px-1">
+            {isEl ? "Σύνδεση με Messenger & Instagram" : "Link Messenger & Instagram"}
+          </h2>
+          <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
+            <p class="text-sm text-white/70 leading-relaxed">
+              {isEl
+                ? "Σύνδεσε τα social σου για να λαμβάνεις προσφορές & υπενθυμίσεις απευθείας στο Messenger ή στο Instagram DM."
+                : "Link your social accounts to get offers & reminders straight to Messenger or Instagram DMs."}
+            </p>
+            <div class="flex flex-wrap gap-2">
+              {!!user && !profile?.messenger_id && (
+                <a
+                  href={`https://m.me/${import.meta.env.PUBLIC_FB_PAGE_HANDLE ?? "sallysbar"}?ref=user_${user.id}`}
+                  target="_blank" rel="noopener"
+                  class="inline-flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold px-4 py-2.5 transition">
+                  📘 {isEl ? "Σύνδεση Messenger" : "Connect Messenger"}
+                </a>
+              )}
+              {!!user && profile?.messenger_id && (
+                <span class="inline-flex items-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-400/10 text-emerald-300 text-sm font-semibold px-4 py-2.5">
+                  ✅ {isEl ? "Messenger συνδέθηκε" : "Messenger linked"}
+                </span>
+              )}
+              {!!user && !profile?.instagram_id && (
+                <a
+                  href={`https://ig.me/m/${import.meta.env.PUBLIC_IG_HANDLE ?? "sallys_bar"}?ref=user_${user.id}`}
+                  target="_blank" rel="noopener"
+                  class="inline-flex items-center gap-2 rounded-xl bg-gradient-to-br from-fuchsia-500 to-orange-400 hover:opacity-90 text-white text-sm font-semibold px-4 py-2.5 transition">
+                  📸 {isEl ? "Σύνδεση Instagram" : "Connect Instagram"}
+                </a>
+              )}
+              {!!user && profile?.instagram_id && (
+                <span class="inline-flex items-center gap-2 rounded-xl border border-emerald-400/30 bg-emerald-400/10 text-emerald-300 text-sm font-semibold px-4 py-2.5">
+                  ✅ {isEl ? "Instagram συνδέθηκε" : "Instagram linked"}
+                </span>
+              )}
+            </div>
+            <!-- How-to, 3 visual steps -->
+            <details class="group mt-2 rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+              <summary class="cursor-pointer px-4 py-3 flex items-center justify-between gap-3 text-sm text-white/75 hover:bg-white/[0.03]">
+                <span class="flex items-center gap-2">
+                  <span>❓</span>
+                  <span>{isEl ? "Πώς δουλεύει; (10 δευτ.)" : "How does this work? (10 sec)"}</span>
+                </span>
+                <span class="text-white/40 group-open:rotate-180 transition-transform">▾</span>
+              </summary>
+              <div class="px-4 pb-4 pt-1">
+                <ol class="space-y-3 text-sm text-white/80">
+                  <li class="flex gap-3 items-start">
+                    <span class="shrink-0 h-6 w-6 rounded-full bg-fuchsia-500/25 border border-fuchsia-400/40 text-fuchsia-200 text-xs font-bold flex items-center justify-center">1</span>
+                    <div>
+                      <p class="font-semibold">{isEl ? "Πάτα το κουμπί πιο πάνω" : "Tap the button above"}</p>
+                      <p class="text-[11px] text-white/55 mt-0.5">
+                        {isEl
+                          ? "Θα ανοίξει η εφαρμογή Messenger ή Instagram στο κινητό σου (ή το browser στον υπολογιστή)."
+                          : "The Messenger or Instagram app opens on your phone (or the browser on desktop)."}
+                      </p>
+                    </div>
+                  </li>
+                  <li class="flex gap-3 items-start">
+                    <span class="shrink-0 h-6 w-6 rounded-full bg-amber-500/25 border border-amber-400/40 text-amber-200 text-xs font-bold flex items-center justify-center">2</span>
+                    <div>
+                      <p class="font-semibold">{isEl ? "Πάτα «Get Started» ή στείλε οποιοδήποτε μήνυμα" : "Tap “Get Started” or send any message"}</p>
+                      <p class="text-[11px] text-white/55 mt-0.5">
+                        {isEl
+                          ? "Το κουμπί εμφανίζεται από μόνο του κάτω. Μπορείς επίσης να γράψεις «ναι» ή «👋» — ό,τι θες."
+                          : "The button appears automatically at the bottom. Or type “hi” or “👋” — anything works."}
+                      </p>
+                    </div>
+                  </li>
+                  <li class="flex gap-3 items-start">
+                    <span class="shrink-0 h-6 w-6 rounded-full bg-emerald-500/25 border border-emerald-400/40 text-emerald-200 text-xs font-bold flex items-center justify-center">3</span>
+                    <div>
+                      <p class="font-semibold">{isEl ? "Τέλος — πήρες +20 πόντους 🎉" : "Done — you got +20 points 🎉"}</p>
+                      <p class="text-[11px] text-white/55 mt-0.5">
+                        {isEl
+                          ? "Η σύνδεση γίνεται αυτόματα. Γύρνα σε αυτή τη σελίδα (refresh) και θα δεις ✅. Οι πόντοι μπαίνουν κατευθείαν στην κάρτα σου."
+                          : "Linking is automatic. Come back here (refresh) and you'll see ✅. Points hit your card right away."}
+                      </p>
+                    </div>
+                  </li>
+                </ol>
+
+                <div class="mt-4 rounded-lg border border-white/10 bg-white/[0.03] p-3 text-[11px] text-white/60 leading-relaxed">
+                  <p class="font-semibold text-white/80 mb-1">{isEl ? "⚠️ Αν δεν γίνεται σύνδεση:" : "⚠️ If nothing happens:"}</p>
+                  <ul class="list-disc pl-4 space-y-1">
+                    <li>{isEl ? "Βεβαιώσου ότι έστειλες τουλάχιστον ένα μήνυμα (δεν αρκεί να ανοίξεις μόνο τη συζήτηση)." : "Make sure you actually sent a message (just opening the chat isn't enough)."}</li>
+                    <li>{isEl ? "Σε iPhone: η εφαρμογή Messenger/Instagram πρέπει να είναι εγκατεστημένη." : "On iPhone: the Messenger or Instagram app must be installed."}</li>
+                    <li>{isEl ? "Δώσε 10-20 δευτερόλεπτα και κάνε refresh τη σελίδα." : "Give it 10–20 seconds then refresh this page."}</li>
+                    <li>{isEl ? "Πρόβλημα; Στείλε μας WhatsApp και θα βοηθήσουμε." : "Stuck? WhatsApp us and we'll help."}</li>
+                  </ul>
+                </div>
+
+                <p class="mt-3 text-[11px] text-white/40 leading-relaxed">
+                  {isEl
+                    ? "Μπορείς να αποσυνδεθείς όποτε θες (γράψε «stop» στο DM μας ή από τις ρυθμίσεις). Δεν βλέπουμε τα προσωπικά σου μηνύματα — μόνο ότι είσαι συνδεδεμένος με την κάρτα σου."
+                    : "You can unlink any time (reply “stop” to our DM, or from settings). We don't see your personal conversations — only that you're linked to your card."}
+                </p>
+              </div>
+            </details>
+          </div>
+        </section>
+      )}
+
     </main>
 
     <Footer />
@@ -987,6 +1151,12 @@ function statusLabel(s: string) {
                     {isEl ? "Επαλήθευση" : "Verify"}
                   </button>
                   <span id="otpOk" class="hidden self-center text-xs font-semibold text-emerald-400">✓ {isEl ? "Επαληθεύτηκε" : "Verified"}</span>
+                </div>
+                <div id="resendWrap" class="hidden mt-2 flex items-center gap-2 text-[11px]">
+                  <button id="resendOtpBtn" type="button" class="rounded-lg border border-white/15 bg-white/5 px-2 py-1 text-white/75 hover:bg-white/10 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                    {isEl ? "↻ Νέα αποστολή" : "↻ Resend code"}
+                  </button>
+                  <span id="resendTimer" class="text-white/40"></span>
                 </div>
                 <p id="otpMsg" class="mt-1 text-[11px] text-white/40"></p>
               </label>
@@ -1233,46 +1403,221 @@ function statusLabel(s: string) {
         });
       });
 
-      // Inline scratch reveal (same animation as /loyalty)
-      document.querySelectorAll(".scratch-card").forEach((card) => {
-        card.addEventListener("click", async () => {
-          if (card.dataset.done) return;
-          card.dataset.done = "1";
-          const id = card.dataset.id;
-          const cover  = card.querySelector(".scratch-cover");
-          const reveal = card.querySelector(".scratch-reveal");
+      // Realistic scratch-off interaction — drag to erase a silver foil layer,
+      // auto-revealed once >=55% scratched. Reward is fetched on first drag so
+      // the server locks it in before the user sees it.
+      (function () {
+        const EMOJI = { points: "🏆", free_shot: "🥃", free_drink: "🍸", discount: "💸", merch: "🎁", custom: "✨" };
+
+        // Shared AudioContext — must be created/resumed inside a user gesture on iOS.
+        let audioCtx = null;
+        function ensureAudio() {
+          try {
+            const AC = window.AudioContext || window.webkitAudioContext;
+            if (!AC) return null;
+            if (!audioCtx) audioCtx = new AC();
+            if (audioCtx.state === "suspended") audioCtx.resume().catch(() => {});
+            return audioCtx;
+          } catch { return null; }
+        }
+        function playScratch() {
+          const ctx = audioCtx;
+          if (!ctx || ctx.state !== "running") return;
+          try {
+            const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.08), ctx.sampleRate);
+            const data = buf.getChannelData(0);
+            for (let i = 0; i < data.length; i++) data[i] = (Math.random() - 0.5) * 0.6 * (1 - i / data.length);
+            const src = ctx.createBufferSource();
+            const gain = ctx.createGain();
+            gain.gain.value = 0.18;
+            src.buffer = buf;
+            src.connect(gain).connect(ctx.destination);
+            src.start();
+          } catch {}
+        }
+        function playWin() {
+          const ctx = audioCtx;
+          if (!ctx || ctx.state !== "running") return;
+          try {
+            [523.25, 659.25, 783.99].forEach((f, i) => {
+              const osc = ctx.createOscillator();
+              const g = ctx.createGain();
+              osc.type = "triangle";
+              osc.frequency.value = f;
+              const start = ctx.currentTime + i * 0.08;
+              g.gain.setValueAtTime(0, start);
+              g.gain.linearRampToValueAtTime(0.25, start + 0.02);
+              g.gain.exponentialRampToValueAtTime(0.001, start + 0.45);
+              osc.connect(g).connect(ctx.destination);
+              osc.start(start); osc.stop(start + 0.5);
+            });
+          } catch {}
+        }
+
+        function paintFoil(canvas, ctx) {
+          const { width: w, height: h } = canvas;
+          // Base silver/grey gradient
+          const g = ctx.createLinearGradient(0, 0, w, h);
+          g.addColorStop(0,   "#9ca3af");
+          g.addColorStop(0.5, "#d1d5db");
+          g.addColorStop(1,   "#6b7280");
+          ctx.fillStyle = g;
+          ctx.fillRect(0, 0, w, h);
+          // Diagonal sheen streaks (gives metallic feel)
+          ctx.globalAlpha = 0.35;
+          ctx.strokeStyle = "#f3f4f6";
+          ctx.lineWidth = 1;
+          for (let y = -h; y < h * 2; y += 5) {
+            ctx.beginPath(); ctx.moveTo(y, 0); ctx.lineTo(y + h, h); ctx.stroke();
+          }
+          ctx.globalAlpha = 1;
+          // Mini label so the card reads "scratch me"
+          ctx.fillStyle = "rgba(30,30,40,0.55)";
+          ctx.font = "bold 11px ui-sans-serif, system-ui, -apple-system, Segoe UI";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText("SCRATCH", w / 2, h / 2 - 10);
+          ctx.fillText("🪙 to reveal", w / 2, h / 2 + 8);
+        }
+
+        function pointerPos(canvas, e) {
+          const rect = canvas.getBoundingClientRect();
+          const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+          const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+          return { x: (x / rect.width) * canvas.width, y: (y / rect.height) * canvas.height };
+        }
+
+        function scratchedPercent(canvas, ctx) {
+          const { width: w, height: h } = canvas;
+          const step = 6;
+          const data = ctx.getImageData(0, 0, w, h).data;
+          let clear = 0, total = 0;
+          for (let y = 0; y < h; y += step) for (let x = 0; x < w; x += step) {
+            if (data[(y * w + x) * 4 + 3] < 40) clear++;
+            total++;
+          }
+          return clear / total;
+        }
+
+        document.querySelectorAll(".scratch-card").forEach((card) => {
+          const canvas = card.querySelector(".scratch-canvas");
+          const hint   = card.querySelector(".scratch-hint");
           const label  = card.querySelector(".scratch-label");
           const emoji  = card.querySelector(".scratch-emoji");
           const meta   = card.querySelector(".scratch-meta");
-          try {
-            const res = await fetch("/api/loyalty/scratch-reveal", {
-              method: "POST", headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ id }),
-            });
-            const j = await res.json();
-            if (!res.ok || !j.reward) {
-              card.dataset.done = "";
-              const msg = j.message
-                || (j.error === "activate_card_first"   ? (isEl ? "Ενεργοποίησε πρώτα την κάρτα πιστότητας." : "Activate your loyalty card first.") :
-                    j.error === "phone_already_claimed" ? (isEl ? "Αυτό το τηλέφωνο έχει ήδη χρησιμοποιηθεί." : "This phone number already claimed a signup bonus.") :
-                    (isEl ? "Σφάλμα: " : "Error: ") + (j.error ?? "unknown"));
-              alert(msg); return;
+          const id     = card.dataset.id;
+          if (!canvas || !id) return;
+
+          const ctx = canvas.getContext("2d");
+          let ready = false;     // server reveal succeeded, prize painted underneath
+          let rewardData = null;
+          let fetching = false;
+          let drawing = false;
+          let finished = false;
+          let last = null;
+          let lastAudio = 0;
+
+          function resize() {
+            const rect = card.getBoundingClientRect();
+            const dpr = Math.min(2, window.devicePixelRatio || 1);
+            canvas.width  = Math.max(1, Math.floor(rect.width  * dpr));
+            canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            paintFoil(canvas, ctx);
+          }
+          resize();
+          new ResizeObserver(() => { if (!finished) resize(); }).observe(card);
+
+          async function fetchReward() {
+            if (fetching || ready) return;
+            fetching = true;
+            try {
+              const res = await fetch("/api/loyalty/scratch-reveal", {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id }),
+              });
+              const j = await res.json();
+              if (!res.ok || !j.reward) {
+                const msg = j.message
+                  || (j.error === "activate_card_first"   ? (isEl ? "Ενεργοποίησε πρώτα την κάρτα πιστότητας." : "Activate your loyalty card first.") :
+                      j.error === "phone_already_claimed" ? (isEl ? "Αυτό το τηλέφωνο έχει ήδη χρησιμοποιηθεί." : "This phone number already claimed a signup bonus.") :
+                      (isEl ? "Σφάλμα: " : "Error: ") + (j.error ?? "unknown"));
+                alert(msg);
+                canvas.style.pointerEvents = "none";
+                return;
+              }
+              rewardData = j.reward;
+              emoji.textContent = EMOJI[rewardData.type] ?? "🎁";
+              label.textContent = rewardData.label;
+              meta.textContent = rewardData.auto_claimed
+                ? (isEl ? "✓ προστέθηκε στο λογαριασμό σου" : "✓ added to your account")
+                : (isEl ? "Δείξε στον σερβιτόρο" : "Show a waiter to claim");
+              ready = true;
+            } catch {
+              alert(isEl ? "Σφάλμα δικτύου" : "Network error");
+            } finally { fetching = false; }
+          }
+
+          function scratchLine(from, to) {
+            ctx.globalCompositeOperation = "destination-out";
+            ctx.lineCap = "round";
+            ctx.lineJoin = "round";
+            ctx.lineWidth = Math.max(14, canvas.width * 0.07);
+            ctx.beginPath();
+            ctx.moveTo(from.x, from.y);
+            ctx.lineTo(to.x,   to.y);
+            ctx.stroke();
+            // A soft circle at the endpoint → cleaner edge
+            ctx.beginPath();
+            ctx.arc(to.x, to.y, ctx.lineWidth / 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalCompositeOperation = "source-over";
+
+            const now = performance.now();
+            if (now - lastAudio > 60) { lastAudio = now; playScratch(); }
+          }
+
+          function finishReveal() {
+            if (finished) return;
+            finished = true;
+            canvas.style.transition = "opacity .45s ease";
+            canvas.style.opacity = "0";
+            card.classList.add("revealed");
+            playWin();
+            setTimeout(() => { canvas.style.pointerEvents = "none"; }, 500);
+          }
+
+          async function onDown(e) {
+            e.preventDefault();
+            // Unlock audio INSIDE the user-gesture handler (required by iOS Safari / Chrome mobile).
+            ensureAudio();
+            hint?.classList.add("hidden");
+            // Kick off fetch on first touch; user can start scratching immediately.
+            if (!ready && !fetching) fetchReward();
+            drawing = true;
+            last = pointerPos(canvas, e);
+            scratchLine(last, last);
+          }
+          function onMove(e) {
+            if (!drawing) return;
+            e.preventDefault();
+            const p = pointerPos(canvas, e);
+            scratchLine(last, p);
+            last = p;
+            // Throttle pct check to every ~150ms
+            if (!onMove.t || performance.now() - onMove.t > 150) {
+              onMove.t = performance.now();
+              if (scratchedPercent(canvas, ctx) > 0.55) finishReveal();
             }
-            const r = j.reward;
-            const emojiMap = { points: "🏆", free_shot: "🥃", free_drink: "🍸", discount: "💸", merch: "🎁", custom: "✨" };
-            emoji.textContent = emojiMap[r.type] ?? "🎁";
-            label.textContent = r.label;
-            meta.textContent = r.auto_claimed
-              ? (isEl ? "✓ προστέθηκε στο λογαριασμό σου" : "✓ added to your account")
-              : (isEl ? "Δείξε στον σερβιτόρο" : "Show a waiter to claim");
-            cover.style.transition = "opacity .35s, transform .35s";
-            cover.style.opacity = "0";
-            cover.style.transform = "scale(0.9)";
-            reveal.style.transition = "opacity .4s .15s";
-            reveal.style.opacity = "1";
-          } catch { card.dataset.done = ""; alert(isEl ? "Σφάλμα δικτύου" : "Network error"); }
+          }
+          function onUp() { drawing = false; last = null; }
+
+          canvas.addEventListener("pointerdown", onDown, { passive: false });
+          window.addEventListener("pointermove",  onMove, { passive: false });
+          window.addEventListener("pointerup",    onUp);
+          window.addEventListener("pointercancel", onUp);
         });
-      });
+      })();
 
       // Welcome toast on fresh signup — auto-scrolls to scratch cards
       (function () {
@@ -1343,6 +1688,9 @@ function statusLabel(s: string) {
       const supabase = createBrowserClient(
         import.meta.env.PUBLIC_SUPABASE_URL,
         import.meta.env.PUBLIC_SUPABASE_ANON_KEY,
+        {
+          cookieOptions: { maxAge: 60 * 60 * 24 * 365, path: "/", sameSite: "lax", secure: true },
+        }
       );
 
       let verifiedPhone = "";
@@ -1383,28 +1731,62 @@ function statusLabel(s: string) {
         }
       }));
 
-      sendBtn.addEventListener("click", async () => {
+      const resendWrap  = document.getElementById("resendWrap") as HTMLDivElement | null;
+      const resendBtn   = document.getElementById("resendOtpBtn") as HTMLButtonElement | null;
+      const resendTimer = document.getElementById("resendTimer") as HTMLSpanElement | null;
+      let cooldownHandle: any = null;
+
+      function startCooldown(seconds = 60) {
+        if (!resendWrap || !resendBtn || !resendTimer) return;
+        resendWrap.classList.remove("hidden");
+        resendWrap.classList.add("flex");
+        let left = seconds;
+        resendBtn.disabled = true;
+        resendTimer.textContent = (isEl ? `Ξανά σε ${left}s` : `Resend in ${left}s`);
+        clearInterval(cooldownHandle);
+        cooldownHandle = setInterval(() => {
+          left -= 1;
+          if (left <= 0) {
+            clearInterval(cooldownHandle);
+            resendBtn.disabled = false;
+            resendTimer.textContent = "";
+          } else {
+            resendTimer.textContent = (isEl ? `Ξανά σε ${left}s` : `Resend in ${left}s`);
+          }
+        }, 1000);
+      }
+
+      async function doSendOtp(isResend = false) {
         const phone = currentPhone();
-        if (phone.replace(/\D/g, "").length < 8) { setMsg(isEl ? "Εισήγαγε έγκυρο τηλέφωνο." : "Enter a valid phone number."); return; }
-        sendBtn.disabled = true;
-        const orig = sendBtn.textContent;
-        sendBtn.textContent = "⏳";
+        if (phone.replace(/\D/g, "").length < 8) { setMsg(isEl ? "Εισήγαγε έγκυρο τηλέφωνο." : "Enter a valid phone number."); return false; }
+        const btn = isResend ? resendBtn : sendBtn;
+        if (!btn) return false;
+        btn.disabled = true;
+        const orig = btn.textContent;
+        btn.textContent = "⏳";
         setMsg(isEl ? "Αποστολή…" : "Sending…");
 
         const { error } = await supabase.auth.updateUser({ phone });
-        sendBtn.disabled = false;
-        sendBtn.textContent = orig!;
+        btn.textContent = orig!;
         if (error) {
-          setMsg((isEl ? "Σφάλμα: " : "Error: ") + error.message);
-          return;
+          btn.disabled = false;
+          setMsg((isEl ? "Σφάλμα: " : "Error: ") + (error.message || "send failed"));
+          return false;
         }
-        // Hide Send, show OTP input + Verify
+        // Reveal OTP input + resend UI
         sendBtn.classList.add("hidden");
         otpInput.classList.remove("hidden");
         verifyBtn.classList.remove("hidden");
-        setMsg(isEl ? `Στείλαμε 6ψήφιο κωδικό στο ${phone}.` : `We sent a 6-digit code to ${phone}.`, true);
+        setMsg(isEl
+          ? `${isResend ? "Ξαναστείλαμε" : "Στείλαμε"} 6ψήφιο κωδικό στο ${phone}.`
+          : `We ${isResend ? "re-sent" : "sent"} a 6-digit code to ${phone}.`, true);
         setTimeout(() => otpInput.focus(), 50);
-      });
+        startCooldown(60);
+        return true;
+      }
+
+      sendBtn.addEventListener("click", () => doSendOtp(false));
+      resendBtn?.addEventListener("click", () => doSendOtp(true));
 
       verifyBtn.addEventListener("click", async () => {
         const token = otpInput.value.replace(/\D/g, "").slice(0, 6);
@@ -1413,7 +1795,6 @@ function statusLabel(s: string) {
         verifyBtn.disabled = true;
         const orig = verifyBtn.textContent;
         verifyBtn.textContent = "⏳";
-        // `phone_change` is the OTP type used when phone is attached to an existing session via updateUser
         const { error } = await supabase.auth.verifyOtp({ phone, token, type: "phone_change" });
         verifyBtn.disabled = false;
         verifyBtn.textContent = orig!;
@@ -1425,6 +1806,8 @@ function statusLabel(s: string) {
         otpInput.classList.add("hidden");
         verifyBtn.classList.add("hidden");
         okPill!.classList.remove("hidden");
+        if (resendWrap) { resendWrap.classList.add("hidden"); resendWrap.classList.remove("flex"); }
+        clearInterval(cooldownHandle);
         setMsg(isEl ? "Επαληθεύτηκε. Μπορείς να ολοκληρώσεις την ενεργοποίηση." : "Verified. You can activate your card.", true);
         unlockSubmit();
       });

@@ -1,0 +1,310 @@
+---
+import "../../styles/global.css";
+import AdminNav from "../../components/AdminNav.astro";
+import { supabaseAdmin } from "../../lib/supabase";
+import { withLangPrefix } from "../../i18n";
+
+export const prerender = false;
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+
+if (!["admin", "super_admin"].includes(Astro.locals.role ?? "")) {
+  return Astro.redirect(withLangPrefix(lang, "/admin"));
+}
+
+const { data: messages } = await supabaseAdmin
+  .from("vonage_inbound_messages")
+  .select("id, message_uuid, channel, from_address, to_address, message_type, text, matched_user_id, handled, received_at")
+  .order("received_at", { ascending: false })
+  .limit(100);
+
+const { data: profiles } = await supabaseAdmin
+  .from("profiles")
+  .select("id, full_name")
+  .in("id", [...new Set((messages ?? []).map(m => m.matched_user_id).filter(Boolean))]);
+
+const nameMap = new Map<string, string>();
+for (const p of profiles ?? []) nameMap.set(p.id, p.full_name ?? "—");
+
+const { data: recentStatus } = await supabaseAdmin
+  .from("vonage_message_status")
+  .select("message_uuid, channel, status, error_reason, price_eur, received_at")
+  .order("received_at", { ascending: false })
+  .limit(50);
+
+const { data: calls } = await supabaseAdmin
+  .from("vonage_voice_calls")
+  .select("id, call_uuid, direction, from_address, to_address, status, duration_sec, price_eur, recording_url, matched_user_id, started_at, ended_at")
+  .order("started_at", { ascending: false })
+  .limit(50);
+
+const callNameMap = new Map<string, string>();
+if ((calls ?? []).some(c => c.matched_user_id)) {
+  const ids = [...new Set((calls ?? []).map(c => c.matched_user_id).filter(Boolean))];
+  const { data: ps } = await supabaseAdmin.from("profiles").select("id, full_name").in("id", ids);
+  for (const p of ps ?? []) callNameMap.set(p.id, p.full_name ?? "—");
+}
+
+function fmtDuration(sec: number | null) {
+  if (!sec) return "—";
+  const m = Math.floor(sec / 60), s = sec % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+const channelIcon: Record<string, string> = {
+  sms: "📱", whatsapp: "💬", viber_service: "🟣", messenger: "📘", instagram: "📸",
+};
+const statusColor: Record<string, string> = {
+  submitted: "text-white/50", delivered: "text-emerald-300", read: "text-sky-300",
+  rejected: "text-rose-300", undeliverable: "text-rose-300", failed: "text-rose-300",
+};
+
+const total = (messages ?? []).length;
+const unhandled = (messages ?? []).filter(m => !m.handled).length;
+const matched = (messages ?? []).filter(m => !!m.matched_user_id).length;
+---
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <title>{isEl ? "Εισερχόμενα" : "Inbox"} — Admin</title>
+    <meta name="robots" content="noindex,nofollow" />
+  </head>
+  <body class="min-h-screen bg-[#0b0b10] text-white">
+    <AdminNav active="inbox" />
+    <main class="mx-auto max-w-6xl px-5 py-10">
+      <h1 class="font-heading text-3xl md:text-4xl font-bold">📬 {isEl ? "Εισερχόμενα μηνύματα & Delivery" : "Inbox & delivery status"}</h1>
+      <p class="mt-2 text-sm text-white/60 max-w-2xl">
+        {isEl
+          ? "Κάθε απάντηση πελάτη σε SMS/WhatsApp/Viber/Messenger/IG, και τα status delivery όσων στέλνεις."
+          : "Every customer reply across SMS/WhatsApp/Viber/Messenger/IG, plus delivery receipts for messages you send."}
+      </p>
+
+      <!-- KPIs -->
+      <section class="mt-6 grid sm:grid-cols-3 gap-3">
+        <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          <p class="text-[10px] uppercase tracking-wider text-white/50">{isEl ? "Τελευταίες 100" : "Recent (100 max)"}</p>
+          <p class="font-heading text-3xl font-bold mt-1">{total}</p>
+        </div>
+        <div class="rounded-2xl border border-rose-400/20 bg-rose-400/[0.06] p-4">
+          <p class="text-[10px] uppercase tracking-wider text-rose-300">{isEl ? "Δεν έχουν απαντηθεί" : "Unhandled"}</p>
+          <p class="font-heading text-3xl font-bold mt-1">{unhandled}</p>
+        </div>
+        <div class="rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.06] p-4">
+          <p class="text-[10px] uppercase tracking-wider text-emerald-300">{isEl ? "Ταιριαγμένα με πελάτη" : "Matched to customer"}</p>
+          <p class="font-heading text-3xl font-bold mt-1">{matched}</p>
+        </div>
+      </section>
+
+      <!-- Inbound table -->
+      <section class="mt-8">
+        <h2 class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-3">📥 {isEl ? "Εισερχόμενα μηνύματα" : "Inbound messages"}</h2>
+        <div class="rounded-2xl border border-white/10 bg-white/[0.03] overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="text-[11px] uppercase tracking-wider text-white/55">
+              <tr class="border-b border-white/10">
+                <th class="text-left py-2 px-3"></th>
+                <th class="text-left py-2 px-3">{isEl ? "Από" : "From"}</th>
+                <th class="text-left py-2 px-3">{isEl ? "Χρήστης" : "User"}</th>
+                <th class="text-left py-2 px-3">{isEl ? "Μήνυμα" : "Message"}</th>
+                <th class="text-left py-2 px-3">{isEl ? "Πότε" : "When"}</th>
+                <th class="text-right py-2 px-3"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {(messages ?? []).length === 0 ? (
+                <tr><td colspan="6" class="py-10 text-center text-white/40">{isEl ? "Καμία εισερχόμενη επικοινωνία ακόμη." : "No inbound messages yet."}</td></tr>
+              ) : (messages ?? []).map((m: any) => (
+                <>
+                <tr class={`border-b border-white/5 ${!m.handled ? "bg-amber-400/[0.03]" : ""}`} data-msg={m.id}>
+                  <td class="py-2 px-3 text-xl">{channelIcon[m.channel] ?? "📨"}</td>
+                  <td class="py-2 px-3 font-mono text-xs text-white/70">{m.from_address}</td>
+                  <td class="py-2 px-3 text-xs">
+                    {m.matched_user_id
+                      ? <span class="text-emerald-300">✓ {nameMap.get(m.matched_user_id) ?? "—"}</span>
+                      : <span class="text-white/40">—</span>}
+                  </td>
+                  <td class="py-2 px-3 max-w-md">
+                    <p class="text-white/85 whitespace-pre-wrap line-clamp-3">{m.text ?? <span class="text-white/40">[{m.message_type}]</span>}</p>
+                  </td>
+                  <td class="py-2 px-3 text-xs text-white/60 whitespace-nowrap">{new Date(m.received_at).toLocaleString()}</td>
+                  <td class="py-2 px-3 text-right whitespace-nowrap">
+                    <button class="js-reply-open rounded-lg bg-emerald-500/80 hover:bg-emerald-500 text-white px-3 py-1 text-xs font-semibold mr-1">↩ {isEl ? "Απάντηση" : "Reply"}</button>
+                    {m.handled
+                      ? <span class="text-emerald-300 text-xs">✓</span>
+                      : <button class="js-handle rounded-lg bg-white/10 hover:bg-white/20 px-3 py-1 text-xs font-semibold">{isEl ? "✓" : "✓"}</button>}
+                  </td>
+                </tr>
+                <tr class="js-reply-row hidden bg-black/40" data-reply-row={m.id}>
+                  <td colspan="6" class="p-3">
+                    <div class="flex items-start gap-2">
+                      <textarea class="js-reply-text flex-1 rounded-lg bg-black/40 border border-white/15 px-3 py-2 text-sm" rows="2" placeholder={isEl ? "Γράψε την απάντησή σου…" : "Type your reply…"}></textarea>
+                      <div class="flex flex-col gap-1">
+                        <button class="js-reply-send rounded-lg bg-emerald-500 hover:bg-emerald-400 text-white text-xs font-bold px-3 py-2">📤 {isEl ? "Αποστολή" : "Send"}</button>
+                        <button class="js-reply-cancel rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs px-3 py-1">{isEl ? "Άκυρο" : "Cancel"}</button>
+                      </div>
+                    </div>
+                    <p class="text-[11px] text-white/45 mt-1">{isEl ? `Θα σταλεί μέσω ${m.channel} σε ${m.from_address}` : `Will send via ${m.channel} to ${m.from_address}`}</p>
+                    <p class="js-reply-status mt-1 text-xs"></p>
+                  </td>
+                </tr>
+                </>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Status receipts -->
+      <section class="mt-8">
+        <h2 class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-3">📤 {isEl ? "Status παράδοσης (τελευταία 50)" : "Delivery receipts (last 50)"}</h2>
+        <div class="rounded-2xl border border-white/10 bg-white/[0.03] overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="text-[11px] uppercase tracking-wider text-white/55">
+              <tr class="border-b border-white/10">
+                <th class="text-left py-2 px-3">{isEl ? "Κανάλι" : "Channel"}</th>
+                <th class="text-left py-2 px-3">{isEl ? "Κατάσταση" : "Status"}</th>
+                <th class="text-left py-2 px-3">{isEl ? "UUID" : "UUID"}</th>
+                <th class="text-left py-2 px-3">{isEl ? "Σφάλμα" : "Error"}</th>
+                <th class="text-right py-2 px-3">{isEl ? "Κόστος" : "Cost"}</th>
+                <th class="text-left py-2 px-3">{isEl ? "Πότε" : "When"}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(recentStatus ?? []).length === 0 ? (
+                <tr><td colspan="6" class="py-10 text-center text-white/40">{isEl ? "Δεν έχει φτάσει κανένα status ακόμη." : "No status receipts yet."}</td></tr>
+              ) : (recentStatus ?? []).map((s: any) => (
+                <tr class="border-b border-white/5">
+                  <td class="py-2 px-3">{channelIcon[s.channel] ?? "📨"} {s.channel}</td>
+                  <td class={`py-2 px-3 font-semibold ${statusColor[s.status] ?? "text-white/70"}`}>{s.status}</td>
+                  <td class="py-2 px-3 font-mono text-[11px] text-white/50">{s.message_uuid ? s.message_uuid.slice(0, 8) + "…" : "—"}</td>
+                  <td class="py-2 px-3 text-xs text-rose-300/80">{s.error_reason ?? "—"}</td>
+                  <td class="py-2 px-3 text-right font-mono text-xs">{s.price_eur ? "€" + Number(s.price_eur).toFixed(4) : "—"}</td>
+                  <td class="py-2 px-3 text-xs text-white/60 whitespace-nowrap">{new Date(s.received_at).toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <!-- Voice calls -->
+      <section class="mt-8">
+        <h2 class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-3">📞 {isEl ? "Κλήσεις φωνής" : "Voice calls"}</h2>
+        <div class="rounded-2xl border border-white/10 bg-white/[0.03] overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="text-[11px] uppercase tracking-wider text-white/55">
+              <tr class="border-b border-white/10">
+                <th class="text-left py-2 px-3">{isEl ? "Κατεύθυνση" : "Direction"}</th>
+                <th class="text-left py-2 px-3">{isEl ? "Από" : "From"}</th>
+                <th class="text-left py-2 px-3">{isEl ? "Χρήστης" : "User"}</th>
+                <th class="text-left py-2 px-3">{isEl ? "Κατάσταση" : "Status"}</th>
+                <th class="text-right py-2 px-3">{isEl ? "Διάρκεια" : "Duration"}</th>
+                <th class="text-right py-2 px-3">{isEl ? "Κόστος" : "Cost"}</th>
+                <th class="text-left py-2 px-3">{isEl ? "Ηχογράφηση" : "Recording"}</th>
+                <th class="text-left py-2 px-3">{isEl ? "Πότε" : "When"}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(calls ?? []).length === 0 ? (
+                <tr><td colspan="8" class="py-10 text-center text-white/40">{isEl ? "Δεν έχουν έρθει κλήσεις ακόμη." : "No calls yet."}</td></tr>
+              ) : (calls ?? []).map((c: any) => (
+                <tr class="border-b border-white/5">
+                  <td class="py-2 px-3">{c.direction === "inbound" ? "📲" : "📤"} <span class="text-xs text-white/60">{c.direction}</span></td>
+                  <td class="py-2 px-3 font-mono text-xs text-white/70">{c.from_address ?? "—"}</td>
+                  <td class="py-2 px-3 text-xs">
+                    {c.matched_user_id
+                      ? <span class="text-emerald-300">✓ {callNameMap.get(c.matched_user_id) ?? "—"}</span>
+                      : <span class="text-white/40">—</span>}
+                  </td>
+                  <td class={`py-2 px-3 font-semibold ${statusColor[c.status] ?? "text-white/70"}`}>{c.status}</td>
+                  <td class="py-2 px-3 text-right font-mono text-xs">{fmtDuration(c.duration_sec)}</td>
+                  <td class="py-2 px-3 text-right font-mono text-xs">{c.price_eur ? "€" + Number(c.price_eur).toFixed(4) : "—"}</td>
+                  <td class="py-2 px-3">
+                    {c.recording_url
+                      ? <a href={c.recording_url} target="_blank" class="text-sky-300 hover:text-sky-200 text-xs">🎙 {isEl ? "Ακρόαση" : "Listen"}</a>
+                      : <span class="text-white/30 text-xs">—</span>}
+                  </td>
+                  <td class="py-2 px-3 text-xs text-white/60 whitespace-nowrap">{new Date(c.started_at).toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p class="mt-2 text-[11px] text-white/40">
+          {isEl
+            ? "Συμβουλή: βάλε στο Vonage App → Voice → Answer URL: https://sallysbar.gr/api/vonage/voice-answer · Event URL: https://sallysbar.gr/api/vonage/voice-events"
+            : "Tip: in Vonage App → Voice → Answer URL: https://sallysbar.gr/api/vonage/voice-answer · Event URL: https://sallysbar.gr/api/vonage/voice-events"}
+        </p>
+      </section>
+    </main>
+
+    <script is:inline>
+      document.addEventListener("click", async (e) => {
+        const t = e.target;
+        if (!(t instanceof HTMLElement)) return;
+
+        // Mark handled
+        const handleBtn = t.closest(".js-handle");
+        if (handleBtn) {
+          const tr = handleBtn.closest("tr[data-msg]");
+          const id = tr.getAttribute("data-msg");
+          handleBtn.disabled = true;
+          const r = await fetch("/api/admin/inbox-handle", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id }),
+          });
+          if (r.ok) location.reload();
+          else { handleBtn.disabled = false; alert("Failed"); }
+          return;
+        }
+
+        // Toggle reply form
+        const openBtn = t.closest(".js-reply-open");
+        if (openBtn) {
+          const tr = openBtn.closest("tr[data-msg]");
+          const id = tr.getAttribute("data-msg");
+          const row = document.querySelector(`tr[data-reply-row="${id}"]`);
+          if (row) {
+            row.classList.toggle("hidden");
+            row.querySelector(".js-reply-text")?.focus();
+          }
+          return;
+        }
+
+        // Cancel reply
+        const cancelBtn = t.closest(".js-reply-cancel");
+        if (cancelBtn) {
+          cancelBtn.closest(".js-reply-row").classList.add("hidden");
+          return;
+        }
+
+        // Send reply
+        const sendBtn = t.closest(".js-reply-send");
+        if (sendBtn) {
+          const row = sendBtn.closest(".js-reply-row");
+          const id = row.getAttribute("data-reply-row");
+          const text = row.querySelector(".js-reply-text").value.trim();
+          const status = row.querySelector(".js-reply-status");
+          if (!text) { status.innerHTML = '<span class="text-rose-300">⚠ Empty message</span>'; return; }
+          sendBtn.disabled = true;
+          status.innerHTML = '<span class="text-sky-300">Sending…</span>';
+          const r = await fetch("/api/admin/inbox-reply", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: Number(id), text }),
+          });
+          const j = await r.json().catch(() => ({}));
+          if (j.ok) {
+            status.innerHTML = '<span class="text-emerald-300">✅ Sent</span>';
+            setTimeout(() => location.reload(), 800);
+          } else {
+            status.innerHTML = `<span class="text-rose-300">❌ ${j.error ?? "failed"}</span>`;
+            sendBtn.disabled = false;
+          }
+          return;
+        }
+      });
+    </script>
+  </body>
+</html>

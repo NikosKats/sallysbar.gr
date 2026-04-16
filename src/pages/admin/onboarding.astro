@@ -143,12 +143,15 @@ const apiKeyGroups = [
     ],
   },
 ];
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
 ---
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Onboarding — Super Admin</title>
+    <title>{isEl ? "Onboarding" : "Onboarding"} — Super Admin</title>
     <meta name="robots" content="noindex,nofollow" />
   </head>
   <body class="min-h-screen bg-[#0a0a0f] text-white font-body antialiased">
@@ -162,92 +165,92 @@ const apiKeyGroups = [
           <span class="inline-block h-1.5 w-1.5 rounded-full bg-rose-400 animate-pulse"></span>
           SUPER ADMIN ONLY
         </p>
-        <h1 class="font-heading text-4xl font-bold">🚀 Venue Onboarding</h1>
-        <p class="mt-2 text-sm text-white/60 max-w-2xl">Fill the form → get a personalised install script + DNS/Supabase instructions. Save the venue to track it.</p>
+        <h1 class="font-heading text-4xl font-bold">{isEl ? "🚀 Onboarding Venue" : "🚀 Venue Onboarding"}</h1>
+        <p class="mt-2 text-sm text-white/60 max-w-2xl">{isEl ? "Συμπλήρωσε τη φόρμα → πάρε εξατομικευμένο install script + οδηγίες DNS/Supabase. Αποθήκευσε το venue για να το παρακολουθείς." : "Fill the form → get a personalised install script + DNS/Supabase instructions. Save the venue to track it."}</p>
       </div>
 
       <div class="grid lg:grid-cols-[1.2fr_1fr] gap-6">
         <!-- Form -->
         <section class="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-          <h2 class="font-heading text-lg font-bold mb-4">📝 Venue details</h2>
+          <h2 class="font-heading text-lg font-bold mb-4">{isEl ? "📝 Στοιχεία Venue" : "📝 Venue details"}</h2>
           <form id="venueForm" class="space-y-3 text-sm">
             <div class="grid sm:grid-cols-2 gap-3">
               <label class="block">
-                <span class="text-xs text-white/60 mb-1 block">Slug <span class="text-red-400">*</span></span>
+                <span class="text-xs text-white/60 mb-1 block">{isEl ? "Slug" : "Slug"} <span class="text-red-400">*</span></span>
                 <input name="slug" required pattern="[a-z0-9\-]{2,40}" placeholder="ionas-bar" class="w-full rounded-xl bg-white/5 border border-white/15 px-3 py-2 focus:border-amber-400/60 focus:outline-none text-sm" />
-                <span class="text-[10px] text-white/40">lowercase, digits, dashes · 2-40 chars</span>
+                <span class="text-[10px] text-white/40">{isEl ? "πεζά, ψηφία, παύλες · 2-40 χαρακτήρες" : "lowercase, digits, dashes · 2-40 chars"}</span>
               </label>
               <label class="block">
-                <span class="text-xs text-white/60 mb-1 block">Display name <span class="text-red-400">*</span></span>
+                <span class="text-xs text-white/60 mb-1 block">{isEl ? "Όνομα εμφάνισης" : "Display name"} <span class="text-red-400">*</span></span>
                 <input name="display_name" required placeholder="Ionas Bar" class="w-full rounded-xl bg-white/5 border border-white/15 px-3 py-2 focus:border-amber-400/60 focus:outline-none text-sm" />
               </label>
             </div>
             <label class="block">
-              <span class="text-xs text-white/60 mb-1 block">Domain (their live URL)</span>
+              <span class="text-xs text-white/60 mb-1 block">{isEl ? "Domain (το live URL τους)" : "Domain (their live URL)"}</span>
               <input name="domain" placeholder="ionasbar.gr" class="w-full rounded-xl bg-white/5 border border-white/15 px-3 py-2 focus:border-amber-400/60 focus:outline-none text-sm" />
             </label>
             <div class="grid sm:grid-cols-3 gap-3">
               <label class="block">
-                <span class="text-xs text-white/60 mb-1 block">Contact name</span>
+                <span class="text-xs text-white/60 mb-1 block">{isEl ? "Όνομα επαφής" : "Contact name"}</span>
                 <input name="contact_name" class="w-full rounded-xl bg-white/5 border border-white/15 px-3 py-2 focus:border-amber-400/60 focus:outline-none text-sm" />
               </label>
               <label class="block">
-                <span class="text-xs text-white/60 mb-1 block">Email</span>
+                <span class="text-xs text-white/60 mb-1 block">{isEl ? "Email" : "Email"}</span>
                 <input name="contact_email" type="email" class="w-full rounded-xl bg-white/5 border border-white/15 px-3 py-2 focus:border-amber-400/60 focus:outline-none text-sm" />
               </label>
               <label class="block">
-                <span class="text-xs text-white/60 mb-1 block">Phone</span>
+                <span class="text-xs text-white/60 mb-1 block">{isEl ? "Τηλέφωνο" : "Phone"}</span>
                 <input name="contact_phone" class="w-full rounded-xl bg-white/5 border border-white/15 px-3 py-2 focus:border-amber-400/60 focus:outline-none text-sm" />
               </label>
             </div>
             <div class="grid sm:grid-cols-3 gap-3">
               <label class="block">
-                <span class="text-xs text-white/60 mb-1 block">Plan</span>
+                <span class="text-xs text-white/60 mb-1 block">{isEl ? "Plan" : "Plan"}</span>
                 <select name="tier" class="w-full rounded-xl bg-white/5 border border-white/15 px-3 py-2 focus:border-amber-400/60 focus:outline-none text-sm">
                   <option value="full" selected>Full Platform · €1,890/season</option>
                 </select>
               </label>
               <label class="block">
-                <span class="text-xs text-white/60 mb-1 block">Status</span>
+                <span class="text-xs text-white/60 mb-1 block">{isEl ? "Κατάσταση" : "Status"}</span>
                 <select name="status" class="w-full rounded-xl bg-white/5 border border-white/15 px-3 py-2 focus:border-amber-400/60 focus:outline-none text-sm">
-                  <option value="prospect">Prospect</option>
-                  <option value="onboarding" selected>Onboarding</option>
-                  <option value="live">Live</option>
-                  <option value="paused">Paused</option>
-                  <option value="churned">Churned</option>
+                  <option value="prospect">{isEl ? "Prospect" : "Prospect"}</option>
+                  <option value="onboarding" selected>{isEl ? "Onboarding" : "Onboarding"}</option>
+                  <option value="live">{isEl ? "Live" : "Live"}</option>
+                  <option value="paused">{isEl ? "Pause" : "Paused"}</option>
+                  <option value="churned">{isEl ? "Churn" : "Churned"}</option>
                 </select>
               </label>
               <label class="block">
-                <span class="text-xs text-white/60 mb-1 block">Billing</span>
+                <span class="text-xs text-white/60 mb-1 block">{isEl ? "Χρέωση" : "Billing"}</span>
                 <select name="billing_model" class="w-full rounded-xl bg-white/5 border border-white/15 px-3 py-2 focus:border-amber-400/60 focus:outline-none text-sm">
-                  <option value="seasonal_annual" selected>Seasonal annual</option>
-                  <option value="monthly">Monthly</option>
-                  <option value="annual">Annual (year-round)</option>
+                  <option value="seasonal_annual" selected>{isEl ? "Seasonal annual" : "Seasonal annual"}</option>
+                  <option value="monthly">{isEl ? "Μηνιαία" : "Monthly"}</option>
+                  <option value="annual">{isEl ? "Ετήσια (year-round)" : "Annual (year-round)"}</option>
                 </select>
               </label>
             </div>
             <div class="grid sm:grid-cols-2 gap-3">
               <label class="block">
-                <span class="text-xs text-white/60 mb-1 block">Season start</span>
+                <span class="text-xs text-white/60 mb-1 block">{isEl ? "Έναρξη σεζόν" : "Season start"}</span>
                 <input name="season_start" type="date" class="w-full rounded-xl bg-white/5 border border-white/15 px-3 py-2 focus:border-amber-400/60 focus:outline-none text-sm [color-scheme:dark]" />
               </label>
               <label class="block">
-                <span class="text-xs text-white/60 mb-1 block">Season end</span>
+                <span class="text-xs text-white/60 mb-1 block">{isEl ? "Λήξη σεζόν" : "Season end"}</span>
                 <input name="season_end" type="date" class="w-full rounded-xl bg-white/5 border border-white/15 px-3 py-2 focus:border-amber-400/60 focus:outline-none text-sm [color-scheme:dark]" />
               </label>
             </div>
             <div class="grid sm:grid-cols-2 gap-3">
               <label class="block">
-                <span class="text-xs text-white/60 mb-1 block">Supabase project ref</span>
+                <span class="text-xs text-white/60 mb-1 block">{isEl ? "Supabase project ref" : "Supabase project ref"}</span>
                 <input name="supabase_ref" placeholder="abcd1234" class="w-full rounded-xl bg-white/5 border border-white/15 px-3 py-2 focus:border-amber-400/60 focus:outline-none text-sm font-mono" />
               </label>
               <label class="block">
-                <span class="text-xs text-white/60 mb-1 block">Cloudflare Pages project</span>
+                <span class="text-xs text-white/60 mb-1 block">{isEl ? "Cloudflare Pages project" : "Cloudflare Pages project"}</span>
                 <input name="pages_project" placeholder="ionasbar" class="w-full rounded-xl bg-white/5 border border-white/15 px-3 py-2 focus:border-amber-400/60 focus:outline-none text-sm font-mono" />
               </label>
             </div>
             <label class="block">
-              <span class="text-xs text-white/60 mb-1 block">Notes</span>
+              <span class="text-xs text-white/60 mb-1 block">{isEl ? "Σημειώσεις" : "Notes"}</span>
               <textarea name="notes" rows="2" class="w-full rounded-xl bg-white/5 border border-white/15 px-3 py-2 focus:border-amber-400/60 focus:outline-none text-sm"></textarea>
             </label>
 
@@ -255,8 +258,8 @@ const apiKeyGroups = [
             <details class="rounded-xl border border-amber-400/25 bg-amber-400/[0.04] overflow-hidden">
               <summary class="cursor-pointer px-4 py-3 flex items-center justify-between gap-3 hover:bg-amber-400/[0.07] transition">
                 <div>
-                  <p class="text-xs font-bold uppercase tracking-wider text-amber-200">🔑 API keys & integrations</p>
-                  <p class="text-[11px] text-white/55 mt-0.5">Paste values here → get a ready-to-deploy .dev.vars in the script.</p>
+                  <p class="text-xs font-bold uppercase tracking-wider text-amber-200">{isEl ? "🔑 API keys & ενσωματώσεις" : "🔑 API keys & integrations"}</p>
+                  <p class="text-[11px] text-white/55 mt-0.5">{isEl ? "Επικόλλησε τιμές → πάρε ready-to-deploy .dev.vars στο script." : "Paste values here → get a ready-to-deploy .dev.vars in the script."}</p>
                 </div>
                 <span class="text-white/40 text-sm">▾</span>
               </summary>
@@ -284,8 +287,8 @@ const apiKeyGroups = [
             </details>
 
             <div class="flex gap-2 pt-2">
-              <button type="button" id="generateBtn" class="flex-1 rounded-xl bg-gradient-to-br from-amber-300 to-amber-500 text-black font-bold px-4 py-2.5 text-sm shadow-lg shadow-amber-500/20 hover:scale-[1.01] active:scale-[0.99] transition">⚡ Generate install script</button>
-              <button type="button" id="saveBtn" class="rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 px-4 py-2.5 text-sm font-semibold">💾 Save venue</button>
+              <button type="button" id="generateBtn" class="flex-1 rounded-xl bg-gradient-to-br from-amber-300 to-amber-500 text-black font-bold px-4 py-2.5 text-sm shadow-lg shadow-amber-500/20 hover:scale-[1.01] active:scale-[0.99] transition">⚡ {isEl ? "Δημιουργία install script" : "Generate install script"}</button>
+              <button type="button" id="saveBtn" class="rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 px-4 py-2.5 text-sm font-semibold">💾 {isEl ? "Αποθήκευση venue" : "Save venue"}</button>
             </div>
             <p id="formMsg" class="hidden text-xs"></p>
           </form>
@@ -294,9 +297,9 @@ const apiKeyGroups = [
         <!-- Script preview -->
         <section class="rounded-2xl border border-white/10 bg-black/40 overflow-hidden flex flex-col">
           <div class="px-5 py-3 border-b border-white/10 flex items-center justify-between">
-            <p class="text-[10px] uppercase tracking-wider text-amber-300 font-bold">🖥 Install script</p>
+            <p class="text-[10px] uppercase tracking-wider text-amber-300 font-bold">{isEl ? "🖥 Install script" : "🖥 Install script"}</p>
             <div class="flex gap-2">
-              <button id="copyScript" class="rounded-lg bg-white/10 hover:bg-white/20 px-2 py-1 text-[10px] font-semibold">📋 Copy</button>
+              <button id="copyScript" class="rounded-lg bg-white/10 hover:bg-white/20 px-2 py-1 text-[10px] font-semibold">📋 {isEl ? "Αντιγραφή" : "Copy"}</button>
               <button id="dlScript" class="rounded-lg bg-white/10 hover:bg-white/20 px-2 py-1 text-[10px] font-semibold">⬇ .sh</button>
             </div>
           </div>
@@ -307,8 +310,8 @@ const apiKeyGroups = [
       <!-- Venue tracker -->
       <section class="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] overflow-hidden">
         <div class="px-5 py-4 border-b border-white/10 flex items-center justify-between">
-          <p class="text-[10px] uppercase tracking-wider text-amber-300 font-bold">🏢 Your venues ({venueList.length})</p>
-          <p class="text-[11px] text-white/40">Live revenue: €{venueList.filter(v => v.status === "live").reduce((s, v) => s + (v.recurring_eur ?? 0), 0).toLocaleString("en-GB")}</p>
+          <p class="text-[10px] uppercase tracking-wider text-amber-300 font-bold">🏢 {isEl ? "Τα venues σου" : "Your venues"} ({venueList.length})</p>
+          <p class="text-[11px] text-white/40">{isEl ? "Έσοδα live: €" : "Live revenue: €"}{venueList.filter(v => v.status === "live").reduce((s, v) => s + (v.recurring_eur ?? 0), 0).toLocaleString("en-GB")}</p>
         </div>
         <div class="overflow-x-auto">
           <table class="w-full text-sm">

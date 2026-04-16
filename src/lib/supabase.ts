@@ -6,6 +6,11 @@ import type { AstroCookies } from "astro";
  * Server-side Supabase client — use in pages, API routes, and middleware.
  * Automatically reads and writes cookies for session management.
  */
+// Persist auth for ~1 year so mobile PWAs / home-screen launches stay logged in
+// (Facebook / Instagram style). Refresh tokens are rotated server-side on each visit,
+// so an attacker needs the device itself — same risk model as any always-logged-in app.
+const SESSION_MAX_AGE = 60 * 60 * 24 * 365; // 1 year
+
 export function createSupabaseServerClient(
   request: Request,
   cookies: AstroCookies
@@ -14,6 +19,12 @@ export function createSupabaseServerClient(
     import.meta.env.PUBLIC_SUPABASE_URL,
     import.meta.env.PUBLIC_SUPABASE_ANON_KEY,
     {
+      cookieOptions: {
+        maxAge: SESSION_MAX_AGE,
+        path: "/",
+        sameSite: "lax",
+        secure: true,
+      },
       cookies: {
         getAll() {
           return parseCookieHeader(request.headers.get("Cookie") ?? "")
@@ -21,7 +32,7 @@ export function createSupabaseServerClient(
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value, options }) => {
-            cookies.set(name, value, options);
+            cookies.set(name, value, { ...options, maxAge: SESSION_MAX_AGE, path: "/", sameSite: "lax", secure: true });
           });
         },
       },

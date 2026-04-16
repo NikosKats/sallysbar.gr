@@ -122,5 +122,13 @@ export const POST: APIRoute = async ({ request, locals }) => {
     });
   } catch {}
 
+  // Marketing automation: fire reservation_confirmed (and group-booking bonus if party size >= 6)
+  try {
+    const { fireReservationConfirmed } = await import("../../lib/marketing-engine");
+    fireReservationConfirmed(reservationId).catch((e) =>
+      console.warn("[reservations] marketing fire failed", e)
+    );
+  } catch {}
+
   return new Response(JSON.stringify({ ok: true }), { status: 200 });
 };

@@ -1178,6 +1178,274 @@ const L = {
       <p>Still stuck? Message the admin.</p>
     `,
   },
+  s44: {
+    head: isEl ? "44. ⚙️ Αυτοματισμοί Marketing (WhatsApp / SMS / Push / Email)" : "44. ⚙️ Marketing Automation (WhatsApp / SMS / Push / Email)",
+    body: isEl ? `
+      <p>Στο <a href="${withLangPrefix(lang, "/admin/marketing-automation")}"><code>/admin/marketing-automation</code></a> ενεργοποιείς/απενεργοποιείς έτοιμους αυτοματισμούς, αλλάζεις κανάλι αποστολής (WhatsApp/SMS/Push/Email) και πατάς «Τρέξε τώρα» για χειροκίνητη εκτέλεση.</p>
+      <p><strong>Έτοιμα triggers (10):</strong></p>
+      <ul>
+        <li>✅ <strong>Reservation confirmed</strong> — στέλνεται αυτόματα μόλις καταχωρηθεί κράτηση (event-driven).</li>
+        <li>⏰ <strong>2h reservation reminder</strong> — υπενθύμιση ~2 ώρες πριν την άφιξη (cron).</li>
+        <li>🎂 <strong>Birthday</strong> — ευχή γενεθλίων (MM-DD match, cooldown 350 μέρες).</li>
+        <li>⭐ <strong>Review nudge</strong> — X ώρες μετά από πληρωμένη παραγγελία, link στο Google Review.</li>
+        <li>🌱 <strong>Re-engagement 30d / 60d / 90d</strong> — κλιμακωτό win-back για ανενεργούς χρήστες.</li>
+        <li>🍹 <strong>Happy-hour push</strong> — push σε όλους τους opted-in χρήστες στη διάρκεια happy hour.</li>
+        <li>🥂 <strong>Group booking bonus</strong> — αυτόματο bonus για κρατήσεις με party size ≥ 6.</li>
+        <li>📊 <strong>Admin weekly digest</strong> — email KPIs κάθε Δευτέρα πρωί.</li>
+      </ul>
+      <p><strong>Τεχνολογία:</strong></p>
+      <ul>
+        <li>WhatsApp & SMS μέσω <strong>Vonage Messages API</strong> (basic auth).</li>
+        <li>Push μέσω του υπάρχοντος VAPID stack.</li>
+        <li>Email μέσω <strong>Resend</strong>.</li>
+        <li>Dedup ανά χρήστη/trigger μέσω <code>marketing_log</code> με cooldown_days στα settings.</li>
+        <li>Cron endpoint: <code>/api/cron/marketing?token=…</code> (τρέχει <code>runAllCronTriggers()</code>).</li>
+      </ul>
+      <p><strong>Setup μία φορά:</strong></p>
+      <ol>
+        <li>Τρέξε <code>scripts/add-marketing-automation.sql</code> στο Supabase.</li>
+        <li>Συμπλήρωσε <code>VONAGE_MESSAGES_API_SECRET</code> στο <code>.env</code> και upload ως Cloudflare secret.</li>
+        <li>Ρύθμισε Cloudflare Cron Trigger να χτυπάει <code>/api/cron/marketing?token=$MARKETING_CRON_TOKEN</code> κάθε 15 λεπτά.</li>
+      </ol>
+    ` : `
+      <p><a href="${withLangPrefix(lang, "/admin/marketing-automation")}"><code>/admin/marketing-automation</code></a> is the control panel for all built-in marketing triggers: toggle each ON/OFF, switch its channel (WhatsApp/SMS/Push/Email), edit JSON settings, or hit "Run now" to fire it manually.</p>
+      <p><strong>Built-in triggers (10):</strong></p>
+      <ul>
+        <li>✅ <strong>Reservation confirmed</strong> — fires instantly when a reservation is booked (event-driven hook in <code>/api/reservations</code>).</li>
+        <li>⏰ <strong>2h reservation reminder</strong> — nudges the guest ~2h before arrival (cron, 15-min window scan).</li>
+        <li>🎂 <strong>Birthday</strong> — MM-DD match, 350-day cooldown so it only sends once per year.</li>
+        <li>⭐ <strong>Review nudge</strong> — X hours after a paid order, with the Google review link.</li>
+        <li>🌱 <strong>Re-engagement 30d / 60d / 90d</strong> — tiered win-back offers (stronger each step).</li>
+        <li>🍹 <strong>Happy-hour push</strong> — push to every opted-in user during the configured local hour.</li>
+        <li>🥂 <strong>Group booking bonus</strong> — auto scratch card when party size ≥ 6.</li>
+        <li>📊 <strong>Admin weekly digest</strong> — Monday-morning KPI email via Resend.</li>
+      </ul>
+      <p><strong>Tech:</strong></p>
+      <ul>
+        <li>WhatsApp & SMS via <strong>Vonage Messages API</strong> (basic auth).</li>
+        <li>Push via the existing VAPID stack.</li>
+        <li>Email via <strong>Resend</strong>.</li>
+        <li>Per-user, per-trigger dedup via <code>marketing_log</code> with <code>cooldown_days</code> in settings.</li>
+        <li>Cron endpoint <code>/api/cron/marketing?token=…</code> runs <code>runAllCronTriggers()</code> — iterates every enabled trigger whose runner exists.</li>
+      </ul>
+      <p><strong>One-time setup:</strong></p>
+      <ol>
+        <li>Run <code>scripts/add-marketing-automation.sql</code> in Supabase (creates <code>marketing_triggers</code> + <code>marketing_log</code> + seeds 10 triggers).</li>
+        <li>Fill <code>VONAGE_MESSAGES_API_SECRET</code> in <code>.env</code> and upload as a Cloudflare Pages secret.</li>
+        <li>Add a Cloudflare Cron Trigger hitting <code>/api/cron/marketing?token=$MARKETING_CRON_TOKEN</code> every 15 minutes.</li>
+      </ol>
+    `,
+  },
+  s45: {
+    head: isEl ? "45. 📣 CRM Καμπάνιες (bulk send)" : "45. 📣 CRM Campaigns (bulk send)",
+    body: isEl ? `
+      <p>Στο <a href="${withLangPrefix(lang, "/admin/campaigns")}"><code>/admin/campaigns</code></a> φτιάχνεις στοχευμένες καμπάνιες σε WhatsApp, SMS, Viber, Messenger, Instagram, Push και Email.</p>
+      <p><strong>Ροή:</strong></p>
+      <ol>
+        <li><strong>Φίλτρα</strong>: κανάλι, συγκατάθεση marketing, loyalty tier, μήνας γενεθλίων, πόλη, ανενεργοί N ημέρες, νέοι εγγεγραμμένοι.</li>
+        <li>🔍 <strong>Υπολογισμός κοινού</strong> — εμφανίζει εκτιμώμενους παραλήπτες <em>και</em> αναλυτικό κόστος: χονδρικό API + προμήθεια PistotitaOS (%) + ΦΠΑ 24% = σύνολο.</li>
+        <li>✨ <strong>AI Generate</strong> — δημιουργεί το μήνυμα αυτόματα (με channel-aware όριο χαρακτήρων).</li>
+        <li>🧪 <strong>Test to me</strong> — στέλνει μόνο σε εσένα.</li>
+        <li>🚀 <strong>SEND NOW</strong> — ενεργοποιείται μόνο αφού κάνεις Calculate, με confirmation dialog που δείχνει το σύνολο.</li>
+        <li>📄 <strong>Δημιουργία τιμολογίου</strong> — εκτυπώσιμο A4 invoice για τον πελάτη με setup + συνδρομή + VAT.</li>
+      </ol>
+      <p><strong>Email anti-spam:</strong> υποχρεωτικό θέμα, HTML template με unsubscribe link, <code>List-Unsubscribe</code> header.</p>
+      <p><strong>Προμήθεια PistotitaOS:</strong> επεξεργάσιμη μόνο από <code>super_admin</code>. Default 50%. Τιμές βάσει Vonage (Greece Apr 2026).</p>
+    ` : `
+      <p><a href="${withLangPrefix(lang, "/admin/campaigns")}"><code>/admin/campaigns</code></a> is the CRM-style bulk-campaign builder for WhatsApp, SMS, Viber, Messenger, Instagram, Push and Email.</p>
+      <p><strong>Flow:</strong></p>
+      <ol>
+        <li><strong>Audience filters</strong>: channel, marketing consent, loyalty tier, birthday month, city, inactive N days, signed-up-within.</li>
+        <li>🔍 <strong>Calculate</strong> — shows estimated recipients <em>and</em> full cost breakdown: wholesale API + PistotitaOS commission (%) + 24% VAT = total.</li>
+        <li>✨ <strong>AI Generate</strong> — writes the message for you (channel-aware length caps).</li>
+        <li>🧪 <strong>Test to me</strong> — single send to the logged-in admin.</li>
+        <li>🚀 <strong>SEND NOW</strong> — only enables after Calculate, confirm dialog shows the total.</li>
+        <li>📄 <strong>Create invoice</strong> — printable A4 invoice for the customer with setup + subscription + VAT.</li>
+      </ol>
+      <p><strong>Email anti-spam:</strong> required subject, HTML template with unsubscribe link, <code>List-Unsubscribe</code> header.</p>
+      <p><strong>PistotitaOS commission:</strong> editable only by <code>super_admin</code>. Default 50%. Rates sourced from Vonage (Greece Apr 2026).</p>
+    `,
+  },
+  s46: {
+    head: isEl ? "46. 🔗 Σύνδεση Messenger & Instagram (για DM campaigns)" : "46. 🔗 Messenger & Instagram linking (for DM campaigns)",
+    body: isEl ? `
+      <p><strong>Γιατί:</strong> Για να στέλνεις DM σε Messenger ή Instagram, το Meta απαιτεί ο χρήστης να έχει πρώτα επικοινωνήσει με τη σελίδα σου. Δεν μπορείς να το παρακάμψεις. Αυτό που κάνουμε: <strong>per-user m.me/ig.me ref-links</strong> που ενεργοποιούν αυτόματα τη σύνδεση.</p>
+      <p><strong>Πώς ο πελάτης συνδέεται (στο <a href="${withLangPrefix(lang, "/account")}"><code>/account</code></a>):</strong></p>
+      <ol>
+        <li>Πατάει <strong>📘 Σύνδεση Messenger</strong> ή <strong>📸 Σύνδεση Instagram</strong>.</li>
+        <li>Ανοίγει η εφαρμογή Meta — πατάει «Get Started» ή στέλνει οποιοδήποτε μήνυμα.</li>
+        <li>Meta → webhook μας → αποθηκεύει το <code>messenger_id</code> / <code>instagram_id</code> στο προφίλ του + <strong>+20 loyalty points</strong> (boosterr).</li>
+        <li>✅ Εμφανίζεται στη σελίδα μετά από refresh. Εσύ τον βλέπεις στο <a href="${withLangPrefix(lang, "/admin/social-links")}"><code>/admin/social-links</code></a>.</li>
+      </ol>
+      <p><strong>Τρεις boosters σύνδεσης:</strong></p>
+      <ul>
+        <li><strong>+20 πόντοι</strong> ανά πλατφόρμα (αυτόματα στο webhook, μία φορά μόνο).</li>
+        <li><strong>CTA στην υπενθύμιση κράτησης 2h</strong> — αν δεν έχει συνδεθεί, το WhatsApp reminder προσθέτει το m.me link.</li>
+        <li><strong>Profile completion bar</strong> στο <code>/account</code> — χρωματιστή πρόοδος 0–100% με chips για κάθε ελλιπές πεδίο (+20 badge στα social).</li>
+      </ul>
+      <p><strong>Setup (μία φορά):</strong></p>
+      <ol>
+        <li>Τρέξε <code>scripts/add-social-linking.sql</code> στο Supabase.</li>
+        <li>Δημιούργησε Facebook <strong>Page</strong> (όχι Group — m.me δεν λειτουργεί με group). Σύνδεσε Instagram Business account στο Page.</li>
+        <li>Meta App Dashboard → Webhooks για Messenger & Instagram:<br>
+          Callback URL: <code>https://sallysbar.gr/api/social/meta-webhook</code><br>
+          Verify token: το <code>META_WEBHOOK_VERIFY_TOKEN</code> από τα CF secrets<br>
+          Events: <code>messages</code>, <code>messaging_postbacks</code>, <code>messaging_referrals</code>.
+        </li>
+        <li>Env: <code>PUBLIC_FB_PAGE_HANDLE</code>, <code>PUBLIC_IG_HANDLE</code>, <code>META_WEBHOOK_VERIFY_TOKEN</code>, <code>FACEBOOK_APP_SECRET</code> (για HMAC validation).</li>
+      </ol>
+      <p><strong>Διαγνωστικά:</strong> <a href="${withLangPrefix(lang, "/admin/social-links")}"><code>/admin/social-links</code></a> δείχνει ποιοι συνδέθηκαν + raw webhook events για debugging.</p>
+    ` : `
+      <p><strong>Why:</strong> To send DMs on Messenger/Instagram, Meta requires the user to message your Page first. You can't bypass it. What we do: <strong>per-user m.me/ig.me ref-links</strong> that trigger linking automatically.</p>
+      <p><strong>How a user links (from <a href="${withLangPrefix(lang, "/account")}"><code>/account</code></a>):</strong></p>
+      <ol>
+        <li>Taps <strong>📘 Connect Messenger</strong> or <strong>📸 Connect Instagram</strong>.</li>
+        <li>The Meta app opens — user taps "Get Started" or sends any message.</li>
+        <li>Meta → our webhook → saves <code>messenger_id</code> / <code>instagram_id</code> on the profile + <strong>+20 loyalty points</strong> (booster).</li>
+        <li>✅ Shows on the page after refresh. You see it in <a href="${withLangPrefix(lang, "/admin/social-links")}"><code>/admin/social-links</code></a>.</li>
+      </ol>
+      <p><strong>Three conversion boosters built in:</strong></p>
+      <ul>
+        <li><strong>+20 points</strong> per platform (awarded once via webhook, idempotent).</li>
+        <li><strong>CTA in the 2h reservation reminder</strong> — if user hasn't linked yet, the WhatsApp reminder appends the m.me link.</li>
+        <li><strong>Profile completion bar</strong> on <code>/account</code> — coloured 0–100% progress with chips for each missing slot (+20 badge on the social ones).</li>
+      </ul>
+      <p><strong>One-time setup:</strong></p>
+      <ol>
+        <li>Run <code>scripts/add-social-linking.sql</code> in Supabase.</li>
+        <li>Create a Facebook <strong>Page</strong> (not a Group — m.me doesn't support groups). Link an Instagram Business account to the Page.</li>
+        <li>Meta App Dashboard → Webhooks for Messenger & Instagram:<br>
+          Callback URL: <code>https://sallysbar.gr/api/social/meta-webhook</code><br>
+          Verify token: <code>META_WEBHOOK_VERIFY_TOKEN</code> from CF secrets<br>
+          Events: <code>messages</code>, <code>messaging_postbacks</code>, <code>messaging_referrals</code>.
+        </li>
+        <li>Env: <code>PUBLIC_FB_PAGE_HANDLE</code>, <code>PUBLIC_IG_HANDLE</code>, <code>META_WEBHOOK_VERIFY_TOKEN</code>, <code>FACEBOOK_APP_SECRET</code> (for HMAC validation).</li>
+      </ol>
+      <p><strong>Diagnostics:</strong> <a href="${withLangPrefix(lang, "/admin/social-links")}"><code>/admin/social-links</code></a> lists who's linked + raw webhook events for debugging.</p>
+    `,
+  },
+  s47: {
+    head: isEl ? "47. 🪪 Social Cards & 💳 Loyalty Cards (admin dashboards)" : "47. 🪪 Social Cards & 💳 Loyalty Cards (admin dashboards)",
+    body: isEl ? `
+      <p>Δύο νέα dashboards για να βλέπεις τις κάρτες μελών που έχουν δημιουργηθεί:</p>
+      <h4>🪪 <a href="${withLangPrefix(lang, "/admin/social-cards")}"><code>/admin/social-cards</code></a></h4>
+      <p>Κάθε χρήστης με <code>/u/handle</code> social card:</p>
+      <ul>
+        <li>KPIs: σύνολο, δημόσιες, κρυφές, με avatar/bio.</li>
+        <li>Card grid με avatar, όνομα, handle link, bio preview, social links.</li>
+        <li>🙈 Hide / 👁 Show toggle per card.</li>
+      </ul>
+      <h4>💳 <a href="${withLangPrefix(lang, "/admin/loyalty-cards")}"><code>/admin/loyalty-cards</code></a></h4>
+      <p>Κάθε ενεργοποιημένη κάρτα πιστότητας:</p>
+      <ul>
+        <li>KPIs: σύνολο καρτών, συγκατάθεση marketing (%), με τηλέφωνο, σύνολο πόντων.</li>
+        <li>Κατανομή tier (Bronze / Silver / Gold / Platinum / VIP).</li>
+        <li>Πίνακας με: όνομα, tier + εικονίδιο, πόντοι, τηλέφωνο, πόλη, γενέθλια, συγκατάθεση, social links (📘📸).</li>
+        <li>Φίλτρα: αναζήτηση, tier dropdown, μόνο-με-συγκατάθεση.</li>
+      </ul>
+    ` : `
+      <p>Two new dashboards for viewing the member cards users have created:</p>
+      <h4>🪪 <a href="${withLangPrefix(lang, "/admin/social-cards")}"><code>/admin/social-cards</code></a></h4>
+      <p>Every user with a <code>/u/handle</code> social card:</p>
+      <ul>
+        <li>KPIs: total, public, hidden, with-avatar/bio.</li>
+        <li>Card grid with avatar, name, handle link, bio preview, social links.</li>
+        <li>🙈 Hide / 👁 Show toggle per card.</li>
+      </ul>
+      <h4>💳 <a href="${withLangPrefix(lang, "/admin/loyalty-cards")}"><code>/admin/loyalty-cards</code></a></h4>
+      <p>Every activated loyalty card:</p>
+      <ul>
+        <li>KPIs: total cards, marketing consent (%), with phone, total points network-wide.</li>
+        <li>Tier distribution (Bronze / Silver / Gold / Platinum / VIP).</li>
+        <li>Table: name, tier + icon, points, phone, city, birthday, consent, social links (📘📸).</li>
+        <li>Filters: search, tier dropdown, only-with-consent.</li>
+      </ul>
+    `,
+  },
+  s48: {
+    head: isEl ? "48. 🚀 PistotitaOS — Το SaaS σου (δημόσια σελίδα + πωλήσεις)" : "48. 🚀 PistotitaOS — your SaaS (public page + sales tools)",
+    body: isEl ? `
+      <p>Το <strong>PistotitaOS</strong> είναι το brand που πουλάς την πλατφόρμα Sally's σε άλλα bars/cafés. Κάτι σαν WordPress-για-μπαρ.</p>
+      <h4>Public pitch:</h4>
+      <ul>
+        <li><a href="${withLangPrefix(lang, "/pistotita-os")}"><code>/pistotita-os</code></a> — κύρια σελίδα πώλησης. Ήρωας, modules (ORDER/LOYAL/PLAY/GROW), feature list, pricing (seasonal €690 / year-round €1,104 + €850 setup), FAQ, territorial exclusivity (ένα μαγαζί ανά περιοχή).</li>
+        <li><a href="${withLangPrefix(lang, "/pistotita-os/compare")}"><code>/pistotita-os/compare</code></a> — σύγκριση με Toast/Loyverse/Fivestars/e-Food/DIY.</li>
+      </ul>
+      <h4>Super admin tools:</h4>
+      <ul>
+        <li><a href="${withLangPrefix(lang, "/admin/pistotita-os")}"><code>/admin/pistotita-os</code></a> — sales dashboard (leads pipeline, scripts WhatsApp/call, territorial rules, pricing cheat sheet).</li>
+        <li><a href="${withLangPrefix(lang, "/admin/pricing-justification")}"><code>/admin/pricing-justification</code></a> — <strong>leave-behind PDF</strong> για πελάτες. Print-ready με cost comparison vs agency, ROI table, per-day math, setup breakdown, closing question.</li>
+        <li><a href="${withLangPrefix(lang, "/admin/financial-model")}"><code>/admin/financial-model</code></a> — 14 sections με break-even analysis, 5-year ROI table, scenarios, sensitivity analysis.</li>
+        <li><a href="${withLangPrefix(lang, "/admin/saas-playbook")}"><code>/admin/saas-playbook</code></a> — deployment model, install checklist, unit economics, legal.</li>
+        <li><a href="${withLangPrefix(lang, "/admin/business")}"><code>/admin/business</code></a> — 9 monetization clusters + rollout plan.</li>
+        <li><a href="${withLangPrefix(lang, "/admin/cost-report")}"><code>/admin/cost-report</code></a> — τι θα κόστιζε σε EU agency (€187,615 net / €290,804 gross, 2,185 ώρες, 55+ features).</li>
+      </ul>
+    ` : `
+      <p><strong>PistotitaOS</strong> is the brand you use to sell the Sally's platform to other bars/cafés. Think WordPress-for-bars.</p>
+      <h4>Public pitch:</h4>
+      <ul>
+        <li><a href="${withLangPrefix(lang, "/pistotita-os")}"><code>/pistotita-os</code></a> — main sales page. Hero, modules (ORDER/LOYAL/PLAY/GROW), features, pricing (seasonal €690 / year-round €1,104 + €850 setup), FAQ, territorial exclusivity (one venue per area).</li>
+        <li><a href="${withLangPrefix(lang, "/pistotita-os/compare")}"><code>/pistotita-os/compare</code></a> — comparison vs Toast/Loyverse/Fivestars/e-Food/DIY.</li>
+      </ul>
+      <h4>Super admin tools:</h4>
+      <ul>
+        <li><a href="${withLangPrefix(lang, "/admin/pistotita-os")}"><code>/admin/pistotita-os</code></a> — sales dashboard (leads pipeline, WhatsApp/call scripts, territory rules, pricing cheat sheet).</li>
+        <li><a href="${withLangPrefix(lang, "/admin/pricing-justification")}"><code>/admin/pricing-justification</code></a> — <strong>leave-behind PDF</strong> for prospects. Print-ready with cost comparison vs agency, ROI table, per-day math, setup breakdown, closing question.</li>
+        <li><a href="${withLangPrefix(lang, "/admin/financial-model")}"><code>/admin/financial-model</code></a> — 14 sections covering break-even analysis, 5-year ROI table, scenarios, sensitivity analysis.</li>
+        <li><a href="${withLangPrefix(lang, "/admin/saas-playbook")}"><code>/admin/saas-playbook</code></a> — deployment model, install checklist, unit economics, legal.</li>
+        <li><a href="${withLangPrefix(lang, "/admin/business")}"><code>/admin/business</code></a> — 9 monetization clusters + rollout plan.</li>
+        <li><a href="${withLangPrefix(lang, "/admin/cost-report")}"><code>/admin/cost-report</code></a> — what it would cost at an EU agency (€187,615 net / €290,804 gross, 2,185 hours, 55+ features).</li>
+      </ul>
+    `,
+  },
+  s49: {
+    head: isEl ? "49. 📞 Vonage Messages API (WhatsApp/SMS/Viber/Messenger/Instagram)" : "49. 📞 Vonage Messages API (WhatsApp/SMS/Viber/Messenger/Instagram)",
+    body: isEl ? `
+      <p>Όλα τα κανάλια messaging περνάνε από το <strong>Vonage Messages API</strong>. Basic auth με API_KEY + API_SECRET.</p>
+      <h4>Sandbox vs Production:</h4>
+      <ul>
+        <li><strong>Sandbox</strong>: <code>messages-sandbox.nexmo.com</code> — μόνο για test numbers που έχεις βάλει στο allowlist.</li>
+        <li><strong>Production</strong>: <code>api.nexmo.com</code> — παντού, χωρίς allowlist, πληρώνεις per message.</li>
+      </ul>
+      <h4>Env vars (Cloudflare Pages secrets — όχι .env!):</h4>
+      <pre><code>VONAGE_MESSAGES_API_KEY
+VONAGE_MESSAGES_API_SECRET
+VONAGE_MESSAGES_BASE
+VONAGE_SMS_FROM (αγορασμένο Greek number ή alphanumeric sender)
+VONAGE_WA_FROM (WhatsApp Business number)
+VONAGE_VIBER_FROM (service ID)
+VONAGE_MESSENGER_FROM (FB Page ID)
+VONAGE_INSTAGRAM_FROM (IG Business ID)</code></pre>
+      <h4>Σε παραγωγή:</h4>
+      <pre><code>printf '%s' 'your_secret' | npx wrangler pages secret put VONAGE_MESSAGES_API_SECRET --project-name=sallysbar
+echo "https://api.nexmo.com" | npx wrangler pages secret put VONAGE_MESSAGES_BASE --project-name=sallysbar</code></pre>
+      <p><strong>⚠️ Gotcha:</strong> Χρησιμοποίησε <code>printf '%s' 'secret'</code> με <em>single quotes</em>, όχι <code>echo "secret"</code> — το bash διαγράφει <code>$VAR</code> references αν το secret έχει <code>$</code> μέσα.</p>
+      <p><strong>⚠️ Dotenv gotcha:</strong> Το Vite κάνει inlining <code>import.meta.env.X</code> στο build. Για secrets με <code>$</code>, <em>μην</em> τα βάλεις στο <code>.env</code> — μόνο Cloudflare secret. Τα API routes διαβάζουν από <code>locals.runtime.env</code>.</p>
+      <p><strong>Κοστολόγηση (Vonage Greece Apr 2026):</strong> SMS €0.065 · WhatsApp €0.095 · Viber €0.036 · Messenger/Instagram €0.026. Override via env (<code>CAMPAIGN_COST_SMS</code>, κ.λπ.).</p>
+    ` : `
+      <p>All messaging channels route through the <strong>Vonage Messages API</strong>. Basic auth with API_KEY + API_SECRET.</p>
+      <h4>Sandbox vs Production:</h4>
+      <ul>
+        <li><strong>Sandbox</strong>: <code>messages-sandbox.nexmo.com</code> — only delivers to test numbers you've whitelisted.</li>
+        <li><strong>Production</strong>: <code>api.nexmo.com</code> — delivers anywhere, no allowlist, pay-per-message.</li>
+      </ul>
+      <h4>Env vars (Cloudflare Pages secrets — NOT .env!):</h4>
+      <pre><code>VONAGE_MESSAGES_API_KEY
+VONAGE_MESSAGES_API_SECRET
+VONAGE_MESSAGES_BASE
+VONAGE_SMS_FROM (purchased Greek number or alphanumeric sender)
+VONAGE_WA_FROM (WhatsApp Business number)
+VONAGE_VIBER_FROM (service ID)
+VONAGE_MESSENGER_FROM (FB Page ID)
+VONAGE_INSTAGRAM_FROM (IG Business ID)</code></pre>
+      <h4>Going to production:</h4>
+      <pre><code>printf '%s' 'your_secret' | npx wrangler pages secret put VONAGE_MESSAGES_API_SECRET --project-name=sallysbar
+echo "https://api.nexmo.com" | npx wrangler pages secret put VONAGE_MESSAGES_BASE --project-name=sallysbar</code></pre>
+      <p><strong>⚠️ Gotcha:</strong> Use <code>printf '%s' 'secret'</code> with <em>single quotes</em>, NOT <code>echo "secret"</code> — bash erases <code>$VAR</code> references if the secret contains <code>$</code>.</p>
+      <p><strong>⚠️ Dotenv gotcha:</strong> Vite inlines <code>import.meta.env.X</code> at build. For secrets containing <code>$</code>, <em>don't</em> put them in <code>.env</code> — Cloudflare secret only. API routes read from <code>locals.runtime.env</code>.</p>
+      <p><strong>Pricing (Vonage Greece Apr 2026):</strong> SMS €0.065 · WhatsApp €0.095 · Viber €0.036 · Messenger/Instagram €0.026. Override via env (<code>CAMPAIGN_COST_SMS</code>, etc.).</p>
+    `,
+  },
 };
 
 const sections = [
@@ -1223,10 +1491,16 @@ const sections = [
   { id: "scratch-editor", icon: "🎟", tint: "bg-sky-300/15",     ...L.s41 },
   { id: "tasks-crud",     icon: "✅", tint: "bg-emerald-300/15", ...L.s42 },
   { id: "games-pages",    icon: "🎯", tint: "bg-amber-300/15",   ...L.s43 },
+  { id: "marketing-automation", icon: "⚙️", tint: "bg-amber-300/15", ...L.s44 },
+  { id: "crm-campaigns", icon: "📣", tint: "bg-fuchsia-300/15", ...L.s45 },
+  { id: "social-linking", icon: "🔗", tint: "bg-sky-300/15",    ...L.s46 },
+  { id: "card-admin",    icon: "🪪", tint: "bg-emerald-300/15", ...L.s47 },
+  { id: "pistotita-os",  icon: "🚀", tint: "bg-amber-300/15",   ...L.s48 },
+  { id: "vonage-api",    icon: "📞", tint: "bg-sky-300/15",     ...L.s49 },
   { id: "troubleshoot",   icon: "🩹", tint: "bg-red-300/15",     ...L.s14 },
 ];
 
-const tocIds = ["install","push","customer","waiter","barman","deliver","admin-overview","admin-menu","admin-qr","admin-events","admin-users","admin-tips","telegram","marketing","mkt-analytics","gamification","customer-pwa","legal","wheel","customer-dash","wallet-share","user-dossier","notif-scope","play-crosspromo","team-chat","settings-profile","social-card","table-settings","staff-sidebar","referral-gate","quests-ai-confirm","tasks-admin","wheel-settings","address-autocomplete","sitemap-seo","super-admin","saas-tooling","games-toggles","wheel-redeem","scratch-editor","tasks-crud","games-pages","troubleshoot"];
+const tocIds = ["install","push","customer","waiter","barman","deliver","admin-overview","admin-menu","admin-qr","admin-events","admin-users","admin-tips","telegram","marketing","mkt-analytics","gamification","customer-pwa","legal","wheel","customer-dash","wallet-share","user-dossier","notif-scope","play-crosspromo","team-chat","settings-profile","social-card","table-settings","staff-sidebar","referral-gate","quests-ai-confirm","tasks-admin","wheel-settings","address-autocomplete","sitemap-seo","super-admin","saas-tooling","games-toggles","wheel-redeem","scratch-editor","tasks-crud","games-pages","marketing-automation","crm-campaigns","social-linking","card-admin","pistotita-os","vonage-api","troubleshoot"];
 ---
 
 <html lang={lang}>
@@ -1294,8 +1568,8 @@ const tocIds = ["install","push","customer","waiter","barman","deliver","admin-o
       <div class="mb-10 rounded-3xl border border-white/10 bg-white/[0.03] backdrop-blur p-6">
         <div class="text-xs uppercase tracking-[0.24em] text-amber-200/70 mb-4">{L.contents}</div>
         <ol class="grid gap-2 sm:grid-cols-2 text-sm text-white/75 list-decimal pl-5">
-          {L.toc.map((label, i) => (
-            <li><a href={`#${tocIds[i]}`} class="hover:text-amber-200 transition">{label}</a></li>
+          {sections.map((s) => (
+            <li><a href={`#${s.id}`} class="hover:text-amber-200 transition">{(s.head ?? "").replace(/^\d+\.\s*/, "")}</a></li>
           ))}
         </ol>
       </div>

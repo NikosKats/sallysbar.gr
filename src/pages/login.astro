@@ -27,6 +27,8 @@ const errorMsg = errorCode === "invalid"
   ? t.errorInvalid
   : errorCode === "unconfirmed"
   ? t.errorUnconfirmed
+  : errorCode === "oauth"
+  ? (errorDetail ? `OAuth: ${errorDetail}` : (isEl ? "Google sign-in απέτυχε. Δοκίμασε ξανά ή χρησιμοποίησε email." : "Google sign-in failed. Try again or use email."))
   : errorCode === "generic"
   ? t.errorGeneric
   : null;
@@ -149,7 +151,10 @@ const registerHref = withLangPrefix(lang, "/register");
 
       const supabase = createBrowserClient(
         import.meta.env.PUBLIC_SUPABASE_URL,
-        import.meta.env.PUBLIC_SUPABASE_ANON_KEY
+        import.meta.env.PUBLIC_SUPABASE_ANON_KEY,
+        {
+          cookieOptions: { maxAge: 60 * 60 * 24 * 365, path: "/", sameSite: "lax", secure: true },
+        }
       );
 
       const loginSubmitBtn = document.getElementById("loginSubmitBtn") as HTMLButtonElement;

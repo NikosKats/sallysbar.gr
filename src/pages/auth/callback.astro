@@ -8,10 +8,21 @@ const next = url.searchParams.get("next") ?? "/account";
 
 let isFreshSignup = false;
 
+// Capture OAuth provider errors (Supabase appends these to the redirect when the provider rejects)
+const providerErr = url.searchParams.get("error") ?? url.searchParams.get("error_code");
+const providerMsg = url.searchParams.get("error_description");
+if (providerErr) {
+  console.error("[auth/callback] provider error:", providerErr, providerMsg);
+  return Astro.redirect(`/login?error=oauth&msg=${encodeURIComponent(providerMsg || providerErr)}`);
+}
+
 if (code) {
   const supabase = createSupabaseServerClient(Astro.request, Astro.cookies);
   const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-  if (error) return Astro.redirect("/login?error=oauth");
+  if (error) {
+    console.error("[auth/callback] exchange error:", error.message);
+    return Astro.redirect(`/login?error=oauth&msg=${encodeURIComponent(error.message)}`);
+  }
 
   const user = data?.user ?? data?.session?.user;
   if (user) {

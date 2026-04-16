@@ -15,8 +15,12 @@ const lang = getLangFromPath(url.pathname);
 const t = dict[lang];
 ---
 
+<style is:global>
+  html.mobile-menu-open .sticky-cta { display: none !important; }
+</style>
+
 <!-- Mobile sticky: 3 primary + More -->
-<div class="fixed bottom-4 left-4 right-4 z-50 md:hidden">
+<div class="sticky-cta fixed bottom-4 left-4 right-4 z-50 md:hidden">
   <div class="overflow-hidden rounded-2xl border border-white/10 bg-black/80 backdrop-blur-md shadow-2xl">
     <div class="grid grid-cols-4">
       <a
@@ -85,7 +89,7 @@ const t = dict[lang];
 </div>
 
 <!-- Desktop quick links -->
-<div class="hidden md:block fixed bottom-6 right-6 z-50">
+<div class="sticky-cta hidden md:block fixed bottom-6 right-6 z-50">
   <div class="flex gap-2 rounded-2xl border border-white/10 bg-black/70 backdrop-blur-md p-2 shadow-2xl">
     <a
       href={mapsUrl}

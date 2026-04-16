@@ -1,0 +1,515 @@
+---
+import "../../styles/global.css";
+import AdminNav from "../../components/AdminNav.astro";
+import { supabaseAdmin } from "../../lib/supabase";
+import { withLangPrefix } from "../../i18n";
+
+export const prerender = false;
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+
+if (!["admin", "super_admin"].includes(Astro.locals.role ?? "")) {
+  return Astro.redirect(withLangPrefix(lang, "/admin"));
+}
+const isSuper = Astro.locals.role === "super_admin";
+
+// Load recent campaigns (from marketing_log, filter for trigger_key starting with "campaign_")
+const { data: recent } = await supabaseAdmin
+  .from("marketing_log")
+  .select("trigger_key, channel, success, sent_at, meta, error_text, to_address")
+  .like("trigger_key", "campaign_%")
+  .order("sent_at", { ascending: false })
+  .limit(20);
+
+// Quick counts for headline
+const { count: totalUsers } = await supabaseAdmin
+  .from("profiles")
+  .select("*", { count: "exact", head: true });
+
+const { count: withEmail } = await supabaseAdmin
+  .from("profiles")
+  .select("id", { count: "exact", head: true })
+  .not("id", "is", null);
+
+const { count: withPhone } = await supabaseAdmin
+  .from("profiles")
+  .select("*", { count: "exact", head: true })
+  .not("phone", "is", null);
+
+const { count: withConsent } = await supabaseAdmin
+  .from("profiles")
+  .select("*", { count: "exact", head: true })
+  .eq("marketing_consent", true);
+
+const { data: tiers } = await supabaseAdmin
+  .from("loyalty_tiers").select("key, label_en, label_el").order("sort_order", { ascending: true });
+
+const monthLabels = isEl
+  ? ["Ιαν","Φεβ","Μαρ","Απρ","Μάι","Ιούν","Ιούλ","Αύγ","Σεπ","Οκτ","Νοέ","Δεκ"]
+  : ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+---
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{isEl ? "Καμπάνιες CRM" : "Campaigns CRM"} — Admin</title>
+    <meta name="robots" content="noindex,nofollow" />
+  </head>
+  <body class="min-h-screen bg-[#0b0b10] text-white">
+    <AdminNav active="campaigns" />
+
+    <main class="mx-auto max-w-5xl px-5 py-10 text-center">
+      <h1 class="font-heading text-3xl md:text-4xl font-bold">📣 {isEl ? "CRM Καμπάνιες" : "CRM Campaigns"}</h1>
+      <p class="mt-2 text-sm text-white/60 max-w-2xl mx-auto">
+        {isEl
+          ? "Φίλτραρε τους χρήστες σου και στείλε μαζική καμπάνια σε WhatsApp, SMS, Push ή Email. Κάθε αποστολή καταγράφεται."
+          : "Filter your users and send a bulk campaign via WhatsApp, SMS, Push, or Email. Every send is logged."}
+      </p>
+
+      <!-- KPI strip -->
+      <div class="mt-6 grid sm:grid-cols-4 gap-3">
+        <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          <p class="text-[10px] uppercase tracking-wider text-white/50">{isEl ? "Σύνολο χρηστών" : "Total users"}</p>
+          <p class="font-heading text-2xl font-bold mt-1">{totalUsers ?? 0}</p>
+        </div>
+        <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          <p class="text-[10px] uppercase tracking-wider text-white/50">{isEl ? "Με τηλέφωνο" : "With phone"}</p>
+          <p class="font-heading text-2xl font-bold mt-1">{withPhone ?? 0}</p>
+        </div>
+        <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          <p class="text-[10px] uppercase tracking-wider text-white/50">{isEl ? "Με email" : "With email"}</p>
+          <p class="font-heading text-2xl font-bold mt-1">{withEmail ?? 0}</p>
+        </div>
+        <div class="rounded-2xl border border-emerald-400/30 bg-emerald-400/[0.06] p-4">
+          <p class="text-[10px] uppercase tracking-wider text-emerald-300">{isEl ? "Συγκατάθεση marketing" : "Marketing consent"}</p>
+          <p class="font-heading text-2xl font-bold mt-1 text-emerald-300">{withConsent ?? 0}</p>
+        </div>
+      </div>
+
+      <!-- Composer -->
+      <section class="mt-8 rounded-3xl border border-white/10 bg-white/[0.04] p-6 text-left">
+        <p class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-3">🎯 {isEl ? "Νέα καμπάνια" : "New campaign"}</p>
+
+        <!-- Step 1: Audience -->
+        <div class="grid md:grid-cols-2 gap-4 mb-5">
+          <div class="space-y-3">
+            <p class="text-sm font-bold">1️⃣ {isEl ? "Κοινό" : "Audience"}</p>
+
+            <label class="block text-sm">
+              <span class="text-white/60">{isEl ? "Κανάλι" : "Channel"}</span>
+              <select id="f-channel" class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2">
+                <option value="whatsapp">💬 WhatsApp</option>
+                <option value="sms">📱 SMS</option>
+                <option value="viber_service">🟣 Viber</option>
+                <option value="messenger">📘 Messenger ({isEl ? "μόνο test" : "test only"})</option>
+                <option value="instagram">📸 Instagram ({isEl ? "μόνο test" : "test only"})</option>
+                <option value="push">🔔 Push notification</option>
+                <option value="email">✉️ Email</option>
+              </select>
+            </label>
+
+            <label class="flex items-center gap-2 text-sm">
+              <input type="checkbox" id="f-consent" class="h-4 w-4 accent-emerald-500" checked />
+              {isEl ? "Μόνο όσοι έδωσαν συγκατάθεση marketing (συνιστάται)" : "Only users with marketing consent (recommended)"}
+            </label>
+
+            <label class="block text-sm">
+              <span class="text-white/60">{isEl ? "Tier (loyalty)" : "Loyalty tier"}</span>
+              <select id="f-tier" class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2">
+                <option value="">{isEl ? "Όλοι" : "Any"}</option>
+                {(tiers ?? []).map((t: any) => (
+                  <option value={t.key}>{isEl ? t.label_el : t.label_en}</option>
+                ))}
+              </select>
+            </label>
+
+            <label class="block text-sm">
+              <span class="text-white/60">{isEl ? "Γενέθλια τον μήνα" : "Birthday in month"}</span>
+              <select id="f-bmonth" class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2">
+                <option value="">{isEl ? "Όλοι" : "Any"}</option>
+                {monthLabels.map((m, i) => <option value={i+1}>{m}</option>)}
+              </select>
+            </label>
+          </div>
+
+          <div class="space-y-3">
+            <p class="text-sm font-bold invisible md:visible">　</p>
+
+            <label class="block text-sm">
+              <span class="text-white/60">{isEl ? "Πόλη (περιέχει)" : "City (contains)"}</span>
+              <input id="f-city" type="text" placeholder={isEl ? "π.χ. Αθήνα" : "e.g. Athens"} class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2" />
+            </label>
+
+            <label class="block text-sm">
+              <span class="text-white/60">{isEl ? "Ανενεργοί τουλάχιστον" : "Inactive at least"}</span>
+              <select id="f-inactive" class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2">
+                <option value="">{isEl ? "Άσχετο" : "Any"}</option>
+                <option value="7">7 {isEl ? "ημέρες" : "days"}</option>
+                <option value="14">14 {isEl ? "ημέρες" : "days"}</option>
+                <option value="30">30 {isEl ? "ημέρες" : "days"}</option>
+                <option value="60">60 {isEl ? "ημέρες" : "days"}</option>
+                <option value="90">90 {isEl ? "ημέρες" : "days"}</option>
+              </select>
+            </label>
+
+            <label class="block text-sm">
+              <span class="text-white/60">{isEl ? "Εγγραφή τις τελευταίες" : "Signed up within"}</span>
+              <select id="f-signed" class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2">
+                <option value="">{isEl ? "Άσχετο" : "Any"}</option>
+                <option value="7">7 {isEl ? "ημέρες" : "days"}</option>
+                <option value="30">30 {isEl ? "ημέρες" : "days"}</option>
+                <option value="90">90 {isEl ? "ημέρες" : "days"}</option>
+                <option value="365">1 {isEl ? "έτος" : "year"}</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <!-- Audience + cost preview -->
+        <div class="rounded-2xl border border-sky-400/30 bg-sky-400/[0.05] p-4 mb-5">
+          <div class="grid md:grid-cols-2 gap-4 items-start">
+            <div class="text-center">
+              <p class="text-xs text-sky-200 uppercase tracking-wider font-bold">{isEl ? "Εκτιμώμενοι παραλήπτες" : "Estimated recipients"}</p>
+              <p id="f-count" class="font-heading text-5xl font-bold text-sky-300 mt-1">—</p>
+              <div class="mt-3 flex items-center justify-center gap-2 flex-wrap text-sm">
+                <label class="flex items-center gap-1 text-white/70">
+                  <span class="text-xs">{isEl ? "Προμήθεια PistotitaOS" : "PistotitaOS commission"}:</span>
+                  <input id="f-commission" type="number" min="0" max="500" step="5" value="50" disabled={!isSuper} title={isSuper ? "" : (isEl ? "Μόνο super admin μπορεί να αλλάξει την προμήθεια" : "Only super admin can change the commission")} class={"w-16 rounded bg-black/40 border border-white/10 px-2 py-1 text-right text-sm" + (isSuper ? "" : " opacity-60 cursor-not-allowed")} /> %
+                  {!isSuper && <span class="text-[10px] text-white/40 ml-1">🔒</span>}
+                </label>
+                <button id="f-preview" class="rounded-lg bg-sky-500 hover:bg-sky-400 text-white text-sm font-bold px-3 py-1.5">
+                  🔍 {isEl ? "Υπολογισμός" : "Calculate"}
+                </button>
+              </div>
+            </div>
+
+            <div class="rounded-xl border border-white/10 bg-black/30 p-3 text-sm">
+              <p class="text-[10px] uppercase tracking-wider text-amber-200/80 font-bold mb-2">💸 {isEl ? "Ανάλυση κόστους" : "Cost breakdown"}</p>
+              <div class="space-y-1 text-xs">
+                <div class="flex justify-between text-white/70"><span>{isEl ? "Χονδρικό (API)" : "Wholesale (API)"}</span><span id="c-wholesale" class="font-mono">—</span></div>
+                <div class="flex justify-between text-white/70"><span id="c-commission-lbl">{isEl ? "Προμήθεια PistotitaOS (+50%)" : "PistotitaOS commission (+50%)"}</span><span id="c-commission" class="font-mono text-emerald-300">—</span></div>
+                <div class="flex justify-between text-white/70 border-t border-white/10 pt-1"><span>{isEl ? "Χρέωση πελάτη (καθαρό)" : "Charge to customer (net)"}</span><span id="c-billable" class="font-mono">—</span></div>
+                <div class="flex justify-between text-white/70"><span>{isEl ? "+ ΦΠΑ 24%" : "+ 24% VAT"}</span><span id="c-vat" class="font-mono">—</span></div>
+                <div class="flex justify-between font-bold text-amber-200 border-t border-amber-400/30 pt-1.5"><span>{isEl ? "Σύνολο (με ΦΠΑ)" : "Total (incl. VAT)"}</span><span id="c-gross" class="font-mono">—</span></div>
+                <p id="c-unit" class="text-[10px] text-white/40 pt-1"></p>
+                <p class="text-[10px] text-white/35 pt-0.5">
+                  {isEl ? "Τιμές βάσει " : "Rates from "}<a href="https://www.vonage.com/communications-apis/pricing/" target="_blank" rel="noopener" class="underline hover:text-white/60">Vonage pricing</a> (Greece, {isEl ? "Απρ" : "Apr"} 2026).
+                </p>
+                <button id="c-invoice" type="button" disabled class="mt-3 w-full rounded-lg bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold px-3 py-2 transition">
+                  📄 {isEl ? "Δημιουργία τιμολογίου για πελάτη" : "Create invoice for client"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2: Message -->
+        <div class="space-y-3 mb-5">
+          <div class="flex items-center justify-between gap-3 flex-wrap">
+            <p class="text-sm font-bold">2️⃣ {isEl ? "Μήνυμα" : "Message"}</p>
+            <div class="flex items-center gap-2">
+              <input id="m-brief" type="text" placeholder={isEl ? "Σύντομο brief (προαιρετικό)… π.χ. προσκάλεσέ τους για live μουσική Παρασκευή" : "Short brief (optional)… e.g. invite them to Friday live music"} class="rounded-lg bg-black/40 border border-white/10 px-3 py-1.5 text-sm min-w-[220px]" />
+              <button id="m-ai" type="button" class="rounded-lg bg-gradient-to-br from-fuchsia-500 to-purple-600 hover:from-fuchsia-400 hover:to-purple-500 text-white text-sm font-bold px-3 py-1.5 shadow-lg shadow-fuchsia-500/20">
+                ✨ {isEl ? "AI Δημιουργία" : "AI Generate"}
+              </button>
+            </div>
+          </div>
+
+          <label class="block text-sm" id="m-subject-wrap" style="display:none;">
+            <span class="text-white/60">{isEl ? "Θέμα (υποχρεωτικό για email)" : "Subject (required for email)"} <span class="text-rose-400">*</span></span>
+            <input id="m-subject" type="text" required placeholder={isEl ? "π.χ. Απόψε γίνε μέλος, πάρε δωρεάν cocktail 🍸" : "e.g. Join tonight, get a free cocktail 🍸"} class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2" />
+            <span class="text-[11px] text-white/40 mt-1 block">{isEl ? "Τα emails χωρίς θέμα πηγαίνουν σχεδόν πάντα στο spam." : "Emails without a subject almost always land in spam."}</span>
+          </label>
+
+          <label class="block text-sm">
+            <span class="text-white/60">{isEl ? "Κείμενο μηνύματος" : "Message body"}</span>
+            <textarea id="m-body" rows="5" placeholder={isEl ? "Γεια σου {{name}}! Σήμερα έχουμε live μουσική στο Sally's Bar — ραντεβού το βράδυ!" : "Hi {{name}}! Tonight we have live music at Sally's Bar — see you!"} class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2 font-mono text-sm"></textarea>
+            <span class="text-[11px] text-white/40 mt-1 flex items-center justify-between">
+              <span>{isEl ? "Placeholders: {{name}}, {{tier}}, {{points}}. Για SMS μείνε κάτω από 160 χαρακτήρες." : "Placeholders: {{name}}, {{tier}}, {{points}}. For SMS keep under 160 chars."}</span>
+              <span id="m-length" class="text-white/50 font-mono"></span>
+            </span>
+          </label>
+
+          <!-- For push only: URL -->
+          <label class="block text-sm" id="m-url-wrap" style="display:none;">
+            <span class="text-white/60">{isEl ? "URL push (προορισμός όταν ο χρήστης κάνει κλικ)" : "Push URL (target when user taps)"}</span>
+            <input id="m-url" type="text" placeholder="/menu" class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2 font-mono text-sm" value="/account" />
+          </label>
+
+          <!-- For Messenger / Instagram test-sends: platform recipient ID -->
+          <label class="block text-sm" id="m-recipid-wrap" style="display:none;">
+            <span class="text-white/60">{isEl ? "Recipient ID (PSID / IG-scoped)" : "Recipient ID (PSID / IG-scoped)"}</span>
+            <input id="m-recipid" type="text" placeholder="e.g. 26508817605474760" class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2 font-mono text-sm" />
+            <span class="text-[11px] text-white/40 mt-1 block">
+              {isEl
+                ? "Χρειάζεσαι το Page-Scoped ID (Messenger) ή IG-Scoped ID. Βρες το στην απάντηση του webhook όταν ο χρήστης σου στείλει το πρώτο μήνυμα."
+                : "Platform-Scoped User ID. Get it from the webhook payload after the user first messages your page/sandbox."}
+            </span>
+          </label>
+        </div>
+
+        <!-- Step 3: Send -->
+        <div class="flex flex-wrap items-center gap-3 justify-between">
+          <p class="text-xs text-white/50">
+            {isEl
+              ? "⚠️ Κάθε αποστολή καταγράφεται στο marketing_log. Cooldown ανά χρήστη δεν εφαρμόζεται — εσύ αποφασίζεις."
+              : "⚠️ Every send is logged in marketing_log. Per-user cooldown is NOT applied — this is intentional."}
+          </p>
+          <div class="flex gap-2">
+            <button id="m-test" class="rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold px-4 py-2 text-sm">
+              🧪 {isEl ? "Δοκιμή σε εμένα" : "Test to me"}
+            </button>
+            <button id="m-send" disabled title={isEl ? "Πάτησε 🔍 Υπολογισμός πρώτα" : "Click 🔍 Calculate first"} class="rounded-lg bg-gradient-to-br from-rose-500 to-fuchsia-600 hover:from-rose-400 hover:to-fuchsia-500 disabled:from-white/10 disabled:to-white/10 disabled:text-white/40 disabled:cursor-not-allowed text-white font-bold px-6 py-2 text-sm shadow-lg shadow-rose-500/20 transition">
+              🚀 {isEl ? "ΑΠΟΣΤΟΛΗ ΤΩΡΑ" : "SEND NOW"}
+            </button>
+          </div>
+        </div>
+        <p id="m-status" class="mt-3 text-xs text-left"></p>
+      </section>
+
+      <!-- Recent campaigns -->
+      <section class="mt-10 text-left">
+        <p class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-3">📚 {isEl ? "Πρόσφατες καμπάνιες" : "Recent campaigns"}</p>
+        {(recent ?? []).length === 0 ? (
+          <p class="text-white/40 text-sm text-center py-8">{isEl ? "Δεν έχεις στείλει καμπάνια ακόμη." : "No campaigns sent yet."}</p>
+        ) : (
+          <div class="rounded-2xl border border-white/10 bg-white/[0.03] overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="text-[11px] uppercase tracking-wider text-white/55">
+                <tr class="border-b border-white/10">
+                  <th class="text-left py-2 px-3">{isEl ? "Όνομα" : "Name"}</th>
+                  <th class="text-left py-2 px-3">{isEl ? "Κανάλι" : "Channel"}</th>
+                  <th class="text-left py-2 px-3">{isEl ? "Προς" : "To"}</th>
+                  <th class="text-left py-2 px-3">{isEl ? "Πότε" : "When"}</th>
+                  <th class="text-left py-2 px-3">{isEl ? "Σφάλμα" : "Error"}</th>
+                  <th class="text-right py-2 px-3">{isEl ? "Κατάσταση" : "Status"}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(recent ?? []).map((r: any) => (
+                  <tr class="border-b border-white/5">
+                    <td class="py-2 px-3 font-mono text-xs text-white/70">{r.trigger_key.replace(/^campaign_/, "")}</td>
+                    <td class="py-2 px-3">{r.channel}</td>
+                    <td class="py-2 px-3 text-white/60 text-xs font-mono">{r.to_address ?? "—"}</td>
+                    <td class="py-2 px-3 text-white/60 text-xs">{new Date(r.sent_at).toLocaleString()}</td>
+                    <td class="py-2 px-3 text-rose-300/80 text-xs max-w-[200px] truncate" title={r.error_text ?? ""}>{r.error_text ?? ""}</td>
+                    <td class="py-2 px-3 text-right"><span class={r.success ? "text-emerald-300" : "text-rose-300"}>{r.success ? "✓" : "✗"}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </main>
+
+    <script is:inline>
+      const $ = (id) => document.getElementById(id);
+
+      function readFilters() {
+        return {
+          channel: $("f-channel").value,
+          consent: $("f-consent").checked,
+          tier: $("f-tier").value || null,
+          birthday_month: $("f-bmonth").value ? Number($("f-bmonth").value) : null,
+          city: $("f-city").value.trim() || null,
+          inactive_days: $("f-inactive").value ? Number($("f-inactive").value) : null,
+          signed_within: $("f-signed").value ? Number($("f-signed").value) : null,
+          commission_pct: Number($("f-commission").value || 0),
+        };
+      }
+      const fmt = (n) => "€" + (Math.round(n * 100) / 100).toFixed(2);
+
+      // Channel-dependent UI
+      function syncChannelUi() {
+        const ch = $("f-channel").value;
+        $("m-subject-wrap").style.display = ch === "email" ? "" : "none";
+        $("m-url-wrap").style.display = ch === "push" ? "" : "none";
+        $("m-recipid-wrap").style.display = (ch === "messenger" || ch === "instagram") ? "" : "none";
+        updateDirectSendable();
+      }
+      function updateDirectSendable() {
+        const ch = $("f-channel").value;
+        const recipFilled = $("m-recipid") && $("m-recipid").value.trim().length > 0;
+        if ((ch === "messenger" || ch === "instagram") && recipFilled) {
+          $("m-send").disabled = false;
+          $("m-send").title = "";
+        }
+      }
+      const recipInput = document.getElementById("m-recipid");
+      if (recipInput) recipInput.addEventListener("input", updateDirectSendable);
+      $("f-channel").addEventListener("change", syncChannelUi);
+      syncChannelUi();
+
+      // Audience + cost preview
+      let lastCost = null;
+      function markFiltersDirty() {
+        lastCost = null;
+        $("c-invoice").disabled = true;
+        $("m-send").disabled = true;
+        $("m-send").title = document.documentElement.lang === "el" ? "Πάτησε 🔍 Υπολογισμός πρώτα" : "Click 🔍 Calculate first";
+      }
+      // Re-arm whenever any filter / channel / commission changes
+      ["f-channel","f-consent","f-tier","f-bmonth","f-city","f-inactive","f-signed","f-commission"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener("change", markFiltersDirty);
+        if (el) el.addEventListener("input",  markFiltersDirty);
+      });
+
+      async function refreshPreview() {
+        const el = $("f-count");
+        el.textContent = "…";
+        $("c-invoice").disabled = true;
+        $("m-send").disabled = true;
+        try {
+          const r = await fetch("/api/admin/campaign-count", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(readFilters()),
+          });
+          const j = await r.json();
+          if (!j.ok) { el.textContent = "⚠ " + (j.error ?? "error"); return; }
+          el.textContent = j.count.toLocaleString();
+          const c = j.cost || {};
+          lastCost = { ...c, count: j.count };
+          if (j.count > 0) {
+            $("c-invoice").disabled = false;
+            $("m-send").disabled = false;
+            $("m-send").title = "";
+          } else {
+            $("m-send").title = document.documentElement.lang === "el" ? "Μηδέν παραλήπτες — άλλαξε φίλτρα" : "Zero recipients — adjust filters";
+          }
+          $("c-wholesale").textContent    = fmt(c.wholesale_eur ?? 0);
+          $("c-commission").textContent   = fmt(c.commission_eur ?? 0);
+          $("c-commission-lbl").textContent = (document.documentElement.lang === "el" ? "Προμήθεια PistotitaOS " : "PistotitaOS commission ") + "(+" + (c.commission_pct ?? 0) + "%)";
+          $("c-billable").textContent     = fmt(c.billable_eur ?? 0);
+          $("c-vat").textContent          = fmt(c.vat_eur ?? 0);
+          $("c-gross").textContent        = fmt(c.gross_eur ?? 0);
+          $("c-unit").textContent = j.count > 0
+            ? (document.documentElement.lang === "el"
+                ? `${c.channel.toUpperCase()} · €${c.unit_eur}/μήνυμα API κόστος · ${j.count} παραλήπτες`
+                : `${c.channel.toUpperCase()} · €${c.unit_eur}/msg API cost · ${j.count} recipients`)
+            : "";
+        } catch (e) { el.textContent = "⚠ " + String(e); }
+      }
+      $("f-preview").addEventListener("click", refreshPreview);
+      $("f-commission").addEventListener("change", refreshPreview);
+      $("f-channel").addEventListener("change", () => { /* cost changes with channel */ });
+
+      $("c-invoice").addEventListener("click", () => {
+        if (!lastCost) return;
+        const q = new URLSearchParams({
+          channel: lastCost.channel,
+          count: String(lastCost.count),
+          unit: String(lastCost.unit_eur),
+          wholesale: String(lastCost.wholesale_eur),
+          commission_pct: String(lastCost.commission_pct),
+          commission: String(lastCost.commission_eur),
+          billable: String(lastCost.billable_eur),
+          vat: String(lastCost.vat_eur),
+          gross: String(lastCost.gross_eur),
+        });
+        window.open("/admin/campaigns/invoice?" + q.toString(), "_blank");
+      });
+
+      async function sendCampaign(testToMe) {
+        const status = $("m-status");
+        const filters = readFilters();
+        const payload = {
+          filters,
+          channel: filters.channel,
+          subject: $("m-subject").value.trim(),
+          body: $("m-body").value,
+          url: $("m-url").value,
+          test_recipient_id: $("m-recipid").value.trim(),
+          test_to_me: !!testToMe,
+        };
+        if (!payload.body.trim()) { status.innerHTML = '<span class="text-rose-300">⚠ Empty message body</span>'; return; }
+        if (filters.channel === "email" && !payload.subject) {
+          status.innerHTML = '<span class="text-rose-300">⚠ Subject required for email campaigns (empty subjects get flagged as spam)</span>';
+          $("m-subject").focus();
+          return;
+        }
+
+        if (!testToMe) {
+          if (!lastCost) {
+            status.innerHTML = '<span class="text-rose-300">⚠ Calculate the audience + cost first (🔍 Calculate).</span>';
+            return;
+          }
+          const fmt2 = (n) => "€" + (Math.round((n || 0) * 100) / 100).toFixed(2);
+          const line = `SEND TO ${lastCost.count} RECIPIENTS?\n\n`
+                     + `Channel: ${filters.channel.toUpperCase()}\n`
+                     + `API cost: ${fmt2(lastCost.wholesale_eur)} · PistotitaOS commission (+${lastCost.commission_pct}%): ${fmt2(lastCost.commission_eur)}\n`
+                     + `Billable net: ${fmt2(lastCost.billable_eur)} · +VAT 24%: ${fmt2(lastCost.vat_eur)}\n`
+                     + `TOTAL (incl. VAT): ${fmt2(lastCost.gross_eur)}\n\n`
+                     + `Body preview:\n${payload.body.slice(0, 200)}`;
+          if (!confirm(line)) return;
+        }
+
+        status.innerHTML = '<span class="text-sky-300">Sending…</span>';
+        const r = await fetch("/api/admin/campaigns-send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const j = await r.json().catch(() => ({}));
+        if (j.ok) {
+          status.innerHTML = `<span class="text-emerald-300">✅ Sent ${j.sent} / ${j.total}${j.skipped ? " · skipped " + j.skipped : ""}${j.errors ? " · errors " + j.errors : ""}</span>`;
+        } else {
+          status.innerHTML = `<span class="text-rose-300">❌ ${j.error ?? "unknown"}</span>`;
+        }
+      }
+
+      $("m-test").addEventListener("click", () => sendCampaign(true));
+      $("m-send").addEventListener("click", () => sendCampaign(false));
+
+      // Live length counter
+      function updateLength() {
+        const ch = $("f-channel").value;
+        const max = ch === "sms" ? 160 : ch === "push" ? 120 : ch === "email" ? 800 : 500;
+        const len = $("m-body").value.length;
+        const el = $("m-length");
+        el.textContent = `${len} / ${max}`;
+        el.className = "text-white/50 font-mono" + (len > max ? " !text-rose-300 font-bold" : "");
+      }
+      $("m-body").addEventListener("input", updateLength);
+      $("f-channel").addEventListener("change", updateLength);
+      updateLength();
+
+      // ✨ AI Generate
+      $("m-ai").addEventListener("click", async () => {
+        const btn = $("m-ai");
+        const orig = btn.innerHTML;
+        btn.innerHTML = "⏳ …";
+        btn.disabled = true;
+        try {
+          const r = await fetch("/api/admin/campaign-ai-generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              channel: $("f-channel").value,
+              brief: $("m-brief").value.trim(),
+              lang: document.documentElement.lang || "en",
+              filters: readFilters(),
+            }),
+          });
+          const j = await r.json();
+          if (j.ok) {
+            $("m-body").value = j.body;
+            if (j.subject && $("m-subject")) $("m-subject").value = j.subject;
+            updateLength();
+            $("m-status").innerHTML = `<span class="text-emerald-300">✨ Generated (${j.length}/${j.max} chars)</span>`;
+          } else {
+            $("m-status").innerHTML = `<span class="text-rose-300">❌ ${j.error ?? "ai_failed"}</span>`;
+          }
+        } catch (e) {
+          $("m-status").innerHTML = `<span class="text-rose-300">❌ ${String(e)}</span>`;
+        } finally {
+          btn.innerHTML = orig;
+          btn.disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>

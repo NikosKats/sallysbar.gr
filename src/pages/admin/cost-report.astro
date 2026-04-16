@@ -193,6 +193,61 @@ const tiers: Tier[] = [
       ["Deployment docs + handover", 8, 95],
     ],
   },
+  { n: 18, title: "Games Ecosystem (casino-grade)", titleEl: "Παιχνίδια (casino-grade)",
+    rows: [
+      ["Wheel: casino SVG redesign (gold rim, studs, 3D slices)", 16, 75],
+      ["Wheel: Web Audio engine (64 ticks + win chime)", 10, 95],
+      ["Wheel: Testing mode (bypass geofence/limit/role)", 8, 95],
+      ["Wheel: claim tokens + redemption + polling + QR", 18, 95],
+      ["Wheel: /staff/wheel-claim with BarcodeDetector scanner", 12, 95],
+      ["Wheel: customer prize history + status badges", 8, 75],
+      ["Scratch: editable rewards pool + live odds recompute", 14, 75],
+      ["Scratch: editable 'how to earn more' list (reorder/CRUD)", 8, 75],
+      ["Scratch: dedicated /scratch explainer page", 10, 75],
+      ["Quests: staff-confirmation flow (QR + 5-min token)", 18, 95],
+      ["Quests: /staff/quest-review with camera scanner", 14, 95],
+      ["Quests: customer status polling + UI flip states", 10, 75],
+      ["Quests: anti-abuse (3-reject cooldown, pending lock)", 8, 95],
+      ["Quests: AI bulk generator (100 quests × 10 themes)", 14, 120],
+      ["Quests: /quests hub (tonight + upcoming + rules)", 10, 75],
+      ["Quests: /quest/[id] page with share + push redirect", 10, 75],
+      ["Tonight's Quest header dropdown card + mobile menu", 6, 75],
+      ["/play games hub rewrite (no loyalty/referral)", 8, 75],
+      ["Games master ON/OFF system + kill switch", 10, 95],
+      ["Cascading hides: nav/footer/tiles/APIs/pages", 12, 95],
+      ["Tasks: master kill switch + bulk toggle endpoint", 6, 75],
+      ["Tasks: per-task CRUD overrides (title/desc/points)", 10, 75],
+      ["Order timestamp instrumentation (prepared/ready/delivered)", 6, 75],
+      ["Waiter call ack timestamp + /admin/operations-analytics", 14, 95],
+      ["SaaS tooling: /admin/venues tracker + health ping", 16, 95],
+      ["SaaS tooling: /admin/onboarding script generator", 14, 95],
+      ["SaaS tooling: /admin/saas-playbook reference", 8, 75],
+      ["SaaS tooling: /admin/business playbook (9 clusters)", 8, 75],
+      ["SaaS tooling: /admin/cost-report (this page!)", 8, 75],
+      ["SaaS tooling: /admin/objections handling", 6, 75],
+      ["Super-admin role: middleware + 15 API guards + nav group", 12, 95],
+    ],
+  },
+  { n: 19, title: "Marketing Automation Engine", titleEl: "Μηχανή Αυτοματισμών Marketing",
+    rows: [
+      ["Vonage Messages API client (WhatsApp + SMS, basic auth)", 8, 95],
+      ["marketing_triggers + marketing_log schema + RLS + seed (10 triggers)", 10, 95],
+      ["Unified dispatch() (whatsapp / sms / push / email routing)", 12, 95],
+      ["Cooldown-based dedup via marketing_log (per-user, per-trigger)", 8, 95],
+      ["Reservation confirmed trigger (event-driven hook)", 6, 95],
+      ["Group-booking bonus trigger (party ≥ 6 auto-scratch)", 6, 95],
+      ["2h reservation reminder (cron, 15-min window scan)", 8, 95],
+      ["Birthday WhatsApp/SMS trigger (MM-DD match, 350d cooldown)", 8, 95],
+      ["Review nudge trigger (paid order + delay + Google link)", 8, 95],
+      ["Re-engagement tier: 30d / 60d / 90d win-back triggers", 14, 95],
+      ["Happy-hour push trigger (local-hour gated, 1d cooldown)", 6, 95],
+      ["Admin weekly digest (Resend email, Monday-morning KPIs)", 10, 95],
+      ["Cron HTTP endpoint with token guard (/api/cron/marketing)", 6, 95],
+      ["Admin control panel: toggle/channel/JSON-settings/Run-now", 14, 75],
+      ["Per-trigger last-run + success counters UI", 6, 75],
+      ["Cloudflare Pages secrets upload + runbook", 4, 75],
+    ],
+  },
 ];
 
 function tierSum(t: Tier) {
@@ -212,6 +267,93 @@ const withVAT      = Math.round(withOverhead * 1.24);
 function eur(n: number) {
   return "€" + Math.round(n).toLocaleString("en-GB");
 }
+
+// ── User-facing feature inventory (what the app does, grouped by audience/domain) ──
+type Feature = { name: string; desc: string; aud: "C" | "S" | "A"; hours: number; rate: number };
+type FeatureGroup = { icon: string; title: string; items: Feature[] };
+
+const features: FeatureGroup[] = [
+  { icon: "🍸", title: "Ordering & menu (customer)", items: [
+    { name: "QR table ordering", desc: "Scan a table QR → live menu → round-based orders tied to the table.", aud: "C", hours: 42, rate: 95 },
+    { name: "Bilingual menu (EN/EL) with photos", desc: "Categories, allergens, photos, prices, per-item availability.", aud: "C", hours: 28, rate: 75 },
+    { name: "Modifiers & rounds", desc: "Ice/no ice, doubles, sides; multiple rounds on the same table session.", aud: "C", hours: 18, rate: 95 },
+    { name: "/table/n deep links", desc: "Generated QR per table; session tied to table_id.", aud: "C", hours: 10, rate: 75 },
+    { name: "Waiter call button", desc: "Instant push to the active waiter with table + timestamp.", aud: "C", hours: 8, rate: 75 },
+  ]},
+  { icon: "🎟", title: "Loyalty, membership & wallet", items: [
+    { name: "Digital loyalty card + tiers", desc: "Bronze/Silver/Gold tiers, automatic tier-up, points ledger.", aud: "C", hours: 36, rate: 95 },
+    { name: "Apple / Google Wallet passes", desc: "Install loyalty card to native wallet with auto-updates.", aud: "C", hours: 24, rate: 95 },
+    { name: "Rewards catalog + redemption", desc: "Points-to-reward flow with staff redemption QR.", aud: "C", hours: 22, rate: 95 },
+    { name: "Referral points (members-only)", desc: "Per-user ?ref= links; auto-reward on signup of the referred.", aud: "C", hours: 16, rate: 95 },
+    { name: "Social card /u/handle", desc: "Public shareable profile with QR to loyalty signup.", aud: "C", hours: 18, rate: 75 },
+    { name: "Staff-assisted enrollment", desc: "Staff-initiated signup during service for non-digital guests.", aud: "S", hours: 12, rate: 75 },
+  ]},
+  { icon: "🎮", title: "Gamification (casino-grade)", items: [
+    { name: "Daily Wheel of Luck", desc: "Casino-style SVG wheel, Web Audio, claim tokens, geofence.", aud: "C", hours: 52, rate: 95 },
+    { name: "Scratch cards", desc: "Canvas scratch-to-reveal, editable reward pool, live odds, foil + scratch SFX.", aud: "C", hours: 48, rate: 95 },
+    { name: "Quests (tonight's missions)", desc: "AI-generated quests, 5-min staff-confirm QR, anti-abuse lock.", aud: "C", hours: 56, rate: 95 },
+    { name: "Staff-confirm scanner", desc: "/staff/quest-review + /staff/wheel-claim with BarcodeDetector.", aud: "S", hours: 22, rate: 95 },
+    { name: "/play games hub + dedicated pages", desc: "Landing for each game with rules, history, live odds.", aud: "C", hours: 18, rate: 75 },
+    { name: "Games master kill-switch", desc: "Single toggle that cascades to nav, footer, tiles, APIs.", aud: "A", hours: 14, rate: 95 },
+  ]},
+  { icon: "📅", title: "Reservations & events", items: [
+    { name: "Reservations booking form", desc: "Public form + validation + Turnstile anti-bot + email ack.", aud: "C", hours: 20, rate: 75 },
+    { name: "Events calendar + RSVP", desc: "Public /events list with detail pages; optional seat hold.", aud: "C", hours: 18, rate: 75 },
+    { name: "Admin reservation manager", desc: "Approve/cancel, reassign tables, party-size filter.", aud: "A", hours: 18, rate: 75 },
+    { name: "Auto 2h reminder", desc: "Cron sends WhatsApp/SMS ~2h before arrival.", aud: "A", hours: 8, rate: 95 },
+  ]},
+  { icon: "🧑‍🍳", title: "Staff operations", items: [
+    { name: "Waiter — take order", desc: "/staff/order with cart, table picker, send-to-bar.", aud: "S", hours: 26, rate: 95 },
+    { name: "Barman — active orders board", desc: "Realtime order queue, prepared/ready/delivered timestamps.", aud: "S", hours: 24, rate: 95 },
+    { name: "Deliver & close table", desc: "One-tap close; auto loyalty point accrual.", aud: "S", hours: 10, rate: 75 },
+    { name: "Team chat", desc: "Shift coordination chat with edit/delete/photo uploads.", aud: "S", hours: 24, rate: 75 },
+    { name: "Push notifications (VAPID PWA)", desc: "Role-scoped pushes: new order / ready / low stock.", aud: "S", hours: 22, rate: 95 },
+    { name: "Telegram bot flow", desc: "Inline buttons for confirmations, waiter/barman/booking channels.", aud: "S", hours: 18, rate: 95 },
+    { name: "Staff sidebar / PWA shell", desc: "Dedicated /staff PWA with manifest + icons.", aud: "S", hours: 14, rate: 75 },
+    { name: "Tips tracking", desc: "Per-shift tip ledger by role, monthly reporting.", aud: "S", hours: 16, rate: 75 },
+  ]},
+  { icon: "📊", title: "Admin & business ops", items: [
+    { name: "Admin overview + analytics", desc: "Daily/weekly KPIs: covers, revenue, active users, push reach.", aud: "A", hours: 28, rate: 95 },
+    { name: "Ops analytics (timings)", desc: "Preparing/ready/delivered stopwatch; per-waiter perf.", aud: "A", hours: 20, rate: 95 },
+    { name: "Menu editor", desc: "CRUD items, categories, photos, allergens, availability toggles.", aud: "A", hours: 26, rate: 75 },
+    { name: "Loyalty admin (tiers + rewards)", desc: "Edit tiers, thresholds, rewards catalog with image upload.", aud: "A", hours: 18, rate: 75 },
+    { name: "User dossier", desc: "Per-user profile: visits, spend, points, notes, flags.", aud: "A", hours: 16, rate: 75 },
+    { name: "Cost report (this page)", desc: "EU-agency-rate cost breakdown for pitches/grants.", aud: "A", hours: 10, rate: 75 },
+    { name: "Business & SaaS playbooks", desc: "Internal strategy docs (9 monetization clusters + pricing).", aud: "A", hours: 14, rate: 75 },
+    { name: "Financial model + break-even", desc: "14-section Y1 cash flow, scenarios, sensitivity, levers.", aud: "A", hours: 12, rate: 120 },
+  ]},
+  { icon: "📣", title: "Marketing & growth", items: [
+    { name: "Trackable QR campaign manager", desc: "Generate QRs with UTM; 14 prebuilt presets.", aud: "A", hours: 18, rate: 75 },
+    { name: "Marketing analytics", desc: "Scans with country/device/browser/referrer + daily chart.", aud: "A", hours: 22, rate: 95 },
+    { name: "Marketing automation engine", desc: "10 triggers (reservation, birthday, review nudge, 30/60/90d, happy-hour, group bonus, admin digest).", aud: "A", hours: 80, rate: 95 },
+    { name: "WhatsApp / SMS via Vonage Messages", desc: "Multi-channel dispatch with basic-auth client + dedup.", aud: "A", hours: 18, rate: 95 },
+    { name: "Resend email sends", desc: "Transactional ack + weekly admin digest.", aud: "A", hours: 8, rate: 75 },
+    { name: "Printable marketing posters", desc: "A4 branded posters with QR codes for /loyalty, /app, /card.", aud: "A", hours: 10, rate: 75 },
+    { name: "Coaster generator", desc: "Printable coaster grid with QR per coaster.", aud: "A", hours: 10, rate: 75 },
+    { name: "/play crosspromo (Kefalonia BnB)", desc: "Affiliate tiles with UTM-tagged outbound links.", aud: "A", hours: 8, rate: 75 },
+  ]},
+  { icon: "⚙️", title: "Platform, security & SaaS", items: [
+    { name: "Astro 5 SSR on Cloudflare Workers", desc: "Edge rendering, low cold-start, R2/KV integration.", aud: "A", hours: 24, rate: 95 },
+    { name: "Supabase Postgres + RLS", desc: "Strict row-level security on every table; service role only in backend.", aud: "A", hours: 36, rate: 95 },
+    { name: "Auth: email, phone OTP, Google", desc: "Multi-provider via Supabase; middleware role guard.", aud: "C", hours: 28, rate: 95 },
+    { name: "super_admin role + 15 API guards", desc: "Dedicated nav group; middleware + per-endpoint checks.", aud: "A", hours: 12, rate: 95 },
+    { name: "PWA (install, offline shell, icons)", desc: "Customer + admin + staff manifests; iOS 16.4+ push.", aud: "C", hours: 20, rate: 95 },
+    { name: "Sitemap + SEO", desc: "Dynamic sitemap, OG images, JSON-LD, robots.", aud: "A", hours: 14, rate: 75 },
+    { name: "Address autocomplete (Photon)", desc: "Free OSM geocoding; no Google Maps bill.", aud: "C", hours: 10, rate: 75 },
+    { name: "SaaS tooling: venues, onboarding", desc: "Multi-tenant scripts + venue tracker + health ping.", aud: "A", hours: 22, rate: 95 },
+    { name: "Cloudflare cron triggers", desc: "Scheduled jobs: reminders, birthdays, re-engagement.", aud: "A", hours: 8, rate: 95 },
+  ]},
+];
+
+const audLabel = (a: "C" | "S" | "A") => a === "C" ? "Customer" : a === "S" ? "Staff" : "Admin";
+const audColor = (a: "C" | "S" | "A") => a === "C" ? "text-sky-300 border-sky-400/30 bg-sky-400/10"
+  : a === "S" ? "text-fuchsia-300 border-fuchsia-400/30 bg-fuchsia-400/10"
+  : "text-amber-300 border-amber-400/30 bg-amber-400/10";
+
+const groupCost = (g: FeatureGroup) => g.items.reduce((s, f) => s + f.hours * f.rate, 0);
+const groupHours = (g: FeatureGroup) => g.items.reduce((s, f) => s + f.hours, 0);
+const featuresTotalCost = features.reduce((s, g) => s + groupCost(g), 0);
+const featuresTotalHours = features.reduce((s, g) => s + groupHours(g), 0);
 
 const scenarios = [
   { label: "Mid-tier Athens agency (fixed-price)",          range: "€140k–€170k", note: "net, ex VAT" },
@@ -359,8 +501,82 @@ const T = {
         </div>
       </section>
 
+      <!-- Functionality inventory (what the app does + per-feature cost) -->
+      <section class="mb-10">
+        <div class="flex items-end justify-between gap-4 flex-wrap mb-4">
+          <div>
+            <p class="text-[10px] uppercase tracking-wider text-amber-300 font-bold">🧭 {isEl ? "Τι κάνει η εφαρμογή (ανά λειτουργία)" : "What the app does (per feature)"}</p>
+            <h2 class="font-heading text-2xl font-bold mt-1">{isEl ? "Αναλυτική λίστα λειτουργιών & κόστος" : "Full functionality inventory & per-feature cost"}</h2>
+            <p class="text-sm text-white/60 mt-1 max-w-2xl">{isEl
+              ? "Κάθε γραμμή είναι μια λειτουργία που βλέπουν πελάτες, staff ή admins. Κόστος = ώρες × ρυθμός χρέωσης EU agency."
+              : "Each line is a user-facing capability — customer, staff, or admin. Cost = hours × EU-agency rate."}</p>
+          </div>
+          <div class="text-right">
+            <p class="text-xs text-white/50">{isEl ? "Σύνολο λειτουργιών" : "Feature inventory total"}</p>
+            <p class="font-heading text-3xl font-bold text-amber-200">{eur(featuresTotalCost)}</p>
+            <p class="text-[11px] text-white/45">{featuresTotalHours.toLocaleString()} {T.hours}</p>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap gap-2 mb-4 text-xs">
+          <span class="rounded-full border border-sky-400/30 bg-sky-400/10 text-sky-300 px-2.5 py-0.5">🙋 Customer</span>
+          <span class="rounded-full border border-fuchsia-400/30 bg-fuchsia-400/10 text-fuchsia-300 px-2.5 py-0.5">🧑‍🍳 Staff</span>
+          <span class="rounded-full border border-amber-400/30 bg-amber-400/10 text-amber-300 px-2.5 py-0.5">🛠 Admin</span>
+        </div>
+
+        <div class="space-y-4">
+          {features.map(g => (
+            <details class="feature-card group rounded-2xl border border-white/10 bg-white/[0.03]" open>
+              <summary class="cursor-pointer px-5 py-3 flex items-center justify-between gap-4 list-none">
+                <div class="min-w-0 flex items-center gap-3">
+                  <span class="text-2xl">{g.icon}</span>
+                  <h3 class="font-heading text-lg font-bold">{g.title}</h3>
+                  <span class="text-xs text-white/40">({g.items.length} features)</span>
+                </div>
+                <div class="flex items-center gap-4 shrink-0 text-sm">
+                  <span class="text-white/50 hidden sm:inline">{groupHours(g).toLocaleString()} h</span>
+                  <span class="font-mono font-bold text-amber-200">{eur(groupCost(g))}</span>
+                  <span class="text-white/40 group-open:rotate-180 transition-transform">▾</span>
+                </div>
+              </summary>
+              <div class="px-5 pb-4 overflow-x-auto">
+                <table class="w-full text-sm">
+                  <thead class="text-[11px] uppercase tracking-wider text-white/50">
+                    <tr class="border-b border-white/10">
+                      <th class="text-left py-2 pr-3">Feature</th>
+                      <th class="text-left py-2 px-2">Who</th>
+                      <th class="text-right py-2 px-2">Hours</th>
+                      <th class="text-right py-2 px-2">Rate</th>
+                      <th class="text-right py-2 pl-2">Cost</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {g.items.map(f => (
+                      <tr class="border-b border-white/5 align-top">
+                        <td class="py-2 pr-3">
+                          <p class="font-semibold text-white">{f.name}</p>
+                          <p class="text-xs text-white/55 mt-0.5">{f.desc}</p>
+                        </td>
+                        <td class="py-2 px-2 whitespace-nowrap"><span class={`rounded-full border px-2 py-0.5 text-[11px] ${audColor(f.aud)}`}>{audLabel(f.aud)}</span></td>
+                        <td class="py-2 px-2 text-right font-mono">{f.hours}</td>
+                        <td class="py-2 px-2 text-right font-mono text-white/60">€{f.rate}</td>
+                        <td class="py-2 pl-2 text-right font-mono font-bold text-amber-200">{eur(f.hours * f.rate)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          ))}
+        </div>
+      </section>
+
       <!-- Per-tier detail -->
       <section class="space-y-3 mb-8">
+        <div class="flex flex-wrap items-center gap-2 mb-1 print:hidden">
+          <button id="js-expand-all" type="button" class="rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-sm font-medium px-3 py-1.5">▾ {isEl ? "Ανάπτυξη όλων" : "Expand all"}</button>
+          <button id="js-collapse-all" type="button" class="rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm font-medium px-3 py-1.5">▴ {isEl ? "Σύμπτυξη όλων" : "Collapse all"}</button>
+        </div>
         {tiers.map(tier => {
           const sub = tierSum(tier);
           return (
@@ -410,6 +626,15 @@ const T = {
           );
         })}
       </section>
+
+      <script is:inline>
+        document.getElementById("js-expand-all")?.addEventListener("click", () => {
+          document.querySelectorAll("details.tier-card, details.feature-card").forEach(d => d.setAttribute("open", ""));
+        });
+        document.getElementById("js-collapse-all")?.addEventListener("click", () => {
+          document.querySelectorAll("details.tier-card, details.feature-card").forEach(d => d.removeAttribute("open"));
+        });
+      </script>
 
       <!-- Market scenarios -->
       <section class="mb-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5">

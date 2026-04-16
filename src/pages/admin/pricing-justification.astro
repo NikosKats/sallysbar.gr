@@ -1,0 +1,361 @@
+---
+import "../../styles/global.css";
+import AdminNav from "../../components/AdminNav.astro";
+import { withLangPrefix } from "../../i18n";
+
+export const prerender = false;
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+
+if (Astro.locals.role !== "super_admin") {
+  return Astro.redirect(withLangPrefix(lang, "/admin"));
+}
+
+const eur = (n: number) => "€" + Math.round(n).toLocaleString("en-GB");
+
+// ── Value the customer is paying for vs what it would cost to assemble ──
+const buildAlternatives = [
+  { what: isEl ? "Custom build από Αθηναϊκό agency μεσαίας κλάσης" : "Custom build by mid-tier Athens agency", cost: "€140,000 – €170,000", time: isEl ? "8–12 μήνες" : "8–12 months" },
+  { what: isEl ? "Premium 4-μελή ομάδα"                              : "Premium 4-person squad",                cost: "€200,000 – €260,000", time: isEl ? "9–15 μήνες" : "9–15 months" },
+  { what: isEl ? "EU offshore (Πολωνία / Πορτογαλία)"                : "EU offshore (Poland / Portugal)",       cost: "€85,000 – €120,000",  time: isEl ? "8–10 μήνες" : "8–10 months" },
+  { what: isEl ? "Έμπειρος freelancer μόνος του"                     : "Solo senior freelancer",                cost: "€55,000 – €95,000",   time: isEl ? "12–18 μήνες" : "12–18 months" },
+];
+
+// ── What you'd pay if you stitched separate tools ──
+const competitorStack = [
+  { tool: isEl ? "Toast / Square (POS + παραγγελίες)"      : "Toast / Square (POS + ordering)",        mo: 79 },
+  { tool: isEl ? "Fivestars / Yotpo (loyalty + καμπάνιες)" : "Fivestars / Yotpo (loyalty + campaigns)", mo: 59 },
+  { tool: isEl ? "Mailchimp + Twilio (WhatsApp/SMS)"        : "Mailchimp + Twilio (WhatsApp/SMS)",       mo: 45 },
+  { tool: isEl ? "Typeform + Calendly (κρατήσεις)"          : "Typeform + Calendly (bookings)",          mo: 30 },
+  { tool: isEl ? "Canva Pro (σουβέρ / αφίσες)"               : "Canva Pro (coasters / posters)",          mo: 12 },
+  { tool: isEl ? "Zapier Pro (integration glue)"            : "Zapier Pro (integration glue)",           mo: 25 },
+];
+const stackTotalMo = competitorStack.reduce((s, x) => s + x.mo, 0);
+const stackTotalYr = stackTotalMo * 12;
+
+// ── Customer-side ROI: incremental revenue our features generate ──
+const customerRoi = isEl ? [
+  { src: "+15% επανεπίσκεψης από loyalty/games (avg 200 covers/εβδ × €25 ticket × 15% × 50 εβδ)", value: 37500 },
+  { src: "+8 κρατήσεις/εβδ από 2h reminder (λιγότερα no-shows) — €25 × 4 covers × 8 × 50",         value: 40000 },
+  { src: "+€2 μέσος λογαριασμός από QR upsell προτάσεις (200 × €2 × 7 × 50)",                       value: 14000 },
+  { src: "12 κρατήσεις γενεθλίων/έτος @ €120 ticket (αντί να ξεχαστούν)",                            value:  1440 },
+  { src: "Εξοικονόμηση εργατικού — όχι χειροκίνητες κλήσεις/σφραγίδες (3h/εβδ × €8 × 50)",          value:  1200 },
+  { src: "Win-back pings: 30 ανενεργοί πελάτες/έτος επιστρέφουν @ €40 ticket",                       value:  1200 },
+] : [
+  { src: "+15% return-visit rate from loyalty/games (avg 200 covers/wk × €25 ticket × 15% × 50 wk)", value: 37500 },
+  { src: "+8 reservations/week recovered from 2h reminder (no-shows down) — €25 × 4 covers × 8 × 50",  value: 40000 },
+  { src: "+€2 avg-ticket from QR upsell suggestions (200 × €2 × 7 × 50)",                              value: 14000 },
+  { src: "12 birthday bookings/yr at €120 ticket (vs forgotten today)",                                value:  1440 },
+  { src: "Saved labor — no manual reservation calls / loyalty stamps (3h/wk × €8 × 50)",               value:  1200 },
+  { src: "Win-back pings: 30 lapsed customers/yr returning at €40 avg ticket",                         value:  1200 },
+];
+const roiTotal = customerRoi.reduce((s, x) => s + x.value, 0);
+
+// ── Per-day breakdown (year-round, all-in incl. VAT) ──
+const yearRoundGross = Math.round((1188 + 850) * 1.24);   // €2,527
+const yearRoundDay = Math.round(yearRoundGross / 365 * 100) / 100;
+const seasonalGross = Math.round((690 + 850) * 1.24);     // €1,910
+const seasonalDay = Math.round(seasonalGross / 183 * 100) / 100;
+
+// ── Setup fee justification ──
+const setupBreakdown = isEl ? [
+  { item: "Tenant provisioning + DNS + SSL + Cloudflare project", h: 1.0, rate: 95, sub: "Senior engineer / ώρα" },
+  { item: "Brand setup (παλέτα, λογότυπα, wallet pass artwork)",   h: 0.75, rate: 75, sub: "Designer / ώρα" },
+  { item: "Εισαγωγή μενού + κατηγοριοποίηση + φωτογραφίες",         h: 1.5, rate: 75, sub: "Operations / ώρα" },
+  { item: "QR generation + αντιστοίχιση τραπεζιών",                  h: 0.5, rate: 75, sub: "Operations / ώρα" },
+  { item: "Εκπαίδευση staff (live Zoom + Loom recording)",           h: 1.0, rate: 95, sub: "Senior engineer / ώρα" },
+  { item: "Starter kit εκτυπώσιμων (σουβέρ + table cards + 50 NFC κάρτες)", h: 0, rate: 0, sub: "Υλικά ~€80" },
+  { item: "Buffer υποστήριξης 30 ημερών μετά το go-live",            h: 0, rate: 0, sub: "Περιλαμβάνεται" },
+] : [
+  { item: "Tenant provisioning + DNS + SSL + Cloudflare project", h: 1.0, rate: 95, sub: "Senior-engineer hour" },
+  { item: "Brand setup (palette, logos, wallet pass artwork)",    h: 0.75, rate: 75, sub: "Designer hour" },
+  { item: "Menu import + categorisation + photo upload",          h: 1.5, rate: 75, sub: "Operations hour" },
+  { item: "QR generation + table mapping",                         h: 0.5, rate: 75, sub: "Operations hour" },
+  { item: "Staff onboarding session (live Zoom + Loom recording)", h: 1.0, rate: 95, sub: "Senior-engineer hour" },
+  { item: "Printable starter kit (coasters + table cards + 50 NFC cards bulk)", h: 0,  rate: 0, sub: "Materials cost ~€80" },
+  { item: "First 30-day post-launch support buffer",               h: 0,  rate: 0, sub: "Included" },
+];
+const setupLaborCost = setupBreakdown.reduce((s, x) => s + x.h * x.rate, 0);
+
+// ── Risk-removal callouts ──
+const guarantees = isEl ? [
+  { icon: "🛡️", title: "60 ημέρες εγγύηση",            desc: "Year-round plan: πλήρης επιστροφή των αχρησιμοποίητων μηνών εντός 60 ημερών." },
+  { icon: "🔒", title: "Αποκλειστικότητα περιοχής",    desc: "Ένα μαγαζί ανά ZIP/δρόμο — ο διπλανός ανταγωνιστής σου δεν παίρνει τα ίδια εργαλεία." },
+  { icon: "📞", title: "Direct WhatsApp υποστήριξη",   desc: "Χωρίς ticket queues. Founder-level support, μέσος χρόνος απάντησης 2h." },
+  { icon: "🚀", title: "Live σε 48 ώρες",               desc: "Το στήνουμε εμείς. Εσύ ανοίγεις την πόρτα. Χωρίς dev ομάδα, χωρίς PMs, χωρίς downtime." },
+  { icon: "📦", title: "Δικά σου τα δεδομένα",          desc: "CSV export όποτε θες. Κανένα vendor lock-in. GDPR DPA περιλαμβάνεται." },
+  { icon: "🔄", title: "Καμία προμήθεια παραγγελίας",   desc: "Σταθερή συνδρομή — το margin σου μένει δικό σου. Όχι του Wolt. Όχι του Toast." },
+] : [
+  { icon: "🛡️", title: "60-day satisfaction guarantee", desc: "Year-round plan: full refund of unused months if not satisfied within 60 days." },
+  { icon: "🔒", title: "Territorial exclusivity", desc: "One venue per ZIP/street — your competitor down the road can't get the same toolkit." },
+  { icon: "📞", title: "Direct WhatsApp support",  desc: "No ticket queues. Founder-level support, average 2h response time." },
+  { icon: "🚀", title: "Live in 48 hours",         desc: "We install. You open the doors. No dev team, no PMs, no downtime." },
+  { icon: "📦", title: "You own your data",        desc: "CSV export anytime. No vendor lock-in. GDPR DPA included." },
+  { icon: "🔄", title: "No per-order commission",  desc: "Flat subscription — your margin stays your margin. Not Wolt's. Not Toast's." },
+];
+---
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PistotitaOS — Pricing Justification (Sales Sheet)</title>
+    <meta name="robots" content="noindex,nofollow" />
+    <style>
+      @media print {
+        @page { size: A4; margin: 12mm; }
+        body { background: white !important; color: black !important; }
+        .no-print { display: none !important; }
+        .pj-card { break-inside: avoid; page-break-inside: avoid; border-color: #ccc !important; background: white !important; }
+        h1, h2, h3, h4, p, li, td, th, span, strong { color: black !important; }
+        .pj-pop { background: #fff7e6 !important; border-color: #d4a017 !important; }
+      }
+    </style>
+  </head>
+  <body class="min-h-screen bg-[#0b0b10] text-white">
+    <AdminNav active="pricing-justification" />
+
+    <main class="mx-auto max-w-5xl px-5 py-10">
+      <!-- Header -->
+      <div class="mb-6 flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <p class="text-xs uppercase tracking-[0.28em] text-rose-300 mb-2 flex items-center gap-2">
+            <span class="inline-block h-1.5 w-1.5 rounded-full bg-rose-400 animate-pulse"></span>
+            {isEl ? "ΜΟΝΟ SUPER ADMIN · LEAVE-BEHIND ΦΥΛΛΑΔΙΟ" : "SUPER ADMIN ONLY · LEAVE-BEHIND SHEET"}
+          </p>
+          <h1 class="font-heading text-3xl md:text-4xl font-bold">💼 PistotitaOS — {isEl ? "Δικαιολόγηση Τιμολόγησης" : "Pricing Justification"}</h1>
+          <p class="mt-2 text-sm text-white/60 max-w-2xl">
+            {isEl
+              ? "Μονοσέλιδο leave-behind για να υπερασπιστείς την τιμή σε διστακτικό ιδιοκτήτη. Εκτύπωσε → δώσ' του το PDF μετά το demo."
+              : "One-page leave-behind to defend the price in front of a hesitant owner. Print → hand them the PDF after the demo."}
+          </p>
+        </div>
+        <button onclick="window.print()" class="no-print rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 px-4 py-2 text-xs font-semibold">🖨 {isEl ? "Εκτύπωση / PDF" : "Print / Save PDF"}</button>
+      </div>
+
+      <!-- The headline pitch -->
+      <section class="pj-card pj-pop mb-6 rounded-2xl border border-amber-400/40 bg-gradient-to-br from-amber-500/15 via-fuchsia-500/5 to-sky-500/5 p-6">
+        <p class="text-[11px] uppercase tracking-[0.25em] text-amber-300 font-bold">{isEl ? "Ο τίτλος" : "The headline"}</p>
+        <h2 class="font-heading text-2xl md:text-3xl font-bold mt-2 leading-tight">
+          {isEl ? "Πληρώνεις" : "You pay"} <span class="text-emerald-300">€{(1188 + 850).toLocaleString("en-GB")}</span> {isEl ? "για ένα σύστημα που κόστισε" : "for a system that cost"} <span class="text-amber-200">€187,615</span> {isEl ? "να χτιστεί. Είναι" : "to build. That's"} <strong>1.1%</strong> {isEl ? "του κόστους ανακατασκευής." : "of replacement cost."}
+        </h2>
+        <p class="mt-3 text-white/80 text-sm md:text-base leading-relaxed">
+          {isEl
+            ? <>Year-round plan: περίπου <strong>€{yearRoundDay} την ημέρα, όλα μέσα</strong> — μαζί ο ΦΠΑ 24% και η εφάπαξ εγκατάσταση €850 κατανεμημένη σε 12 μήνες. Φθηνότερο κι από ένα cocktail. <strong>Αν σώσεις δύο κρατήσεις τον μήνα (4 άτομα × €30) ή μία μεγάλη παρέα (6+ άτομα), η πλατφόρμα ξεπληρώνεται μόνη της.</strong></>
+            : <>Year-round plan: about <strong>€{yearRoundDay} a day, all-in</strong> — that includes 24% VAT and the one-off €850 installation spread evenly across 12 months. Cheaper than a single cocktail. <strong>Recover two reservations per month (4 people at €30 each) — or one large group booking of 6+ — and the platform has paid for itself.</strong></>}
+        </p>
+      </section>
+
+      <!-- Build cost vs price -->
+      <section class="pj-card mb-6 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        <h2 class="font-heading text-xl font-bold mb-3">1. {isEl ? "Πόσο θα κόστιζε να το χτίσεις από το μηδέν" : "What it would cost to build this from scratch"}</h2>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="text-[11px] uppercase tracking-wider text-white/55">
+              <tr class="border-b border-white/10">
+                <th class="text-left py-2 px-3">{isEl ? "Προσέγγιση" : "Approach"}</th>
+                <th class="text-right py-2 px-3">{isEl ? "Κόστος" : "Cost"}</th>
+                <th class="text-right py-2 px-3">{isEl ? "Χρόνος" : "Time"}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {buildAlternatives.map(a => (
+                <tr class="border-b border-white/5">
+                  <td class="py-2 px-3">{a.what}</td>
+                  <td class="py-2 px-3 text-right font-mono text-amber-200">{a.cost}</td>
+                  <td class="py-2 px-3 text-right text-white/60">{a.time}</td>
+                </tr>
+              ))}
+              <tr class="bg-emerald-400/[0.06] border-t border-emerald-400/30">
+                <td class="py-2 px-3 font-bold">PistotitaOS — {isEl ? "άδεια χρήσης (year-round)" : "license to use it (year-round)"}</td>
+                <td class="py-2 px-3 text-right font-mono font-bold text-emerald-300">€2,038/{isEl ? "έτος καθαρό" : "yr net"}</td>
+                <td class="py-2 px-3 text-right text-emerald-300 font-bold">48 {isEl ? "ώρες" : "hours"}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="mt-3 text-xs text-white/50">
+          {isEl
+            ? "Πηγή: cost-report.astro με EU-agency rates (€55–€120/ώρα). 2.185 ώρες ανάπτυξης, 55+ λειτουργίες για τον χρήστη."
+            : "Source: cost-report.astro at EU-agency rates (€55–€120/h). 2,185 hours of work, 55+ user-facing features."}
+        </p>
+      </section>
+
+      <!-- Stitched stack vs us -->
+      <section class="pj-card mb-6 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        <h2 class="font-heading text-xl font-bold mb-3">2. {isEl ? "Πόσο θα πλήρωνες αν συνέδεες ξεχωριστά εργαλεία" : "What you'd pay to stitch the same features yourself"}</h2>
+        <div class="grid md:grid-cols-2 gap-4">
+          <div>
+            <p class="text-[11px] uppercase tracking-wider text-rose-300 font-bold mb-2">{isEl ? "Stack ανταγωνιστών (ξεχωριστά)" : "Competitor stack (separate tools)"}</p>
+            <table class="w-full text-sm">
+              <tbody>
+                {competitorStack.map(c => (
+                  <tr class="border-b border-white/5">
+                    <td class="py-1.5 text-white/80">{c.tool}</td>
+                    <td class="py-1.5 text-right font-mono text-white/60">€{c.mo}/{isEl ? "μήνα" : "mo"}</td>
+                  </tr>
+                ))}
+                <tr class="border-t-2 border-rose-400/30 font-bold">
+                  <td class="py-2">{isEl ? "Σύνολο / μήνα" : "Total / month"}</td>
+                  <td class="py-2 text-right font-mono text-rose-300">€{stackTotalMo}/{isEl ? "μήνα" : "mo"}</td>
+                </tr>
+                <tr>
+                  <td class="py-1 text-xs text-white/60">{isEl ? "Ετήσιο" : "Annual"}</td>
+                  <td class="py-1 text-right font-mono text-rose-300">€{stackTotalYr.toLocaleString("en-GB")}/{isEl ? "έτος" : "yr"}</td>
+                </tr>
+              </tbody>
+            </table>
+            <p class="mt-2 text-xs text-white/50">{isEl ? "+ 20–40h setup integration · μηδέν ενοποίηση · χωρίς games · χωρίς προστασία περιοχής." : "+ 20–40h setup glue · zero integration · no games · no territorial protection."}</p>
+          </div>
+
+          <div class="rounded-xl border border-emerald-400/30 bg-emerald-400/[0.05] p-4">
+            <p class="text-[11px] uppercase tracking-wider text-emerald-300 font-bold mb-2">PistotitaOS year-round</p>
+            <p class="font-mono text-3xl font-bold text-emerald-300">€{Math.round(1188/12)}/{isEl ? "μήνα" : "mo"}<span class="text-base text-white/40 font-normal"> {isEl ? "ισοδύναμο (καθαρό)" : "equiv (net)"}</span></p>
+            <p class="text-sm text-white/70 mt-2">{isEl ? "€1,188 καθαρή συνδρομή + €850 setup, μπροστά." : "€1,188 net subscription + €850 setup, paid upfront."}</p>
+            <div class="mt-4 pt-3 border-t border-emerald-400/20 text-sm">
+              <p class="text-emerald-200 font-bold">{isEl ? "Ετήσια εξοικονόμηση vs stitched stack:" : "Annual saving vs stitched stack:"}</p>
+              <p class="font-mono text-2xl font-bold text-emerald-300">~{eur(stackTotalYr - 1188)}/{isEl ? "έτος" : "yr"}</p>
+              <p class="text-xs text-white/60 mt-1">{isEl ? "…και επιπλέον παίρνεις gamification, που δεν υπάρχει στο stitched stack." : "…and you actually get gamification, which doesn't exist in the stitched stack."}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ROI: customer-side incremental revenue -->
+      <section class="pj-card mb-6 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        <h2 class="font-heading text-xl font-bold mb-3">3. {isEl ? "Τι σου επιστρέφει (μοντελοποιημένο ετήσιο ROI για ένα τυπικό μπαρ)" : "What it returns to you (modeled annual ROI for a typical bar)"}</h2>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <tbody>
+              {customerRoi.map(r => (
+                <tr class="border-b border-white/5">
+                  <td class="py-2 pr-4 text-white/80">{r.src}</td>
+                  <td class="py-2 text-right font-mono text-emerald-300">+{eur(r.value)}</td>
+                </tr>
+              ))}
+              <tr class="border-t-2 border-emerald-400/40 bg-emerald-400/[0.06]">
+                <td class="py-3 font-bold">{isEl ? "Μοντελοποιημένα επιπλέον ετήσια έσοδα" : "Modeled incremental annual revenue"}</td>
+                <td class="py-3 text-right font-mono font-bold text-emerald-300 text-xl">+{eur(roiTotal)}</td>
+              </tr>
+              <tr>
+                <td class="py-2 pr-4 text-white/70">{isEl ? "Μείον: PistotitaOS year-round + setup (Y1, μικτό)" : "Less: PistotitaOS year-round + setup (Y1, gross)"}</td>
+                <td class="py-2 text-right font-mono text-white/60">−{eur(yearRoundGross)}</td>
+              </tr>
+              <tr class="border-t border-amber-400/40">
+                <td class="py-2 font-bold text-amber-200">{isEl ? "Καθαρό όφελος Y1 για το μαγαζί σου" : "Net Y1 benefit to your venue"}</td>
+                <td class="py-2 text-right font-mono font-bold text-amber-200 text-xl">+{eur(roiTotal - yearRoundGross)}</td>
+              </tr>
+              <tr>
+                <td class="py-2 text-amber-300/80 font-bold">ROI multiple (Y1)</td>
+                <td class="py-2 text-right font-mono font-bold text-amber-300 text-2xl">{(roiTotal / yearRoundGross).toFixed(1)}×</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="mt-3 text-xs text-white/50">
+          {isEl
+            ? "Οι παραδοχές είναι σκόπιμα συντηρητικές για μαγαζί 200 covers/εβδ με μέσο λογαριασμό €25. Προσάρμοσε το μοντέλο ανά prospect κατά τη διάρκεια του demo."
+            : "Assumptions are deliberately conservative for a 200-cover/week venue at €25 avg ticket. Adjust the model on a per-prospect basis during the demo."}
+        </p>
+      </section>
+
+      <!-- Per-day math -->
+      <section class="pj-card mb-6 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        <h2 class="font-heading text-xl font-bold mb-3">4. {isEl ? "Τα μαθηματικά «ανά ημέρα» (όταν ο ιδιοκτήτης λέει «είναι πολλά»)" : "The \"per day\" math (when an owner says \"it's a lot\")"}</h2>
+        <div class="grid sm:grid-cols-2 gap-3">
+          <div class="rounded-xl border border-amber-400/30 bg-amber-400/[0.04] p-4">
+            <p class="text-[11px] uppercase tracking-wider text-amber-200 font-bold">{isEl ? "Year-round (12 μήνες, all-in με ΦΠΑ)" : "Year-round (12 mo, all-in incl. VAT)"}</p>
+            <p class="font-mono text-3xl font-bold mt-1">{eur(yearRoundGross)}</p>
+            <p class="text-sm text-white/70 mt-2">= <strong>€{yearRoundDay}/{isEl ? "ημέρα" : "day"}</strong></p>
+            <p class="text-xs text-white/55 mt-1">{isEl ? "≈ λιγότερο από 1 cocktail/ημέρα · ≈ 1 μικρή μπύρα." : "≈ less than 1 cocktail / day · ≈ 1 small beer."}</p>
+          </div>
+          <div class="rounded-xl border border-sky-400/30 bg-sky-400/[0.04] p-4">
+            <p class="text-[11px] uppercase tracking-wider text-sky-200 font-bold">{isEl ? "Seasonal (6 μήνες ανοιχτό, all-in με ΦΠΑ)" : "Seasonal (6 mo open, all-in incl. VAT)"}</p>
+            <p class="font-mono text-3xl font-bold mt-1">{eur(seasonalGross)}</p>
+            <p class="text-sm text-white/70 mt-2">= <strong>€{seasonalDay}/{isEl ? "ημέρα ανοιχτό" : "day open"}</strong></p>
+            <p class="text-xs text-white/55 mt-1">{isEl ? "≈ 1 cocktail/ημέρα ανοιχτό σε σεζόν." : "≈ 1 cocktail / open day during the season."}</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Setup fee justification -->
+      <section class="pj-card mb-6 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        <h2 class="font-heading text-xl font-bold mb-3">5. {isEl ? "Γιατί €850 setup (και γιατί δεν κάνουμε ποτέ έκπτωση)" : "Why €850 setup (and why we never discount it)"}</h2>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="text-[11px] uppercase tracking-wider text-white/55">
+              <tr class="border-b border-white/10">
+                <th class="text-left py-2 px-3">{isEl ? "Παραδοτέο" : "Deliverable"}</th>
+                <th class="text-right py-2 px-3">{isEl ? "Ώρες" : "Hours"}</th>
+                <th class="text-right py-2 px-3">{isEl ? "Χρέωση" : "Rate"}</th>
+                <th class="text-right py-2 px-3">{isEl ? "Κόστος" : "Cost"}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {setupBreakdown.map(s => (
+                <tr class="border-b border-white/5">
+                  <td class="py-2 px-3">
+                    <p class="text-white/85">{s.item}</p>
+                    <p class="text-[11px] text-white/45">{s.sub}</p>
+                  </td>
+                  <td class="py-2 px-3 text-right font-mono">{s.h || "—"}</td>
+                  <td class="py-2 px-3 text-right font-mono text-white/60">{s.rate ? "€" + s.rate : "—"}</td>
+                  <td class="py-2 px-3 text-right font-mono">{s.h * s.rate ? eur(s.h * s.rate) : (isEl ? "περιλ." : "incl.")}</td>
+                </tr>
+              ))}
+              <tr class="border-t-2 border-amber-400/40 bg-amber-400/[0.04] font-bold">
+                <td class="py-2 px-3" colspan="3">{isEl ? "Μόνο εργατικό κόστος" : "Labour cost alone"}</td>
+                <td class="py-2 px-3 text-right font-mono text-amber-200">{eur(setupLaborCost)}</td>
+              </tr>
+              <tr>
+                <td class="py-1.5 px-3 text-xs text-white/60" colspan="3">{isEl ? "+ NFC κάρτες / σουβέρ / table tents starter kit" : "+ NFC cards / coasters / table tents starter kit"}</td>
+                <td class="py-1.5 px-3 text-right text-xs text-white/60 font-mono">~€80</td>
+              </tr>
+              <tr class="border-t border-emerald-400/30">
+                <td class="py-2 px-3 font-bold text-emerald-300" colspan="3">{isEl ? "Πληρώνει ο πελάτης" : "Customer pays"}</td>
+                <td class="py-2 px-3 text-right font-mono font-bold text-emerald-300">€850</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="mt-3 text-xs text-white/50">
+          {isEl
+            ? <>Το margin στο setup είναι ~€280 — μόλις καλύπτει tickets υποστήριξης μετά το launch και χρόνο PM. Γι' αυτό το setup fee είναι <strong class="text-white/70">μη διαπραγματεύσιμο</strong>: δεν χρηματοδοτεί την επιχείρηση, πληρώνει τον εαυτό του.</>
+            : <>Margin on setup is ~€280 — barely covers post-launch support tickets and the PM time to coordinate. That's why the setup fee is <strong class="text-white/70">non-negotiable</strong>: it doesn't fund the business, it pays for itself.</>}
+        </p>
+      </section>
+
+      <!-- Risk removal -->
+      <section class="pj-card mb-6 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        <h2 class="font-heading text-xl font-bold mb-3">6. {isEl ? "Ο κίνδυνος που εξαλείφουμε — τι παίρνεις επιπλέον" : "Risk removed — what you get on top"}</h2>
+        <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {guarantees.map(g => (
+            <div class="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+              <p class="text-2xl">{g.icon}</p>
+              <p class="font-bold mt-2">{g.title}</p>
+              <p class="text-xs text-white/65 mt-1 leading-relaxed">{g.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <!-- Closing question framework -->
+      <section class="pj-card pj-pop mb-6 rounded-2xl border border-amber-400/40 bg-amber-400/[0.06] p-5">
+        <h2 class="font-heading text-xl font-bold mb-3">🎤 {isEl ? "Η ερώτηση κλεισίματος" : "The closing question"}</h2>
+        <p class="text-white/85 leading-relaxed">
+          {isEl
+            ? <em>«Θα πλήρωνες €140k+ και θα περίμενες 12 μήνες να το χτίσεις. Ή το έχεις την Τρίτη για €{(1188 + 850).toLocaleString("en-GB")}. Το σύστημα πληρώνει τον εαυτό του με μία επιπλέον κράτηση την εβδομάδα. Να κλειδώσουμε την περιοχή σου αυτή την εβδομάδα ή να περιμένουμε μέχρι ο διπλανός σου ανταγωνιστής να κάνει την ίδια ερώτηση;»</em>
+            : <em>"You'd pay €140k+ and wait 12 months to build this. Or you can have it on Tuesday for €{(1188 + 850).toLocaleString("en-GB")}. The system will pay for itself with one extra reservation per week. Should we lock your area in this week or wait until your competitor next door asks the same question?"</em>}
+        </p>
+      </section>
+
+      <!-- Footer micro-copy -->
+      <section class="text-xs text-white/45 leading-relaxed">
+        {isEl
+          ? "Όλες οι τιμές καθαρές (χωρίς ΦΠΑ) εκτός αν αναφέρεται. Τα ROI παραδείγματα είναι μοντελοποιημένα, όχι εγγυημένα — προσάρμοσέ τα live κατά το demo με τα πραγματικά covers και μέσο λογαριασμό του prospect."
+          : "All prices net of VAT unless stated. ROI examples are modeled, not guaranteed — adjust live during the demo using the prospect's real cover count and average ticket."}
+        {isEl ? "Πηγή δεδομένων:" : "Source data:"} <a href={withLangPrefix(lang, "/admin/cost-report")} class="text-amber-300 hover:underline">/admin/cost-report</a> · <a href={withLangPrefix(lang, "/admin/financial-model")} class="text-amber-300 hover:underline">/admin/financial-model</a> · <a href={withLangPrefix(lang, "/pistotita-os/compare")} class="text-amber-300 hover:underline">/pistotita-os/compare</a>.
+      </section>
+    </main>
+  </body>
+</html>

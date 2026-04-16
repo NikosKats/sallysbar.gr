@@ -12,7 +12,16 @@ const AUTH_ROUTES = ["/login", "/register", "/el/login", "/el/register", "/forgo
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const { request, cookies, locals, redirect } = context;
-  const pathname = new URL(request.url).pathname;
+  const url = new URL(request.url);
+  const pathname = url.pathname;
+
+  // Google/OAuth sometimes redirects to the Supabase "Site URL" (the root) with ?code=…
+  // instead of to /auth/callback — rescue those and funnel them through our handler.
+  if ((pathname === "/" || pathname === "/el" || pathname === "/el/") && url.searchParams.has("code")) {
+    const code = url.searchParams.get("code")!;
+    const next = url.searchParams.get("next") ?? "/account";
+    return redirect(`/auth/callback?code=${encodeURIComponent(code)}&next=${encodeURIComponent(next)}`);
+  }
 
   // x-astro-lang header is set by elRewrite() stubs so language survives middleware re-run on rewrite
   const langHeader = request.headers.get("x-astro-lang");
@@ -32,14 +41,15 @@ export const onRequest = defineMiddleware(async (context, next) => {
     locals.user = user;
 
     if (user) {
-      // Fetch user role from profiles table (use admin client to bypass RLS)
+      // Fetch role + handle in a single query — Header & pages read these from locals to avoid extra round-trips.
       const { data: profile } = await supabaseAdmin
         .from("profiles")
-        .select("role")
+        .select("role, handle")
         .eq("id", user.id)
         .single();
 
       locals.role = (profile?.role as App.Locals["role"]) ?? "customer";
+      (locals as any).handle = profile?.handle ?? null;
     }
   } catch {
     // Supabase unavailable — continue as unauthenticated

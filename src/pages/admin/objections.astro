@@ -7,7 +7,32 @@ if (Astro.locals.role !== "super_admin") {
   return new Response("Forbidden", { status: 403 });
 }
 
-const reasons = [
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+
+const reasons = isEl ? [
+  {
+    n: 1,
+    title: '«Φοβάμαι ότι είναι ακριβό»',
+    sub: "Πιο συχνό · ανησυχούν για την αξία, όχι κατά της AI",
+    color: "amber",
+    rebuttal: `Δίκαια ερώτηση. Η πλατφόρμα κάνει περίπου 50 ξεχωριστές δουλειές — παραγγελίες τραπεζιού, loyalty, πληρωμές, marketing, push notifications, συντονισμό staff, analytics. Σύγκρινε: SevenRooms €350/μήνα + Toast POS €120/μήνα + Mailchimp €60/μήνα + custom loyalty app — ίδια δουλειά, εύκολα €600+/μήνα, και κάθε ένα έχει setup. Εμείς τα κάνουμε όλα για €299/μήνα, χωρίς extras.`,
+  },
+  {
+    n: 2,
+    title: '«Θέλω έκπτωση»',
+    sub: "Τακτική διαπραγμάτευσης · μη ρίξεις τιμή, ρίξε scope",
+    color: "sky",
+    rebuttal: `Δεν πάω κάτω από €1,890 — είναι ήδη 80% κάτω από προσφορά Αθηναϊκού agency. Αλλά μπορώ: παρακάμπτεις το Telegram setup αν δεν το χρειάζεσαι (€100 έκπτωση στο setup), ή πληρώνεις year-round στα €249/μήνα αν είναι σφιχτό το cash flow.`,
+  },
+  {
+    n: 3,
+    title: '«Μπορώ να αγοράσω ChatGPT και να το χτίσω μόνος μου»',
+    sub: "Η επικίνδυνη · σεβάσου τη και μετά reality-check",
+    color: "rose",
+    rebuttal: `Ειλικρινά, μπορείς να δοκιμάσεις. Οι περισσότεροι ιδιοκτήτες υπολογίζουν 6–12 μήνες ενώ τρέχουν το μαγαζί. Και η σεζόν είναι 6 μήνες. Μέχρι να δουλέψει, έχασες τη σεζόν. Αυτό που πουλάω δεν είναι ο κώδικας — είναι η πλατφόρμα που ήδη υπάρχει, ήδη δουλεύει, και θα είναι στα τραπέζια σου την πρώτη ημέρα.`,
+  },
+] : [
   {
     n: 1,
     title: '"I\'m anxious this is overpriced"',
@@ -31,13 +56,24 @@ const reasons = [
   },
 ];
 
-const counters = [
+const counters = isEl ? [
+  { q: "Τα AI tools κοστίζουν €20/μήνα, γιατί χρεώνεις €300;",   a: "Τα AI tools είναι word processors. Το Word κοστίζει €10/μήνα — αλλά ένα εκδομένο μυθιστόρημα κοστίζει €20. Πληρώνεις το τελικό προϊόν, όχι το εργαλείο πληκτρολόγησης." },
+  { q: "Ο ανιψιός μου είπε ότι μπορεί να το ξαναχτίσει σε μια εβδομάδα.", a: "Τέλεια, στείλε του αυτό το URL: sallysbar.gr/table/1. Αν το ταιριάξει σε 30 ημέρες, εγώ προσωπικά πληρώνω τον λογαριασμό Cloudflare του. (Κανείς δεν δέχεται το στοίχημα όταν δουν τι πραγματικά εμπεριέχεται.)" },
+  { q: "Γιατί να πληρώσω για κάτι που το Claude θα μου το έγραφε απευθείας;", a: "Θα μπορούσε; Σίγουρα, κομμάτι-κομμάτι. Αλλά θα μπορούσες ΕΣΥ να συναρμολογήσεις τα κομμάτια σε μια λειτουργική πλατφόρμα bar με πληρωμές, push, RLS, multi-language και Telegram bot — και να την τρέξεις χωρίς να σπάσει όταν 50 πελάτες σκανάρουν QR ταυτόχρονα Σάββατο βράδυ; Αυτή τη δουλειά τιμολογώ." },
+] : [
   { q: "AI tools cost €20/mo, why are you charging €300?", a: "AI tools are word processors. Microsoft Word costs €10/mo too — but a published novel still costs €20. You're paying for the finished product, not the typing tool." },
   { q: "My nephew said he could rebuild this in a week.", a: "Great, send him this URL: sallysbar.gr/table/1. If he can match it in 30 days I'll personally pay for his Cloudflare bill. (No one takes this bet because they realize what's actually involved once they look.)" },
   { q: "Why pay for something Claude could write me directly?", a: "Could it? Sure, fragment by fragment. But could YOU assemble those fragments into a working bar platform with payments, push, RLS, multi-language and a Telegram bot — and run it without breaking when 50 customers scan a QR at once on Saturday night? That's the work I'm pricing." },
 ];
 
-const compareTable = [
+const compareTable = isEl ? [
+  ["POS σύστημα (Toast, Square)",                  "€100–€200/μήνα"],
+  ["Κρατήσεις (Resy, OpenTable)",                  "€200–€400/μήνα"],
+  ["Πλατφόρμα loyalty (Punchh, Como)",             "€150–€300/μήνα"],
+  ["Email/SMS marketing (Mailchimp κ.λπ.)",        "€80–€150/μήνα"],
+  ["QR menu (BentoBox, Owner.com)",                 "€50–€100/μήνα"],
+  ["Custom website / dev",                          "€1k–€3k/έτος"],
+] : [
   ["POS system (Toast, Square)",           "€100–€200/mo"],
   ["Reservations (Resy, OpenTable)",       "€200–€400/mo"],
   ["Loyalty platform (Punchh, Como)",      "€150–€300/mo"],
@@ -51,12 +87,15 @@ const colorClass: Record<string, { border: string; bg: string; pill: string }> =
   sky:   { border: "border-sky-400/30",     bg: "bg-sky-400/[0.06]",     pill: "bg-sky-400/15 text-sky-200" },
   rose:  { border: "border-rose-400/30",    bg: "bg-rose-400/[0.06]",    pill: "bg-rose-400/15 text-rose-200" },
 };
+
+const oneLinerEn = `AI didn't make this cheap to build. It made it possible for one developer to build it at all. The price is what the platform is worth — not what it cost me to make it.`;
+const oneLinerEl = `Η AI δεν έκανε αυτό φθηνό στην κατασκευή. Έκανε δυνατό να το χτίσει ένας μόνο developer. Η τιμή αντικατοπτρίζει την αξία της πλατφόρμας — όχι το πόσο μου κόστισε να τη φτιάξω.`;
 ---
-<html lang="en">
+<html lang={lang}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Sales Objection Handling — Super Admin</title>
+    <title>{isEl ? "Διαχείριση Αντιρρήσεων" : "Sales Objection Handling"} — Super Admin</title>
     <meta name="robots" content="noindex,nofollow" />
   </head>
   <body class="min-h-screen bg-[#0a0a0f] text-white font-body antialiased">
@@ -68,23 +107,29 @@ const colorClass: Record<string, { border: string; bg: string; pill: string }> =
       <div class="mb-8">
         <p class="text-xs uppercase tracking-[0.28em] text-rose-300 mb-2 flex items-center gap-2">
           <span class="inline-block h-1.5 w-1.5 rounded-full bg-rose-400 animate-pulse"></span>
-          SUPER ADMIN ONLY
+          {isEl ? "ΜΟΝΟ SUPER ADMIN" : "SUPER ADMIN ONLY"}
         </p>
-        <h1 class="font-heading text-4xl font-bold">🛡️ "But you used AI" — Objection Handling</h1>
-        <p class="mt-2 text-sm text-white/60 max-w-2xl">How to respond when customers say the price is too high because you built it with Claude. Short answer: <strong class="text-white">no, it's not a valid point</strong> — but the way you respond matters.</p>
+        <h1 class="font-heading text-4xl font-bold">{isEl ? "🛡️ «Μα χρησιμοποίησες AI» — Διαχείριση Αντιρρήσεων" : `🛡️ "But you used AI" — Objection Handling`}</h1>
+        <p class="mt-2 text-sm text-white/60 max-w-2xl">
+          {isEl
+            ? <>Πώς να απαντάς όταν πελάτες λένε ότι η τιμή είναι υψηλή επειδή χτίστηκε με Claude. Σύντομη απάντηση: <strong class="text-white">όχι, δεν είναι έγκυρο επιχείρημα</strong> — αλλά ο τρόπος που απαντάς μετράει.</>
+            : <>How to respond when customers say the price is too high because you built it with Claude. Short answer: <strong class="text-white">no, it's not a valid point</strong> — but the way you respond matters.</>}
+        </p>
       </div>
 
       <!-- Honest reality -->
       <section class="mb-8 rounded-2xl border border-amber-400/30 bg-gradient-to-br from-amber-500/10 via-fuchsia-500/5 to-sky-500/5 p-5">
-        <p class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-2">⭐ The honest reality</p>
+        <p class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-2">⭐ {isEl ? "Η ειλικρινής πραγματικότητα" : "The honest reality"}</p>
         <p class="text-sm text-white/85 leading-relaxed">
-          Yes, you used Claude/Cursor/Copilot. So does <strong class="text-white">every modern dev shop on the planet</strong> — agencies, FAANG engineers, freelancers. The Greek agency that would quote €150k for this also uses AI. The price reflects <strong class="text-amber-200">what the thing does</strong>, not how many keystrokes it took.
+          {isEl
+            ? <>Ναι, χρησιμοποίησες Claude/Cursor/Copilot. Το ίδιο κάνει <strong class="text-white">κάθε σύγχρονο dev shop στον πλανήτη</strong> — agencies, FAANG μηχανικοί, freelancers. Το Αθηναϊκό agency που θα ζητούσε €150k για αυτό, χρησιμοποιεί επίσης AI. Η τιμή αντανακλά <strong class="text-amber-200">τι κάνει το πράγμα</strong>, όχι πόσα πλήκτρα χρειάστηκαν.</>
+            : <>Yes, you used Claude/Cursor/Copilot. So does <strong class="text-white">every modern dev shop on the planet</strong> — agencies, FAANG engineers, freelancers. The Greek agency that would quote €150k for this also uses AI. The price reflects <strong class="text-amber-200">what the thing does</strong>, not how many keystrokes it took.</>}
         </p>
       </section>
 
       <!-- 3 things they're really saying -->
       <section class="mb-10">
-        <h2 class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-4">🎯 The 3 things they're really saying</h2>
+        <h2 class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-4">🎯 {isEl ? "Τα 3 πράγματα που πραγματικά λένε" : "The 3 things they're really saying"}</h2>
         <div class="space-y-3">
           {reasons.map(r => {
             const c = colorClass[r.color];
@@ -106,15 +151,17 @@ const colorClass: Record<string, { border: string; bg: string; pill: string }> =
 
       <!-- Frame to use -->
       <section class="mb-10 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-        <h2 class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-3">🧠 The frame to use: AI ≠ instant</h2>
+        <h2 class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-3">🧠 {isEl ? "Το frame: AI ≠ άμεσο" : "The frame to use: AI ≠ instant"}</h2>
         <blockquote class="text-sm text-white/85 leading-relaxed border-l-2 border-amber-400/40 pl-4 italic">
-          "An espresso machine doesn't make you a barista. AI doesn't make someone a software builder. I spent ~1,500 hours architecting, debugging, securing, designing, deploying, and supporting this. AI made me 3× faster — it didn't make the work disappear. And here's the thing: even with AI, an Athens agency would still need 6 months and quote you €150k for the same outcome."
+          {isEl
+            ? "«Μια μηχανή espresso δεν σε κάνει barista. Η AI δεν κάνει κάποιον software builder. Πέρασα ~1.500 ώρες σχεδιάζοντας, debugging, ασφαλίζοντας, σχεδιάζοντας UI, deploy, και υποστήριξη. Η AI με έκανε 3× ταχύτερο — δεν εξαφάνισε τη δουλειά. Και εδώ είναι το θέμα: ακόμα και με AI, ένα Αθηναϊκό agency θα χρειαζόταν 6 μήνες και θα ζητούσε €150k για το ίδιο αποτέλεσμα.»"
+            : `"An espresso machine doesn't make you a barista. AI doesn't make someone a software builder. I spent ~1,500 hours architecting, debugging, securing, designing, deploying, and supporting this. AI made me 3× faster — it didn't make the work disappear. And here's the thing: even with AI, an Athens agency would still need 6 months and quote you €150k for the same outcome."`}
         </blockquote>
       </section>
 
       <!-- Hard counters -->
       <section class="mb-10">
-        <h2 class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-4">⚔️ Hard counters for tough buyers</h2>
+        <h2 class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-4">⚔️ {isEl ? "Σκληρά counters για δύσκολους αγοραστές" : "Hard counters for tough buyers"}</h2>
         <div class="space-y-3">
           {counters.map(c => (
             <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
@@ -127,8 +174,8 @@ const colorClass: Record<string, { border: string; bg: string; pill: string }> =
 
       <!-- Pricing comparison -->
       <section class="mb-10 rounded-2xl border border-emerald-400/25 bg-emerald-400/[0.05] p-5">
-        <h2 class="text-[10px] uppercase tracking-wider text-emerald-300 font-bold mb-3">💸 Compare to what bars already pay</h2>
-        <p class="text-xs text-white/60 mb-3">Don't compare your hourly rate. Compare to their stack.</p>
+        <h2 class="text-[10px] uppercase tracking-wider text-emerald-300 font-bold mb-3">💸 {isEl ? "Σύγκριση με όσα ήδη πληρώνουν τα bars" : "Compare to what bars already pay"}</h2>
+        <p class="text-xs text-white/60 mb-3">{isEl ? "Μη συγκρίνεις την ωριαία σου χρέωση. Σύγκρινε με το stack τους." : "Don't compare your hourly rate. Compare to their stack."}</p>
         <table class="w-full text-sm">
           <tbody>
             {compareTable.map(([item, price]) => (
@@ -138,43 +185,57 @@ const colorClass: Record<string, { border: string; bg: string; pill: string }> =
               </tr>
             ))}
             <tr class="border-t-2 border-white/15">
-              <td class="py-2.5 font-bold text-white">Their typical current cost</td>
-              <td class="py-2.5 text-right font-mono font-bold text-red-200">€600–€1,200+/mo</td>
+              <td class="py-2.5 font-bold text-white">{isEl ? "Τυπικό τους τρέχον κόστος" : "Their typical current cost"}</td>
+              <td class="py-2.5 text-right font-mono font-bold text-red-200">€600–€1,200+/{isEl ? "μήνα" : "mo"}</td>
             </tr>
             <tr class="border-t border-emerald-400/30 bg-emerald-400/[0.05]">
-              <td class="py-2.5 font-bold text-emerald-200">Your plan</td>
-              <td class="py-2.5 text-right font-mono font-bold text-emerald-200">€299/mo (or €315/mo seasonal)</td>
+              <td class="py-2.5 font-bold text-emerald-200">{isEl ? "Το δικό σου plan" : "Your plan"}</td>
+              <td class="py-2.5 text-right font-mono font-bold text-emerald-200">€299/{isEl ? "μήνα (ή €315/μήνα seasonal)" : "mo (or €315/mo seasonal)"}</td>
             </tr>
           </tbody>
         </table>
-        <p class="mt-3 text-xs text-emerald-200/80 leading-relaxed">⭐ <strong>You're literally underpriced.</strong> That's the conversation. Not "AI made it cheap" — "you're already paying way more for inferior tools that don't even talk to each other."</p>
+        <p class="mt-3 text-xs text-emerald-200/80 leading-relaxed">⭐ <strong>{isEl ? "Είσαι κυριολεκτικά υποτιμημένος." : "You're literally underpriced."}</strong> {isEl ? "Αυτή είναι η συζήτηση. Όχι «η AI το έκανε φθηνό» — «ήδη πληρώνεις πολύ περισσότερα για κατώτερα εργαλεία που δεν συνεργάζονται καν».": "That's the conversation. Not \"AI made it cheap\" — \"you're already paying way more for inferior tools that don't even talk to each other.\""}</p>
       </section>
 
       <!-- 3 rules -->
       <section class="mb-10 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-        <h2 class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-4">📜 Three rules for these conversations</h2>
+        <h2 class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-4">📜 {isEl ? "Τρεις κανόνες για αυτές τις συζητήσεις" : "Three rules for these conversations"}</h2>
         <ol class="space-y-3 text-sm text-white/80 list-decimal pl-5">
-          <li><strong class="text-white">Never apologize for using AI.</strong> Lead with it: "Yes, I used Claude — that's how I delivered enterprise software solo as a Greek dev. The result speaks for itself: it's running nightly at Sally's." Reframes AI from weakness to competitive advantage.</li>
-          <li><strong class="text-white">Never compete on hours.</strong> Compete on outcome. "How long it took me" is irrelevant to what it does for them.</li>
-          <li><strong class="text-white">Walk away from buyers who anchor on AI.</strong> A bar owner who thinks software should be cheaper because of AI will be the same person who calls you at 1am about a bug they introduced themselves. Not a customer you want.</li>
+          <li>
+            {isEl
+              ? <><strong class="text-white">Μη ζητάς ποτέ συγγνώμη που χρησιμοποίησες AI.</strong> Πες το πρώτος: «Ναι, χρησιμοποίησα Claude — έτσι παρέδωσα enterprise software μόνος μου ως Έλληνας dev. Το αποτέλεσμα μιλάει μόνο του: τρέχει κάθε βράδυ στο Sally's.» Επαναπροσδιορίζει την AI από αδυναμία σε ανταγωνιστικό πλεονέκτημα.</>
+              : <><strong class="text-white">Never apologize for using AI.</strong> Lead with it: "Yes, I used Claude — that's how I delivered enterprise software solo as a Greek dev. The result speaks for itself: it's running nightly at Sally's." Reframes AI from weakness to competitive advantage.</>}
+          </li>
+          <li>
+            {isEl
+              ? <><strong class="text-white">Μη συναγωνίζεσαι ποτέ σε ώρες.</strong> Συναγωνίσου σε αποτέλεσμα. «Πόση ώρα μου πήρε» δεν έχει σχέση με αυτό που τους κάνει.</>
+              : <><strong class="text-white">Never compete on hours.</strong> Compete on outcome. "How long it took me" is irrelevant to what it does for them.</>}
+          </li>
+          <li>
+            {isEl
+              ? <><strong class="text-white">Φύγε από αγοραστές που εστιάζουν στην AI.</strong> Ένας ιδιοκτήτης που νομίζει ότι το software πρέπει να είναι φτηνότερο εξαιτίας της AI, θα είναι αυτός που θα σε καλεί 1 το βράδυ για bug που τον δημιούργησε ο ίδιος. Δεν είναι πελάτης που θέλεις.</>
+              : <><strong class="text-white">Walk away from buyers who anchor on AI.</strong> A bar owner who thinks software should be cheaper because of AI will be the same person who calls you at 1am about a bug they introduced themselves. Not a customer you want.</>}
+          </li>
         </ol>
       </section>
 
       <!-- Memorize -->
       <section class="rounded-3xl border border-amber-400/40 bg-gradient-to-br from-amber-500/15 via-fuchsia-500/10 to-sky-500/10 p-7 text-center">
-        <p class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-3">🎯 The one-liner to memorize</p>
+        <p class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-3">🎯 {isEl ? "Η μία φράση που πρέπει να αποστηθίσεις" : "The one-liner to memorize"}</p>
         <p class="font-heading text-xl sm:text-2xl text-white leading-relaxed italic max-w-2xl mx-auto">
-          "AI didn't make this cheap to build.<br/>It made it possible for one developer to build it at all.<br/>The price is what the platform is worth — not what it cost me to make it."
+          {isEl
+            ? <>«Η AI δεν έκανε αυτό φθηνό στην κατασκευή.<br/>Έκανε δυνατό να το χτίσει ένας μόνο developer.<br/>Η τιμή αντικατοπτρίζει την αξία της πλατφόρμας — όχι το πόσο μου κόστισε να τη φτιάξω.»</>
+            : <>"AI didn't make this cheap to build.<br/>It made it possible for one developer to build it at all.<br/>The price is what the platform is worth — not what it cost me to make it."</>}
         </p>
-        <button id="copyOneLiner" class="mt-5 inline-flex items-center gap-2 rounded-xl bg-white/10 hover:bg-white/20 px-4 py-2 text-xs font-semibold transition">📋 Copy</button>
+        <button id="copyOneLiner" data-text-en={oneLinerEn} data-text-el={oneLinerEl} class="mt-5 inline-flex items-center gap-2 rounded-xl bg-white/10 hover:bg-white/20 px-4 py-2 text-xs font-semibold transition">📋 {isEl ? "Αντιγραφή" : "Copy"}</button>
       </section>
     </main>
 
     <script is:inline>
       const btn = document.getElementById("copyOneLiner");
       btn?.addEventListener("click", async () => {
-        const text = `AI didn't make this cheap to build. It made it possible for one developer to build it at all. The price is what the platform is worth — not what it cost me to make it.`;
-        try { await navigator.clipboard.writeText(text); btn.textContent = "✓ Copied"; setTimeout(() => btn.textContent = "📋 Copy", 1500); } catch {}
+        const text = document.documentElement.lang === "el" ? btn.getAttribute("data-text-el") : btn.getAttribute("data-text-en");
+        try { await navigator.clipboard.writeText(text); const orig = btn.textContent; btn.textContent = "✓"; setTimeout(() => btn.textContent = orig, 1500); } catch {}
       });
     </script>
   </body>
