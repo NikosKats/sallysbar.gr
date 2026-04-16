@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
 import { supabaseAdmin } from "../../../lib/supabase";
-import { isVapiAuthed, parseVapiToolCall, vapiToolResponse } from "../../../lib/vapi-auth";
+import { isVapiAuthed, parseVapiToolCall, vapiToolResponse, authDiag, corsHeaders, corsPreflight } from "../../../lib/vapi-auth";
 import { sendMessage, setRuntimeEnv } from "../../../lib/vonage-messages";
 
 export const prerender = false;
@@ -19,10 +19,10 @@ export const prerender = false;
 
 export const POST: APIRoute = async ({ request, locals }) => {
   if (!isVapiAuthed(request, locals)) {
-    return new Response(JSON.stringify({ error: "unauthorised" }), { status: 401 });
+    return new Response(JSON.stringify({ error: "unauthorised", diag: authDiag(request, locals) }), { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders() } });
   }
 
-  const { args, callId } = await parseVapiToolCall(request);
+  const { args, callId, toolCallId } = await parseVapiToolCall(request);
 
   // Normalise + validate
   const date = String(args?.date ?? "").trim();
@@ -33,21 +33,21 @@ export const POST: APIRoute = async ({ request, locals }) => {
   const notes = String(args?.notes ?? "").trim().slice(0, 500);
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-    return vapiToolResponse({ ok: false, message: "I need a date in YYYY-MM-DD format (e.g. 2026-05-14)." });
+    return vapiToolResponse({ ok: false, message: "I need a date in YYYY-MM-DD format (e.g. 2026-05-14)." }, toolCallId);
   }
   if (!/^\d{1,2}:\d{2}$/.test(time)) {
-    return vapiToolResponse({ ok: false, message: "I need a time in HH:MM 24-hour format (e.g. 20:30)." });
+    return vapiToolResponse({ ok: false, message: "I need a time in HH:MM 24-hour format (e.g. 20:30)." }, toolCallId);
   }
   if (!Number.isInteger(partySize) || partySize < 1 || partySize > 20) {
-    return vapiToolResponse({ ok: false, message: "Party size must be a whole number between 1 and 20." });
+    return vapiToolResponse({ ok: false, message: "Party size must be a whole number between 1 and 20." }, toolCallId);
   }
   if (name.length < 2) {
-    return vapiToolResponse({ ok: false, message: "I still need the guest's name to take the booking." });
+    return vapiToolResponse({ ok: false, message: "I still need the guest's name to take the booking." }, toolCallId);
   }
   // Date in the past?
   const when = new Date(`${date}T${time.padStart(5, "0")}:00+03:00`);
   if (isNaN(when.getTime()) || when.getTime() < Date.now() - 60_000) {
-    return vapiToolResponse({ ok: false, message: "That date and time is in the past — please try again." });
+    return vapiToolResponse({ ok: false, message: "That date and time is in the past — please try again." }, toolCallId);
   }
 
   const { data: inserted, error } = await supabaseAdmin
@@ -69,7 +69,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
   if (error || !inserted) {
     console.error("[ai-voice/create-reservation] db error:", error?.message);
-    return vapiToolResponse({ ok: false, message: "Our booking system is down for a moment — can I take a message and have the manager call you back?" });
+    return vapiToolResponse({ ok: false, message: "Our booking system is down for a moment — can I take a message and have the manager call you back?" }, toolCallId);
   }
 
   const reservationId = inserted.id as string;
@@ -114,11 +114,13 @@ export const POST: APIRoute = async ({ request, locals }) => {
     ok: true,
     reservation_id: reservationId.slice(0, 8),
     message: `Got it — I've requested a table for ${partySize} on ${date} at ${time} for ${name}. The manager will confirm shortly via SMS to ${phone || "your phone"}.`,
-  }, (args as any)?.toolCallId);
+  }, toolCallId);
 };
 
 // Health check (manual curl)
 export const GET: APIRoute = async () =>
   new Response(JSON.stringify({ ok: true, endpoint: "ai-voice/create-reservation" }), {
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...corsHeaders() },
   });
+
+export const OPTIONS: APIRoute = async () => corsPreflight();

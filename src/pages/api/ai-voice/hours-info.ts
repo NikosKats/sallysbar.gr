@@ -1,7 +1,7 @@
 import type { APIRoute } from "astro";
 import { supabaseAdmin } from "../../../lib/supabase";
 import { site } from "../../../data/site";
-import { isVapiAuthed, vapiToolResponse } from "../../../lib/vapi-auth";
+import { isVapiAuthed, parseVapiToolCall, vapiToolResponse, authDiag, corsHeaders, corsPreflight } from "../../../lib/vapi-auth";
 
 export const prerender = false;
 
@@ -11,8 +11,12 @@ export const prerender = false;
 
 export const POST: APIRoute = async ({ request, locals }) => {
   if (!isVapiAuthed(request, locals)) {
-    return new Response(JSON.stringify({ error: "unauthorised" }), { status: 401 });
+    return new Response(JSON.stringify({ error: "unauthorised", diag: authDiag(request, locals) }), { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders() } });
   }
+
+  // Pull the toolCallId so the response can include a matching id — Vapi says
+  // "No result returned" if the toolCallId in results[] doesn't match the call.
+  const { toolCallId } = await parseVapiToolCall(request).catch(() => ({ toolCallId: null as string | null }));
 
   // Today + next 7 days of events (if the events table exists)
   const todayIso = new Date().toISOString().slice(0, 10);
@@ -51,10 +55,12 @@ export const POST: APIRoute = async ({ request, locals }) => {
     upcoming_events: upcoming,
     directions_hint: "We're on the main square in Skala, Kefalonia — walkable from the beach and the main road. Parking is available on the street.",
     maps_url: site.mapsShareUrl,
-  });
+  }, toolCallId);
 };
 
 export const GET: APIRoute = async () =>
   new Response(JSON.stringify({ ok: true, endpoint: "ai-voice/hours-info" }), {
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...corsHeaders() },
   });
+
+export const OPTIONS: APIRoute = async () => corsPreflight();

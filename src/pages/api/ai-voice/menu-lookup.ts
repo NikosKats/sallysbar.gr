@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
 import { supabaseAdmin } from "../../../lib/supabase";
-import { isVapiAuthed, parseVapiToolCall, vapiToolResponse } from "../../../lib/vapi-auth";
+import { isVapiAuthed, parseVapiToolCall, vapiToolResponse, authDiag, corsHeaders, corsPreflight } from "../../../lib/vapi-auth";
 
 export const prerender = false;
 
@@ -26,15 +26,15 @@ type Row = {
 
 export const POST: APIRoute = async ({ request, locals }) => {
   if (!isVapiAuthed(request, locals)) {
-    return new Response(JSON.stringify({ error: "unauthorised" }), { status: 401 });
+    return new Response(JSON.stringify({ error: "unauthorised", diag: authDiag(request, locals) }), { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders() } });
   }
 
-  const { args } = await parseVapiToolCall(request);
+  const { args, toolCallId } = await parseVapiToolCall(request);
   const query = String(args?.query ?? "").trim().toLowerCase().slice(0, 120);
   const lang = String(args?.lang ?? "en").toLowerCase() === "el" ? "el" : "en";
 
   if (!query) {
-    return vapiToolResponse({ ok: false, message: "What are you looking for on the menu?" });
+    return vapiToolResponse({ ok: false, message: "What are you looking for on the menu?" }, toolCallId);
   }
 
   // Full scan — menu size is tiny (a few hundred items max), cheaper and simpler
@@ -50,7 +50,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
     .limit(500);
 
   if (error) {
-    return vapiToolResponse({ ok: false, message: "I can't reach the menu right now. Want me to get the manager to call you back?" });
+    return vapiToolResponse({ ok: false, message: "I can't reach the menu right now. Want me to get the manager to call you back?" }, toolCallId);
   }
 
   const q = query.replace(/\s+/g, " ").trim();
@@ -76,7 +76,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
     .slice(0, 5);
 
   if (scored.length === 0) {
-    return vapiToolResponse({ ok: true, results: [], message: `I couldn't find anything on the menu matching "${query}". Want me to check with the bartender?` });
+    return vapiToolResponse({ ok: true, results: [], message: `I couldn't find anything on the menu matching "${query}". Want me to check with the bartender?` }, toolCallId);
   }
 
   const results = scored.map(({ it }: { it: Row }) => ({
@@ -97,10 +97,12 @@ export const POST: APIRoute = async ({ request, locals }) => {
     ok: true,
     results,
     summary: short,
-  });
+  }, toolCallId);
 };
 
 export const GET: APIRoute = async () =>
   new Response(JSON.stringify({ ok: true, endpoint: "ai-voice/menu-lookup" }), {
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...corsHeaders() },
   });
+
+export const OPTIONS: APIRoute = async () => corsPreflight();

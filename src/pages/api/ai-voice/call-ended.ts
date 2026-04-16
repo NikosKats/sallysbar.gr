@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
 import { supabaseAdmin } from "../../../lib/supabase";
-import { isVapiAuthed } from "../../../lib/vapi-auth";
+import { isVapiAuthed, authDiag } from "../../../lib/vapi-auth";
 
 export const prerender = false;
 
@@ -24,10 +24,13 @@ function json(obj: unknown, status = 200) {
 }
 
 export const POST: APIRoute = async ({ request, locals }) => {
-  if (!isVapiAuthed(request, locals)) {
-    // Vapi retries 4xx, so still accept-but-log if the secret is missing
-    console.warn("[ai-voice/call-ended] missing or bad x-vapi-secret header");
-    return json({ ok: false, error: "unauthorised" }, 401);
+  // Log auth status but don't reject. Vapi's assistant-level Server URL often
+  // ships without a custom header unless isServerUrlSecretSet is explicitly
+  // toggled. The payload is write-only and doesn't expose secrets — if someone
+  // forges transcripts the cost is noise in /admin/ai-calls, nothing more.
+  const authed = isVapiAuthed(request, locals);
+  if (!authed) {
+    console.warn("[ai-voice/call-ended] anonymous webhook accepted; diag=", JSON.stringify(authDiag(request, locals)));
   }
 
   let payload: any;
