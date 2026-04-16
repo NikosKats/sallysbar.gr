@@ -706,38 +706,6 @@ function statusLabel(s: string) {
           </div>
         )}
 
-        <!-- Rewards catalog -->
-        {rewards.length > 0 && (
-          <div class="space-y-2 pt-1 border-t border-white/8">
-            <p class="text-xs font-semibold text-white/50 uppercase tracking-wider">{isEl ? "Εξαργύρωση πόντων" : "Redeem points"}</p>
-            <div class="space-y-1.5">
-              {rewards.map(rw => {
-                const canAfford = loyaltyBalance >= rw.cost;
-                const name = isEl ? rw.name_el : rw.name_en;
-                const desc = isEl ? rw.description_el : rw.description_en;
-                return (
-                  <div class="flex items-center justify-between gap-3 rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2">
-                    <div class="min-w-0">
-                      <p class="text-sm text-white font-medium truncate">{name}</p>
-                      {desc && <p class="text-xs text-white/40 truncate">{desc}</p>}
-                    </div>
-                    <button
-                      class="redeem-btn shrink-0 text-xs px-3 py-1.5 rounded-lg font-semibold transition disabled:opacity-40 disabled:cursor-not-allowed"
-                      style={canAfford ? "background:#f59e0b;color:#000" : "background:rgba(255,255,255,.06);color:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.1)"}
-                      data-reward-id={rw.id}
-                      data-cost={rw.cost}
-                      disabled={!canAfford}
-                    >
-                      {rw.cost} {isEl ? "πόντοι" : "pts"}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-            <p class="text-xs text-white/25">{isEl ? "Μετά την εξαργύρωση, δείξε τον κωδικό στον σερβιτόρο." : "After redeeming, show the code to your waiter."}</p>
-          </div>
-        )}
-
         <!-- History -->
         {loyaltyEvents && loyaltyEvents.length > 0 ? (
           <div class="space-y-1 pt-1 border-t border-white/8">
