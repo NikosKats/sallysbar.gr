@@ -208,7 +208,7 @@ const plans = [
     tagline: isEl ? "Για τουριστικά, νησιά, παραλίες" : "For tourist / island / beach venues",
     months: 6,
     list: 1380, price: 690, pct: 50,
-    setup: 850,
+    setup: 1000,
     subscriptionNote: isEl ? "Χρέωση άπαξ τον Απρίλιο · καλύπτει 6 μήνες σεζόν (Μάι–Οκτ)." : "Billed once in April · covers 6 months (May–Oct).",
     subscriptionPeriod: isEl ? "για 6 μήνες" : "for 6 months",
     billing: isEl ? "Ολόκληρο το ποσό καταβάλλεται μπροστά τον Απρίλιο." : "Full amount paid upfront in April.",
@@ -219,7 +219,7 @@ const plans = [
     tagline: isEl ? "Για bars/cafés που δουλεύουν όλο τον χρόνο" : "For city bars / cafés open all year",
     months: 12,
     list: 2400, price: 1104, pct: 54,
-    setup: 850,
+    setup: 1000,
     subscriptionNote: isEl ? "12-μηνη συνδρομή · 20% φθηνότερα από 2× seasonal · μπροστά." : "12-month subscription · 20% cheaper than buying 2× seasonal · paid upfront.",
     subscriptionPeriod: isEl ? "για 12 μήνες" : "for 12 months",
     billing: isEl ? "Ολόκληρο το ποσό καταβάλλεται μπροστά." : "Full amount paid upfront.",
@@ -231,9 +231,11 @@ const faqs = [
   { q: isEl ? "Τι είναι το PistotitaOS;" : "What is PistotitaOS?",
     a: isEl ? "Ένα OS για bar/café: QR παραγγελίες + πιστότητα + παιχνίδια + marketing αυτοματισμοί + AI τηλεφωνήτρια 24/7, όλα σε ένα. Η ίδια πλατφόρμα που τρέχει στο sallysbar.gr." : "A full OS for bar/café: QR ordering + loyalty + games + marketing automation + 24/7 AI phone receptionist, all in one. The same platform running on sallysbar.gr." },
   { q: isEl ? "Πώς δουλεύει η AI τηλεφωνήτρια;" : "How does the AI phone receptionist work?",
-    a: isEl ? "Παίρνεις ένα νούμερο (UK ή US — ή μεταφέρεις το δικό σου). Κάθε κλήση απαντιέται δίγλωσσα από AI agent που: κλείνει τραπέζια, απαντά για μενού, δίνει ωράριο και οδηγίες, κάνει transfer σε εσένα όταν χρειάζεται. Εσύ βλέπεις transcript + σύνοψη + ηχογράφηση κάθε κλήσης στο admin panel. +€39/μήνα (Starter · 130 λεπτά) ή +€79 (Pro · 400 λεπτά)." : "You get a phone number (UK or US — or port your own). Every inbound call is answered bilingually by an AI agent that: books tables, answers menu questions, gives hours and directions, transfers to you on request. You see the transcript + summary + recording of every call in your admin panel. +€39/mo (Starter · 130 min) or +€79 (Pro · 400 min)." },
+    a: isEl ? "Παίρνεις ένα νούμερο (UK ή US — ή μεταφέρεις το δικό σου). Κάθε κλήση απαντιέται δίγλωσσα από AI agent που: κλείνει τραπέζια, απαντά για μενού, δίνει ωράριο και οδηγίες, κάνει transfer σε εσένα όταν χρειάζεται. Εσύ βλέπεις transcript + σύνοψη + ηχογράφηση κάθε κλήσης στο admin panel. Εγκατάσταση AI €2.000 άπαξ + €89/μήνα (Starter · 150 λεπτά) ή €199 (Pro · 500 λεπτά)." : "You get a phone number (UK or US — or port your own). Every inbound call is answered bilingually by an AI agent that: books tables, answers menu questions, gives hours and directions, transfers to you on request. You see the transcript + summary + recording of every call in your admin panel. €2,000 one-time AI setup + €89/mo (Starter · 150 min) or €199 (Pro · 500 min)." },
   { q: isEl ? "Η AI είναι ξεχωριστή συνδρομή;" : "Is the AI a separate subscription?",
-    a: isEl ? "Ναι — add-on πάνω από την βασική συνδρομή PistotitaOS. Starter €39/μήνα για ~45 κλήσεις. Pro €79 για ~140 κλήσεις. Unlimited €149 για απεριόριστη χρήση (1000 λεπτά soft cap). Overage €0.30/λεπτό. Ένα τυπικό μπαρ χρησιμοποιεί Starter." : "Yes — an add-on on top of the base PistotitaOS plan. Starter €39/mo for ~45 calls. Pro €79 for ~140 calls. Unlimited €149 for unlimited use (1000-min soft cap). Overage €0.30/min. A typical bar uses the Starter tier." },
+    a: isEl ? "Ναι — add-on πάνω από την βασική συνδρομή PistotitaOS. Εγκατάσταση €2.000 άπαξ (voice cloning, prompt tuning, menu training, δοκιμές). Μετά: Starter €89/μήνα (150 λεπτά), Pro €199 (500), Unlimited €399 (1.500). Overage €0.35–€0.45/λεπτό. Η εγκατάσταση της πλατφόρμας (€1.000) είναι χωριστή — χρεώνεται μία φορά." : "Yes — an add-on on top of the base PistotitaOS plan. €2,000 one-time AI installation (voice cloning, prompt tuning, menu training, testing). Then: Starter €89/mo (150 min), Pro €199 (500), Unlimited €399 (1,500). Overage €0.35–€0.45/min. The platform installation (€1,000) is separate — charged once." },
+  { q: isEl ? "Γιατί τόσο υψηλή εγκατάσταση AI;" : "Why so high for AI installation?",
+    a: isEl ? "AI voice agencies χρεώνουν €5.000–€15.000 για την ίδια εργασία (voice config, custom prompt, knowledge base, tool integration, testing). Είμαστε στο 1/3 της αγοράς, χωρίς να κόψουμε ποιότητα. Η εγκατάσταση γίνεται μία φορά — μετά μόνο μηνιαία χρέωση." : "AI voice agencies charge €5,000–€15,000 for equivalent work (voice config, custom prompt, knowledge base, tool integration, testing, QA). We're priced at 1/3 of market, with no quality cut. One-time install — then monthly only." },
   { q: isEl ? "Πώς δουλεύει η αποκλειστικότητα ανά περιοχή;" : "How does territorial exclusivity work?",
     a: isEl ? "Το PistotitaOS δίνεται σε έναν ιδιοκτήτη ανά δρόμο/ZIP code. Μόλις υπογράψεις, η περιοχή κλειδώνει για 12 μήνες — κανένας ανταγωνιστής σου δίπλα δεν μπορεί να πάρει το ίδιο σύστημα. Αν ανανεώσεις, κρατάς την περιοχή. Αν όχι, ανοίγει ξανά." : "PistotitaOS is offered to one venue per street / postal code. The moment you sign, that area locks for 12 months — no competitor nearby can get the same system. Renew and you keep the territory. Don't renew and it reopens." },
   { q: isEl ? "Πόσο γρήγορα μπαίνει;" : "How fast can we go live?",
@@ -507,20 +509,36 @@ const faqs = [
             : "A phone number that answers 24/7 in English + Greek. Books tables (you approve before the SMS goes out), answers menu questions, transfers to your mobile when needed. Optional — try it for a month, cancel if it doesn't fit."}
         </p>
 
+        <div class="mt-4 rounded-xl border border-amber-400/40 bg-amber-400/[0.08] p-4 text-sm">
+          <p class="font-bold text-amber-200">
+            {isEl ? "+ Εγκατάσταση AI Assistant: €2.000 άπαξ" : "+ AI Assistant installation: €2,000 one-time"}
+          </p>
+          <p class="mt-1 text-xs text-white/70">
+            {isEl
+              ? "Ρύθμιση φωνής (voice cloning αν θες), εκπαίδευση στο μενού & ωράριο, σύνδεση με σύστημα κρατήσεων, custom system prompt ανά venue, δοκιμές end-to-end, runbook. Χωριστή χρέωση από την εγκατάσταση της πλατφόρμας (€1.000)."
+              : "Voice config (cloning if you want it), menu + hours training, booking system integration, per-venue custom system prompt, end-to-end testing, runbook. Separate from the €1,000 platform installation fee."}
+          </p>
+          <p class="mt-2 text-[11px] text-emerald-200/80">
+            {isEl
+              ? "⚖️ AI voice agencies χρεώνουν €5.000–€15.000 για την ίδια εργασία. Η τιμή μας είναι agency-quality στα 1/3 του κόστους."
+              : "⚖️ AI voice agencies charge €5,000–€15,000 for the same work. Our fee is agency-quality at 1/3 the cost."}
+          </p>
+        </div>
+
         <div class="mt-6 grid md:grid-cols-3 gap-3">
           <div class="rounded-2xl border border-white/10 bg-black/30 p-5 relative">
             <p class="text-[11px] uppercase tracking-wider text-violet-200 font-bold">Starter</p>
-            <p class="font-heading text-3xl font-bold text-emerald-300 mt-2">€39<span class="text-sm text-white/50 font-normal">/{isEl ? "μήνα" : "mo"}</span></p>
+            <p class="font-heading text-3xl font-bold text-emerald-300 mt-2">€89<span class="text-sm text-white/50 font-normal">/{isEl ? "μήνα" : "mo"}</span></p>
             <p class="text-xs text-white/55 mt-1">{isEl ? "καθαρό · +ΦΠΑ" : "net · +VAT"}</p>
             <ul class="mt-4 space-y-1.5 text-xs text-white/75">
-              <li>✓ <strong>130 {isEl ? "λεπτά/μήνα" : "minutes/mo"}</strong> ({isEl ? "~45 κλήσεις" : "~45 calls"})</li>
+              <li>✓ <strong>150 {isEl ? "λεπτά/μήνα" : "minutes/mo"}</strong> ({isEl ? "~50 κλήσεις" : "~50 calls"})</li>
               <li>✓ {isEl ? "Δίγλωσση EN/EL" : "Bilingual EN/EL"}</li>
               <li>✓ {isEl ? "Κράτηση τραπεζιών" : "Table bookings"}</li>
               <li>✓ {isEl ? "Μενού Q&A" : "Menu Q&A"}</li>
               <li>✓ {isEl ? "Transfer σε εσένα" : "Warm transfer"}</li>
               <li>✓ {isEl ? "Transcript & ηχογράφηση" : "Transcript & recording"}</li>
             </ul>
-            <p class="mt-3 text-[11px] text-white/50">{isEl ? "Overage: €0.30/λεπτό" : "Overage: €0.30/min"}</p>
+            <p class="mt-3 text-[11px] text-white/50">{isEl ? "Overage: €0.45/λεπτό" : "Overage: €0.45/min"}</p>
             <p class="mt-1 text-[10px] text-emerald-200/70">{isEl ? "Ιδανικό για εποχικά μπαρ" : "Ideal for seasonal bars"}</p>
           </div>
 
@@ -529,32 +547,34 @@ const faqs = [
               {isEl ? "Δημοφιλές" : "Most popular"}
             </span>
             <p class="text-[11px] uppercase tracking-wider text-violet-200 font-bold">Pro</p>
-            <p class="font-heading text-3xl font-bold text-emerald-300 mt-2">€79<span class="text-sm text-white/50 font-normal">/{isEl ? "μήνα" : "mo"}</span></p>
+            <p class="font-heading text-3xl font-bold text-emerald-300 mt-2">€199<span class="text-sm text-white/50 font-normal">/{isEl ? "μήνα" : "mo"}</span></p>
             <p class="text-xs text-white/55 mt-1">{isEl ? "καθαρό · +ΦΠΑ" : "net · +VAT"}</p>
             <ul class="mt-4 space-y-1.5 text-xs text-white/85">
-              <li>✓ <strong>400 {isEl ? "λεπτά/μήνα" : "minutes/mo"}</strong> ({isEl ? "~140 κλήσεις" : "~140 calls"})</li>
+              <li>✓ <strong>500 {isEl ? "λεπτά/μήνα" : "minutes/mo"}</strong> ({isEl ? "~170 κλήσεις" : "~170 calls"})</li>
               <li>✓ {isEl ? "Όλα τα Starter features" : "Everything in Starter"}</li>
               <li>✓ {isEl ? "Προτεραιότητα υποστήριξης" : "Priority support"}</li>
               <li>✓ {isEl ? "Μηνιαία ανάλυση κλήσεων" : "Monthly call analytics"}</li>
               <li>✓ {isEl ? "Προσαρμογή φωνής" : "Voice tuning"}</li>
+              <li>✓ {isEl ? "Custom system prompt ανά venue" : "Custom per-venue system prompt"}</li>
             </ul>
-            <p class="mt-3 text-[11px] text-white/50">{isEl ? "Overage: €0.30/λεπτό" : "Overage: €0.30/min"}</p>
+            <p class="mt-3 text-[11px] text-white/50">{isEl ? "Overage: €0.40/λεπτό" : "Overage: €0.40/min"}</p>
             <p class="mt-1 text-[10px] text-emerald-200/90 font-semibold">{isEl ? "Τυπικό μπαρ — καλύτερη αξία" : "Typical bar — best value"}</p>
           </div>
 
           <div class="rounded-2xl border border-white/10 bg-black/30 p-5 relative">
             <p class="text-[11px] uppercase tracking-wider text-violet-200 font-bold">Unlimited</p>
-            <p class="font-heading text-3xl font-bold text-emerald-300 mt-2">€149<span class="text-sm text-white/50 font-normal">/{isEl ? "μήνα" : "mo"}</span></p>
+            <p class="font-heading text-3xl font-bold text-emerald-300 mt-2">€399<span class="text-sm text-white/50 font-normal">/{isEl ? "μήνα" : "mo"}</span></p>
             <p class="text-xs text-white/55 mt-1">{isEl ? "καθαρό · +ΦΠΑ" : "net · +VAT"}</p>
             <ul class="mt-4 space-y-1.5 text-xs text-white/75">
-              <li>✓ <strong>1.000 {isEl ? "λεπτά/μήνα" : "minutes/mo"}</strong></li>
+              <li>✓ <strong>1.500 {isEl ? "λεπτά/μήνα" : "minutes/mo"}</strong></li>
               <li>✓ {isEl ? "Όλα τα Pro features" : "Everything in Pro"}</li>
-              <li>✓ {isEl ? "Custom φωνή brand" : "Custom brand voice"}</li>
+              <li>✓ {isEl ? "Custom voice cloning" : "Custom voice cloning"}</li>
               <li>✓ {isEl ? "Dedicated support Slack" : "Dedicated support Slack"}</li>
+              <li>✓ {isEl ? "Outbound καμπάνιες (τηλεφωνικές)" : "Outbound call campaigns"}</li>
               <li>✓ {isEl ? "Early access σε νέα AI features" : "Early access to new AI features"}</li>
             </ul>
-            <p class="mt-3 text-[11px] text-white/50">{isEl ? "Overage: €0.30/λεπτό" : "Overage: €0.30/min"}</p>
-            <p class="mt-1 text-[10px] text-amber-200/70">{isEl ? "Για high-volume city bars" : "For high-volume city bars"}</p>
+            <p class="mt-3 text-[11px] text-white/50">{isEl ? "Overage: €0.35/λεπτό" : "Overage: €0.35/min"}</p>
+            <p class="mt-1 text-[10px] text-amber-200/70">{isEl ? "Για high-volume city bars / chains" : "High-volume city bars / chains"}</p>
           </div>
         </div>
 

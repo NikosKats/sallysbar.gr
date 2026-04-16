@@ -38,7 +38,7 @@ const plans = [
     name: "Seasonal — 6 months",
     tagline: "For tourist / island / beach venues",
     window: "May → October",
-    setup: 850,
+    setup: 1000,
     total: 1380,
     discount_total: 690,
     discount_pct: 50,
@@ -53,7 +53,7 @@ const plans = [
     name: "Year-round — 12 months",
     tagline: "For city bars / cafés open all year",
     window: "12-month commitment",
-    setup: 850,
+    setup: 1000,
     total: 2400,
     discount_total: 1104,
     discount_pct: 54,
@@ -131,7 +131,8 @@ const costPerVenue = [
 const margins = [
   { tier: "Seasonal €690 · 6 mo (early-bird)",      cost: "~€42/mo infra + support (6 mo)",  profit: "~€438 profit / season / venue" },
   { tier: "Year-round €1,104 · 12 mo (early-bird)", cost: "~€42/mo infra + support",          profit: "~€600 profit / yr / venue" },
-  { tier: "Setup fee (fixed, every plan)",          cost: "~4h work",                         profit: "€850 one-time / venue" },
+  { tier: "Platform setup fee (fixed)",              cost: "~4h install + branding + menu import + training", profit: "€1,000 one-time / venue" },
+  { tier: "AI Assistant setup fee (add-on, optional)", cost: "~6h: voice config, prompt, knowledge base, tool endpoints, QA",  profit: "€2,000 one-time / venue (agencies charge €5–15k)" },
 ];
 
 // Blended 50/50 seasonal (€690) + year-round (€1,104) = avg €897/venue/yr rev at early-bird.
@@ -247,7 +248,7 @@ const isEl = lang === "el";
         </div>
         <h3 class="font-heading text-2xl font-bold">🤖 AI Voice Receptionist — add-on tiers</h3>
         <p class="mt-2 text-sm text-white/65 max-w-2xl">
-          Powered by Vapi + GPT-4o-mini + ElevenLabs + Deepgram + Vonage. All-in wholesale ≈ <strong>€0.105/min</strong>. Sold as a monthly add-on on top of the base PistotitaOS plan.
+          Powered by Vapi + GPT-4o-mini + ElevenLabs + Deepgram + Vonage. All-in wholesale ≈ <strong>€0.105/min</strong>. Sold as a monthly add-on on top of the base PistotitaOS plan. <strong class="text-amber-200">+ €2,000 one-time AI installation fee</strong> (voice config, menu training, tool endpoints, QA).
         </p>
         <div class="mt-4 overflow-x-auto">
           <table class="w-full text-sm">
@@ -263,13 +264,13 @@ const isEl = lang === "el";
               </tr>
             </thead>
             <tbody>
-              <tr class="border-t border-white/10 bg-violet-400/[0.05]"><td class="py-2 pr-3 font-bold">Starter</td><td class="py-2 pr-3 text-right font-mono font-bold text-emerald-300">€39</td><td class="py-2 pr-3 text-right font-mono">130</td><td class="py-2 pr-3 text-right font-mono text-white/60">€13.65</td><td class="py-2 pr-3 text-right font-mono text-emerald-300">€25.35</td><td class="py-2 pr-3 text-right font-mono text-emerald-300 font-bold">65%</td><td class="py-2 pr-3 text-right font-mono">€0.30</td></tr>
-              <tr class="border-t border-white/5"><td class="py-2 pr-3 font-bold">Pro</td><td class="py-2 pr-3 text-right font-mono font-bold text-emerald-300">€79</td><td class="py-2 pr-3 text-right font-mono">400</td><td class="py-2 pr-3 text-right font-mono text-white/60">€42.00</td><td class="py-2 pr-3 text-right font-mono text-emerald-300">€37.00</td><td class="py-2 pr-3 text-right font-mono text-amber-300 font-bold">47%</td><td class="py-2 pr-3 text-right font-mono">€0.30</td></tr>
-              <tr class="border-t border-white/5"><td class="py-2 pr-3 font-bold">Unlimited</td><td class="py-2 pr-3 text-right font-mono font-bold text-emerald-300">€149</td><td class="py-2 pr-3 text-right font-mono">1,000</td><td class="py-2 pr-3 text-right font-mono text-white/60">€105.00</td><td class="py-2 pr-3 text-right font-mono text-emerald-300">€44.00</td><td class="py-2 pr-3 text-right font-mono text-amber-300 font-bold">30%</td><td class="py-2 pr-3 text-right font-mono">€0.30</td></tr>
+              <tr class="border-t border-white/10 bg-violet-400/[0.05]"><td class="py-2 pr-3 font-bold">Starter</td><td class="py-2 pr-3 text-right font-mono font-bold text-emerald-300">€89</td><td class="py-2 pr-3 text-right font-mono">150</td><td class="py-2 pr-3 text-right font-mono text-white/60">€15.75</td><td class="py-2 pr-3 text-right font-mono text-emerald-300">€73.25</td><td class="py-2 pr-3 text-right font-mono text-emerald-300 font-bold">82%</td><td class="py-2 pr-3 text-right font-mono">€0.45</td></tr>
+              <tr class="border-t border-white/5"><td class="py-2 pr-3 font-bold">Pro ⭐</td><td class="py-2 pr-3 text-right font-mono font-bold text-emerald-300">€199</td><td class="py-2 pr-3 text-right font-mono">500</td><td class="py-2 pr-3 text-right font-mono text-white/60">€52.50</td><td class="py-2 pr-3 text-right font-mono text-emerald-300">€146.50</td><td class="py-2 pr-3 text-right font-mono text-emerald-300 font-bold">74%</td><td class="py-2 pr-3 text-right font-mono">€0.40</td></tr>
+              <tr class="border-t border-white/5"><td class="py-2 pr-3 font-bold">Unlimited</td><td class="py-2 pr-3 text-right font-mono font-bold text-emerald-300">€399</td><td class="py-2 pr-3 text-right font-mono">1,500</td><td class="py-2 pr-3 text-right font-mono text-white/60">€157.50</td><td class="py-2 pr-3 text-right font-mono text-emerald-300">€241.50</td><td class="py-2 pr-3 text-right font-mono text-emerald-300 font-bold">60%</td><td class="py-2 pr-3 text-right font-mono">€0.35</td></tr>
             </tbody>
           </table>
         </div>
-        <p class="mt-3 text-xs text-white/55">💡 <strong>Scale math:</strong> 100 venues × 60% Starter / 30% Pro / 10% Unlimited = <strong class="text-emerald-300">~€5,300/mo revenue · ~€2,100/mo net</strong>. Full API cost breakdown: <a href="/admin/external-apis" class="text-amber-300 underline">/admin/external-apis</a></p>
+        <p class="mt-3 text-xs text-white/55">💡 <strong>Scale math:</strong> 100 venues × 60% Starter / 30% Pro / 10% Unlimited = <strong class="text-emerald-300">~€12,600/mo recurring · ~€9,400/mo net</strong>. Plus <strong class="text-amber-200">€2,000 × N new venues = big Y1 cash boost</strong>. Full API cost breakdown: <a href="/admin/external-apis" class="text-amber-300 underline">/admin/external-apis</a></p>
       </section>
 
       <!-- CRM & Marketing Automation add-on -->
@@ -309,9 +310,12 @@ const isEl = lang === "el";
       <section class="mb-10 rounded-2xl border border-amber-400/30 bg-amber-400/[0.05] p-5">
         <h3 class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-2">🎯 {isEl ? "Μαζί: AI Voice + CRM add-ons = MRR engine" : "Combined: AI Voice + CRM add-ons = MRR engine"}</h3>
         <p class="text-sm text-white/70 max-w-3xl mb-2">
-          Typical venue on Pro AI Voice (€79) + Pro CRM (€49) = <strong class="text-emerald-300">€128/mo in add-ons</strong> on top of base plan. At 100 venues with 40% attach rate = <strong class="text-emerald-300">~€5,120/mo recurring add-on revenue · ~€2,100/mo net.</strong>
+          Typical venue on Pro AI Voice (€199) + Pro CRM (€49) = <strong class="text-emerald-300">€248/mo in add-ons</strong> on top of base plan. At 100 venues with 40% attach rate = <strong class="text-emerald-300">~€9,920/mo recurring add-on revenue · ~€6,400/mo net.</strong>
         </p>
-        <p class="text-xs text-white/55">Both add-ons are effectively infrastructure-free growth — the marginal cost per new subscriber is low (SaaS servers scale linearly), and attach rate grows as venues see ROI in year 2.</p>
+        <p class="text-sm text-white/70 mb-2">
+          Plus <strong class="text-amber-200">one-time Y1 cash:</strong> 100 new venues × (€1,000 platform setup + €2,000 AI setup [40% attach]) = <strong class="text-emerald-300">€180,000 Y1 installation revenue</strong> on top of subscriptions.
+        </p>
+        <p class="text-xs text-white/55">Both add-ons are effectively infrastructure-free growth. The €2,000 AI install fee is where agencies make their money — we're priced at 30–40% of market and still net ~€1,200–€1,400 per install after labor (6–8 hours).</p>
       </section>
 
       <!-- Pricing: two plans -->

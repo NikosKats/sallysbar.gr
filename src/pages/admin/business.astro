@@ -18,11 +18,12 @@ const clusters = [
     items: [
       ["SaaS — Seasonal (6mo)", "€1,890 total (~€315/mo) · May–Oct", "Tourist venues · billed April upfront"],
       ["SaaS — Year-round (12mo)", "€2,988 total (€249/mo) · 12-mo commit", "City bars · compounding MRR"],
-      ["One-time setup fee", "€890 per venue", "Covers ~4h install work"],
-      ["🤖 AI Receptionist add-on — Starter", "€39/mo · 130 min inbound AI calls", "~65% margin · upsell on every plan"],
-      ["🤖 AI Receptionist add-on — Pro", "€79/mo · 400 min", "~47% margin · typical venue fit"],
-      ["🤖 AI Receptionist add-on — Unlimited", "€149/mo · 1,000 min soft-cap", "~30% margin · high-volume city bars"],
-      ["🤖 AI Voice overage", "€0.30/min above cap", "Wholesale ≈ €0.105/min → 185% markup"],
+      ["One-time platform setup fee", "€1,000 per venue", "~4h install work · ~68% margin"],
+      ["🤖 AI Assistant installation fee", "€2,000 per venue (optional)", "~7h work · ~72% margin · agencies charge €5–15k"],
+      ["🤖 AI Receptionist add-on — Starter", "€89/mo · 150 min", "~82% margin · upsell on every plan"],
+      ["🤖 AI Receptionist add-on — Pro", "€199/mo · 500 min", "~74% margin · typical venue fit"],
+      ["🤖 AI Receptionist add-on — Unlimited", "€399/mo · 1,500 min", "~60% margin · high-volume city bars"],
+      ["🤖 AI Voice overage", "€0.35–€0.45/min above cap", "Wholesale ≈ €0.105/min → 233–328% markup"],
       ["📣 CRM & Automation add-on — Starter", "€19/mo · 100 msgs included", "~63% margin · risk-averse venues"],
       ["📣 CRM & Automation add-on — Pro", "€49/mo · 400 msgs + AI generator + shortener + inbox", "~43% margin · typical bar default"],
       ["📣 CRM & Automation add-on — Unlimited", "€99/mo · 1,000 msgs + custom triggers + SLA", "~29% margin · high-volume city bars"],
@@ -213,8 +214,8 @@ const statusLabel: Record<string, string> = isEl ? {
         <h3 class="font-heading text-xl font-bold">🤖 AI Voice + 📣 CRM — {isEl ? "δύο add-ons υψηλού margin" : "two high-margin add-ons"}</h3>
         <p class="mt-2 text-sm text-white/70 max-w-3xl">
           {isEl
-            ? "AI Voice: 3 tiers €39/€79/€149. CRM/Marketing: 3 tiers €19/€49/€99. Μαζί, στα 100 venues με 40% attach → ~€5,120/μήνα add-on έσοδα, ~€2,100/μήνα καθαρό — πάνω από τα base SaaS."
-            : "AI Voice: 3 tiers €39/€79/€149. CRM/Marketing: 3 tiers €19/€49/€99. Combined, at 100 venues with 40% attach rate → ~€5,120/mo add-on revenue, ~€2,100/mo net — on top of base SaaS."}
+            ? "AI Voice: €2.000 setup + €89/€199/€399/μήνα. CRM: €19/€49/€99/μήνα. Μαζί, στα 100 venues με 40% attach → ~€9,900/μήνα MRR + €80k/χρόνο σε AI install fees. ~€6,400/μήνα καθαρό."
+            : "AI Voice: €2,000 setup + €89/€199/€399/mo. CRM: €19/€49/€99/mo. Combined, at 100 venues with 40% attach → ~€9,900/mo MRR + €80k/year in AI install fees. ~€6,400/mo net."}
         </p>
         <div class="mt-3 flex flex-wrap gap-2">
           <a href={withLangPrefix(lang, "/admin/external-apis")} class="inline-flex items-center gap-1 rounded-lg border border-violet-400/30 bg-violet-400/10 text-violet-200 px-3 py-1.5 text-xs font-semibold hover:bg-violet-400/20">
