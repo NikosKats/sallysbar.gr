@@ -42,6 +42,27 @@ export const POST: APIRoute = async ({ request, locals }) => {
   let body: any;
   try { body = await request.json(); } catch { return json({ ok: false, error: "bad_json" }); }
 
+  // Pasted-list mode: we trust the count coming from the UI (already validated + deduped there).
+  // Still return the same cost shape so the UI doesn't branch.
+  const list: string[] = Array.isArray(body.recipients_list) ? body.recipients_list.filter((x: any) => typeof x === "string" && x.trim()) : [];
+  if (list.length > 0) {
+    const channel = String(body.channel ?? "sms");
+    const unit = WHOLESALE[channel] ?? 0;
+    const commissionPct = Math.max(0, Math.min(500, Number(body.commission_pct ?? 50)));
+    const wholesale = unit * list.length;
+    const commission = wholesale * (commissionPct / 100);
+    const billable = wholesale + commission;
+    const r2 = (n: number) => Math.round(n * 100) / 100;
+    const billable_eur = r2(billable);
+    const vat_eur      = r2(billable_eur * 0.24);
+    const gross_eur    = r2(billable_eur + vat_eur);
+    return json({
+      ok: true,
+      count: list.length,
+      cost: { channel, unit_eur: unit, wholesale_eur: r2(wholesale), commission_pct: commissionPct, commission_eur: r2(commission), billable_eur, vat_eur, gross_eur },
+    });
+  }
+
   try {
     const { data: all, error } = await supabaseAdmin
       .from("profiles")

@@ -10,7 +10,7 @@ function json(obj: unknown, status = 200) {
 }
 
 type Recipient = {
-  id: string;
+  id: string | null;  // null for anonymous pasted-list entries
   full_name: string | null;
   phone: string | null;
   email: string | null;
@@ -127,10 +127,50 @@ export const POST: APIRoute = async ({ request, locals }) => {
   // Fetch recipients
   let recipients: Recipient[] = [];
 
-  // Messenger / Instagram: recipient is ALWAYS the platform-scoped ID in the input
-  // (these channels don't lookup users from profiles).
-  const directRecipId = String((body as any).test_recipient_id ?? "").trim();
-  if ((channel === "messenger" || channel === "instagram") && directRecipId) {
+  // Paste-list mode: send to arbitrary phones/emails. Unsupported for push/messenger/instagram.
+  const pastedList: string[] = Array.isArray((body as any).recipients_list)
+    ? (body as any).recipients_list.filter((x: any) => typeof x === "string" && x.trim())
+    : [];
+  const isListMode = !testOnly && pastedList.length > 0;
+
+  if (isListMode) {
+    if (channel === "push" || channel === "messenger" || channel === "instagram") {
+      return json({ ok: false, error: "list_not_supported_for_channel" });
+    }
+    const isEmail = channel === "email";
+
+    // Cross-reference with profiles: if a number/email belongs to a user who opted out,
+    // we skip it (and flag it as such in the response).
+    let optOutSet = new Set<string>();
+    if (isEmail) {
+      const { data: users } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+      const emailToId = new Map<string, string>();
+      for (const u of users?.users ?? []) if (u.email) emailToId.set(u.email.toLowerCase(), u.id);
+      const ids = [...new Set([...emailToId.values()])];
+      if (ids.length) {
+        const { data: profs } = await supabaseAdmin.from("profiles").select("id, marketing_consent").in("id", ids);
+        const optedOut = new Set((profs ?? []).filter((p: any) => p.marketing_consent === false).map((p: any) => p.id));
+        for (const [email, id] of emailToId) if (optedOut.has(id)) optOutSet.add(email);
+      }
+    } else {
+      const phones = pastedList;
+      const { data: profs } = await supabaseAdmin
+        .from("profiles").select("id, phone, marketing_consent").in("phone", phones);
+      for (const p of profs ?? []) if (p.marketing_consent === false && p.phone) optOutSet.add(p.phone);
+    }
+
+    recipients = pastedList
+      .map(raw => (isEmail ? raw.toLowerCase() : raw))
+      .filter(v => !optOutSet.has(v))
+      .map(v => ({
+        // user_id is a uuid FK — leave null for anonymous list sends so the insert succeeds
+        id: null as any,
+        full_name: null,
+        phone: isEmail ? null : v,
+        email: isEmail ? v : null,
+        loyalty_tier: null,
+      }));
+  } else if ((channel === "messenger" || channel === "instagram") && String((body as any).test_recipient_id ?? "").trim()) {
     recipients = [{
       id: locals.user?.id ?? "direct",
       full_name: null,

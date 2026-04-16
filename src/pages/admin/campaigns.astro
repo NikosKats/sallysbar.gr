@@ -109,61 +109,103 @@ const monthLabels = isEl
               </select>
             </label>
 
-            <label class="flex items-center gap-2 text-sm">
-              <input type="checkbox" id="f-consent" class="h-4 w-4 accent-emerald-500" checked />
-              {isEl ? "Μόνο όσοι έδωσαν συγκατάθεση marketing (συνιστάται)" : "Only users with marketing consent (recommended)"}
-            </label>
+            <!-- Audience source toggle -->
+            <div class="rounded-lg border border-white/10 bg-black/30 p-3 space-y-2">
+              <p class="text-[10px] uppercase tracking-wider text-white/50 font-bold">{isEl ? "Πηγή κοινού" : "Audience source"}</p>
+              <label class="flex items-start gap-2 text-sm cursor-pointer">
+                <input type="radio" name="f-source" value="filters" class="mt-1 h-4 w-4 accent-sky-500" checked />
+                <span>
+                  <span class="font-semibold">{isEl ? "Φίλτρα χρηστών" : "User filters"}</span>
+                  <span class="block text-[11px] text-white/50">{isEl ? "Χρήσε tier / πόλη / γενέθλια κ.λπ. για να διαλέξεις από την βάση." : "Use tier / city / birthday etc. to pick from your database."}</span>
+                </span>
+              </label>
+              <label class="flex items-start gap-2 text-sm cursor-pointer">
+                <input type="radio" name="f-source" value="list" class="mt-1 h-4 w-4 accent-sky-500" />
+                <span>
+                  <span class="font-semibold">{isEl ? "Επικολλημένη λίστα" : "Pasted list"}</span>
+                  <span class="block text-[11px] text-white/50">{isEl ? "Επικόλλησε τηλέφωνα (SMS/WA/Viber) ή emails. Ένα ανά γραμμή, κόμμα ή tab." : "Paste phones (SMS/WA/Viber) or emails. One per line, comma, or tab-separated."}</span>
+                </span>
+              </label>
+            </div>
 
-            <label class="block text-sm">
-              <span class="text-white/60">{isEl ? "Tier (loyalty)" : "Loyalty tier"}</span>
-              <select id="f-tier" class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2">
-                <option value="">{isEl ? "Όλοι" : "Any"}</option>
-                {(tiers ?? []).map((t: any) => (
-                  <option value={t.key}>{isEl ? t.label_el : t.label_en}</option>
-                ))}
-              </select>
-            </label>
+            <div id="f-filter-block" class="space-y-3">
+              <label class="flex items-center gap-2 text-sm">
+                <input type="checkbox" id="f-consent" class="h-4 w-4 accent-emerald-500" checked />
+                {isEl ? "Μόνο όσοι έδωσαν συγκατάθεση marketing (συνιστάται)" : "Only users with marketing consent (recommended)"}
+              </label>
 
-            <label class="block text-sm">
-              <span class="text-white/60">{isEl ? "Γενέθλια τον μήνα" : "Birthday in month"}</span>
-              <select id="f-bmonth" class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2">
-                <option value="">{isEl ? "Όλοι" : "Any"}</option>
-                {monthLabels.map((m, i) => <option value={i+1}>{m}</option>)}
-              </select>
-            </label>
+              <label class="block text-sm">
+                <span class="text-white/60">{isEl ? "Tier (loyalty)" : "Loyalty tier"}</span>
+                <select id="f-tier" class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2">
+                  <option value="">{isEl ? "Όλοι" : "Any"}</option>
+                  {(tiers ?? []).map((t: any) => (
+                    <option value={t.key}>{isEl ? t.label_el : t.label_en}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label class="block text-sm">
+                <span class="text-white/60">{isEl ? "Γενέθλια τον μήνα" : "Birthday in month"}</span>
+                <select id="f-bmonth" class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2">
+                  <option value="">{isEl ? "Όλοι" : "Any"}</option>
+                  {monthLabels.map((m, i) => <option value={i+1}>{m}</option>)}
+                </select>
+              </label>
+            </div>
           </div>
 
           <div class="space-y-3">
             <p class="text-sm font-bold invisible md:visible">　</p>
 
-            <label class="block text-sm">
-              <span class="text-white/60">{isEl ? "Πόλη (περιέχει)" : "City (contains)"}</span>
-              <input id="f-city" type="text" placeholder={isEl ? "π.χ. Αθήνα" : "e.g. Athens"} class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2" />
-            </label>
+            <div id="f-filter-block-2" class="space-y-3">
+              <label class="block text-sm">
+                <span class="text-white/60">{isEl ? "Πόλη (περιέχει)" : "City (contains)"}</span>
+                <input id="f-city" type="text" placeholder={isEl ? "π.χ. Αθήνα" : "e.g. Athens"} class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2" />
+              </label>
 
-            <label class="block text-sm">
-              <span class="text-white/60">{isEl ? "Ανενεργοί τουλάχιστον" : "Inactive at least"}</span>
-              <select id="f-inactive" class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2">
-                <option value="">{isEl ? "Άσχετο" : "Any"}</option>
-                <option value="7">7 {isEl ? "ημέρες" : "days"}</option>
-                <option value="14">14 {isEl ? "ημέρες" : "days"}</option>
-                <option value="30">30 {isEl ? "ημέρες" : "days"}</option>
-                <option value="60">60 {isEl ? "ημέρες" : "days"}</option>
-                <option value="90">90 {isEl ? "ημέρες" : "days"}</option>
-              </select>
-            </label>
+              <label class="block text-sm">
+                <span class="text-white/60">{isEl ? "Ανενεργοί τουλάχιστον" : "Inactive at least"}</span>
+                <select id="f-inactive" class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2">
+                  <option value="">{isEl ? "Άσχετο" : "Any"}</option>
+                  <option value="7">7 {isEl ? "ημέρες" : "days"}</option>
+                  <option value="14">14 {isEl ? "ημέρες" : "days"}</option>
+                  <option value="30">30 {isEl ? "ημέρες" : "days"}</option>
+                  <option value="60">60 {isEl ? "ημέρες" : "days"}</option>
+                  <option value="90">90 {isEl ? "ημέρες" : "days"}</option>
+                </select>
+              </label>
 
-            <label class="block text-sm">
-              <span class="text-white/60">{isEl ? "Εγγραφή τις τελευταίες" : "Signed up within"}</span>
-              <select id="f-signed" class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2">
-                <option value="">{isEl ? "Άσχετο" : "Any"}</option>
-                <option value="7">7 {isEl ? "ημέρες" : "days"}</option>
-                <option value="30">30 {isEl ? "ημέρες" : "days"}</option>
-                <option value="90">90 {isEl ? "ημέρες" : "days"}</option>
-                <option value="365">1 {isEl ? "έτος" : "year"}</option>
-              </select>
-            </label>
+              <label class="block text-sm">
+                <span class="text-white/60">{isEl ? "Εγγραφή τις τελευταίες" : "Signed up within"}</span>
+                <select id="f-signed" class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2">
+                  <option value="">{isEl ? "Άσχετο" : "Any"}</option>
+                  <option value="7">7 {isEl ? "ημέρες" : "days"}</option>
+                  <option value="30">30 {isEl ? "ημέρες" : "days"}</option>
+                  <option value="90">90 {isEl ? "ημέρες" : "days"}</option>
+                  <option value="365">1 {isEl ? "έτος" : "year"}</option>
+                </select>
+              </label>
+            </div>
           </div>
+        </div>
+
+        <!-- Pasted-list block (hidden by default) -->
+        <div id="f-list-block" class="hidden mb-5 rounded-2xl border border-amber-400/30 bg-amber-400/[0.05] p-4">
+          <div class="flex items-center justify-between gap-3 flex-wrap mb-2">
+            <p class="text-sm font-bold text-amber-200">📋 {isEl ? "Επικολλημένη λίστα" : "Pasted list"}</p>
+            <div class="flex items-center gap-2 text-xs">
+              <span id="f-list-valid" class="text-emerald-300 font-mono">0 {isEl ? "έγκυρες" : "valid"}</span>
+              <span id="f-list-invalid" class="text-rose-300 font-mono hidden">0 {isEl ? "άκυρες" : "invalid"}</span>
+              <span id="f-list-dupes" class="text-white/40 font-mono hidden">0 {isEl ? "διπλές" : "dupes"}</span>
+              <button id="f-list-clear" type="button" class="text-white/50 hover:text-white/80 underline underline-offset-2">{isEl ? "Καθαρισμός" : "Clear"}</button>
+            </div>
+          </div>
+          <textarea id="f-list" rows="6" placeholder={isEl ? "+306941234567\n+306947654321\nkostas@example.com\n…" : "+306941234567\n+306947654321\nkostas@example.com\n…"} class="w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2 font-mono text-xs"></textarea>
+          <p class="mt-2 text-[11px] text-white/50">
+            {isEl
+              ? "⚠️ GDPR: στείλε μόνο σε όσους έχουν δώσει συγκατάθεση. Όσα νούμερα/emails υπάρχουν στο profiles σου και έχουν κάνει opt-out, παραλείπονται αυτόματα. Δεν υποστηρίζεται Push / Messenger / Instagram (χρειάζονται user_id / PSID)."
+              : "⚠️ GDPR: only send to people who opted in. Any number/email that exists in your profiles with marketing consent off is skipped automatically. Not supported for Push / Messenger / Instagram (need user_id / PSID)."}
+          </p>
         </div>
 
         <!-- Audience + cost preview -->
@@ -345,6 +387,79 @@ const monthLabels = isEl
           commission_pct: Number($("f-commission").value || 0),
         };
       }
+
+      // Which audience source is active
+      function audienceMode() {
+        return document.querySelector('input[name="f-source"]:checked')?.value || "filters";
+      }
+
+      // Parse the pasted list textarea. Splits on newline / comma / semicolon / tab,
+      // trims, validates by channel, dedupes, returns { valid, invalid, dupes }.
+      function parsePastedList() {
+        const ch = $("f-channel").value;
+        const raw = $("f-list").value || "";
+        const isEmail = ch === "email";
+        const isPhone = ch === "sms" || ch === "whatsapp" || ch === "viber_service";
+        const tokens = raw.split(/[\n,;\t]+/).map(s => s.trim()).filter(Boolean);
+
+        const seen = new Set();
+        const valid = [];
+        const invalid = [];
+        let dupes = 0;
+        for (const t of tokens) {
+          let v = t;
+          if (isPhone) {
+            // Keep leading + and digits only
+            v = v.replace(/[^\d+]/g, "");
+            if (!v.startsWith("+")) v = "+" + v.replace(/^0+/, "");
+            if (!/^\+[1-9]\d{6,14}$/.test(v)) { invalid.push(t); continue; }
+          } else if (isEmail) {
+            v = v.toLowerCase();
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) { invalid.push(t); continue; }
+          } else {
+            // Unsupported channel for paste-list
+            invalid.push(t);
+            continue;
+          }
+          if (seen.has(v)) { dupes++; continue; }
+          seen.add(v);
+          valid.push(v);
+        }
+        return { valid, invalid, dupes };
+      }
+
+      function renderListCounts() {
+        const { valid, invalid, dupes } = parsePastedList();
+        const ve = $("f-list-valid");
+        const ie = $("f-list-invalid");
+        const de = $("f-list-dupes");
+        ve.textContent = `${valid.length} ` + (document.documentElement.lang === "el" ? "έγκυρες" : "valid");
+        if (invalid.length) { ie.textContent = `${invalid.length} ` + (document.documentElement.lang === "el" ? "άκυρες" : "invalid"); ie.classList.remove("hidden"); }
+        else ie.classList.add("hidden");
+        if (dupes) { de.textContent = `${dupes} ` + (document.documentElement.lang === "el" ? "διπλές" : "dupes"); de.classList.remove("hidden"); }
+        else de.classList.add("hidden");
+      }
+
+      function syncAudienceMode() {
+        const mode = audienceMode();
+        const ch = $("f-channel").value;
+        const isPasteable = ch === "sms" || ch === "whatsapp" || ch === "viber_service" || ch === "email";
+        // Auto-flip back to filters for unsupported channels
+        if (mode === "list" && !isPasteable) {
+          const r = document.querySelector('input[name="f-source"][value="filters"]');
+          if (r) r.checked = true;
+        }
+        const activeMode = audienceMode();
+        $("f-filter-block").classList.toggle("hidden", activeMode === "list");
+        $("f-filter-block-2").classList.toggle("hidden", activeMode === "list");
+        $("f-list-block").classList.toggle("hidden", activeMode !== "list");
+        // Disable "paste" radio for unsupported channels
+        const listRadio = document.querySelector('input[name="f-source"][value="list"]');
+        if (listRadio) listRadio.disabled = !isPasteable;
+      }
+      document.querySelectorAll('input[name="f-source"]').forEach(r => r.addEventListener("change", () => { syncAudienceMode(); markFiltersDirty(); renderListCounts(); }));
+      $("f-list")?.addEventListener("input", () => { renderListCounts(); markFiltersDirty(); });
+      $("f-list-clear")?.addEventListener("click", () => { $("f-list").value = ""; renderListCounts(); markFiltersDirty(); });
       const fmt = (n) => "€" + (Math.round(n * 100) / 100).toFixed(2);
 
       // Channel-dependent UI
@@ -378,8 +493,10 @@ const monthLabels = isEl
       }
       const recipInput = document.getElementById("m-recipid");
       if (recipInput) recipInput.addEventListener("input", updateDirectSendable);
-      $("f-channel").addEventListener("change", syncChannelUi);
+      $("f-channel").addEventListener("change", () => { syncChannelUi(); syncAudienceMode(); renderListCounts(); });
       syncChannelUi();
+      syncAudienceMode();
+      renderListCounts();
 
       // Audience + cost preview
       let lastCost = null;
@@ -401,11 +518,17 @@ const monthLabels = isEl
         el.textContent = "…";
         $("c-invoice").disabled = true;
         $("m-send").disabled = true;
+        const mode = audienceMode();
+        const body = readFilters();
+        if (mode === "list") {
+          const { valid } = parsePastedList();
+          body.recipients_list = valid;
+        }
         try {
           const r = await fetch("/api/admin/campaign-count", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(readFilters()),
+            body: JSON.stringify(body),
           });
           const j = await r.json();
           if (!j.ok) { el.textContent = "⚠ " + (j.error ?? "error"); return; }
@@ -464,6 +587,12 @@ const monthLabels = isEl
           test_recipient_id: $("m-recipid").value.trim(),
           test_to_me: !!testToMe,
         };
+        if (!testToMe && audienceMode() === "list") {
+          const { valid, invalid } = parsePastedList();
+          if (!valid.length) { status.innerHTML = '<span class="text-rose-300">⚠ Paste at least one valid ' + (filters.channel === "email" ? "email" : "phone number") + '</span>'; return; }
+          if (invalid.length && !confirm(`${invalid.length} entries are invalid and will be skipped. Continue with ${valid.length} valid recipients?`)) return;
+          payload.recipients_list = valid;
+        }
         if (!payload.body.trim()) { status.innerHTML = '<span class="text-rose-300">⚠ Empty message body</span>'; return; }
         if (filters.channel === "email" && !payload.subject) {
           status.innerHTML = '<span class="text-rose-300">⚠ Subject required for email campaigns (empty subjects get flagged as spam)</span>';
