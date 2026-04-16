@@ -32,6 +32,30 @@ const T = {
 
 const modules = [
   {
+    icon: "🤖",
+    name: isEl ? "ANSWER" : "ANSWER",
+    title: isEl ? "AI Ρεσεψιονίστ τηλεφώνου 24/7" : "AI phone receptionist · 24/7",
+    desc: isEl
+      ? "Το τηλέφωνο χτυπάει και δεν προλαβαίνεις; Η AI απαντά — δίγλωσση, κλείνει κρατήσεις, απαντά για το μενού, κάνει transfer σε εσένα όταν χρειάζεται."
+      : "Can't reach the phone? Our AI answers every call — bilingual, books tables, answers menu questions, transfers to you when needed. Never miss a booking at 3AM again.",
+    bullets: isEl ? [
+      "Απαντά στα Αγγλικά ή Ελληνικά (auto-detect)",
+      "Κλείνει τραπέζια — εσύ εγκρίνεις πριν το SMS επιβεβαίωσης",
+      "Δίνει ωράριο, διεύθυνση, events της βραδιάς",
+      "Απαντά για μενού (αλλεργίες, κοκτέιλ, τιμές)",
+      "Warm-transfer σε εσένα όταν ο πελάτης ζητήσει άνθρωπο",
+      "Transcript + ηχογράφηση κάθε κλήσης στο admin panel",
+    ] : [
+      "Auto-detects EN or EL from the caller's first sentence",
+      "Books tables — you approve before the SMS goes out",
+      "Gives hours, address, tonight's events",
+      "Answers menu Q&A (allergens, cocktails, prices)",
+      "Warm-transfer to you when caller asks for a human",
+      "Transcript + recording of every call in your admin panel",
+    ],
+    color: "from-violet-400 to-fuchsia-600",
+  },
+  {
     icon: "🛎️",
     name: isEl ? "ORDER" : "ORDER",
     title: isEl ? "QR παραγγελίες & staff ops" : "QR ordering & staff ops",
@@ -124,6 +148,8 @@ const modules = [
 ];
 
 const valueProps = [
+  { icon: "📞", title: isEl ? "Καμία χαμένη κλήση 24/7" : "Never miss a call — 24/7",
+    desc: isEl ? "Η AI απαντά όταν εσύ δεν μπορείς. Κλείνει τραπέζια και στις 3πμ." : "Our AI answers when you can't. Books tables at 3AM, on your day off, mid-shift." },
   { icon: "💸", title: isEl ? "+40% επιστροφές πελατών" : "+40% return visits",
     desc: isEl ? "Πόντοι, σκρατς, ρόδα τύχης. Κάθε επίσκεψη έχει λόγο." : "Points, scratch, wheel. Every visit has a reason." },
   { icon: "📲", title: isEl ? "Λίστα πελατών δική σου" : "A customer list you own",
@@ -134,11 +160,13 @@ const valueProps = [
     desc: isEl ? "PWA στο browser. Δεν πληρώνεις Apple / Google / Wolt." : "PWA in the browser. No Apple/Google/Wolt cut." },
   { icon: "⚡", title: isEl ? "Live σε 48 ώρες" : "Live in 48 hours",
     desc: isEl ? "~4 ώρες setup. Το στήνουμε εμείς, εσύ ανοίγεις." : "~4h setup. We install it, you open the doors." },
-  { icon: "📊", title: isEl ? "Βλέπεις τι πουλάει" : "You see what sells",
-    desc: isEl ? "Ώρες αιχμής, top drinks, μέσος λογαριασμός, ταχύτητα staff." : "Peak hours, top drinks, average ticket, staff speed." },
 ];
 
 const bullets = [
+  isEl ? "🤖 AI τηλεφωνήτρια 24/7 (δίγλωσση)" : "🤖 AI phone receptionist · 24/7 · bilingual",
+  isEl ? "Κράτηση τραπεζιού μέσω τηλεφώνου με AI" : "AI-handled table bookings by phone",
+  isEl ? "Transcript + ηχογράφηση κάθε κλήσης" : "Full transcript + recording of every AI call",
+  isEl ? "Warm-transfer σε ιδιοκτήτη όταν χρειάζεται" : "Warm-transfer to owner on request",
   isEl ? "QR παραγγελίες ανά τραπέζι" : "QR ordering per table",
   isEl ? "Κάρτα πιστότητας + Apple/Google Wallet" : "Loyalty card + Apple/Google Wallet",
   isEl ? "Ρόδα Τύχης καθημερινά" : "Daily Wheel of Luck",
@@ -201,7 +229,11 @@ const plans = [
 
 const faqs = [
   { q: isEl ? "Τι είναι το PistotitaOS;" : "What is PistotitaOS?",
-    a: isEl ? "Ένα OS για bar/café: QR παραγγελίες + πιστότητα + παιχνίδια + marketing αυτοματισμοί, όλα σε ένα. Η ίδια πλατφόρμα που τρέχει στο sallysbar.gr." : "A full OS for bar/café: QR ordering + loyalty + games + marketing automation, all in one. The same platform running on sallysbar.gr." },
+    a: isEl ? "Ένα OS για bar/café: QR παραγγελίες + πιστότητα + παιχνίδια + marketing αυτοματισμοί + AI τηλεφωνήτρια 24/7, όλα σε ένα. Η ίδια πλατφόρμα που τρέχει στο sallysbar.gr." : "A full OS for bar/café: QR ordering + loyalty + games + marketing automation + 24/7 AI phone receptionist, all in one. The same platform running on sallysbar.gr." },
+  { q: isEl ? "Πώς δουλεύει η AI τηλεφωνήτρια;" : "How does the AI phone receptionist work?",
+    a: isEl ? "Παίρνεις ένα νούμερο (UK ή US — ή μεταφέρεις το δικό σου). Κάθε κλήση απαντιέται δίγλωσσα από AI agent που: κλείνει τραπέζια, απαντά για μενού, δίνει ωράριο και οδηγίες, κάνει transfer σε εσένα όταν χρειάζεται. Εσύ βλέπεις transcript + σύνοψη + ηχογράφηση κάθε κλήσης στο admin panel. +€39/μήνα (Starter · 130 λεπτά) ή +€79 (Pro · 400 λεπτά)." : "You get a phone number (UK or US — or port your own). Every inbound call is answered bilingually by an AI agent that: books tables, answers menu questions, gives hours and directions, transfers to you on request. You see the transcript + summary + recording of every call in your admin panel. +€39/mo (Starter · 130 min) or +€79 (Pro · 400 min)." },
+  { q: isEl ? "Η AI είναι ξεχωριστή συνδρομή;" : "Is the AI a separate subscription?",
+    a: isEl ? "Ναι — add-on πάνω από την βασική συνδρομή PistotitaOS. Starter €39/μήνα για ~45 κλήσεις. Pro €79 για ~140 κλήσεις. Unlimited €149 για απεριόριστη χρήση (1000 λεπτά soft cap). Overage €0.30/λεπτό. Ένα τυπικό μπαρ χρησιμοποιεί Starter." : "Yes — an add-on on top of the base PistotitaOS plan. Starter €39/mo for ~45 calls. Pro €79 for ~140 calls. Unlimited €149 for unlimited use (1000-min soft cap). Overage €0.30/min. A typical bar uses the Starter tier." },
   { q: isEl ? "Πώς δουλεύει η αποκλειστικότητα ανά περιοχή;" : "How does territorial exclusivity work?",
     a: isEl ? "Το PistotitaOS δίνεται σε έναν ιδιοκτήτη ανά δρόμο/ZIP code. Μόλις υπογράψεις, η περιοχή κλειδώνει για 12 μήνες — κανένας ανταγωνιστής σου δίπλα δεν μπορεί να πάρει το ίδιο σύστημα. Αν ανανεώσεις, κρατάς την περιοχή. Αν όχι, ανοίγει ξανά." : "PistotitaOS is offered to one venue per street / postal code. The moment you sign, that area locks for 12 months — no competitor nearby can get the same system. Renew and you keep the territory. Don't renew and it reopens." },
   { q: isEl ? "Πόσο γρήγορα μπαίνει;" : "How fast can we go live?",
@@ -457,6 +489,100 @@ const faqs = [
       <p class="mt-6 text-center text-xs text-white/45 max-w-2xl mx-auto">
         {isEl ? "Οι τιμές εμφανίζονται καθαρές (χωρίς ΦΠΑ). Προστίθεται ΦΠΑ 24% στην τελική χρέωση. Χωρίς κρυφά έξοδα." : "Prices shown are net (excl. VAT). 24% VAT is added at checkout. No hidden fees."}
       </p>
+
+      {/* AI Voice Receptionist add-on tiers */}
+      <div class="mt-12 rounded-3xl border border-violet-400/30 bg-gradient-to-br from-violet-500/[0.12] via-fuchsia-500/[0.05] to-transparent p-6 md:p-8">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="inline-block h-1.5 w-1.5 rounded-full bg-violet-400 animate-pulse"></span>
+          <p class="text-[10px] uppercase tracking-[0.22em] text-violet-300 font-bold">
+            🆕 {isEl ? "ΝΕΟ ADD-ON · προαιρετικό" : "NEW ADD-ON · optional"}
+          </p>
+        </div>
+        <h3 class="font-heading text-2xl md:text-3xl font-bold">
+          🤖 {isEl ? "AI Ρεσεψιονίστ Τηλεφώνου" : "AI Phone Receptionist"}
+        </h3>
+        <p class="mt-2 text-white/70 max-w-2xl leading-relaxed">
+          {isEl
+            ? "Πάρε τηλέφωνο που απαντά 24/7 στα ελληνικά και αγγλικά. Κλείνει τραπέζια (με δική σου έγκριση), απαντά για μενού και ωράριο, κάνει transfer στο κινητό σου όταν χρειάζεται. Προαιρετικό — δοκίμασέ το 1 μήνα, άσε το αν δεν δουλέψει."
+            : "A phone number that answers 24/7 in English + Greek. Books tables (you approve before the SMS goes out), answers menu questions, transfers to your mobile when needed. Optional — try it for a month, cancel if it doesn't fit."}
+        </p>
+
+        <div class="mt-6 grid md:grid-cols-3 gap-3">
+          <div class="rounded-2xl border border-white/10 bg-black/30 p-5 relative">
+            <p class="text-[11px] uppercase tracking-wider text-violet-200 font-bold">Starter</p>
+            <p class="font-heading text-3xl font-bold text-emerald-300 mt-2">€39<span class="text-sm text-white/50 font-normal">/{isEl ? "μήνα" : "mo"}</span></p>
+            <p class="text-xs text-white/55 mt-1">{isEl ? "καθαρό · +ΦΠΑ" : "net · +VAT"}</p>
+            <ul class="mt-4 space-y-1.5 text-xs text-white/75">
+              <li>✓ <strong>130 {isEl ? "λεπτά/μήνα" : "minutes/mo"}</strong> ({isEl ? "~45 κλήσεις" : "~45 calls"})</li>
+              <li>✓ {isEl ? "Δίγλωσση EN/EL" : "Bilingual EN/EL"}</li>
+              <li>✓ {isEl ? "Κράτηση τραπεζιών" : "Table bookings"}</li>
+              <li>✓ {isEl ? "Μενού Q&A" : "Menu Q&A"}</li>
+              <li>✓ {isEl ? "Transfer σε εσένα" : "Warm transfer"}</li>
+              <li>✓ {isEl ? "Transcript & ηχογράφηση" : "Transcript & recording"}</li>
+            </ul>
+            <p class="mt-3 text-[11px] text-white/50">{isEl ? "Overage: €0.30/λεπτό" : "Overage: €0.30/min"}</p>
+            <p class="mt-1 text-[10px] text-emerald-200/70">{isEl ? "Ιδανικό για εποχικά μπαρ" : "Ideal for seasonal bars"}</p>
+          </div>
+
+          <div class="rounded-2xl border-2 border-violet-400/60 bg-gradient-to-br from-violet-500/[0.15] to-black/30 p-5 relative">
+            <span class="absolute -top-3 right-5 text-[10px] font-bold uppercase tracking-wider bg-gradient-to-br from-violet-400 to-fuchsia-500 text-white px-3 py-1 rounded-full shadow-lg">
+              {isEl ? "Δημοφιλές" : "Most popular"}
+            </span>
+            <p class="text-[11px] uppercase tracking-wider text-violet-200 font-bold">Pro</p>
+            <p class="font-heading text-3xl font-bold text-emerald-300 mt-2">€79<span class="text-sm text-white/50 font-normal">/{isEl ? "μήνα" : "mo"}</span></p>
+            <p class="text-xs text-white/55 mt-1">{isEl ? "καθαρό · +ΦΠΑ" : "net · +VAT"}</p>
+            <ul class="mt-4 space-y-1.5 text-xs text-white/85">
+              <li>✓ <strong>400 {isEl ? "λεπτά/μήνα" : "minutes/mo"}</strong> ({isEl ? "~140 κλήσεις" : "~140 calls"})</li>
+              <li>✓ {isEl ? "Όλα τα Starter features" : "Everything in Starter"}</li>
+              <li>✓ {isEl ? "Προτεραιότητα υποστήριξης" : "Priority support"}</li>
+              <li>✓ {isEl ? "Μηνιαία ανάλυση κλήσεων" : "Monthly call analytics"}</li>
+              <li>✓ {isEl ? "Προσαρμογή φωνής" : "Voice tuning"}</li>
+            </ul>
+            <p class="mt-3 text-[11px] text-white/50">{isEl ? "Overage: €0.30/λεπτό" : "Overage: €0.30/min"}</p>
+            <p class="mt-1 text-[10px] text-emerald-200/90 font-semibold">{isEl ? "Τυπικό μπαρ — καλύτερη αξία" : "Typical bar — best value"}</p>
+          </div>
+
+          <div class="rounded-2xl border border-white/10 bg-black/30 p-5 relative">
+            <p class="text-[11px] uppercase tracking-wider text-violet-200 font-bold">Unlimited</p>
+            <p class="font-heading text-3xl font-bold text-emerald-300 mt-2">€149<span class="text-sm text-white/50 font-normal">/{isEl ? "μήνα" : "mo"}</span></p>
+            <p class="text-xs text-white/55 mt-1">{isEl ? "καθαρό · +ΦΠΑ" : "net · +VAT"}</p>
+            <ul class="mt-4 space-y-1.5 text-xs text-white/75">
+              <li>✓ <strong>1.000 {isEl ? "λεπτά/μήνα" : "minutes/mo"}</strong></li>
+              <li>✓ {isEl ? "Όλα τα Pro features" : "Everything in Pro"}</li>
+              <li>✓ {isEl ? "Custom φωνή brand" : "Custom brand voice"}</li>
+              <li>✓ {isEl ? "Dedicated support Slack" : "Dedicated support Slack"}</li>
+              <li>✓ {isEl ? "Early access σε νέα AI features" : "Early access to new AI features"}</li>
+            </ul>
+            <p class="mt-3 text-[11px] text-white/50">{isEl ? "Overage: €0.30/λεπτό" : "Overage: €0.30/min"}</p>
+            <p class="mt-1 text-[10px] text-amber-200/70">{isEl ? "Για high-volume city bars" : "For high-volume city bars"}</p>
+          </div>
+        </div>
+
+        <div class="mt-6 grid md:grid-cols-2 gap-3 text-sm">
+          <div class="rounded-xl border border-emerald-400/25 bg-emerald-400/[0.06] p-3">
+            <p class="text-[10px] uppercase tracking-wider text-emerald-300 font-bold mb-1">💡 {isEl ? "Γιατί αξίζει" : "Why it pays for itself"}</p>
+            <ul class="space-y-0.5 text-xs text-white/80">
+              <li>• {isEl ? "1 επιπλέον κράτηση/εβδομάδα = πληρώνει το Pro" : "1 extra booking/week covers Pro tier"}</li>
+              <li>• {isEl ? "Αντικαθιστά μισό άτομο ρεσεψιονίστ (€400–600/μήνα)" : "Replaces half a receptionist (€400–600/mo)"}</li>
+              <li>• {isEl ? "Δεν ξεχνάει, δεν κουράζεται, δεν κάνει λάθη" : "No forgetting, no fatigue, no mistakes"}</li>
+            </ul>
+          </div>
+          <div class="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+            <p class="text-[10px] uppercase tracking-wider text-white/60 font-bold mb-1">{isEl ? "Πώς λειτουργεί" : "How it works"}</p>
+            <ul class="space-y-0.5 text-xs text-white/75">
+              <li>1. {isEl ? "Παίρνεις νούμερο (UK/US) ή μεταφέρεις δικό σου" : "Get a phone number (UK/US) or port your own"}</li>
+              <li>2. {isEl ? "Η AI απαντά σε κάθε κλήση, στη γλώσσα του πελάτη" : "AI answers every call in the caller's language"}</li>
+              <li>3. {isEl ? "Εσύ εγκρίνεις κρατήσεις στο admin — πελάτης παίρνει SMS" : "You approve bookings in admin — customer gets SMS"}</li>
+            </ul>
+          </div>
+        </div>
+
+        <p class="mt-4 text-center text-[11px] text-white/45">
+          {isEl
+            ? "AI Voice add-on στηρίζεται σε Vapi + OpenAI + ElevenLabs + Deepgram. Μπορείς να ακυρώσεις ανά μήνα, χωρίς δέσμευση."
+            : "AI Voice add-on built on Vapi + OpenAI + ElevenLabs + Deepgram. Cancel anytime, no commitment."}
+        </p>
+      </div>
     </section>
 
     <!-- PROOF -->
