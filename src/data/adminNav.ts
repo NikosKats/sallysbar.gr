@@ -99,6 +99,7 @@ export function getAdminNavGroups(lang: "en" | "el", t: any, role?: string | nul
         { key: "objections",     label: "🛡️ Objection Handling",     href: withLangPrefix(lang, "/admin/objections"),     icon: I.analytics },
         { key: "service-agreement", label: "⚖️ Service Agreement (template)", href: withLangPrefix(lang, "/admin/service-agreement"), icon: I.help },
         { key: "dpa",            label: "🛡️ GDPR DPA (template)",      href: withLangPrefix(lang, "/admin/dpa"),            icon: I.help },
+        { key: "external-apis",  label: "🔌 External APIs — Cost & Monetize", href: withLangPrefix(lang, "/admin/external-apis"), icon: I.analytics },
       ],
     });
   }

@@ -1571,6 +1571,78 @@ echo "https://api.nexmo.com" | npx wrangler pages secret put VONAGE_MESSAGES_BAS
       </ol>
     `,
   },
+  s51: {
+    head: isEl ? "51. 🤖 AI Voice Receptionist (Vapi)" : "51. 🤖 AI Voice Receptionist (Vapi)",
+    body: isEl ? `
+      <p>Η AI ρεσεψιονίστ απαντάει σε όλες τις εισερχόμενες κλήσεις 24/7 και στα δύο νούμερα Vonage (US +12075037391, UK +447441475768). Μιλάει Αγγλικά και Ελληνικά, κλείνει κρατήσεις, απαντάει για το μενού, κάνει transfer στον ιδιοκτήτη όταν χρειάζεται.</p>
+      <h4>Stack:</h4>
+      <ul>
+        <li><strong>Vapi</strong> — orchestration + SIP/PSTN in</li>
+        <li><strong>OpenAI GPT-4o-mini</strong> — LLM reasoning</li>
+        <li><strong>ElevenLabs multilingual v2</strong> — TTS (Greek + English voice)</li>
+        <li><strong>Deepgram Nova-3</strong> — STT (AssemblyAI fallback)</li>
+        <li><strong>Vonage</strong> — telecom carrier (2 imported numbers)</li>
+      </ul>
+      <h4>Συστατικά της πλατφόρμας:</h4>
+      <ul>
+        <li>4 Vapi tools → 3 API-request endpoints: <code>/api/ai-voice/hours-info</code>, <code>/api/ai-voice/menu-lookup</code>, <code>/api/ai-voice/create-reservation</code> + 1 Transfer Call tool (→ +306946272083)</li>
+        <li>Webhook end-of-call: <code>/api/ai-voice/call-ended</code> (γράφει transcript + σύνοψη στον <code>vonage_voice_calls</code>)</li>
+        <li><a href="${withLangPrefix(lang, "/admin/ai-calls")}"><code>/admin/ai-calls</code></a> — dashboard όλων των συνομιλιών</li>
+        <li>AI bookings πέφτουν με status <code>pending_ai</code> στο <a href="${withLangPrefix(lang, "/admin/reservations")}"><code>/admin/reservations</code></a> — owner εγκρίνει, στέλνει αυτόματο SMS επιβεβαίωσης</li>
+      </ul>
+      <h4>Setup (runbook):</h4>
+      <p>Πλήρες runbook στο <code>docs/vapi-setup.md</code>. Συνοπτικά:</p>
+      <ol>
+        <li>Vapi: import Vonage numbers με master API key (<code>b0557f36</code>) + secret</li>
+        <li>Create assistant "Sally's Bar receptionist" με 4 tools (3 API + 1 Transfer)</li>
+        <li>Κάθε tool header: <code>x-vapi-secret: &lt;VAPI_TOOL_SECRET&gt;</code></li>
+        <li>Assistant Server URL: <code>https://www.sallysbar.gr/api/ai-voice/call-ended</code> (για transcripts)</li>
+        <li>Cloudflare: <strong>Bot Fight Mode OFF</strong> (απαραίτητο — Vapi IPs είναι datacenter, Bot Fight τα μπλοκάρει)</li>
+        <li>Cloudflare secrets: <code>VAPI_TOOL_SECRET</code>, <code>VAPI_PHONE_NUMBER_ID</code>, <code>AI_VOICE_ENABLED=true</code></li>
+        <li>Supabase: τρέξε <code>scripts/add-ai-voice.sql</code></li>
+      </ol>
+      <h4>Monetization:</h4>
+      <p>Επίσημη τιμολόγηση στο <a href="${withLangPrefix(lang, "/admin/external-apis")}"><code>/admin/external-apis</code></a>: 3 tiers (Starter €39 · Pro €79 · Unlimited €149) με overage €0.30/min. All-in wholesale ≈ €0.105/min. Average margin 40% στα ενδιάμεσα tiers.</p>
+    ` : `
+      <p>The AI receptionist answers every inbound call 24/7 on both Vonage numbers (US +12075037391, UK +447441475768). Bilingual EN+EL, books tables, answers menu questions, transfers to the owner on request.</p>
+      <h4>Stack:</h4>
+      <ul>
+        <li><strong>Vapi</strong> — voice orchestration + PSTN/SIP inbound</li>
+        <li><strong>OpenAI GPT-4o-mini</strong> — LLM brain</li>
+        <li><strong>ElevenLabs multilingual v2</strong> — TTS (Greek + English)</li>
+        <li><strong>Deepgram Nova-3</strong> — streaming STT (AssemblyAI fallback)</li>
+        <li><strong>Vonage</strong> — telecom carrier (2 imported numbers)</li>
+      </ul>
+      <h4>Platform pieces:</h4>
+      <ul>
+        <li>4 Vapi tools → 3 API-request endpoints: <code>/api/ai-voice/hours-info</code>, <code>/api/ai-voice/menu-lookup</code>, <code>/api/ai-voice/create-reservation</code> + 1 Transfer Call tool (→ +306946272083)</li>
+        <li>End-of-call webhook: <code>/api/ai-voice/call-ended</code> writes transcript + summary to <code>vonage_voice_calls</code></li>
+        <li><a href="${withLangPrefix(lang, "/admin/ai-calls")}"><code>/admin/ai-calls</code></a> — conversation history dashboard with recording playback</li>
+        <li>AI bookings land as <code>status='pending_ai'</code> on <a href="${withLangPrefix(lang, "/admin/reservations")}"><code>/admin/reservations</code></a> — owner approves → auto-SMS to customer</li>
+      </ul>
+      <h4>Setup (runbook):</h4>
+      <p>Full runbook at <code>docs/vapi-setup.md</code>. Summary:</p>
+      <ol>
+        <li>Vapi: import Vonage numbers with master API Key (<code>b0557f36</code>) + Secret</li>
+        <li>Create "Sally's Bar receptionist" assistant with 4 tools (3 API + 1 Transfer)</li>
+        <li>Each tool header: <code>x-vapi-secret: &lt;VAPI_TOOL_SECRET&gt;</code></li>
+        <li>Assistant Server URL (for transcripts): <code>https://www.sallysbar.gr/api/ai-voice/call-ended</code></li>
+        <li>Cloudflare: <strong>Bot Fight Mode MUST be OFF</strong> — Vapi runs on AWS IPs which BFM blocks as "datacenter bot traffic". Disabling BFM is required for tool calls to reach us.</li>
+        <li>Cloudflare secrets: <code>VAPI_TOOL_SECRET</code>, <code>VAPI_PHONE_NUMBER_ID</code>, <code>AI_VOICE_ENABLED=true</code></li>
+        <li>Supabase: run <code>scripts/add-ai-voice.sql</code></li>
+      </ol>
+      <h4>Website promotion:</h4>
+      <p>The AI hotline is advertised via <a href="${withLangPrefix(lang, "/")}">homepage banner</a>, <a href="${withLangPrefix(lang, "/book")}">/book page compact banner</a>, and footer phone chips. Clickable <code>tel:</code> links on mobile dial immediately.</p>
+      <h4>Monetization:</h4>
+      <p>Full pricing breakdown at <a href="${withLangPrefix(lang, "/admin/external-apis")}"><code>/admin/external-apis</code></a>. Sold as an add-on to PistotitaOS base plan:</p>
+      <ul>
+        <li><strong>Starter</strong> €39/mo · 130 min included · ~65% margin</li>
+        <li><strong>Pro</strong> €79/mo · 400 min · ~47% margin</li>
+        <li><strong>Unlimited</strong> €149/mo · 1,000 min soft-cap · ~30% margin</li>
+        <li><strong>Overage</strong> €0.30/min (wholesale ~€0.105/min → 185% markup)</li>
+      </ul>
+    `,
+  },
 };
 
 const sections = [
@@ -1623,10 +1695,11 @@ const sections = [
   { id: "pistotita-os",  icon: "🚀", tint: "bg-amber-300/15",   ...L.s48 },
   { id: "vonage-api",    icon: "📞", tint: "bg-sky-300/15",     ...L.s49 },
   { id: "inbox-dash",    icon: "📬", tint: "bg-emerald-300/15", ...L.s50 },
+  { id: "ai-voice",      icon: "🤖", tint: "bg-violet-300/15",   ...L.s51 },
   { id: "troubleshoot",   icon: "🩹", tint: "bg-red-300/15",     ...L.s14 },
 ];
 
-const tocIds = ["install","push","customer","waiter","barman","deliver","admin-overview","admin-menu","admin-qr","admin-events","admin-users","admin-tips","telegram","marketing","mkt-analytics","gamification","customer-pwa","legal","wheel","customer-dash","wallet-share","user-dossier","notif-scope","play-crosspromo","team-chat","settings-profile","social-card","table-settings","staff-sidebar","referral-gate","quests-ai-confirm","tasks-admin","wheel-settings","address-autocomplete","sitemap-seo","super-admin","saas-tooling","games-toggles","wheel-redeem","scratch-editor","tasks-crud","games-pages","marketing-automation","crm-campaigns","social-linking","card-admin","pistotita-os","vonage-api","inbox-dash","troubleshoot"];
+const tocIds = ["install","push","customer","waiter","barman","deliver","admin-overview","admin-menu","admin-qr","admin-events","admin-users","admin-tips","telegram","marketing","mkt-analytics","gamification","customer-pwa","legal","wheel","customer-dash","wallet-share","user-dossier","notif-scope","play-crosspromo","team-chat","settings-profile","social-card","table-settings","staff-sidebar","referral-gate","quests-ai-confirm","tasks-admin","wheel-settings","address-autocomplete","sitemap-seo","super-admin","saas-tooling","games-toggles","wheel-redeem","scratch-editor","tasks-crud","games-pages","marketing-automation","crm-campaigns","social-linking","card-admin","pistotita-os","vonage-api","inbox-dash","ai-voice","troubleshoot"];
 ---
 
 <html lang={lang}>

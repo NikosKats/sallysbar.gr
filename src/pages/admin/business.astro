@@ -2,6 +2,7 @@
 import "../../styles/global.css";
 import Header from "../../components/Header.astro";
 import AdminNav from "../../components/AdminNav.astro";
+import { withLangPrefix } from "../../i18n";
 
 const lang = Astro.locals.lang ?? "en";
 const isEl = lang === "el";
@@ -18,6 +19,10 @@ const clusters = [
       ["SaaS — Seasonal (6mo)", "€1,890 total (~€315/mo) · May–Oct", "Tourist venues · billed April upfront"],
       ["SaaS — Year-round (12mo)", "€2,988 total (€249/mo) · 12-mo commit", "City bars · compounding MRR"],
       ["One-time setup fee", "€890 per venue", "Covers ~4h install work"],
+      ["🤖 AI Receptionist add-on — Starter", "€39/mo · 130 min inbound AI calls", "~65% margin · upsell on every plan"],
+      ["🤖 AI Receptionist add-on — Pro", "€79/mo · 400 min", "~47% margin · typical venue fit"],
+      ["🤖 AI Receptionist add-on — Unlimited", "€149/mo · 1,000 min soft-cap", "~30% margin · high-volume city bars"],
+      ["🤖 AI Voice overage", "€0.30/min above cap", "Wholesale ≈ €0.105/min → 185% markup"],
       ["One-off licenses", "€3k–€8k perpetual", "No MRR"],
       ["White-label", "Agency rebrand", "Slow sales cycle"],
       ["Open-source + paid hosting", "€49–€99/mo managed", "Scales long-tail"],
@@ -189,9 +194,34 @@ const statusLabel: Record<string, string> = isEl ? {
       <section class="mb-8 rounded-2xl border border-amber-400/30 bg-gradient-to-br from-amber-500/10 via-fuchsia-500/5 to-sky-500/5 p-5">
         <p class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-2">⭐ Year-1 focus</p>
         <div class="grid sm:grid-cols-3 gap-3 text-sm">
-          <div><span class="font-bold text-amber-200">#1 Code (SaaS)</span> — main engine</div>
+          <div><span class="font-bold text-amber-200">#1 Code (SaaS + AI add-on)</span> — main engine</div>
           <div><span class="font-bold text-fuchsia-200">#5 Services</span> — bridge income while SaaS ramps</div>
           <div><span class="font-bold text-emerald-200">#4 Referrals (Kefalonia BnB)</span> — free money once signed</div>
+        </div>
+      </section>
+
+      <!-- AI Receptionist callout — new primary revenue driver -->
+      <section class="mb-8 rounded-2xl border border-violet-400/30 bg-gradient-to-br from-violet-500/[0.10] via-fuchsia-500/[0.05] to-transparent p-5">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="inline-block h-1.5 w-1.5 rounded-full bg-violet-400 animate-pulse"></span>
+          <p class="text-[10px] uppercase tracking-wider text-violet-300 font-bold">🆕 {isEl ? "ΝΕΟΣ ΠΟΡΟΣ ΕΣΟΔΩΝ" : "NEW REVENUE DRIVER"}</p>
+        </div>
+        <h3 class="font-heading text-xl font-bold">🤖 AI Receptionist — {isEl ? "υψηλότερο περιθώριο anu add-on" : "highest-margin add-on"}</h3>
+        <p class="mt-2 text-sm text-white/70 max-w-3xl">
+          {isEl
+            ? "3 tiers €39/€79/€149 πάνω από την βασική PistotitaOS συνδρομή. Wholesale ≈ €0.105/min. Retail €0.30/min. Στα 100 venues → ~€5,300/μήνα έσοδα, ~€2,100/μήνα καθαρό."
+            : "Three tiers (€39/€79/€149) on top of the base PistotitaOS subscription. Wholesale ≈ €0.105/min. Retail €0.30/min. At 100 venues → ~€5,300/mo revenue, ~€2,100/mo net profit."}
+        </p>
+        <div class="mt-3 flex flex-wrap gap-2">
+          <a href={withLangPrefix(lang, "/admin/external-apis")} class="inline-flex items-center gap-1 rounded-lg border border-violet-400/30 bg-violet-400/10 text-violet-200 px-3 py-1.5 text-xs font-semibold hover:bg-violet-400/20">
+            🔌 External APIs — {isEl ? "Κόστη & Monetize" : "Cost & Monetize"}
+          </a>
+          <a href={withLangPrefix(lang, "/admin/ai-calls")} class="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.03] text-white/75 px-3 py-1.5 text-xs hover:bg-white/10">
+            📞 {isEl ? "Συνομιλίες AI" : "AI Conversations"}
+          </a>
+          <a href={withLangPrefix(lang, "/admin/saas-playbook")} class="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.03] text-white/75 px-3 py-1.5 text-xs hover:bg-white/10">
+            🚀 SaaS Playbook
+          </a>
         </div>
       </section>
 

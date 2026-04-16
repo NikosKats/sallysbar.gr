@@ -1,0 +1,531 @@
+---
+import "../../styles/global.css";
+import Header from "../../components/Header.astro";
+import AdminNav from "../../components/AdminNav.astro";
+
+if (Astro.locals.role !== "super_admin") {
+  return new Response("Forbidden", { status: 403 });
+}
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+
+// ────────────────────────────────────────────────────────────────────────
+// Cost model: AI voice stack per-minute (blended, Sally's current config)
+// Sources checked April 2026 from each provider's public pricing page.
+// ────────────────────────────────────────────────────────────────────────
+const aiVoicePerMin = {
+  vapi: 0.05,           // Vapi platform fee per min ($0.05)
+  gptMini: 0.008,       // GPT-4o-mini: ~0.008/min at typical chat turn rate
+  elevenlabs: 0.03,     // ~180 chars/min bot speech × Starter $0.000167/char
+  deepgram: 0.0043,     // Nova-3 streaming
+  vonage: 0.018,        // Vonage inbound + routing, blended UK+US
+};
+const aiVoiceCostPerMin = Object.values(aiVoicePerMin).reduce((s, v) => s + v, 0); // ≈ $0.110 ≈ €0.105
+
+// Pricing tiers we'll resell at
+const tiers = [
+  { name: "Starter",   monthly: 39,  includedMin: 130,  overage: 0.30 },
+  { name: "Pro",       monthly: 79,  includedMin: 400,  overage: 0.30 },
+  { name: "Unlimited", monthly: 149, includedMin: 1000, overage: 0.30 },
+];
+
+// ────────────────────────────────────────────────────────────────────────
+// API inventory — every external service the platform consumes.
+// Each entry has: use cases, pricing, Sally's monthly usage + cost,
+// billing model (pass-through / included), and a monetization hook.
+// ────────────────────────────────────────────────────────────────────────
+type Api = {
+  name: string;
+  logo?: string;
+  url: string;
+  category: "Messaging" | "AI" | "Voice" | "Infra" | "Auth" | "Email" | "Utility";
+  used_for: string;
+  pricing_raw: string;
+  pricing_note?: string;
+  sally_monthly_usage: string;
+  sally_monthly_cost_eur: number;
+  billing_model: "Pass-through" | "Included in subscription" | "Flat platform cost" | "Free tier";
+  monetization: string;
+};
+
+const apis: Api[] = [
+  // ─── AI voice stack ──────────────────────────────────────────────────
+  {
+    name: "Vapi (voice orchestration)",
+    url: "https://vapi.ai",
+    category: "Voice",
+    used_for: "AI receptionist orchestration — streams audio, connects STT/LLM/TTS, fires tool calls to /api/ai-voice/*, transfers to human.",
+    pricing_raw: "$0.05 / minute platform fee",
+    pricing_note: "Base Vapi fee on top of provider pass-through (OpenAI/ElevenLabs/Deepgram).",
+    sally_monthly_usage: "~100 min @ 3min/call × 35 calls",
+    sally_monthly_cost_eur: 4.65,
+    billing_model: "Pass-through",
+    monetization: "Pass-through + markup. Retail at €0.30/min via AI Voice add-on tiers.",
+  },
+  {
+    name: "OpenAI GPT-4o-mini",
+    url: "https://platform.openai.com",
+    category: "AI",
+    used_for: "AI receptionist brain (Vapi model provider), CRM campaign AI-generate, bulk message ideation.",
+    pricing_raw: "$0.15 / 1M input · $0.60 / 1M output tokens",
+    sally_monthly_usage: "~100 voice min + ~50 campaigns/mo",
+    sally_monthly_cost_eur: 1.20,
+    billing_model: "Pass-through",
+    monetization: "Voice: bundled in AI Voice add-on. Campaigns: part of PistotitaOS commission markup.",
+  },
+  {
+    name: "ElevenLabs (TTS)",
+    url: "https://elevenlabs.io",
+    category: "Voice",
+    used_for: "Multilingual bot voice for AI receptionist (EN/EL). Eleven Multilingual v2 model.",
+    pricing_raw: "$5/mo Starter (30k chars) · $22/mo Creator (100k chars)",
+    pricing_note: "Character-based. ~180 chars/min spoken.",
+    sally_monthly_usage: "~18k chars/mo",
+    sally_monthly_cost_eur: 4.60,
+    billing_model: "Flat platform cost",
+    monetization: "Bundled in AI Voice add-on. Upsell: per-venue custom voice cloning (€49 one-time).",
+  },
+  {
+    name: "Deepgram (STT)",
+    url: "https://deepgram.com",
+    category: "Voice",
+    used_for: "Real-time speech-to-text for AI receptionist (Nova-3, multilingual). Fallback to AssemblyAI.",
+    pricing_raw: "$0.0043 / minute streaming (Nova-3)",
+    sally_monthly_usage: "~200 min/mo (caller + bot channels)",
+    sally_monthly_cost_eur: 0.80,
+    billing_model: "Pass-through",
+    monetization: "Bundled in AI Voice add-on.",
+  },
+  {
+    name: "Anthropic Claude",
+    url: "https://anthropic.com",
+    category: "AI",
+    used_for: "Menu Q&A AI assistant (/api/chat), Tonight's Quests AI bulk generator (100 quests × 10 themes).",
+    pricing_raw: "$3 / 1M input · $15 / 1M output (Sonnet)",
+    sally_monthly_usage: "~300 chat turns/mo",
+    sally_monthly_cost_eur: 0.90,
+    billing_model: "Included in subscription",
+    monetization: "Absorbed into base PistotitaOS price (low volume per venue).",
+  },
+
+  // ─── Messaging ───────────────────────────────────────────────────────
+  {
+    name: "Vonage Messages API",
+    url: "https://www.vonage.com/communications-apis/",
+    category: "Messaging",
+    used_for: "SMS, WhatsApp, Viber, Messenger, Instagram outbound for CRM campaigns and marketing automation triggers.",
+    pricing_raw: "SMS GR €0.065 · WA €0.0955 · Viber €0.036 · Messenger/IG €0.026",
+    pricing_note: "Plus €0.0003/inbound SMS.",
+    sally_monthly_usage: "~600 SMS + 200 WA/mo (assumed)",
+    sally_monthly_cost_eur: 58.10,
+    billing_model: "Pass-through",
+    monetization: "Existing PistotitaOS +50% commission on top of wholesale. Already live at /admin/campaigns.",
+  },
+  {
+    name: "Vonage Voice API",
+    url: "https://www.vonage.com/communications-apis/voice/",
+    category: "Voice",
+    used_for: "Inbound calls to purchased numbers (+12075037391 US, +447441475768 UK) — routed to Vapi AI agent or voicemail NCCO.",
+    pricing_raw: "US number €1.10/mo · UK number €1.10/mo · inbound €0.0085/min",
+    sally_monthly_usage: "2 numbers, ~120 min inbound",
+    sally_monthly_cost_eur: 3.22,
+    billing_model: "Pass-through",
+    monetization: "Rolled into AI Voice add-on per-minute price.",
+  },
+  {
+    name: "Resend (email)",
+    url: "https://resend.com",
+    category: "Email",
+    used_for: "Transactional: booking acknowledgements, reservation confirmations, weekly admin digest. Marketing: CRM email campaigns.",
+    pricing_raw: "3,000 emails/mo free · $20/mo for 50k · €0.00033/email at scale",
+    sally_monthly_usage: "~200 emails/mo",
+    sally_monthly_cost_eur: 0,
+    billing_model: "Free tier",
+    monetization: "Upgrades to Pro billed pass-through when venues exceed 3k/mo.",
+  },
+  {
+    name: "Meta webhooks (Messenger + IG)",
+    url: "https://developers.facebook.com",
+    category: "Messaging",
+    used_for: "Capture PSID / IG-Scoped ID when users link Messenger/Instagram via m.me / ig.me. Enables DM campaigns + +20 loyalty-point booster.",
+    pricing_raw: "Free (standard) · Meta billing only on business-initiated WABA templates (separate to Vonage)",
+    sally_monthly_usage: "N/A — webhook only",
+    sally_monthly_cost_eur: 0,
+    billing_model: "Free tier",
+    monetization: "Unlocks high-conversion DM campaigns (sold as part of CRM).",
+  },
+  {
+    name: "Telegram Bot API",
+    url: "https://core.telegram.org/bots",
+    category: "Messaging",
+    used_for: "Staff order flow — barman/waiter/booking channels with inline buttons. Zero outbound cost.",
+    pricing_raw: "Free",
+    sally_monthly_usage: "Unlimited",
+    sally_monthly_cost_eur: 0,
+    billing_model: "Free tier",
+    monetization: "Differentiator vs. competitors — no comms cost for ops.",
+  },
+
+  // ─── Infrastructure ───────────────────────────────────────────────────
+  {
+    name: "Cloudflare Pages + Workers",
+    url: "https://cloudflare.com",
+    category: "Infra",
+    used_for: "SSR hosting for the entire Astro app, Worker runtime for all API routes, edge network (DNS, SSL, CDN), R2 (future file storage).",
+    pricing_raw: "Free: 100k req/day · Pro $5/mo: 10M req/mo",
+    sally_monthly_usage: "~50k req/mo",
+    sally_monthly_cost_eur: 0,
+    billing_model: "Free tier",
+    monetization: "Flat cost ceiling per venue (€5/mo Pro when needed). Bundled in base plan.",
+  },
+  {
+    name: "Supabase",
+    url: "https://supabase.com",
+    category: "Infra",
+    used_for: "PostgreSQL DB, Auth (email/OTP/OAuth), Storage (avatars, CV uploads), Realtime (staff order board), RLS.",
+    pricing_raw: "Free: 500MB DB · Pro $25/mo: 8GB DB + paused protection",
+    sally_monthly_usage: "~200MB DB, 10 concurrent users",
+    sally_monthly_cost_eur: 0,
+    billing_model: "Free tier",
+    monetization: "Upgrade to Pro at ~100 venues (consolidated across tenants).",
+  },
+  {
+    name: "VAPID (Web Push)",
+    url: "https://datatracker.ietf.org/doc/html/rfc8292",
+    category: "Messaging",
+    used_for: "PWA push notifications to staff (new order, ready, low stock). Own keys, sent directly to browser push endpoints.",
+    pricing_raw: "Free — no third-party",
+    sally_monthly_usage: "~500 pushes/mo",
+    sally_monthly_cost_eur: 0,
+    billing_model: "Free tier",
+    monetization: "Differentiator — competitors pay OneSignal/Firebase for this.",
+  },
+
+  // ─── Auth / security ──────────────────────────────────────────────────
+  {
+    name: "Cloudflare Turnstile",
+    url: "https://www.cloudflare.com/products/turnstile/",
+    category: "Auth",
+    used_for: "Bot protection on public forms — reservations, job applications, signup.",
+    pricing_raw: "Free (unlimited)",
+    sally_monthly_usage: "~400 challenges/mo",
+    sally_monthly_cost_eur: 0,
+    billing_model: "Free tier",
+    monetization: "Replaces reCAPTCHA cost at scale.",
+  },
+  {
+    name: "Google / Apple Wallet",
+    url: "https://developers.google.com/wallet",
+    category: "Utility",
+    used_for: "Digital loyalty card passes — installable in native wallets, auto-update on points change.",
+    pricing_raw: "Google: free · Apple: $99/yr developer account (shared)",
+    sally_monthly_usage: "~30 new installs/mo",
+    sally_monthly_cost_eur: 0,
+    billing_model: "Flat platform cost",
+    monetization: "Premium feature — bundle into Pro tier.",
+  },
+  {
+    name: "Photon (OpenStreetMap)",
+    url: "https://photon.komoot.io",
+    category: "Utility",
+    used_for: "Address autocomplete on /account — free alternative to Google Maps.",
+    pricing_raw: "Free (self-hostable)",
+    sally_monthly_usage: "~1000 queries/mo",
+    sally_monthly_cost_eur: 0,
+    billing_model: "Free tier",
+    monetization: "Saves €200–€600/mo Google Maps bill vs. competitors.",
+  },
+];
+
+const total_monthly_cost = apis.reduce((s, a) => s + a.sally_monthly_cost_eur, 0);
+
+function eur(n: number) {
+  return "€" + (Math.round(n * 100) / 100).toFixed(2);
+}
+function catColor(c: string) {
+  return {
+    Voice:     "bg-violet-400/10 border-violet-400/30 text-violet-200",
+    AI:        "bg-fuchsia-400/10 border-fuchsia-400/30 text-fuchsia-200",
+    Messaging: "bg-sky-400/10 border-sky-400/30 text-sky-200",
+    Infra:     "bg-emerald-400/10 border-emerald-400/30 text-emerald-200",
+    Auth:      "bg-amber-400/10 border-amber-400/30 text-amber-200",
+    Email:     "bg-rose-400/10 border-rose-400/30 text-rose-200",
+    Utility:   "bg-white/5 border-white/20 text-white/70",
+  }[c] ?? "bg-white/5 border-white/15 text-white/60";
+}
+function billingColor(b: string) {
+  return {
+    "Pass-through":              "text-amber-300",
+    "Included in subscription":  "text-emerald-300",
+    "Flat platform cost":        "text-sky-300",
+    "Free tier":                 "text-emerald-400",
+  }[b] ?? "text-white/60";
+}
+
+// Tier cost analysis
+const tierRows = tiers.map(t => {
+  const atCost = aiVoiceCostPerMin * t.includedMin;
+  const margin = t.monthly - atCost;
+  const marginPct = (margin / t.monthly) * 100;
+  return { ...t, atCost, margin, marginPct };
+});
+---
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>External APIs · Super Admin — {isEl ? "Κόστη & Monetization" : "Cost & Monetization"}</title>
+    <meta name="robots" content="noindex,nofollow" />
+    <style>
+      @media print {
+        @page { size: A4; margin: 12mm; }
+        body { background: white !important; color: black !important; }
+        .no-print { display: none !important; }
+        * { color: black !important; background: transparent !important; box-shadow: none !important; }
+        details { break-inside: avoid; page-break-inside: avoid; }
+        .card { border: 1px solid #ddd !important; }
+      }
+    </style>
+  </head>
+  <body class="min-h-screen bg-[#0a0a0f] text-white font-body antialiased">
+    <div class="no-print"><Header /></div>
+    <div class="h-20 no-print"></div>
+    <div class="no-print"><AdminNav active="external-apis" /></div>
+
+    <main class="mx-auto max-w-6xl px-5 py-10">
+      <div class="mb-8 flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <p class="text-xs uppercase tracking-[0.28em] text-rose-300 mb-2 flex items-center gap-2">
+            <span class="inline-block h-1.5 w-1.5 rounded-full bg-rose-400 animate-pulse"></span>
+            {isEl ? "ΜΟΝΟ SUPER ADMIN" : "SUPER ADMIN ONLY"}
+          </p>
+          <h1 class="font-heading text-4xl font-bold">🔌 {isEl ? "Εξωτερικά APIs — Κόστη & Monetization" : "External APIs — Cost & Monetization"}</h1>
+          <p class="mt-2 text-sm text-white/60 max-w-3xl">{isEl
+            ? "Κάθε τρίτο provider που χρησιμοποιεί η πλατφόρμα, τι κοστίζει, πώς το χρεώνουμε τον πελάτη, και πόσο παίρνουμε πίσω σε commission."
+            : "Every third-party provider the platform consumes, what it costs, how we bill it to the venue, and how much margin we make as PistotitaOS."}</p>
+        </div>
+        <button onclick="window.print()" class="no-print shrink-0 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 px-4 py-2 text-xs font-semibold">🖨 {isEl ? "Εκτύπωση / PDF" : "Print / Save PDF"}</button>
+      </div>
+
+      {/* ───── HERO KPIs ───── */}
+      <section class="grid md:grid-cols-3 gap-3 mb-10">
+        <div class="rounded-2xl border border-amber-400/30 bg-amber-400/[0.07] p-5 card">
+          <p class="text-[10px] uppercase tracking-wider text-amber-300 font-bold">{isEl ? "Συνολικό μηνιαίο cost (Sally's)" : "Sally's monthly API cost"}</p>
+          <p class="font-heading text-3xl font-bold mt-2">{eur(total_monthly_cost)}</p>
+          <p class="text-[11px] text-white/50 mt-1">{apis.length} providers combined</p>
+        </div>
+        <div class="rounded-2xl border border-violet-400/30 bg-violet-400/[0.07] p-5 card">
+          <p class="text-[10px] uppercase tracking-wider text-violet-300 font-bold">{isEl ? "AI Voice κόστος/λεπτό" : "AI Voice cost / min"}</p>
+          <p class="font-heading text-3xl font-bold mt-2">€{aiVoiceCostPerMin.toFixed(3)}</p>
+          <p class="text-[11px] text-white/50 mt-1">Vapi + GPT-4o-mini + ElevenLabs + Deepgram + Vonage</p>
+        </div>
+        <div class="rounded-2xl border border-emerald-400/30 bg-emerald-400/[0.07] p-5 card">
+          <p class="text-[10px] uppercase tracking-wider text-emerald-300 font-bold">{isEl ? "Προτεινόμενη retail τιμή" : "Recommended retail / min"}</p>
+          <p class="font-heading text-3xl font-bold mt-2 text-emerald-300">€0.30</p>
+          <p class="text-[11px] text-white/50 mt-1">~180% markup vs. wholesale</p>
+        </div>
+      </section>
+
+      {/* ───── AI VOICE ADD-ON TIERS ───── */}
+      <section class="mb-10 rounded-3xl border border-violet-400/30 bg-gradient-to-br from-violet-500/[0.08] via-fuchsia-500/[0.04] to-transparent p-6 card">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="inline-block h-1.5 w-1.5 rounded-full bg-violet-400 animate-pulse"></span>
+          <p class="text-[10px] uppercase tracking-[0.22em] text-violet-300 font-bold">{isEl ? "🎯 Ο ΚΥΡΙΟΣ ΝΕΟΣ ΠΟΡΟΣ ΕΣΟΔΩΝ" : "🎯 THE MAIN NEW REVENUE DRIVER"}</p>
+        </div>
+        <h2 class="font-heading text-2xl md:text-3xl font-bold">{isEl ? "AI Receptionist — Τιμολόγηση Add-on" : "AI Receptionist — Add-on Pricing"}</h2>
+        <p class="mt-2 text-sm text-white/65 max-w-3xl">
+          {isEl
+            ? "Πούλα το σαν μηνιαίο add-on πάνω από τη βασική συνδρομή PistotitaOS. Κάθε tier είναι all-in: περιλαμβάνει Vapi, LLM, STT, TTS και τηλεφωνικό κόστος. Margin υπολογίζεται πάνω στο πλήρες wholesale."
+            : "Sell it as a monthly add-on on top of the base PistotitaOS subscription. Each tier is all-in: includes Vapi, LLM, STT, TTS and telecom cost. Margin calculated against full wholesale."}
+        </p>
+
+        <div class="mt-5 overflow-x-auto">
+          <table class="w-full text-sm card">
+            <thead class="text-[10px] uppercase tracking-wider text-white/50 text-left">
+              <tr>
+                <th class="py-2 pr-4">{isEl ? "Πακέτο" : "Tier"}</th>
+                <th class="py-2 pr-4 text-right">{isEl ? "Τιμή/μήνα" : "Monthly"}</th>
+                <th class="py-2 pr-4 text-right">{isEl ? "Λεπτά" : "Included minutes"}</th>
+                <th class="py-2 pr-4 text-right">At-cost</th>
+                <th class="py-2 pr-4 text-right">Margin €</th>
+                <th class="py-2 pr-4 text-right">Margin %</th>
+                <th class="py-2 pr-4 text-right">Overage</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tierRows.map((r, i) => (
+                <tr class={`border-t border-white/5 ${i === 0 ? "bg-violet-400/[0.05]" : ""}`}>
+                  <td class="py-2.5 pr-4 font-bold">{r.name}</td>
+                  <td class="py-2.5 pr-4 text-right font-mono font-bold text-emerald-300">{eur(r.monthly)}</td>
+                  <td class="py-2.5 pr-4 text-right font-mono">{r.includedMin.toLocaleString()}</td>
+                  <td class="py-2.5 pr-4 text-right font-mono text-white/60">{eur(r.atCost)}</td>
+                  <td class="py-2.5 pr-4 text-right font-mono text-emerald-300 font-semibold">{eur(r.margin)}</td>
+                  <td class="py-2.5 pr-4 text-right font-mono font-bold" style={`color:${r.marginPct > 50 ? '#6ee7b7' : r.marginPct > 25 ? '#fcd34d' : '#fca5a5'}`}>{r.marginPct.toFixed(0)}%</td>
+                  <td class="py-2.5 pr-4 text-right font-mono text-white/60">{eur(r.overage)}/min</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="mt-6 grid md:grid-cols-2 gap-3 text-sm">
+          <div class="rounded-2xl border border-white/10 bg-black/30 p-4 card">
+            <p class="text-[10px] uppercase tracking-wider text-emerald-300 font-bold mb-2">💡 {isEl ? "Πώς να το πουλήσεις" : "Sales angles"}</p>
+            <ul class="space-y-1.5 text-white/80 text-xs">
+              <li>• <strong>{isEl ? "Αντικαθιστά μισό άτομο ρεσεψιονίστ" : "Replaces half a receptionist"}</strong> ({isEl ? "€400–600/μήνα σε μισθό" : "€400–600/mo salary"})</li>
+              <li>• <strong>{isEl ? "Απαντάει σε κάθε κλήση" : "Never misses a call"}</strong> — 3AM, Δευτέρα ρεπό, busy staff</li>
+              <li>• <strong>{isEl ? "Δίγλωσση (ΕΛ/ΕΝ)" : "Bilingual (EL/EN)"}</strong> — {isEl ? "εξοικονομεί hire" : "saves bilingual hire"}</li>
+              <li>• <strong>{isEl ? "+15–25% κρατήσεις" : "+15–25% bookings"}</strong> ({isEl ? "από κλήσεις 9μμ–9πμ" : "from 9pm–9am calls previously lost"})</li>
+              <li>• <strong>{isEl ? "Transcript + σύνοψη" : "Transcript + summary"}</strong> {isEl ? "κάθε κλήσης" : "of every call"} ({isEl ? "ανάλυση customer intent" : "customer intent analytics"})</li>
+            </ul>
+          </div>
+          <div class="rounded-2xl border border-white/10 bg-black/30 p-4 card">
+            <p class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-2">📊 {isEl ? "Τυπικό venue ($$)" : "Typical venue ($$)"}</p>
+            <table class="w-full text-xs">
+              <tbody>
+                <tr><td class="py-1 text-white/60">{isEl ? "Εκτιμώμενες κλήσεις/μήνα" : "Estimated calls/mo"}</td><td class="py-1 text-right font-mono">50–80</td></tr>
+                <tr><td class="py-1 text-white/60">{isEl ? "Μέση διάρκεια" : "Avg duration"}</td><td class="py-1 text-right font-mono">2–3 min</td></tr>
+                <tr><td class="py-1 text-white/60">{isEl ? "Λεπτά συνολικά" : "Total minutes"}</td><td class="py-1 text-right font-mono">100–240</td></tr>
+                <tr class="border-t border-white/10"><td class="py-1.5 font-semibold">{isEl ? "Συνιστώμενο tier" : "Recommended tier"}</td><td class="py-1.5 text-right font-bold text-emerald-300">Starter / Pro</td></tr>
+                <tr><td class="py-1 text-white/60">ROI: 1 επιπλέον κράτηση / μήνα</td><td class="py-1 text-right font-mono text-emerald-300">&gt;100%</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <p class="mt-4 text-[11px] text-white/50">
+          {isEl
+            ? "Tip: στα PistotitaOS Year-round plans, μπορείς να συμπεριλάβεις 60 λεπτά AI-voice δωρεάν σαν upsell hook, και να χρεώσεις overage €0.30/min πάνω από αυτό."
+            : "Tip: on PistotitaOS Year-round plans, include 60 min of AI-voice free as an upsell hook, then bill overage at €0.30/min."}
+        </p>
+      </section>
+
+      {/* ───── ALL APIS TABLE ───── */}
+      <section class="mb-8">
+        <div class="flex items-end justify-between gap-4 flex-wrap mb-4">
+          <div>
+            <h2 class="font-heading text-2xl font-bold">{isEl ? "📇 Πλήρης καταγραφή providers" : "📇 Full provider inventory"}</h2>
+            <p class="text-sm text-white/55 mt-1">{isEl ? "Κάθε γραμμή: τι κάνει, τι κοστίζει, πώς χρεώνεται." : "Each row: what it does, what it costs, how it's billed."}</p>
+          </div>
+        </div>
+
+        <div class="space-y-3">
+          {apis.map(a => (
+            <details class="rounded-2xl border border-white/10 bg-white/[0.03] overflow-hidden card">
+              <summary class="cursor-pointer px-5 py-4 flex items-center justify-between gap-4 list-none hover:bg-white/[0.02]">
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${catColor(a.category)}`}>{a.category}</span>
+                    <h3 class="font-heading text-lg font-bold">{a.name}</h3>
+                    <a href={a.url} target="_blank" rel="noopener" class="text-xs text-white/40 hover:text-amber-300 no-print">↗</a>
+                  </div>
+                  <p class="text-sm text-white/65 mt-1 line-clamp-2">{a.used_for}</p>
+                </div>
+                <div class="flex items-center gap-4 shrink-0 text-right">
+                  <div>
+                    <p class="text-[10px] uppercase tracking-wider text-white/40">{isEl ? "Κόστος/μήνα" : "Sally's /mo"}</p>
+                    <p class="font-mono font-bold">{eur(a.sally_monthly_cost_eur)}</p>
+                  </div>
+                  <span class="text-white/40">▾</span>
+                </div>
+              </summary>
+              <div class="px-5 pb-5 grid md:grid-cols-2 gap-4 border-t border-white/5 pt-4">
+                <div>
+                  <p class="text-[10px] uppercase tracking-wider text-white/40 font-bold mb-1">{isEl ? "Χρήση στην πλατφόρμα" : "Used for"}</p>
+                  <p class="text-sm text-white/80">{a.used_for}</p>
+                </div>
+                <div>
+                  <p class="text-[10px] uppercase tracking-wider text-white/40 font-bold mb-1">{isEl ? "Τιμολόγηση provider" : "Provider pricing"}</p>
+                  <p class="text-sm text-white/80 font-mono">{a.pricing_raw}</p>
+                  {a.pricing_note && <p class="text-[11px] text-white/45 mt-0.5">{a.pricing_note}</p>}
+                </div>
+                <div>
+                  <p class="text-[10px] uppercase tracking-wider text-white/40 font-bold mb-1">{isEl ? "Χρήση Sally's" : "Sally's usage"}</p>
+                  <p class="text-sm text-white/80">{a.sally_monthly_usage}</p>
+                </div>
+                <div>
+                  <p class="text-[10px] uppercase tracking-wider text-white/40 font-bold mb-1">{isEl ? "Χρέωση πελάτη" : "Billing model"}</p>
+                  <p class={`text-sm font-semibold ${billingColor(a.billing_model)}`}>{a.billing_model}</p>
+                </div>
+                <div class="md:col-span-2 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.04] p-3">
+                  <p class="text-[10px] uppercase tracking-wider text-emerald-300 font-bold mb-1">💰 {isEl ? "Πώς το μονετίζουμε" : "Monetization angle"}</p>
+                  <p class="text-sm text-white/85">{a.monetization}</p>
+                </div>
+              </div>
+            </details>
+          ))}
+        </div>
+      </section>
+
+      {/* ───── BILLING PATTERNS ───── */}
+      <section class="mb-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5 card">
+        <h3 class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-3">📐 {isEl ? "3 patterns χρέωσης που χρησιμοποιούμε" : "3 billing patterns we use"}</h3>
+        <div class="grid md:grid-cols-3 gap-3 text-sm">
+          <div class="rounded-xl border border-amber-400/25 bg-amber-400/[0.04] p-3">
+            <p class="font-semibold text-amber-200 mb-1">{isEl ? "Pass-through + commission" : "Pass-through + commission"}</p>
+            <p class="text-xs text-white/70">{isEl
+              ? "Χρεώνουμε τον πελάτη στην τιμή του provider + 50% markup. Παράδειγμα: CRM καμπάνιες (SMS/WA)."
+              : "Charge the venue at the provider's cost + 50% markup. Example: CRM campaigns (SMS/WA)."}</p>
+          </div>
+          <div class="rounded-xl border border-emerald-400/25 bg-emerald-400/[0.04] p-3">
+            <p class="font-semibold text-emerald-200 mb-1">{isEl ? "Bundled στη συνδρομή" : "Bundled in subscription"}</p>
+            <p class="text-xs text-white/70">{isEl
+              ? "Απορροφάμε το κόστος στην flat PistotitaOS τιμή. Παράδειγμα: Supabase, Cloudflare, Claude menu-AI."
+              : "Absorb the cost into the flat PistotitaOS price. Example: Supabase, Cloudflare, Claude menu AI."}</p>
+          </div>
+          <div class="rounded-xl border border-violet-400/25 bg-violet-400/[0.04] p-3">
+            <p class="font-semibold text-violet-200 mb-1">{isEl ? "Add-on με δικές του τιμές" : "Separate add-on tiers"}</p>
+            <p class="text-xs text-white/70">{isEl
+              ? "Ξεχωριστή μηνιαία χρέωση για premium capability. Παράδειγμα: AI Voice Receptionist (€39–149/μήνα)."
+              : "Standalone monthly charge for a premium capability. Example: AI Voice Receptionist (€39–149/mo)."}</p>
+          </div>
+        </div>
+      </section>
+
+      {/* ───── SCALE PROJECTION ───── */}
+      <section class="mb-8 rounded-2xl border border-amber-400/30 bg-gradient-to-br from-amber-500/10 via-fuchsia-500/5 to-sky-500/5 p-5 card">
+        <h3 class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-3">📈 {isEl ? "Προβολή εσόδων AI Voice (προσεκτικά σενάρια)" : "AI Voice revenue projection (conservative)"}</h3>
+        <table class="w-full text-sm">
+          <thead class="text-[10px] uppercase tracking-wider text-white/40 text-left">
+            <tr>
+              <th class="py-2 pr-4">{isEl ? "Venues στο AI add-on" : "Venues on AI add-on"}</th>
+              <th class="py-2 pr-4 text-right">@ Starter</th>
+              <th class="py-2 pr-4 text-right">@ Pro</th>
+              <th class="py-2 pr-4 text-right">@ Unlimited</th>
+              <th class="py-2 pr-4 text-right">{isEl ? "Μέσο margin" : "Avg margin"}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[10, 25, 50, 100, 200].map(n => (
+              <tr class="border-t border-white/5">
+                <td class="py-2 pr-4 font-mono font-semibold">{n}</td>
+                <td class="py-2 pr-4 text-right font-mono">{eur(n * 39)}/mo</td>
+                <td class="py-2 pr-4 text-right font-mono">{eur(n * 79)}/mo</td>
+                <td class="py-2 pr-4 text-right font-mono">{eur(n * 149)}/mo</td>
+                <td class="py-2 pr-4 text-right font-mono text-emerald-300 font-bold">~40%</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p class="mt-3 text-[11px] text-white/50">
+          {isEl
+            ? "Υπόθεση: 60% venues σε Starter, 30% σε Pro, 10% σε Unlimited. Στα 100 venues → ~€5,300/μήνα έσοδα, ~€2,100/μήνα καθαρό κέρδος."
+            : "Assumption: 60% of venues on Starter, 30% Pro, 10% Unlimited. At 100 venues → ~€5,300/mo revenue, ~€2,100/mo net profit."}
+        </p>
+      </section>
+
+      {/* ───── NOT INCLUDED / FUTURE ───── */}
+      <section class="rounded-2xl border border-red-400/20 bg-red-400/[0.04] p-5 card">
+        <h3 class="text-[10px] uppercase tracking-wider text-red-300 font-bold mb-3">⚠️ {isEl ? "Δεν περιλαμβάνονται / μελλοντικά" : "Not included / future add-ons"}</h3>
+        <ul class="text-sm text-white/75 space-y-1.5 list-disc pl-5">
+          <li>{isEl ? "Stripe / Adyen για payment processing (3-μηνη ενσωμάτωση)" : "Stripe / Adyen for payment processing (3-month integration)"}</li>
+          <li>{isEl ? "POS integration (Square, Toast, Lightspeed) — premium upsell" : "POS integration (Square, Toast, Lightspeed) — premium upsell"}</li>
+          <li>{isEl ? "ElevenLabs Voice Cloning ανά venue (€49 one-time ή €9/μήνα)" : "Per-venue ElevenLabs voice cloning (€49 one-time or €9/mo)"}</li>
+          <li>{isEl ? "Outbound AI calls (follow-up no-shows) — next tier" : "Outbound AI calls (no-show follow-ups) — next tier"}</li>
+          <li>{isEl ? "Ανάλυση sentiment/intent από transcripts (analytics premium)" : "Sentiment/intent analysis from transcripts (analytics premium)"}</li>
+        </ul>
+      </section>
+    </main>
+  </body>
+</html>
