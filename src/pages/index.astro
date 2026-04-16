@@ -4,6 +4,7 @@ import Header from "../components/Header.astro";
 import SeasonBanner from "../components/SeasonBanner.astro";
 import StickyCta from "../components/StickyCta.astro";
 import Footer from "../components/Footer.astro";
+import AiHotlineBanner from "../components/AiHotlineBanner.astro";
 
 import { site, getSiteCopy } from "../data/site";
 import en from "../i18n/en";
@@ -314,6 +315,9 @@ const sectLabels = isEl ? {
       </div>
       <p class="mt-5 text-center text-sm text-white/50 italic">{t.home.ukLine}</p>
     </section>
+
+    <!-- AI HOTLINE BANNER -->
+    <AiHotlineBanner lang={lang} />
 
     <!-- PHOTO GALLERY -->
     <section class="mx-auto max-w-6xl px-6 py-20">
