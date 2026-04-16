@@ -1,0 +1,196 @@
+---
+import "../../styles/global.css";
+import Header from "../../components/Header.astro";
+import AdminNav from "../../components/AdminNav.astro";
+
+if (Astro.locals.role !== "super_admin") {
+  return new Response("Forbidden", { status: 403 });
+}
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+const today = new Date().toLocaleDateString(isEl ? "el-GR" : "en-GB", { day: "2-digit", month: "long", year: "numeric" });
+
+const subProcessors = [
+  { name: "Supabase, Inc.",        role: "Database, auth, storage, realtime",     region: "EU (eu-central-1, Frankfurt)",         url: "https://supabase.com/legal/dpa" },
+  { name: "Cloudflare, Inc.",      role: "Edge compute (Workers), CDN, DNS, SSL", region: "Global (data processed at nearest EU PoP)", url: "https://www.cloudflare.com/cloudflare-customer-dpa/" },
+  { name: "Resend, Inc.",          role: "Transactional email delivery",          region: "EU + US (transactional metadata)",     url: "https://resend.com/legal/dpa" },
+  { name: "Vonage (Nexmo Inc.)",   role: "SMS, WhatsApp, Viber, Voice gateway",   region: "EU (api-eu.nexmo.com)",                 url: "https://www.vonage.com/legal/privacy-policy/" },
+  { name: "Meta Platforms Ireland Ltd.", role: "Messenger & Instagram linking webhooks (PSID / IG-ID capture only)", region: "EU (Ireland DPO)", url: "https://www.facebook.com/legal/terms/dataprocessingterms" },
+  { name: "OpenAI Ireland Ltd.",   role: "AI-generated campaign copy (no customer PII sent)", region: "EU",                       url: "https://openai.com/policies/data-processing-addendum" },
+  { name: "Anthropic PBC",         role: "AI menu assistant (no customer PII sent)",          region: "US (SCCs)",                 url: "https://www.anthropic.com/legal/commercial-terms" },
+];
+---
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Data Processing Agreement — Super Admin</title>
+    <meta name="robots" content="noindex,nofollow" />
+    <style>
+      @media print {
+        @page { size: A4; margin: 15mm; }
+        body { background: white !important; color: black !important; font-size: 10pt; }
+        .no-print { display: none !important; }
+        * { color: black !important; background: transparent !important; box-shadow: none !important; }
+        .dpa-sheet { border: none !important; padding: 0 !important; }
+        table, th, td { border: 1px solid #999 !important; }
+        .dpa-prose h3 { page-break-after: avoid; }
+      }
+      .dpa-prose p { margin: .5rem 0; line-height: 1.55; }
+      .dpa-prose ol { list-style: decimal; padding-left: 1.25rem; }
+      .dpa-prose ol li { margin: .25rem 0; line-height: 1.55; }
+      .dpa-prose h3 { font-weight: 700; margin-top: 1.2rem; }
+      .dpa-prose h4 { font-weight: 600; margin-top: .8rem; font-size: .95em; }
+      .fillable { display: inline-block; border-bottom: 1px dashed currentColor; min-width: 160px; padding: 0 6px; }
+      .dpa-prose table { width: 100%; border-collapse: collapse; font-size: .85em; margin: .5rem 0; }
+      .dpa-prose th, .dpa-prose td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; vertical-align: top; }
+      .dpa-prose th { background: #f5f5f5; font-weight: 600; }
+    </style>
+  </head>
+  <body class="min-h-screen bg-[#0a0a0f] text-white font-body antialiased">
+    <div class="no-print"><Header /></div>
+    <div class="h-20 no-print"></div>
+    <div class="no-print"><AdminNav active="dpa" /></div>
+
+    <main class="mx-auto max-w-4xl px-5 py-10">
+      <div class="mb-6 flex items-start justify-between gap-4 flex-wrap no-print">
+        <div>
+          <p class="text-xs uppercase tracking-[0.28em] text-rose-300 mb-2 flex items-center gap-2">
+            <span class="inline-block h-1.5 w-1.5 rounded-full bg-rose-400 animate-pulse"></span>
+            {isEl ? "ΜΟΝΟ SUPER ADMIN" : "SUPER ADMIN ONLY"}
+          </p>
+          <h1 class="font-heading text-3xl font-bold">🛡️ Data Processing Agreement ({isEl ? "GDPR Πρότυπο" : "GDPR Template"})</h1>
+          <p class="mt-2 text-sm text-white/60 max-w-2xl">{isEl
+            ? "Πρότυπο DPA κατά GDPR Άρ. 28, μεταξύ Venue (Controller) και PistotitaOS (Processor). Προσάρτημα Α στη κύρια σύμβαση υπηρεσίας. Συνιστάται έλεγχος από δικηγόρο πριν την πρώτη υπογραφή."
+            : "GDPR Art. 28–compliant DPA template between Venue (Controller) and PistotitaOS (Processor). Attach as Annex A to the Service Agreement. Get a Greek lawyer to review once before the first signed contract."}</p>
+        </div>
+        <button onclick="window.print()" class="shrink-0 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 px-4 py-2 text-xs font-semibold">🖨 {isEl ? "Εκτύπωση / PDF" : "Print / Save PDF"}</button>
+      </div>
+
+      <article class="dpa-sheet dpa-prose bg-white text-black rounded-2xl p-10 shadow-2xl">
+        <div class="border-b border-gray-300 pb-4 mb-4">
+          <p class="text-[10px] uppercase tracking-[0.2em] text-gray-500 font-semibold">Annex A · Data Processing Agreement</p>
+          <h2 class="text-2xl font-bold mt-1">Data Processing Agreement (GDPR Art. 28)</h2>
+          <p class="text-xs text-gray-600 mt-1">Dated: <span class="fillable">{today}</span> · Ref: <span class="fillable">DPA-_____</span></p>
+        </div>
+
+        <h3>1. Parties & Roles</h3>
+        <p><strong>Data Controller ("Venue"):</strong> <span class="fillable">_________________________</span>, acting as Controller for personal data of its end customers (patrons).</p>
+        <p><strong>Data Processor ("Provider"):</strong> <span class="fillable">_________________________</span>, trading as PistotitaOS, acting as Processor on behalf of the Venue.</p>
+
+        <h3>2. Subject matter & duration</h3>
+        <p>This DPA governs all processing the Provider carries out on behalf of the Venue under the Service Agreement signed between the parties. It starts on the date above and ends 30 days after termination of the Service Agreement (to allow orderly return/deletion of data per Section 11).</p>
+
+        <h3>3. Nature, purpose & categories of processing</h3>
+        <table>
+          <tr><th>Purpose</th><th>Operations performed</th></tr>
+          <tr><td>Account & authentication</td><td>Collect, store, hash, authenticate credentials; issue session tokens.</td></tr>
+          <tr><td>QR ordering & order lifecycle</td><td>Collect, store, display, notify staff, archive orders.</td></tr>
+          <tr><td>Loyalty program</td><td>Track points, tier, rewards, redemptions.</td></tr>
+          <tr><td>CRM & marketing</td><td>Send transactional + marketing messages to consenting users (WA/SMS/Viber/Messenger/IG/Push/Email); track deliveries.</td></tr>
+          <tr><td>Analytics</td><td>Aggregate usage statistics for the Venue's admin dashboard.</td></tr>
+          <tr><td>Support</td><td>Read-access by Provider staff only when the Venue requests troubleshooting.</td></tr>
+        </table>
+
+        <h3>4. Categories of data subjects</h3>
+        <p>End customers (patrons) of the Venue, Venue staff, Venue administrators.</p>
+
+        <h3>5. Categories of personal data</h3>
+        <ul>
+          <li><strong>Identity:</strong> name, date of birth (optional), avatar (optional).</li>
+          <li><strong>Contact:</strong> email address, phone number (E.164), city.</li>
+          <li><strong>Platform identifiers:</strong> Supabase user id, Facebook Page-Scoped ID (messenger_id), Instagram-Scoped ID (instagram_id) — only if the user actively links.</li>
+          <li><strong>Loyalty:</strong> points balance, tier, event ledger, redemption history.</li>
+          <li><strong>Orders:</strong> items, quantities, modifiers, timestamps, payment method (method only — no card data).</li>
+          <li><strong>Messaging:</strong> inbound/outbound message bodies, delivery status, voice call metadata and (when the caller consents) recorded audio.</li>
+          <li><strong>Technical:</strong> IP address (for rate limits), user agent, device type, timestamps.</li>
+          <li><strong>No special-category (GDPR Art. 9) data is processed.</strong></li>
+          <li><strong>No payment card data</strong> is processed or stored. Card payments (if used) go through the Venue's own payment provider and only a method flag is recorded.</li>
+        </ul>
+
+        <h3>6. Controller instructions & lawfulness</h3>
+        <ol>
+          <li>The Provider processes personal data only on documented instructions from the Controller (including those given through the platform configuration — e.g. enabling/disabling marketing triggers).</li>
+          <li>The Provider notifies the Controller without undue delay if it believes an instruction breaches GDPR or other applicable data-protection law.</li>
+          <li>Lawful bases relied upon by the Controller:
+            <ul>
+              <li>Contract (GDPR Art. 6(1)(b)) — account, orders, loyalty.</li>
+              <li>Consent (Art. 6(1)(a)) — marketing messaging, social linking, optional profile fields.</li>
+              <li>Legitimate interest (Art. 6(1)(f)) — fraud prevention, analytics, service security.</li>
+            </ul>
+          </li>
+        </ol>
+
+        <h3>7. Technical & organisational measures</h3>
+        <ol>
+          <li><strong>Encryption in transit:</strong> TLS 1.2+ for all endpoints.</li>
+          <li><strong>Encryption at rest:</strong> provided by Supabase (AES-256) and Cloudflare.</li>
+          <li><strong>Access control:</strong> role-based access via Supabase Row Level Security on every table. Service-role key stored only in Cloudflare Pages secrets.</li>
+          <li><strong>Authentication:</strong> Supabase Auth with email+password, OTP, or OAuth. Admin access requires explicit <code>admin</code> / <code>super_admin</code> role.</li>
+          <li><strong>Logging & monitoring:</strong> Cloudflare Worker logs, Supabase audit logs, marketing_log for all outbound messaging.</li>
+          <li><strong>Secrets management:</strong> secrets injected at runtime via Cloudflare; never committed to source control.</li>
+          <li><strong>Backups:</strong> Supabase point-in-time recovery (7 days) + daily off-site snapshot (retention 30 days).</li>
+          <li><strong>Personnel:</strong> Provider personnel with access to production systems are under a written confidentiality obligation.</li>
+          <li><strong>Vulnerability management:</strong> dependencies audited on each deploy; security patches within 14 days of disclosure (critical: 48h).</li>
+        </ol>
+
+        <h3>8. Sub-processors</h3>
+        <p>The Controller authorises the Provider to engage the sub-processors listed below. Provider will give 30 days written notice before adding/replacing any sub-processor; Controller may object within 14 days on reasonable data-protection grounds, in which case the parties discuss alternative arrangements in good faith, failing which the Controller may terminate without penalty.</p>
+        <table>
+          <tr><th>Sub-processor</th><th>Role</th><th>Region</th></tr>
+          {subProcessors.map(sp => (
+            <tr>
+              <td><a href={sp.url}>{sp.name}</a></td>
+              <td>{sp.role}</td>
+              <td>{sp.region}</td>
+            </tr>
+          ))}
+        </table>
+
+        <h3>9. International transfers</h3>
+        <p>Primary processing is within the EU (Supabase eu-central-1, Cloudflare EU PoPs). Where a sub-processor operates outside the EU (e.g. Anthropic in the US), transfers rely on Standard Contractual Clauses (2021/914) and, where applicable, the EU-US Data Privacy Framework.</p>
+
+        <h3>10. Data subject rights</h3>
+        <p>The Provider assists the Controller in responding to data subject requests under GDPR Art. 15–22 (access, rectification, erasure, restriction, portability, objection) within 72 hours of a request from the Controller. Platform-level tooling:</p>
+        <ul>
+          <li><strong>Export:</strong> /admin/users/[id] supports CSV export of a single user's data.</li>
+          <li><strong>Deletion:</strong> /admin/users supports immediate profile deletion (cascades to loyalty_events, orders, marketing_log).</li>
+          <li><strong>Unsubscribe:</strong> any reply of "STOP" / "unsubscribe" / "παυση" automatically sets <code>marketing_consent = false</code>.</li>
+        </ul>
+
+        <h3>11. Return or deletion at end of term</h3>
+        <p>Within 14 days of termination of the Service Agreement, the Provider delivers to the Controller a CSV export of all data held. Within 30 days thereafter, the Provider deletes all active copies. Backup copies containing the data are deleted within 90 days (backup retention cycle).</p>
+
+        <h3>12. Personal data breach</h3>
+        <p>The Provider notifies the Controller without undue delay and, in any event, within <strong>72 hours</strong> of becoming aware of a personal data breach affecting the Controller's data. The notice includes: nature of the breach, categories and approximate number of data subjects and records affected, likely consequences, and measures taken or proposed to address the breach and mitigate its adverse effects.</p>
+
+        <h3>13. Audit rights</h3>
+        <p>The Controller may, at its cost and with 30 days written notice, audit the Provider's compliance with this DPA once per year (or more often following a confirmed breach). The audit is conducted during business hours and under reasonable confidentiality terms. Third-party certifications (SOC 2, ISO 27001) obtained by sub-processors may be used to satisfy audit obligations where relevant.</p>
+
+        <h3>14. Liability</h3>
+        <p>Liability under this DPA is subject to the aggregate cap set out in Section 10 of the Service Agreement, except that nothing in this Agreement limits either party's liability for GDPR administrative fines directly imposed on that party for its own breach.</p>
+
+        <h3>15. Governing law</h3>
+        <p>Greek law. Exclusive jurisdiction: the competent Courts of <span class="fillable">Athens</span> / <span class="fillable">________</span>.</p>
+
+        <div class="mt-10 grid grid-cols-2 gap-10">
+          <div>
+            <p class="text-xs text-gray-600 mb-10">For the Controller (Venue):</p>
+            <p>Signature: <span class="fillable">_____________________</span></p>
+            <p class="mt-4">Name & title: <span class="fillable">_____________________</span></p>
+            <p class="mt-4">Date: <span class="fillable">___ / ___ / 20__</span></p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-600 mb-10">For the Processor (Provider):</p>
+            <p>Signature: <span class="fillable">_____________________</span></p>
+            <p class="mt-4">Name & title: <span class="fillable">_____________________</span></p>
+            <p class="mt-4">Date: <span class="fillable">___ / ___ / 20__</span></p>
+          </div>
+        </div>
+
+        <p class="text-[10px] text-gray-500 mt-10 pt-4 border-t border-gray-300">PistotitaOS · DPA template v1 · {today}. Not legal advice. Review with a Greek data-protection lawyer before first use, and again if sub-processors change materially.</p>
+      </article>
+    </main>
+  </body>
+</html>

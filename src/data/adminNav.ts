@@ -96,6 +96,8 @@ export function getAdminNavGroups(lang: "en" | "el", t: any, role?: string | nul
         { key: "pistotita-os",   label: "🚀 PistotitaOS — Sales",      href: withLangPrefix(lang, "/admin/pistotita-os"),   icon: I.marketing },
         { key: "pricing-justification", label: "💼 Pricing Justification (leave-behind)", href: withLangPrefix(lang, "/admin/pricing-justification"), icon: I.analytics },
         { key: "objections",     label: "🛡️ Objection Handling",     href: withLangPrefix(lang, "/admin/objections"),     icon: I.analytics },
+        { key: "service-agreement", label: "⚖️ Service Agreement (template)", href: withLangPrefix(lang, "/admin/service-agreement"), icon: I.help },
+        { key: "dpa",            label: "🛡️ GDPR DPA (template)",      href: withLangPrefix(lang, "/admin/dpa"),            icon: I.help },
       ],
     });
   }

@@ -100,22 +100,24 @@ const modules = [
   {
     icon: "📣",
     name: "GROW",
-    title: isEl ? "Marketing αυτοματισμοί" : "Marketing automation",
+    title: isEl ? "CRM, καμπάνιες & αυτοματισμοί" : "CRM, campaigns & automation",
     desc: isEl
-      ? "10 έτοιμοι αυτοματισμοί: κρατήσεις, γενέθλια, κριτικές, re-engagement, happy hour. WhatsApp/SMS/Push/Email."
-      : "10 built-in triggers: reservations, birthdays, reviews, re-engagement, happy hour. WhatsApp/SMS/Push/Email.",
+      ? "10 έτοιμοι αυτοματισμοί + bulk CRM καμπάνιες σε 7 κανάλια. Unified inbox με delivery receipts και ηχογραφημένες κλήσεις."
+      : "10 built-in triggers + bulk CRM campaigns over 7 channels. Unified inbox with delivery receipts and recorded calls.",
     bullets: isEl ? [
-      "Ενεργό trigger on/off panel",
-      "Δοκιμαστική αποστολή ανά trigger",
-      "Cooldown ανά χρήστη (no spam)",
-      "Trackable QR καμπάνιες + analytics",
-      "Weekly admin digest email",
+      "10 έτοιμα triggers (γενέθλια, κρατήσεις, κριτικές, re-engagement, happy hour…)",
+      "Bulk CRM καμπάνιες: 7 κανάλια (WA/SMS/Viber/Messenger/IG/Push/Email)",
+      "Paste list για ad-hoc blast (CSV-friendly)",
+      "URL shortener sallysbar.gr/s/xxxxx (κρατάει SMS σε 1 segment)",
+      "Unified inbox: απαντήσεις, delivery, κλήσεις με recording playback",
+      "Messenger/Instagram linking με +20 πόντοι booster",
     ] : [
-      "Per-trigger ON/OFF control panel",
-      "Test-send button for every trigger",
-      "Per-user cooldown (no spam)",
-      "Trackable QR campaigns + analytics",
-      "Weekly admin digest email",
+      "10 built-in triggers (birthday, reservations, reviews, re-engagement, happy-hour…)",
+      "Bulk CRM campaigns: 7 channels (WA/SMS/Viber/Messenger/IG/Push/Email)",
+      "Pasted-list audience for ad-hoc blasts (CSV-friendly)",
+      "URL shortener sallysbar.gr/s/xxxxx (keeps SMS in 1 segment)",
+      "Unified inbox: replies, delivery receipts, calls with recording playback",
+      "Messenger/Instagram linking with +20 point booster",
     ],
     color: "from-emerald-400 to-emerald-600",
   },
@@ -153,10 +155,18 @@ const bullets = [
   isEl ? "Social card /u/handle" : "Social card /u/handle",
   isEl ? "Referral πόντοι" : "Referral points",
   isEl ? "Trackable QR καμπάνιες" : "Trackable QR campaigns",
+  isEl ? "Bulk CRM καμπάνιες (7 κανάλια)" : "Bulk CRM campaigns (7 channels)",
+  isEl ? "Paste-list κοινό (CSV-friendly)" : "Pasted-list audience (CSV-friendly)",
+  isEl ? "URL shortener με click tracking" : "URL shortener with click tracking",
+  isEl ? "Unified inbox (απαντήσεις/delivery/κλήσεις)" : "Unified inbox (replies/delivery/calls)",
+  isEl ? "Recording playback εισερχομένων κλήσεων" : "Inbound call recording playback",
+  isEl ? "Messenger/Instagram linking (+20 πόντοι)" : "Messenger/Instagram linking (+20 points)",
+  isEl ? "Profile completion bar" : "Profile completion bar",
+  isEl ? "Auto-STOP unsubscribe" : "Auto-STOP unsubscribe handling",
   isEl ? "Marketing analytics" : "Marketing analytics",
   isEl ? "Εκτυπώσιμα σουβέρ, αφίσες" : "Printable coasters, posters",
   isEl ? "Δίγλωσσο EN/EL" : "Bilingual EN/EL",
-  isEl ? "GDPR compliance" : "GDPR compliance",
+  isEl ? "GDPR compliance + DPA template" : "GDPR compliance + DPA template",
 ];
 
 // Pricing math:

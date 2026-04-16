@@ -1,0 +1,143 @@
+---
+import "../../styles/global.css";
+import Header from "../../components/Header.astro";
+import AdminNav from "../../components/AdminNav.astro";
+
+if (Astro.locals.role !== "super_admin") {
+  return new Response("Forbidden", { status: 403 });
+}
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+const today = new Date().toLocaleDateString(isEl ? "el-GR" : "en-GB", { day: "2-digit", month: "long", year: "numeric" });
+---
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Service Agreement — Super Admin</title>
+    <meta name="robots" content="noindex,nofollow" />
+    <style>
+      @media print {
+        @page { size: A4; margin: 15mm; }
+        body { background: white !important; color: black !important; font-size: 10pt; }
+        .no-print { display: none !important; }
+        * { color: black !important; background: transparent !important; box-shadow: none !important; }
+        .sa-sheet { border: none !important; padding: 0 !important; }
+        .sa-sheet h2, .sa-sheet h3 { page-break-after: avoid; }
+      }
+      .sa-prose p { margin: .5rem 0; line-height: 1.55; }
+      .sa-prose ol { list-style: decimal; padding-left: 1.25rem; }
+      .sa-prose ol li { margin: .25rem 0; line-height: 1.55; }
+      .sa-prose h3 { font-weight: 700; margin-top: 1rem; }
+      .fillable { display: inline-block; border-bottom: 1px dashed currentColor; min-width: 180px; padding: 0 6px; }
+    </style>
+  </head>
+  <body class="min-h-screen bg-[#0a0a0f] text-white font-body antialiased">
+    <div class="no-print"><Header /></div>
+    <div class="h-20 no-print"></div>
+    <div class="no-print"><AdminNav active="service-agreement" /></div>
+
+    <main class="mx-auto max-w-4xl px-5 py-10">
+      <div class="mb-6 flex items-start justify-between gap-4 flex-wrap no-print">
+        <div>
+          <p class="text-xs uppercase tracking-[0.28em] text-rose-300 mb-2 flex items-center gap-2">
+            <span class="inline-block h-1.5 w-1.5 rounded-full bg-rose-400 animate-pulse"></span>
+            {isEl ? "ΜΟΝΟ SUPER ADMIN" : "SUPER ADMIN ONLY"}
+          </p>
+          <h1 class="font-heading text-3xl font-bold">⚖️ Service Agreement ({isEl ? "Πρότυπο" : "Template"})</h1>
+          <p class="mt-2 text-sm text-white/60 max-w-2xl">{isEl
+            ? "Συμπλήρωσε τα highlighted πεδία, εκτύπωσε σε χαρτί A4, υπογραφή από τα δύο μέρη. Ανασκόπηση από δικηγόρο συνιστάται μία φορά, κράτησε το πρότυπο για όλους τους επόμενους πελάτες."
+            : "Fill in the highlighted placeholders, print A4, have both parties sign. Get it reviewed by a Greek lawyer once, then reuse the template for every future customer."}</p>
+        </div>
+        <button onclick="window.print()" class="shrink-0 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 px-4 py-2 text-xs font-semibold">🖨 {isEl ? "Εκτύπωση / PDF" : "Print / Save PDF"}</button>
+      </div>
+
+      <article class="sa-sheet sa-prose bg-white text-black rounded-2xl p-10 shadow-2xl">
+        <div class="border-b border-gray-300 pb-4 mb-4">
+          <p class="text-[10px] uppercase tracking-[0.2em] text-gray-500 font-semibold">PistotitaOS · Service Agreement</p>
+          <h2 class="text-2xl font-bold mt-1">Software-as-a-Service Agreement</h2>
+          <p class="text-xs text-gray-600 mt-1">Dated: <span class="fillable">{today}</span> · Ref: <span class="fillable">PSOS-_____</span></p>
+        </div>
+
+        <h3>1. The Parties</h3>
+        <p><strong>Provider:</strong> <span class="fillable">____________________</span> (legal name, VAT, registered address), hereinafter "PistotitaOS".</p>
+        <p><strong>Customer:</strong> <span class="fillable">____________________</span> (trading name & legal entity, VAT, registered address), hereinafter "the Venue".</p>
+
+        <h3>2. Services</h3>
+        <ol>
+          <li>Hosted access to the PistotitaOS platform, including QR ordering, digital loyalty, gamification, marketing automation, CRM bulk campaigns, unified inbox, analytics, and the admin/staff control panels described at <span class="fillable">____________________</span>/admin/help.</li>
+          <li>Installation on a dedicated Cloudflare Pages project + Supabase database under the Venue's control (or the Provider's shared infrastructure, if so agreed in Section 11).</li>
+          <li>Branding configuration: logo, accent colour, legal name, public contact details.</li>
+          <li>Menu import (up to 200 items). Additional imports billed at €60/hour.</li>
+          <li>Staff onboarding walkthrough (1 session, up to 90 minutes, remote).</li>
+        </ol>
+
+        <h3>3. Term</h3>
+        <p>This agreement begins on <span class="fillable">____ / ____ / 20__</span> and runs for an initial term of <strong>[6 months · Seasonal] / [12 months · Year-round]</strong> (delete as applicable). It auto-renews for successive terms of the same length unless either party gives <strong>30 days written notice</strong> before the renewal date.</p>
+
+        <h3>4. Fees</h3>
+        <ol>
+          <li><strong>Installation fee:</strong> €850 net (fixed, one-time, non-refundable, billed on signature).</li>
+          <li><strong>Subscription:</strong> €<span class="fillable">______</span> net (Seasonal €690 or Year-round €1,104 at early-bird; billed upfront for the full term).</li>
+          <li><strong>VAT:</strong> 24% is added on top of all net amounts per Greek Law 2859/2000.</li>
+          <li><strong>Late payment:</strong> statutory default interest rate applies after 30 days past due.</li>
+          <li><strong>Messaging pass-through:</strong> Vonage / WhatsApp / SMS / Email volumes beyond the platform's free tier are billed at cost + 50% commission as shown in /admin/campaigns at the time of each send.</li>
+        </ol>
+
+        <h3>5. Uptime & Support</h3>
+        <ol>
+          <li><strong>Target uptime:</strong> 99.5% monthly, measured by a third-party monitor. Scheduled maintenance (announced ≥ 48h in advance) is excluded.</li>
+          <li><strong>Support hours:</strong> Monday–Friday 10:00–18:00 EET. Weekends and public holidays: emergency best-effort only.</li>
+          <li><strong>Response SLA:</strong> critical outage &lt; 2h business-hours. Standard issue &lt; 24h business-hours.</li>
+          <li><strong>Service credit:</strong> if uptime drops below 99% in a calendar month, the Venue is entitled to a credit equal to 5% of the monthly subscription equivalent, capped at 25% per month.</li>
+        </ol>
+
+        <h3>6. Data Ownership & Processing</h3>
+        <p>The Venue owns all customer data captured through the platform and may export it to CSV at any time from /admin. PistotitaOS acts as Data Processor under a separate <strong>Data Processing Agreement (DPA)</strong> attached as Annex A, binding under GDPR Art. 28. Sub-processors: Supabase, Cloudflare, Resend, Vonage, Meta (for linking webhook), OpenAI (where explicitly enabled).</p>
+
+        <h3>7. Territorial Exclusivity</h3>
+        <p>During any paid term, PistotitaOS will not sign a second customer in the same postal code / principal street as the Venue. Exclusivity resets if the Venue lets the agreement lapse.</p>
+
+        <h3>8. Intellectual Property</h3>
+        <p>All software, branding, and templates remain the exclusive property of the Provider. The Venue is granted a non-exclusive, non-transferable licence for the duration of the Agreement. The Venue's own content (menu, photos, brand assets, customer data) remains the Venue's property.</p>
+
+        <h3>9. Confidentiality</h3>
+        <p>Each party keeps the other's non-public business, financial, and customer information confidential for 3 years beyond termination.</p>
+
+        <h3>10. Limitation of Liability</h3>
+        <p>Aggregate liability of either party for any claim arising from this Agreement is capped at <strong>one (1) times the annualised subscription fee paid by the Venue in the 12 months preceding the claim</strong>. Neither party is liable for indirect, consequential, or loss-of-profit damages. Nothing in this clause limits liability for gross negligence, wilful misconduct, or GDPR breaches.</p>
+
+        <h3>11. Termination</h3>
+        <ol>
+          <li>Either party may terminate with 30 days written notice at the end of any term.</li>
+          <li>Either party may terminate immediately on material breach not cured within 14 days of notice.</li>
+          <li>On termination, the Venue's data is exported to CSV and delivered within 14 days, then deleted from all Provider systems within 30 days (except where backup retention policy applies, max 90 days).</li>
+        </ol>
+
+        <h3>12. Governing Law & Jurisdiction</h3>
+        <p>This Agreement is governed by Greek law. Exclusive jurisdiction: the competent Courts of <span class="fillable">Athens</span> / <span class="fillable">________</span>.</p>
+
+        <h3>13. Entire Agreement</h3>
+        <p>This document, together with Annex A (DPA) and Annex B (Feature List), constitutes the entire agreement between the parties and supersedes any prior written or oral understanding.</p>
+
+        <div class="mt-10 grid grid-cols-2 gap-10">
+          <div>
+            <p class="text-xs text-gray-600 mb-10">For the Provider:</p>
+            <p>Signature: <span class="fillable">_____________________</span></p>
+            <p class="mt-4">Name: <span class="fillable">_____________________</span></p>
+            <p class="mt-4">Date: <span class="fillable">___ / ___ / 20__</span></p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-600 mb-10">For the Venue:</p>
+            <p>Signature: <span class="fillable">_____________________</span></p>
+            <p class="mt-4">Name: <span class="fillable">_____________________</span></p>
+            <p class="mt-4">Date: <span class="fillable">___ / ___ / 20__</span></p>
+          </div>
+        </div>
+
+        <p class="text-[10px] text-gray-500 mt-10 pt-4 border-t border-gray-300">PistotitaOS · Service Agreement template v1 · {today}. Not legal advice — get a Greek lawyer to review once before the first signed contract.</p>
+      </article>
+    </main>
+  </body>
+</html>
