@@ -7,7 +7,7 @@ const lang = Astro.locals.lang ?? "en";
 const isEl = lang === "el";
 
 const title = (isEl ? "Όροι Χρήσης" : "Terms & Conditions") + " — Sally's Bar";
-const lastUpdated = "2026-04-12";
+const lastUpdated = "2026-04-17";
 ---
 
 <html lang={lang}>
@@ -100,6 +100,27 @@ const lastUpdated = "2026-04-12";
         <section>
           <h2 class="text-xl font-semibold text-amber-200 mb-2">{isEl ? "8. Παραγγελίες & πληρωμές" : "8. Orders & payments"}</h2>
           <p>{isEl ? "Πληρωμές γίνονται αποκλειστικά στο φυσικό κατάστημα. Οι τιμές στο μενού ενδέχεται να αλλάξουν χωρίς προειδοποίηση. Ισχύουν οι τιμές κατά την ώρα της παραγγελίας." : "Payments are made only at the physical premises. Menu prices may change without notice. The price at the time of order applies."}</p>
+        </section>
+
+        <section>
+          <h2 class="text-xl font-semibold text-amber-200 mb-2">{isEl ? "8α. Τηλεφωνικές κλήσεις & AI receptionist" : "8a. Phone calls & AI receptionist"}</h2>
+          <ul class="list-disc pl-6 space-y-1.5">
+            <li>{isEl ? "Όταν καλείτε τα νούμερά μας, η κλήση μπορεί να απαντηθεί από AI receptionist (τεχνητή νοημοσύνη) που χειρίζεται κρατήσεις, ερωτήσεις μενού και ωραρίου, δίγλωσσα (Ελληνικά/Αγγλικά)." : "When you call our numbers, the call may be answered by an AI receptionist that handles bookings, menu and hours questions, bilingually (Greek/English)."}</li>
+            <li>{isEl ? "Ενημερώνεστε στην αρχή της κλήσης ότι μιλάτε σε AI. Μπορείτε ανά πάσα στιγμή να ζητήσετε μεταφορά σε άνθρωπο — η AI θα σας συνδέσει με το κινητό του ιδιοκτήτη." : "You are told at the start of the call that you are speaking with an AI. You can request a human at any time — the AI will transfer you to the owner's mobile."}</li>
+            <li>{isEl ? "Οι κλήσεις ηχογραφούνται και μεταγράφονται για ποιότητα, εκπαίδευση και απόδειξη κρατήσεων. Βλ. Πολιτική Απορρήτου, ενότητα 2 & 6 για περίοδο διατήρησης. Αν δεν επιθυμείτε ηχογράφηση, κλείστε την κλήση και στείλτε μας email στο info@sallysbar.gr." : "Calls are recorded and transcribed for quality, training, and booking evidence. See the Privacy Policy, sections 2 & 6 for retention periods. If you do not wish to be recorded, hang up and email us at info@sallysbar.gr."}</li>
+            <li>{isEl ? "Η κράτηση που συμφωνείτε με τον AI receptionist θεωρείται αίτηση — επιβεβαιώνεται από εμάς μέσω SMS πριν θεωρηθεί εγγυημένη." : "A booking agreed with the AI receptionist counts as a request — it is confirmed by us via SMS before being treated as guaranteed."}</li>
+            <li>{isEl ? "Η AI μπορεί να κάνει λάθη (π.χ. λάθος ακρόαση ονόματος ή ώρας). Ελέγχετε πάντα την τελική επιβεβαίωση που σας στέλνουμε με SMS." : "The AI can make mistakes (e.g. mishearing a name or time). Always verify the final SMS confirmation we send you."}</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 class="text-xl font-semibold text-amber-200 mb-2">{isEl ? "8β. Marketing μηνύματα (SMS, WhatsApp, Viber, Messenger, Instagram, Email, Push)" : "8b. Marketing messages (SMS, WhatsApp, Viber, Messenger, Instagram, Email, Push)"}</h2>
+          <ul class="list-disc pl-6 space-y-1.5">
+            <li>{isEl ? "Στέλνουμε marketing μηνύματα μόνο αν έχετε δώσει ρητή συναίνεση (marketing consent) στον λογαριασμό σας ή στο /loyalty." : "We send marketing messages only if you have granted explicit marketing consent on your account or at /loyalty."}</li>
+            <li>{isEl ? "Μπορείτε να αποσύρετε τη συναίνεσή σας ανά πάσα στιγμή: (α) απάντηση «STOP» ή «παυση» σε SMS/WhatsApp, (β) κλικ στον σύνδεσμο Unsubscribe σε email, (γ) απενεργοποίηση marketing στο /settings." : "You can withdraw consent at any time: (a) reply \"STOP\" or \"stop\" to any SMS/WhatsApp, (b) click the Unsubscribe link in any email, (c) turn off marketing in /settings."}</li>
+            <li>{isEl ? "Η απόσυρση συναίνειας δεν επηρεάζει τα transactional μηνύματα που σας οφείλουμε (π.χ. επιβεβαίωση κράτησης, αποδείξεις)." : "Withdrawing consent does not affect transactional messages we owe you (e.g. booking confirmation, receipts)."}</li>
+            <li>{isEl ? "Η σύνδεση λογαριασμού Messenger ή Instagram είναι προαιρετική. Αν τη χρησιμοποιήσετε, λαμβάνετε +20 πόντους bonus μία φορά και μπορείτε να λάβετε DMs μόνο αν έχετε δώσει marketing consent." : "Linking your Messenger or Instagram account is optional. If you use it, you receive a one-time +20 points bonus and can receive DMs only if you also have marketing consent on."}</li>
+          </ul>
         </section>
 
         <section>

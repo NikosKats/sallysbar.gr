@@ -7,7 +7,7 @@ const lang = Astro.locals.lang ?? "en";
 const isEl = lang === "el";
 
 const title = (isEl ? "Πολιτική Απορρήτου" : "Privacy Policy") + " — Sally's Bar";
-const lastUpdated = "2026-04-12";
+const lastUpdated = "2026-04-17";
 ---
 
 <html lang={lang}>
@@ -49,6 +49,10 @@ const lastUpdated = "2026-04-12";
             <li><strong>{isEl ? "QR / Καμπάνιες Marketing:" : "QR / Marketing campaigns:"}</strong> {isEl ? "χρονοσφραγίδα σκαναρίσματος, χώρα/περιοχή/πόλη (από τα headers του CDN), ζώνη ώρας, συντεταγμένες πόλης, συσκευή/browser/OS, UTM tags, παραπομπή (referrer), γλώσσα περιηγητή, hashed IP (SHA-256 — η αρχική IP δεν αποθηκεύεται)." : "scan timestamp, country/region/city (from CDN headers), timezone, city-level coordinates, device/browser/OS, UTM tags, referrer, browser language, hashed IP (SHA-256 — raw IP is not stored)."}</li>
             <li><strong>{isEl ? "Αιτήσεις εργασίας:" : "Job applications:"}</strong> {isEl ? "ονοματεπώνυμο, email, τηλέφωνο, βιογραφικό (αρχείο + κείμενο), θέση." : "full name, email, phone, CV (file + text), role applied for."}</li>
             <li><strong>{isEl ? "Push notifications:" : "Push notifications:"}</strong> {isEl ? "endpoint push, δημόσια κλειδιά κρυπτογράφησης, user-agent. Δεν στέλνουμε push χωρίς ρητή συναίνεσή σας." : "push endpoint, public crypto keys, user-agent. We never send pushes without your explicit consent."}</li>
+            <li><strong>{isEl ? "Τηλεφωνικές κλήσεις & AI ρεσεψιονίστ:" : "Phone calls & AI receptionist:"}</strong> {isEl ? "όταν καλείτε τα νούμερά μας (+30 694 627 2083, +44 7441 475768, +1 207 503 7391), καταγράφονται: αριθμός σας (caller ID), χρονοσφραγίδα, διάρκεια. Αν η κλήση απαντηθεί από τον AI receptionist μας, καταγράφονται επίσης η ηχογράφηση της συνομιλίας και μια γραπτή μεταγραφή (transcript) για λόγους ποιότητας, εκπαίδευσης και απόδειξης κρατήσεων. Ενημερώνεστε στην αρχή κάθε AI κλήσης. Μπορείτε ανά πάσα στιγμή να ζητήσετε διακοπή και μεταφορά σε άνθρωπο." : "When you call our numbers (+30 694 627 2083, +44 7441 475768, +1 207 503 7391), we log: your caller ID, timestamp, and duration. If the call is handled by our AI receptionist, we also record the audio and generate a written transcript for quality, training, and booking-evidence purposes. You are notified at the start of every AI call and can request to be transferred to a human at any point."}</li>
+            <li><strong>{isEl ? "Σύνδεση Messenger / Instagram:" : "Messenger / Instagram linking:"}</strong> {isEl ? "αν επιλέξετε να συνδέσετε τον λογαριασμό σας Messenger ή Instagram (π.χ. για +20 πόντους bonus), αποθηκεύουμε το Page-Scoped ID (PSID) ή IG-scoped ID που παρέχει η Meta μέσω webhook. Το χρησιμοποιούμε μόνο για να σας στέλνουμε μηνύματα όταν έχετε δώσει συναίνεση." : "If you choose to link your Messenger or Instagram account (e.g. for the +20 points bonus), we store the Page-Scoped ID (PSID) or IG-scoped ID that Meta provides to us via webhook. We use it only to send you messages when you have opted in."}</li>
+            <li><strong>{isEl ? "Marketing μηνύματα & unsubscribe:" : "Marketing messages & unsubscribe:"}</strong> {isEl ? "αν έχετε δώσει συναίνεση marketing, καταγράφουμε κάθε μήνυμα που σας στέλνουμε (SMS, WhatsApp, Viber, Messenger, Instagram, Push, Email), την κατάσταση παράδοσης και την τυχόν απάντησή σας. Μπορείτε ανά πάσα στιγμή να απαντήσετε «STOP» / «παυση» (για SMS/WA) ή να πατήσετε τον σύνδεσμο unsubscribe στα email — η συναίνεσή σας αποσύρεται αυτόματα." : "If you have granted marketing consent, we log every message we send you (SMS, WhatsApp, Viber, Messenger, Instagram, Push, Email), its delivery status, and any reply you send. You can opt out at any time by replying \"STOP\" / \"stop\" (for SMS/WA) or clicking the unsubscribe link in emails — your consent is withdrawn automatically."}</li>
+            <li><strong>{isEl ? "Κλικ σε σύντομα URL (sallysbar.gr/s/xxxxx):" : "Clicks on shortened URLs (sallysbar.gr/s/xxxxx):"}</strong> {isEl ? "μετράμε ανώνυμα τον αριθμό κλικ σε κάθε σύντμηση URL που στέλνουμε σε καμπάνιες, για να μετρήσουμε την απόδοση. Δεν σχετίζεται με προσωπικές σας πληροφορίες." : "We anonymously count clicks on each shortened URL we send in campaigns to measure performance. Not linked to your personal data."}</li>
             <li><strong>{isEl ? "Τεχνικά logs:" : "Technical logs:"}</strong> {isEl ? "χρονικά logs σφαλμάτων, request IDs. Διατηρούνται έως 30 ημέρες." : "error/request logs, retained for up to 30 days."}</li>
           </ul>
           <p class="mt-2 text-sm text-white/60">{isEl ? "Δεν επεξεργαζόμαστε ειδικές κατηγορίες δεδομένων (υγεία, πεποιθήσεις κ.λπ.) και δεν τα ζητάμε." : "We do not process special-category data (health, beliefs, etc.) and will never ask you for it."}</p>
@@ -62,6 +66,9 @@ const lastUpdated = "2026-04-12";
               <tr><td>{isEl ? "Λογαριασμός, κρατήσεις, παραγγελίες" : "Account, bookings, orders"}</td><td>{isEl ? "Εκτέλεση σύμβασης (6.1.β)" : "Contract (6.1.b)"}</td></tr>
               <tr><td>{isEl ? "Πρόγραμμα πιστότητας & gamification" : "Loyalty & gamification"}</td><td>{isEl ? "Εκτέλεση σύμβασης (6.1.β)" : "Contract (6.1.b)"}</td></tr>
               <tr><td>{isEl ? "Email/Push marketing, σκαναρίσματα QR" : "Email/Push marketing, QR scans"}</td><td>{isEl ? "Συναίνεση (6.1.α) · Έννομο συμφέρον (6.1.στ) για αγγλοποιημένα aggregated analytics" : "Consent (6.1.a) · Legitimate interest (6.1.f) for aggregated analytics"}</td></tr>
+              <tr><td>{isEl ? "SMS/WhatsApp/Viber/Messenger/IG marketing" : "SMS/WhatsApp/Viber/Messenger/IG marketing"}</td><td>{isEl ? "Συναίνεση (6.1.α) — απενεργοποιείται με STOP" : "Consent (6.1.a) — withdrawn via STOP reply"}</td></tr>
+              <tr><td>{isEl ? "Εισερχόμενη AI τηλεφωνική κλήση (ηχογράφηση + transcript)" : "Inbound AI phone call (recording + transcript)"}</td><td>{isEl ? "Εκτέλεση σύμβασης (6.1.β) · Έννομο συμφέρον για ποιότητα (6.1.στ)" : "Contract (6.1.b) · Legitimate interest for quality (6.1.f)"}</td></tr>
+              <tr><td>{isEl ? "Σύνδεση λογαριασμού Messenger / Instagram" : "Messenger / Instagram account linking"}</td><td>{isEl ? "Συναίνεση (6.1.α)" : "Consent (6.1.a)"}</td></tr>
               <tr><td>{isEl ? "Πρόληψη απάτης / ασφάλεια" : "Fraud prevention / security"}</td><td>{isEl ? "Έννομο συμφέρον (6.1.στ)" : "Legitimate interest (6.1.f)"}</td></tr>
               <tr><td>{isEl ? "Λογιστικά / φορολογικά" : "Accounting / tax"}</td><td>{isEl ? "Νομική υποχρέωση (6.1.γ)" : "Legal obligation (6.1.c)"}</td></tr>
               <tr><td>{isEl ? "Αιτήσεις εργασίας" : "Job applications"}</td><td>{isEl ? "Προσυμβατικά μέτρα (6.1.β) + συναίνεση για διατήρηση" : "Pre-contract steps (6.1.b) + consent for retention"}</td></tr>
@@ -82,12 +89,18 @@ const lastUpdated = "2026-04-12";
           <h2 class="text-xl font-semibold text-amber-200 mb-2">{isEl ? "5. Επεξεργαστές τρίτων (subprocessors)" : "5. Third-party subprocessors"}</h2>
           <p class="mb-2">{isEl ? "Χρησιμοποιούμε τους παρακάτω πάροχους, που λειτουργούν ως εκτελούντες επεξεργασία σύμφωνα με το GDPR:" : "We use the following providers acting as data processors under GDPR:"}</p>
           <ul class="list-disc pl-6 space-y-1.5">
-            <li><strong>Supabase</strong> (US/EU) — {isEl ? "βάση δεδομένων, auth, αποθήκευση αρχείων (CVs)." : "database, auth, file storage (CVs)."}</li>
+            <li><strong>Supabase</strong> (EU, Frankfurt) — {isEl ? "βάση δεδομένων, auth, αποθήκευση αρχείων (CVs, ηχογραφήσεις)." : "database, auth, file storage (CVs, recordings)."}</li>
             <li><strong>Cloudflare</strong> (EU edge) — {isEl ? "hosting, CDN, DDoS, geo-IP headers για analytics." : "hosting, CDN, DDoS, geo-IP headers for analytics."}</li>
-            <li><strong>Resend</strong> (EU/US) — {isEl ? "transactional email (επιβεβαιώσεις, ειδοποιήσεις)." : "transactional email (confirmations, notifications)."}</li>
-            <li><strong>Anthropic (Claude)</strong> (US) — {isEl ? "δημιουργία περιεχομένου από διαχειριστή (events/jobs/campaigns). Δεν αποστέλλονται προσωπικά δεδομένα πελατών." : "admin content generation (events/jobs/campaigns). No customer personal data is sent."}</li>
+            <li><strong>Resend</strong> (EU/US) — {isEl ? "transactional + marketing email (επιβεβαιώσεις, καμπάνιες, digests)." : "transactional + marketing email (confirmations, campaigns, digests)."}</li>
+            <li><strong>Vonage</strong> (UK/EU) — {isEl ? "Messaging API (SMS, WhatsApp, Viber, Messenger, Instagram) και Voice API (εισερχόμενες κλήσεις)." : "Messaging API (SMS, WhatsApp, Viber, Messenger, Instagram) and Voice API (inbound calls)."}</li>
+            <li><strong>Vapi</strong> (US) — {isEl ? "AI voice orchestration — συνδέει STT + LLM + TTS σε πραγματικό χρόνο για τις AI τηλεφωνικές κλήσεις. Δείτε την πολιτική τους: vapi.ai/privacy." : "AI voice orchestration — connects STT + LLM + TTS in real time for AI phone calls. See their policy: vapi.ai/privacy."}</li>
+            <li><strong>OpenAI</strong> (US) — {isEl ? "GPT-4o-mini για τον AI receptionist και για AI δημιουργία μηνυμάτων καμπάνιας. Τα δεδομένα κλήσης χρησιμοποιούνται μόνο για την απόκριση· δεν χρησιμοποιούνται για εκπαίδευση μοντέλου." : "GPT-4o-mini for the AI receptionist and for AI campaign message generation. Call data is used only to produce the response; not used for model training."}</li>
+            <li><strong>ElevenLabs</strong> (US) — {isEl ? "Text-to-Speech για τη φωνή του AI receptionist (multilingual v2, EL + EN)." : "Text-to-Speech for the AI receptionist's voice (multilingual v2, EL + EN)."}</li>
+            <li><strong>Deepgram</strong> (US) — {isEl ? "Speech-to-Text σε πραγματικό χρόνο για τον AI receptionist (Nova-3 streaming)." : "Real-time Speech-to-Text for the AI receptionist (Nova-3 streaming)."}</li>
+            <li><strong>Anthropic (Claude)</strong> (US) — {isEl ? "δημιουργία περιεχομένου από διαχειριστή (events/jobs/quests). Δεν αποστέλλονται προσωπικά δεδομένα πελατών." : "admin content generation (events/jobs/quests). No customer personal data is sent."}</li>
+            <li><strong>Meta Platforms Ireland</strong> (EU) — {isEl ? "Messenger & Instagram webhooks για τη σύνδεση λογαριασμού (PSID / IG-ID capture). Το Meta δεν βλέπει δικά μας δεδομένα πέρα από το φυσιολογικό messaging σε Page/IG." : "Messenger & Instagram webhooks for account linking (PSID / IG-ID capture). Meta does not see our data beyond the normal messaging on your Page/IG."}</li>
             <li><strong>Telegram</strong> — {isEl ? "εσωτερικές ειδοποιήσεις προσωπικού για παραγγελίες/κρατήσεις." : "internal staff notifications for orders/bookings."}</li>
-            <li><strong>Google Maps</strong> — {isEl ? "εμφάνιση χάρτη/διευθύνσεων (κατά την φόρτωση)." : "map/directions rendering (on page load)."}</li>
+            <li><strong>Photon / OpenStreetMap</strong> (EU) — {isEl ? "address autocomplete (αντί για Google Maps)." : "address autocomplete (in place of Google Maps)."}</li>
           </ul>
           <p class="mt-2 text-sm text-white/60">{isEl ? "Διεθνείς μεταφορές προς τις ΗΠΑ βασίζονται στο EU–US Data Privacy Framework ή Standard Contractual Clauses." : "International transfers to the US rely on the EU–US Data Privacy Framework or Standard Contractual Clauses."}</p>
         </section>
@@ -100,6 +113,11 @@ const lastUpdated = "2026-04-12";
             <li>{isEl ? "Κρατήσεις: 24 μήνες." : "Bookings: 24 months."}</li>
             <li>{isEl ? "QR scan logs: 24 μήνες, aggregated analytics επ' αόριστον." : "QR scan logs: 24 months; aggregated analytics indefinitely."}</li>
             <li>{isEl ? "Αιτήσεις εργασίας: 12 μήνες (ή λιγότερο αν ζητηθεί)." : "Job applications: 12 months (or sooner on request)."}</li>
+            <li>{isEl ? "Ηχογραφήσεις AI τηλεφωνικών κλήσεων: 90 ημέρες (για ποιότητα & επίλυση διαφορών κράτησης), μετά διαγράφονται. Transcript (κείμενο): 24 μήνες." : "AI phone-call recordings: 90 days (for quality & booking-dispute resolution), then deleted. Transcripts (text): 24 months."}</li>
+            <li>{isEl ? "Outbound marketing μηνύματα (marketing_log): 24 μήνες — για dedup, analytics, απόδειξη συναίνεσης." : "Outbound marketing messages (marketing_log): 24 months — for dedup, analytics, consent audit trail."}</li>
+            <li>{isEl ? "Εισερχόμενες απαντήσεις πελατών (SMS/WA κ.λπ.): 12 μήνες." : "Inbound customer replies (SMS/WA etc): 12 months."}</li>
+            <li>{isEl ? "Click analytics σύντομων URL: 12 μήνες, aggregated επ' αόριστον." : "Shortened-URL click analytics: 12 months, aggregated indefinitely."}</li>
+            <li>{isEl ? "Messenger/IG linking IDs: όσο διατηρείτε τον λογαριασμό σας ενεργό." : "Messenger/IG linking IDs: as long as your account is active."}</li>
             <li>{isEl ? "Logs σφαλμάτων: 30 ημέρες." : "Error logs: 30 days."}</li>
           </ul>
         </section>
@@ -123,6 +141,14 @@ const lastUpdated = "2026-04-12";
         <section>
           <h2 class="text-xl font-semibold text-amber-200 mb-2">{isEl ? "8. Ασφάλεια" : "8. Security"}</h2>
           <p>{isEl ? "Χρησιμοποιούμε HTTPS παντού, hashed passwords (bcrypt/argon), hashed IP για analytics, περιορισμένη πρόσβαση (role-based), encryption-in-transit και encryption-at-rest μέσω Supabase και Cloudflare. Σε περίπτωση παραβίασης δεδομένων, ειδοποιούμε την ΑΠΔΠΧ εντός 72 ωρών και εσάς αν η παραβίαση σας αφορά άμεσα." : "We use HTTPS everywhere, hashed passwords (bcrypt/argon), hashed IPs for analytics, role-based access, encryption in transit and at rest via Supabase and Cloudflare. In case of a breach, we notify the Hellenic DPA within 72 hours and you directly if materially affected."}</p>
+        </section>
+
+        <section>
+          <h2 class="text-xl font-semibold text-amber-200 mb-2">{isEl ? "8α. Αυτοματοποιημένες αποφάσεις & AI" : "8a. Automated decisions & AI"}</h2>
+          <p>{isEl
+            ? "Δεν λαμβάνουμε αυτοματοποιημένες αποφάσεις με έννομες συνέπειες για εσάς. Ο AI receptionist μας μπορεί να καταγράψει μια αίτηση κράτησης, αλλά κάθε κράτηση επιβεβαιώνεται από άνθρωπο πριν πάρει κωδικό επιβεβαίωσης — δεν υπάρχει πλήρως αυτοματοποιημένη απόφαση που σας επηρεάζει. Έχετε δικαίωμα να ζητήσετε ανθρώπινη παρέμβαση σε κάθε στάδιο, καλώντας +30 694 627 2083 ή στέλνοντας email στο info@sallysbar.gr."
+            : "We do not make automated decisions with legal consequences for you. Our AI receptionist can capture a booking request, but every booking is confirmed by a human before a confirmation is issued — no fully automated decision affects you. You may request human intervention at any stage by calling +30 694 627 2083 or emailing info@sallysbar.gr."
+          }</p>
         </section>
 
         <section>
