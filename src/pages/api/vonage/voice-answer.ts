@@ -2,25 +2,54 @@ import type { APIRoute } from "astro";
 
 export const prerender = false;
 
-// Vonage Voice API "Answer URL" — returns an NCCO (Nexmo Call Control Object)
-// describing what the caller hears. Fires once when the call connects.
+// Vonage Voice API "Answer URL" — returns an NCCO describing what the caller
+// hears. Two modes:
+//
+// 1. When VAPI_PHONE_NUMBER_ID is set → connect the call over SIP to the
+//    Vapi AI assistant. Vapi handles STT/LLM/TTS/barge-in and can book
+//    reservations, look up the menu, transfer to a human, etc.
+//
+// 2. Otherwise → fall back to the plain greeting + voicemail NCCO so nothing
+//    breaks if the env var is empty or Vapi is down.
+//
 // Docs: https://developer.vonage.com/en/voice/voice-api/ncco-reference
-//
-// Current behaviour: greet the caller in EN + EL, record a voicemail, upload
-// the recording to our /api/vonage/voice-events webhook when done.
-//
-// To route calls to a real human phone, swap the "record" action for:
-//   { action: "connect", endpoint: [{ type: "phone", number: "30XXXXXXXX" }] }
+//       https://docs.vapi.ai/phone-calls/sip-trunking
 
 function json(obj: unknown, status = 200) {
   return new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json" } });
 }
 
-export const GET: APIRoute = async ({ url }) => {
+function readEnv(locals: any, key: string): string {
+  return (locals as any)?.runtime?.env?.[key]
+      ?? (globalThis as any)?.process?.env?.[key]
+      ?? (import.meta.env as any)?.[key]
+      ?? "";
+}
+
+export const GET: APIRoute = async ({ url, locals }) => {
   const origin = url.origin.replace(/^http:/, "https:");
-  // ASCII-safe punctuation only (no em-dash, no curly quotes) — Vonage's TTS
-  // has been silently dropping calls when those appear in NCCO text.
-  const ncco = [
+
+  // Vapi SIP URI is derived from the phone-number ID the assistant is attached to.
+  // Format: sip:<phoneNumberId>@sip.vapi.ai
+  const vapiPhoneNumberId = String(readEnv(locals, "VAPI_PHONE_NUMBER_ID") ?? "").trim();
+  const aiEnabled = String(readEnv(locals, "AI_VOICE_ENABLED") ?? "").toLowerCase() === "true";
+
+  if (aiEnabled && vapiPhoneNumberId) {
+    return json([
+      {
+        action: "connect",
+        endpoint: [{
+          type: "sip",
+          uri: `sip:${vapiPhoneNumberId}@sip.vapi.ai`,
+        }],
+        eventUrl: [`${origin}/api/vonage/voice-events`],
+      },
+    ]);
+  }
+
+  // Fallback: plain voicemail NCCO (ASCII-safe punctuation — Vonage TTS
+  // silently drops calls when em-dashes or curly quotes appear).
+  return json([
     {
       action: "talk",
       language: "en-GB",
@@ -45,8 +74,7 @@ export const GET: APIRoute = async ({ url }) => {
       language: "en-GB",
       text: "Thanks, got it. Bye!",
     },
-  ];
-  return json(ncco);
+  ]);
 };
 
 export const POST = GET;

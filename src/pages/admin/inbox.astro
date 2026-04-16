@@ -36,7 +36,7 @@ const { data: recentStatus } = await supabaseAdmin
 
 const { data: calls } = await supabaseAdmin
   .from("vonage_voice_calls")
-  .select("id, call_uuid, direction, from_address, to_address, status, duration_sec, price_eur, recording_url, matched_user_id, started_at, ended_at")
+  .select("id, call_uuid, direction, from_address, to_address, status, duration_sec, price_eur, recording_url, matched_user_id, started_at, ended_at, ai_handled, summary, transcript")
   .order("started_at", { ascending: false })
   .limit(50);
 
@@ -248,32 +248,62 @@ const matched = (messages ?? []).filter(m => !!m.matched_user_id).length;
             <tbody>
               {(calls ?? []).length === 0 ? (
                 <tr><td colspan="9" class="py-10 text-center text-white/40">{isEl ? "Δεν έχουν έρθει κλήσεις ακόμη." : "No calls yet."}</td></tr>
-              ) : (calls ?? []).map((c: any) => (
-                <tr class="border-b border-white/5 js-filter-row" data-from={c.from_address ?? ""} data-to={c.to_address ?? ""} data-when={c.started_at}>
-                  <td class="py-2 px-3">{c.direction === "inbound" ? "📲" : "📤"} <span class="text-xs text-white/60">{c.direction}</span></td>
-                  <td class="py-2 px-3 font-mono text-xs text-white/70">{c.from_address ?? "—"}</td>
-                  <td class="py-2 px-3 font-mono text-xs text-white/50">{c.to_address ?? "—"}</td>
-                  <td class="py-2 px-3 text-xs">
-                    {c.matched_user_id
-                      ? <span class="text-emerald-300">✓ {callNameMap.get(c.matched_user_id) ?? "—"}</span>
-                      : <span class="text-white/40">—</span>}
-                  </td>
-                  <td class={`py-2 px-3 font-semibold ${statusColor[c.status] ?? "text-white/70"}`}>{c.status}</td>
-                  <td class="py-2 px-3 text-right font-mono text-xs">{fmtDuration(c.duration_sec)}</td>
-                  <td class="py-2 px-3 text-right font-mono text-xs">{c.price_eur ? "€" + Number(c.price_eur).toFixed(4) : "—"}</td>
-                  <td class="py-2 px-3">
-                    {c.recording_url
-                      ? (() => {
-                          // Extract the UUID from Vonage's URL and route through our authenticated proxy.
-                          const m = String(c.recording_url).match(/\/v1\/files\/([a-f0-9-]{20,})/i);
-                          const proxyUrl = m ? `/api/vonage/recording?uuid=${m[1]}` : c.recording_url;
-                          return <a href={proxyUrl} target="_blank" class="text-sky-300 hover:text-sky-200 text-xs">🎙 {isEl ? "Ακρόαση" : "Listen"}</a>;
-                        })()
-                      : <span class="text-white/30 text-xs">—</span>}
-                  </td>
-                  <td class="py-2 px-3 text-xs text-white/60 whitespace-nowrap">{new Date(c.started_at).toLocaleString()}</td>
-                </tr>
-              ))}
+              ) : (calls ?? []).flatMap((c: any) => {
+                const rows = [
+                  <tr class="border-b border-white/5 js-filter-row" data-from={c.from_address ?? ""} data-to={c.to_address ?? ""} data-when={c.started_at}>
+                    <td class="py-2 px-3">
+                      {c.direction === "inbound" ? "📲" : "📤"} <span class="text-xs text-white/60">{c.direction}</span>
+                      {c.ai_handled && <span class="ml-1 text-[10px] font-semibold rounded-full bg-violet-400/20 border border-violet-400/40 text-violet-300 px-1.5 py-0.5" title="Handled by AI agent">🤖 AI</span>}
+                    </td>
+                    <td class="py-2 px-3 font-mono text-xs text-white/70">{c.from_address ?? "—"}</td>
+                    <td class="py-2 px-3 font-mono text-xs text-white/50">{c.to_address ?? "—"}</td>
+                    <td class="py-2 px-3 text-xs">
+                      {c.matched_user_id
+                        ? <span class="text-emerald-300">✓ {callNameMap.get(c.matched_user_id) ?? "—"}</span>
+                        : <span class="text-white/40">—</span>}
+                    </td>
+                    <td class={`py-2 px-3 font-semibold ${statusColor[c.status] ?? "text-white/70"}`}>{c.status}</td>
+                    <td class="py-2 px-3 text-right font-mono text-xs">{fmtDuration(c.duration_sec)}</td>
+                    <td class="py-2 px-3 text-right font-mono text-xs">{c.price_eur ? "€" + Number(c.price_eur).toFixed(4) : "—"}</td>
+                    <td class="py-2 px-3">
+                      {c.recording_url
+                        ? (() => {
+                            const m = String(c.recording_url).match(/\/v1\/files\/([a-f0-9-]{20,})/i);
+                            const proxyUrl = m ? `/api/vonage/recording?uuid=${m[1]}` : c.recording_url;
+                            return <a href={proxyUrl} target="_blank" class="text-sky-300 hover:text-sky-200 text-xs">🎙 {isEl ? "Ακρόαση" : "Listen"}</a>;
+                          })()
+                        : <span class="text-white/30 text-xs">—</span>}
+                    </td>
+                    <td class="py-2 px-3 text-xs text-white/60 whitespace-nowrap">{new Date(c.started_at).toLocaleString()}</td>
+                  </tr>
+                ];
+                if (c.ai_handled && (c.summary || c.transcript)) {
+                  rows.push(
+                    <tr class="border-b border-white/5 bg-violet-500/[0.03]">
+                      <td colspan="9" class="py-2 px-3">
+                        <details class="text-xs">
+                          <summary class="cursor-pointer text-violet-200/90 hover:text-violet-100 select-none">
+                            🤖 {c.summary ? `${c.summary.slice(0, 160)}${c.summary.length > 160 ? "…" : ""}` : (isEl ? "Δες συνομιλία" : "View transcript")}
+                          </summary>
+                          {c.summary && (
+                            <div class="mt-2 p-2 rounded-lg bg-black/30 border border-white/5">
+                              <p class="text-[10px] uppercase tracking-wider text-violet-300 mb-1">{isEl ? "Σύνοψη" : "Summary"}</p>
+                              <p class="text-white/80 whitespace-pre-wrap">{c.summary}</p>
+                            </div>
+                          )}
+                          {c.transcript && (
+                            <div class="mt-2 p-2 rounded-lg bg-black/30 border border-white/5 max-h-72 overflow-y-auto">
+                              <p class="text-[10px] uppercase tracking-wider text-violet-300 mb-1">{isEl ? "Συνομιλία" : "Transcript"}</p>
+                              <pre class="text-white/70 whitespace-pre-wrap font-mono text-[11px] leading-relaxed">{c.transcript}</pre>
+                            </div>
+                          )}
+                        </details>
+                      </td>
+                    </tr>
+                  );
+                }
+                return rows;
+              })}
             </tbody>
           </table>
         </div>

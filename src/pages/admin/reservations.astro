@@ -11,12 +11,12 @@ const isEl = lang === "el";
 
 // Filters from query string
 const url      = new URL(Astro.request.url);
-const statusF  = url.searchParams.get("status") ?? "all";   // all | pending | confirmed | cancelled
+const statusF  = url.searchParams.get("status") ?? "all";   // all | pending_ai | pending | confirmed | cancelled
 const dateF    = url.searchParams.get("date") ?? "";         // YYYY-MM-DD
 
 let query = supabaseAdmin
   .from("reservations")
-  .select("id, user_id, name, email, phone, date, time, party_size, notes, status, created_at")
+  .select("id, user_id, name, email, phone, date, time, party_size, notes, status, source, ai_call_uuid, created_at")
   .order("date", { ascending: true })
   .order("time", { ascending: true });
 
@@ -33,19 +33,24 @@ function fmtDate(d: string) {
 }
 
 function statusColor(s: string) {
-  return s === "confirmed" ? "#4ade80" : s === "cancelled" ? "#f87171" : "#fbbf24";
+  if (s === "confirmed") return "#4ade80";
+  if (s === "cancelled") return "#f87171";
+  if (s === "pending_ai") return "#a78bfa";   // violet for AI-pending
+  return "#fbbf24";                            // amber for regular pending
 }
 
 function statusLabel(s: string) {
+  if (s === "pending_ai") return isEl ? "🤖 Εκκρεμεί AI" : "🤖 AI pending";
   if (!isEl) return s.charAt(0).toUpperCase() + s.slice(1);
   return { pending: "Εκκρεμής", confirmed: "Επιβεβαιωμένη", cancelled: "Ακυρωμένη" }[s] ?? s;
 }
 
 const counts = {
-  all:       reservations.length,
-  pending:   reservations.filter(r => r.status === "pending").length,
-  confirmed: reservations.filter(r => r.status === "confirmed").length,
-  cancelled: reservations.filter(r => r.status === "cancelled").length,
+  all:        reservations.length,
+  pending_ai: reservations.filter(r => r.status === "pending_ai").length,
+  pending:    reservations.filter(r => r.status === "pending").length,
+  confirmed:  reservations.filter(r => r.status === "confirmed").length,
+  cancelled:  reservations.filter(r => r.status === "cancelled").length,
 };
 ---
 
@@ -89,7 +94,7 @@ const counts = {
 
       <!-- Status tabs -->
       <div class="flex items-center gap-2 flex-wrap text-sm">
-        {(["all","pending","confirmed","cancelled"] as const).map(s => (
+        {(["all","pending_ai","pending","confirmed","cancelled"] as const).map(s => (
           <a
             href={`?status=${s}${dateF ? "&date=" + dateF : ""}`}
             class={`px-3 py-1.5 rounded-lg border transition whitespace-nowrap ${
@@ -127,16 +132,22 @@ const counts = {
               </thead>
               <tbody id="resBody">
                 {reservations.map((r) => (
-                  <tr class="border-b border-white/5 hover:bg-white/[0.02] transition" data-id={r.id} data-status={r.status}>
+                  <tr id={r.id.slice(0, 8)} class={`border-b border-white/5 hover:bg-white/[0.02] transition ${r.status === "pending_ai" ? "bg-violet-500/[0.04]" : ""}`} data-id={r.id} data-status={r.status}>
                     <td class="px-4 py-3 text-white/80 whitespace-nowrap">{fmtDate(r.date)}</td>
                     <td class="px-4 py-3 text-white/80 whitespace-nowrap">{r.time}</td>
                     <td class="px-4 py-3">
-                      <div class="font-medium text-white">{r.name}</div>
+                      <div class="font-medium text-white flex items-center gap-2">
+                        {r.name}
+                        {(r as any).source === "ai_voice" && (
+                          <span class="text-[10px] font-semibold rounded-full bg-violet-400/20 border border-violet-400/40 text-violet-300 px-1.5 py-0.5" title="Booked by AI agent">🤖 AI</span>
+                        )}
+                      </div>
                     </td>
                     <td class="px-4 py-3 text-white/70">{r.party_size}</td>
                     <td class="px-4 py-3">
-                      <div class="text-white/60 text-xs">{r.email}</div>
+                      {r.email && <div class="text-white/60 text-xs">{r.email}</div>}
                       {r.phone && <div class="text-white/40 text-xs">{r.phone}</div>}
+                      {!r.email && !r.phone && <div class="text-white/30 text-xs">—</div>}
                     </td>
                     <td class="px-4 py-3 text-white/40 text-xs max-w-[180px]">
                       <span class="line-clamp-2">{r.notes || "—"}</span>
@@ -184,11 +195,22 @@ const counts = {
     </main>
 
     <script define:vars={{ isEl }}>
-      const statusColors = { confirmed: "#4ade80", cancelled: "#f87171", pending: "#fbbf24" };
+      const statusColors = { confirmed: "#4ade80", cancelled: "#f87171", pending: "#fbbf24", pending_ai: "#a78bfa" };
 
       function slabel(s) {
+        if (s === "pending_ai") return isEl ? "🤖 Εκκρεμεί AI" : "🤖 AI pending";
         if (!isEl) return s.charAt(0).toUpperCase() + s.slice(1);
         return { pending: "Εκκρεμής", confirmed: "Επιβεβαιωμένη", cancelled: "Ακυρωμένη" }[s] ?? s;
+      }
+
+      // Scroll to the highlighted row if ?#<prefix> is present in the URL
+      if (location.hash) {
+        const row = document.getElementById(location.hash.slice(1));
+        if (row) {
+          row.scrollIntoView({ behavior: "smooth", block: "center" });
+          row.classList.add("ring-2", "ring-amber-400/60");
+          setTimeout(() => row.classList.remove("ring-2", "ring-amber-400/60"), 3000);
+        }
       }
 
       function makeBtn(id, action) {

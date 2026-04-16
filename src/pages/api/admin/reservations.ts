@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 import { supabaseAdmin } from "../../../lib/supabase";
+import { sendMessage, setRuntimeEnv } from "../../../lib/vonage-messages";
 
 const POINTS_PER_RESERVATION = 10;
 
@@ -22,10 +23,11 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
     return new Response(JSON.stringify({ error: "Invalid id or status" }), { status: 400 });
   }
 
-  // Fetch current reservation so we can check user_id and previous status
+  // Fetch current reservation so we can check user_id, previous status, and
+  // customer contact for the confirmation SMS.
   const { data: reservation } = await supabaseAdmin
     .from("reservations")
-    .select("user_id, status")
+    .select("user_id, status, source, name, phone, date, time, party_size")
     .eq("id", id)
     .single();
 
@@ -39,19 +41,16 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
     return new Response(JSON.stringify({ error: error.message }), { status: 500 });
   }
 
+  const wasUnresolved = reservation?.status === "pending" || reservation?.status === "pending_ai";
+  const hasPhone = !!reservation?.phone;
+
   // Auto-award loyalty points when confirming a reservation for a logged-in user
-  if (
-    status === "confirmed" &&
-    reservation?.user_id &&
-    reservation.status !== "confirmed"
-  ) {
-    // Avoid double-awarding if somehow called twice
+  if (status === "confirmed" && reservation?.user_id && reservation.status !== "confirmed") {
     const { data: existing } = await supabaseAdmin
       .from("loyalty_events")
       .select("id")
       .eq("reservation_id", id)
       .maybeSingle();
-
     if (!existing) {
       await supabaseAdmin.from("loyalty_events").insert({
         user_id: reservation.user_id,
@@ -59,6 +58,24 @@ export const PATCH: APIRoute = async ({ request, locals }) => {
         reason: "Confirmed reservation",
         reservation_id: id,
       });
+    }
+  }
+
+  // SMS the customer on status transition (only if we have a phone number and
+  // this is a transition from pending/pending_ai → confirmed/cancelled).
+  if (hasPhone && wasUnresolved && (status === "confirmed" || status === "cancelled")) {
+    setRuntimeEnv((locals as any)?.runtime?.env);
+    try {
+      const firstName = (reservation!.name ?? "").split(" ")[0] || "there";
+      const niceDate = new Date(`${reservation!.date}T00:00:00`).toLocaleDateString("en-GB", {
+        weekday: "short", day: "numeric", month: "short",
+      });
+      const text = status === "confirmed"
+        ? `Hi ${firstName}, your table for ${reservation!.party_size} at Sally's Bar on ${niceDate} at ${reservation!.time} is confirmed. See you then! Reply STOP to opt out.`
+        : `Hi ${firstName}, unfortunately we can't accommodate your booking for ${niceDate} at ${reservation!.time}. Please call us on +30 694 627 2083 to rearrange. Sally's Bar.`;
+      await sendMessage(reservation!.phone!, text, { channel: "sms" });
+    } catch (e: any) {
+      console.warn("[admin/reservations] customer SMS failed:", e?.message);
     }
   }
 
