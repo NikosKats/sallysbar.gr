@@ -52,6 +52,7 @@ export function getAdminNavGroups(lang: "en" | "el", t: any, role?: string | nul
       { key: "marketing-automation", label: isEl ? "⚙️ Αυτοματισμοί Marketing" : "⚙️ Marketing Automation", href: withLangPrefix(lang, "/admin/marketing-automation"), icon: I.marketing },
       { key: "campaigns",             label: isEl ? "📣 CRM Καμπάνιες" : "📣 CRM Campaigns", href: withLangPrefix(lang, "/admin/campaigns"), icon: I.marketing },
       { key: "inbox",                 label: isEl ? "📬 Εισερχόμενα" : "📬 Inbox", href: withLangPrefix(lang, "/admin/inbox"), icon: I.chat },
+      { key: "ai-calls",               label: isEl ? "🤖 Συνομιλίες AI" : "🤖 AI Conversations", href: withLangPrefix(lang, "/admin/ai-calls"), icon: I.chat },
       { key: "social-links",          label: isEl ? "🔗 Social Links" : "🔗 Social Links", href: withLangPrefix(lang, "/admin/social-links"), icon: I.marketing },
       { key: "social-cards",          label: isEl ? "🪪 Social Cards" : "🪪 Social Cards", href: withLangPrefix(lang, "/admin/social-cards"), icon: I.users },
       { key: "loyalty-cards",         label: isEl ? "💳 Κάρτες Πιστότητας" : "💳 Loyalty Cards", href: withLangPrefix(lang, "/admin/loyalty-cards"), icon: I.loyalty },

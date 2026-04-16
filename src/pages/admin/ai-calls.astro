@@ -1,0 +1,261 @@
+---
+import "../../styles/global.css";
+import Header from "../../components/Header.astro";
+import AdminNav from "../../components/AdminNav.astro";
+import { supabaseAdmin } from "../../lib/supabase";
+import { withLangPrefix } from "../../i18n";
+
+export const prerender = false;
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+
+if (!["admin", "super_admin"].includes(Astro.locals.role ?? "")) {
+  return Astro.redirect(withLangPrefix(lang, "/admin"));
+}
+
+// Filters from query string
+const url      = new URL(Astro.request.url);
+const fromF    = url.searchParams.get("from") ?? "";          // from phone
+const dateFromF = url.searchParams.get("date_from") ?? "";     // YYYY-MM-DD
+const dateToF   = url.searchParams.get("date_to") ?? "";       // YYYY-MM-DD
+const searchF   = url.searchParams.get("q") ?? "";             // free-text in transcript/summary
+const bookingF  = url.searchParams.get("booking") ?? "";       // "1" = only calls with a booking
+
+let query = supabaseAdmin
+  .from("vonage_voice_calls")
+  .select("id, call_uuid, vapi_call_id, from_address, to_address, status, duration_sec, price_eur, recording_url, transcript, summary, started_at, ended_at")
+  .eq("ai_handled", true)
+  .order("started_at", { ascending: false })
+  .limit(200);
+
+if (fromF)     query = query.ilike("from_address", `%${fromF}%`);
+if (dateFromF) query = query.gte("started_at", dateFromF + "T00:00:00");
+if (dateToF)   query = query.lte("started_at", dateToF   + "T23:59:59");
+
+const { data: calls, error: callsErr } = await query;
+if (callsErr) console.error("[ai-calls] select error:", callsErr.message);
+let rows = calls ?? [];
+
+// Free-text filter is applied client-side over the already-paged result to keep
+// the query simple (Supabase full-text would need indexing).
+if (searchF) {
+  const q = searchF.toLowerCase();
+  rows = rows.filter(r =>
+    (r.transcript ?? "").toLowerCase().includes(q) ||
+    (r.summary ?? "").toLowerCase().includes(q)
+  );
+}
+
+// Cross-join to reservations so each call can show whether it produced a booking.
+const vapiIds = rows.map(r => r.vapi_call_id).filter(Boolean);
+const resByCall = new Map<string, any>();
+if (vapiIds.length) {
+  const { data: reservations } = await supabaseAdmin
+    .from("reservations")
+    .select("id, name, phone, date, time, party_size, status, ai_call_uuid, created_at")
+    .in("ai_call_uuid", vapiIds);
+  for (const r of reservations ?? []) resByCall.set(r.ai_call_uuid, r);
+}
+
+if (bookingF === "1") rows = rows.filter(r => r.vapi_call_id && resByCall.has(r.vapi_call_id));
+
+// KPIs
+const totalCalls   = rows.length;
+const totalMinutes = rows.reduce((s, r) => s + (Number(r.duration_sec) || 0), 0) / 60;
+const totalCost    = rows.reduce((s, r) => s + (Number(r.price_eur) || 0), 0);
+const bookingsFromCalls = rows.filter(r => r.vapi_call_id && resByCall.has(r.vapi_call_id)).length;
+const bookingRate  = totalCalls > 0 ? (bookingsFromCalls / totalCalls * 100) : 0;
+
+function fmtDuration(sec: number | null): string {
+  if (!sec) return "—";
+  const m = Math.floor(sec / 60), s = sec % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+function fmtDate(d: string | null) {
+  if (!d) return "—";
+  return new Date(d).toLocaleString(isEl ? "el-GR" : "en-GB", {
+    month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
+  });
+}
+function resRecordingProxy(recording_url: string | null): string | null {
+  if (!recording_url) return null;
+  const m = String(recording_url).match(/\/v1\/files\/([a-f0-9-]{20,})/i);
+  return m ? `/api/vonage/recording?uuid=${m[1]}` : recording_url;
+}
+
+const statusColor: Record<string, string> = {
+  completed: "text-emerald-300",
+  "customer-ended-call": "text-emerald-300",
+  "assistant-ended-call": "text-emerald-300",
+  "assistant-said-end-call-phrase": "text-emerald-300",
+  "silence-timed-out": "text-amber-300",
+  "transferred": "text-sky-300",
+  failed: "text-rose-300",
+};
+---
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{isEl ? "Κλήσεις AI" : "AI Calls"} — Admin</title>
+    <meta name="robots" content="noindex,nofollow" />
+  </head>
+  <body class="min-h-screen bg-[#0b0b10] text-white">
+    <Header />
+    <div class="h-20"></div>
+    <AdminNav active="ai-calls" />
+
+    <main class="mx-auto max-w-6xl px-5 py-10">
+      <div class="flex items-start justify-between gap-4 flex-wrap mb-6">
+        <div>
+          <h1 class="font-heading text-3xl md:text-4xl font-bold">🤖 {isEl ? "Συνομιλίες AI" : "AI Conversations"}</h1>
+          <p class="mt-2 text-sm text-white/60 max-w-2xl">
+            {isEl
+              ? "Κάθε κλήση που χειρίστηκε ο AI receptionist — περίληψη, πλήρης συνομιλία, ηχογράφηση, και η σύνδεση με κράτηση αν έκλεισε τραπέζι."
+              : "Every call the AI receptionist handled — summary, full transcript, recording, and the linked reservation if a table was booked."}
+          </p>
+        </div>
+      </div>
+
+      {/* KPIs */}
+      <div class="grid sm:grid-cols-4 gap-3 mb-6">
+        <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          <p class="text-[10px] uppercase tracking-wider text-white/50">{isEl ? "Σύνολο κλήσεων" : "Total calls"}</p>
+          <p class="font-heading text-2xl font-bold mt-1">{totalCalls}</p>
+        </div>
+        <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          <p class="text-[10px] uppercase tracking-wider text-white/50">{isEl ? "Λεπτά συνολικά" : "Total minutes"}</p>
+          <p class="font-heading text-2xl font-bold mt-1">{totalMinutes.toFixed(1)}</p>
+        </div>
+        <div class="rounded-2xl border border-amber-400/30 bg-amber-400/[0.06] p-4">
+          <p class="text-[10px] uppercase tracking-wider text-amber-300">{isEl ? "Κόστος Vapi" : "Vapi cost"}</p>
+          <p class="font-heading text-2xl font-bold mt-1 text-amber-300">€{totalCost.toFixed(2)}</p>
+        </div>
+        <div class="rounded-2xl border border-emerald-400/30 bg-emerald-400/[0.06] p-4">
+          <p class="text-[10px] uppercase tracking-wider text-emerald-300">{isEl ? "Κρατήσεις από κλήσεις" : "Bookings from calls"}</p>
+          <p class="font-heading text-2xl font-bold mt-1 text-emerald-300">
+            {bookingsFromCalls}<span class="text-sm text-white/50 ml-1">({bookingRate.toFixed(0)}%)</span>
+          </p>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <form method="get" class="rounded-2xl border border-white/10 bg-white/[0.03] p-4 mb-4 grid md:grid-cols-5 gap-2 items-end">
+        <label class="text-xs text-white/60">
+          <span class="block mb-1">{isEl ? "Αναζήτηση" : "Search"}</span>
+          <input name="q" value={searchF} placeholder={isEl ? "λέξη στο transcript…" : "word in transcript…"} class="w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2 text-sm" />
+        </label>
+        <label class="text-xs text-white/60">
+          <span class="block mb-1">{isEl ? "Από αριθμό" : "From"}</span>
+          <input name="from" value={fromF} placeholder="+3069…" class="w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2 text-sm font-mono" />
+        </label>
+        <label class="text-xs text-white/60">
+          <span class="block mb-1">{isEl ? "Από" : "From date"}</span>
+          <input type="date" name="date_from" value={dateFromF} class="w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2 text-sm" />
+        </label>
+        <label class="text-xs text-white/60">
+          <span class="block mb-1">{isEl ? "Έως" : "To date"}</span>
+          <input type="date" name="date_to" value={dateToF} class="w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2 text-sm" />
+        </label>
+        <div class="flex items-center gap-2">
+          <label class="flex items-center gap-1.5 text-xs text-white/70 select-none flex-1">
+            <input type="checkbox" name="booking" value="1" checked={bookingF === "1"} class="h-4 w-4 accent-emerald-500" />
+            {isEl ? "Μόνο με κράτηση" : "Only with booking"}
+          </label>
+          <button class="rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold px-3 py-2">{isEl ? "Φίλτρο" : "Filter"}</button>
+          {(searchF || fromF || dateFromF || dateToF || bookingF) && (
+            <a href="?" class="text-xs text-white/50 hover:text-white/80">✕ {isEl ? "Καθ." : "Clear"}</a>
+          )}
+        </div>
+      </form>
+
+      {/* List */}
+      {rows.length === 0 ? (
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-10 text-center text-white/40 text-sm">
+          {isEl ? "Καμία κλήση ακόμη." : "No calls yet."}
+        </div>
+      ) : (
+        <div class="space-y-3">
+          {rows.map((c: any) => {
+            const res = c.vapi_call_id ? resByCall.get(c.vapi_call_id) : null;
+            const proxyUrl = resRecordingProxy(c.recording_url);
+            const statusCls = statusColor[c.status] ?? "text-white/60";
+            return (
+              <details class="rounded-2xl border border-white/10 bg-white/[0.03] open:border-violet-400/30 open:bg-violet-500/[0.04] transition">
+                <summary class="cursor-pointer px-5 py-4 flex items-start justify-between gap-4 list-none">
+                  <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <span class="text-[10px] font-semibold rounded-full bg-violet-400/20 border border-violet-400/40 text-violet-300 px-2 py-0.5">🤖 AI</span>
+                      <span class="font-mono text-sm text-white/80">{c.from_address ?? "—"}</span>
+                      <span class="text-xs text-white/40">→ {c.to_address ?? "—"}</span>
+                      <span class={`text-xs font-semibold ${statusCls}`}>{c.status ?? "—"}</span>
+                      {res && (
+                        <span class="text-[10px] font-semibold rounded-full bg-emerald-400/20 border border-emerald-400/40 text-emerald-300 px-2 py-0.5">✓ {isEl ? "Κράτηση" : "Booking"}</span>
+                      )}
+                    </div>
+                    {c.summary && (
+                      <p class="text-sm text-white/80 mt-2 line-clamp-2">{c.summary}</p>
+                    )}
+                    <div class="flex items-center gap-3 text-[11px] text-white/50 mt-2 flex-wrap">
+                      <span>🕒 {fmtDate(c.started_at)}</span>
+                      <span>⏱ {fmtDuration(c.duration_sec)}</span>
+                      <span>💶 {c.price_eur ? `€${Number(c.price_eur).toFixed(4)}` : "—"}</span>
+                      {res && (
+                        <span class="text-emerald-300">
+                          📅 {res.name} · {res.party_size}p · {res.date} {res.time} · <span class="italic">{res.status}</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <span class="text-white/40 shrink-0 pt-1">▾</span>
+                </summary>
+                <div class="px-5 pb-5 space-y-4">
+                  {c.summary && (
+                    <div class="rounded-xl border border-white/10 bg-black/30 p-3">
+                      <p class="text-[10px] uppercase tracking-wider text-violet-300 font-bold mb-1">{isEl ? "Σύνοψη" : "Summary"}</p>
+                      <p class="text-sm text-white/85 whitespace-pre-wrap">{c.summary}</p>
+                    </div>
+                  )}
+                  {c.transcript ? (
+                    <div class="rounded-xl border border-white/10 bg-black/30 p-3">
+                      <p class="text-[10px] uppercase tracking-wider text-violet-300 font-bold mb-1">{isEl ? "Συνομιλία" : "Transcript"}</p>
+                      <pre class="text-xs text-white/75 whitespace-pre-wrap font-mono leading-relaxed max-h-96 overflow-y-auto">{c.transcript}</pre>
+                    </div>
+                  ) : (
+                    <p class="text-xs text-white/40">{isEl ? "Δεν υπάρχει transcript." : "No transcript captured."}</p>
+                  )}
+                  <div class="flex items-center gap-3 text-sm flex-wrap">
+                    {proxyUrl ? (
+                      <a href={proxyUrl} target="_blank" rel="noopener" class="inline-flex items-center gap-1 rounded-lg border border-sky-400/30 bg-sky-400/10 text-sky-300 px-3 py-1.5 text-xs hover:bg-sky-400/20">
+                        🎙 {isEl ? "Άκου ηχογράφηση" : "Listen to recording"}
+                      </a>
+                    ) : (
+                      <span class="text-xs text-white/30">{isEl ? "Χωρίς ηχογράφηση" : "No recording"}</span>
+                    )}
+                    {res && (
+                      <a href={`${withLangPrefix(lang, "/admin/reservations")}?status=${res.status}#${res.id.slice(0, 8)}`} class="inline-flex items-center gap-1 rounded-lg border border-emerald-400/30 bg-emerald-400/10 text-emerald-300 px-3 py-1.5 text-xs hover:bg-emerald-400/20">
+                        📅 {isEl ? "Δες κράτηση" : "View reservation"}
+                      </a>
+                    )}
+                    {c.vapi_call_id && (
+                      <a href={`https://dashboard.vapi.ai/calls/${c.vapi_call_id}`} target="_blank" rel="noopener" class="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.03] text-white/70 px-3 py-1.5 text-xs hover:bg-white/10">
+                        📊 Vapi log
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </details>
+            );
+          })}
+        </div>
+      )}
+
+      <p class="mt-6 text-[11px] text-white/40">
+        {isEl
+          ? "Οι κλήσεις καταγράφονται αυτόματα από το /api/ai-voice/call-ended webhook όταν η Vapi αποστέλλει το end-of-call-report."
+          : "Calls are captured automatically by the /api/ai-voice/call-ended webhook when Vapi sends the end-of-call-report."}
+      </p>
+    </main>
+  </body>
+</html>
