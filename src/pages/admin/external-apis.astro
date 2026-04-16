@@ -30,6 +30,20 @@ const tiers = [
   { name: "Unlimited", monthly: 149, includedMin: 1000, overage: 0.30 },
 ];
 
+// CRM & Marketing Automation add-on tiers (per-message-based)
+const crmCostPerMsg = 0.07;   // Blended SMS/WA/Viber wholesale
+const crmTiers = [
+  { name: "Starter",   monthly: 19, includedMsgs: 100,  overage: 0.10 },
+  { name: "Pro",       monthly: 49, includedMsgs: 400,  overage: 0.10 },
+  { name: "Unlimited", monthly: 99, includedMsgs: 1000, overage: 0.10 },
+];
+const crmTierRows = crmTiers.map(t => {
+  const atCost = crmCostPerMsg * t.includedMsgs;
+  const margin = t.monthly - atCost;
+  const marginPct = (margin / t.monthly) * 100;
+  return { ...t, atCost, margin, marginPct };
+});
+
 // ────────────────────────────────────────────────────────────────────────
 // API inventory — every external service the platform consumes.
 // Each entry has: use cases, pricing, Sally's monthly usage + cost,
@@ -398,6 +412,77 @@ const tierRows = tiers.map(t => {
           {isEl
             ? "Tip: στα PistotitaOS Year-round plans, μπορείς να συμπεριλάβεις 60 λεπτά AI-voice δωρεάν σαν upsell hook, και να χρεώσεις overage €0.30/min πάνω από αυτό."
             : "Tip: on PistotitaOS Year-round plans, include 60 min of AI-voice free as an upsell hook, then bill overage at €0.30/min."}
+        </p>
+      </section>
+
+      {/* ───── CRM & MARKETING AUTOMATION TIERS ───── */}
+      <section class="mb-10 rounded-3xl border border-fuchsia-400/30 bg-gradient-to-br from-fuchsia-500/[0.08] via-emerald-500/[0.04] to-transparent p-6 card">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="inline-block h-1.5 w-1.5 rounded-full bg-fuchsia-400 animate-pulse"></span>
+          <p class="text-[10px] uppercase tracking-[0.22em] text-fuchsia-300 font-bold">{isEl ? "📣 ΠΡΟΑΙΡΕΤΙΚΟ ADD-ON · επαναλαμβανόμενο" : "📣 RECURRING ADD-ON · optional"}</p>
+        </div>
+        <h2 class="font-heading text-2xl md:text-3xl font-bold">{isEl ? "CRM Καμπάνιες & Αυτοματισμοί — Τιμολόγηση Add-on" : "CRM & Marketing Automation — Add-on Pricing"}</h2>
+        <p class="mt-2 text-sm text-white/65 max-w-3xl">
+          {isEl
+            ? "Μηνιαία χρέωση για πρόσβαση στο automation engine + bulk campaigns + unified inbox. Μηνύματα (SMS/WA/Viber blend) wholesale ≈ €0.07/msg. Overage €0.10/msg (43% markup)."
+            : "Monthly fee for access to the automation engine + bulk campaigns + unified inbox. Blended message wholesale ≈ €0.07/msg (SMS/WA/Viber). Overage billed at €0.10/msg (43% markup)."}
+        </p>
+
+        <div class="mt-5 overflow-x-auto">
+          <table class="w-full text-sm card">
+            <thead class="text-[10px] uppercase tracking-wider text-white/50 text-left">
+              <tr>
+                <th class="py-2 pr-4">{isEl ? "Πακέτο" : "Tier"}</th>
+                <th class="py-2 pr-4 text-right">{isEl ? "Τιμή/μήνα" : "Monthly"}</th>
+                <th class="py-2 pr-4 text-right">{isEl ? "Μηνύματα" : "Included msgs"}</th>
+                <th class="py-2 pr-4 text-right">At-cost</th>
+                <th class="py-2 pr-4 text-right">Margin €</th>
+                <th class="py-2 pr-4 text-right">Margin %</th>
+                <th class="py-2 pr-4 text-right">Overage</th>
+              </tr>
+            </thead>
+            <tbody>
+              {crmTierRows.map((r, i) => (
+                <tr class={`border-t border-white/5 ${i === 1 ? "bg-fuchsia-400/[0.05]" : ""}`}>
+                  <td class="py-2.5 pr-4 font-bold">{r.name}</td>
+                  <td class="py-2.5 pr-4 text-right font-mono font-bold text-emerald-300">{eur(r.monthly)}</td>
+                  <td class="py-2.5 pr-4 text-right font-mono">{r.includedMsgs.toLocaleString()}</td>
+                  <td class="py-2.5 pr-4 text-right font-mono text-white/60">{eur(r.atCost)}</td>
+                  <td class="py-2.5 pr-4 text-right font-mono text-emerald-300 font-semibold">{eur(r.margin)}</td>
+                  <td class="py-2.5 pr-4 text-right font-mono font-bold" style={`color:${r.marginPct > 50 ? '#6ee7b7' : r.marginPct > 25 ? '#fcd34d' : '#fca5a5'}`}>{r.marginPct.toFixed(0)}%</td>
+                  <td class="py-2.5 pr-4 text-right font-mono text-white/60">{eur(r.overage)}/msg</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="mt-6 grid md:grid-cols-2 gap-3 text-sm">
+          <div class="rounded-2xl border border-white/10 bg-black/30 p-4 card">
+            <p class="text-[10px] uppercase tracking-wider text-emerald-300 font-bold mb-2">💡 {isEl ? "Gating ανά tier" : "Feature gating by tier"}</p>
+            <ul class="space-y-1.5 text-white/80 text-xs">
+              <li><strong class="text-fuchsia-200">Starter</strong>: 10 automation triggers + basic bulk campaigns + DB filter audience</li>
+              <li><strong class="text-fuchsia-200">Pro</strong>: + AI message generator + URL shortener analytics + paste-list + unified inbox + Messenger/IG linking</li>
+              <li><strong class="text-fuchsia-200">Unlimited</strong>: + custom triggers on request + whitelabel sender ID setup + SLA + monthly strategy call</li>
+            </ul>
+          </div>
+          <div class="rounded-2xl border border-white/10 bg-black/30 p-4 card">
+            <p class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-2">📊 {isEl ? "Break-even vs αγγελιόσημο" : "Break-even vs. alternatives"}</p>
+            <table class="w-full text-xs">
+              <tbody>
+                <tr><td class="py-1 text-white/60">Klaviyo (similar stack)</td><td class="py-1 text-right font-mono">$45/mo min</td></tr>
+                <tr><td class="py-1 text-white/60">Mailchimp + Twilio combo</td><td class="py-1 text-right font-mono">$40/mo + $0.08/msg</td></tr>
+                <tr><td class="py-1 text-white/60">Pro tier here (400 msgs)</td><td class="py-1 text-right font-mono text-emerald-300 font-semibold">€49/mo — undercuts both</td></tr>
+                <tr class="border-t border-white/10"><td class="py-1.5 font-semibold">Conversion hook:</td><td class="py-1.5 text-right text-[11px] text-amber-200">"1 CRM booking/week pays for it"</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <p class="mt-4 text-[11px] text-white/50">
+          {isEl
+            ? "Tip: Starter tier κλείνει τα venues που φοβούνται το usage-based pricing. Pro είναι η default πρόταση. Unlimited μόνο για high-volume (>1000 msgs/mo)."
+            : "Tip: Starter tier closes risk-averse venues that fear usage-based pricing. Pro is the default pitch. Unlimited only for high-volume venues (>1000 msgs/mo)."}
         </p>
       </section>
 
