@@ -20,7 +20,15 @@ const bullets = [
   "Analytics + reporting",
   "Staff enrollment",
   "Bilingual EN/EL",
-  "Marketing automation (WhatsApp/SMS/Push/Email)",
+  "Marketing automation (10 triggers)",
+  "CRM bulk campaigns — 7 channels (WA/SMS/Viber/Messenger/IG/Push/Email)",
+  "Audience sources: DB filters or pasted list (CSV-friendly)",
+  "URL shortener sallysbar.gr/s/xxxxx (click tracking)",
+  "Inbox: inbound replies, delivery receipts, voice calls",
+  "Voice recording playback (JWT-signed admin proxy)",
+  "Messenger / Instagram linking (+20 point booster)",
+  "Profile completion bar (0–100% with CTA chips)",
+  "Auto-STOP unsubscribe honoring",
   "Priority support",
 ];
 
@@ -66,9 +74,9 @@ const checklist = [
   { stage: "1. Code & infra (~1h scripted)", items: [
     "Clone repo into venue's GitHub / new Cloudflare Pages project",
     "Create Supabase project (free tier to start)",
-    "Run all SQL migrations in /scripts in order",
+    "Run all SQL migrations in /scripts in order (incl. add-marketing-automation, add-vonage-webhooks, add-social-linking, add-short-links)",
     "Set env vars: Supabase URL/keys, VAPID pair, Telegram tokens",
-    "Point domain DNS to Cloudflare"
+    "Point domain DNS to Cloudflare (www + apex)",
   ]},
   { stage: "2. Branding (~30min)", items: [
     "Edit src/data/site.ts (name, address, socials, maps URL)",
@@ -82,15 +90,28 @@ const checklist = [
     "Generate table QR codes via /admin/qrcodes",
     "Print table cards + starter loyalty cards",
   ]},
-  { stage: "4. Staff onboarding (~30min call)", items: [
+  { stage: "4. Messaging & CRM setup (~1h)", items: [
+    "Vonage account → Messages Application → add number (voice + SMS + WhatsApp capabilities)",
+    "Set webhook URLs (MUST be www. — non-www 301s kill POST bodies): Inbound /api/vonage/inbound, Status /api/vonage/status",
+    "Voice: Answer /api/vonage/voice-answer, Event /api/vonage/voice-events, Fallback /api/vonage/voice-fallback",
+    "Upload VONAGE_APP_PRIVATE_KEY via `cat private.key | wrangler pages secret put` (never paste key into chat)",
+    "Register alphanumeric sender ID for SMS (e.g. 'Sallys Bar' — max 11 chars, no apostrophes, Greek MNOs require pre-registration)",
+    "Flip VONAGE_MESSAGES_BASE to https://api.nexmo.com (production, not sandbox)",
+    "Meta webhook for Messenger/IG linking: https://<venue>/api/social/meta-webhook + HMAC secret + verify token",
+    "Resend account + bookings@<venue> sender + SPF/DKIM/DMARC records",
+  ]},
+  { stage: "5. Staff onboarding (~30min call)", items: [
     "Invite first admin via /admin/users",
     "Walk through /admin/overview, /staff, /admin/help",
+    "Walk through /admin/campaigns (filters, paste-list, AI generate, URL shortener)",
+    "Walk through /admin/inbox (replies, delivery receipts, voice recordings)",
     "Record Loom they can replay later",
     "Enable push notifications on their staff phone",
   ]},
-  { stage: "5. Go live (~30min)", items: [
+  { stage: "6. Go live (~30min)", items: [
     "End-to-end test of /table/1 flow",
     "Run one test order through the full lifecycle",
+    "Send test SMS + WhatsApp to verify sender name shows correctly",
     "Send welcome email with URLs + credentials",
     "Add to your /admin/venues tracker",
   ]},
@@ -168,6 +189,55 @@ const isEl = lang === "el";
         </div>
         <button onclick="window.print()" class="no-print shrink-0 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 px-4 py-2 text-xs font-semibold text-white">🖨 {isEl ? "Εκτύπωση / PDF" : "Print / Save PDF"}</button>
       </div>
+
+      <!-- What's new — recently shipped -->
+      <section class="mb-10 rounded-2xl border border-emerald-400/30 bg-gradient-to-br from-emerald-500/[0.08] via-fuchsia-500/[0.04] to-sky-500/[0.04] p-5">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          <h2 class="text-[10px] uppercase tracking-[0.22em] text-emerald-300 font-bold">{isEl ? "🆕 Πρόσφατα shipped — διαφοροποίηση από ανταγωνιστές" : "🆕 Recently shipped — differentiators vs. competitors"}</h2>
+        </div>
+        <div class="grid md:grid-cols-2 gap-3 text-sm">
+          <div class="rounded-xl border border-white/10 bg-black/30 p-3">
+            <p class="font-heading font-bold text-emerald-200 mb-1">📣 CRM Campaigns 2.0</p>
+            <p class="text-white/70 text-xs leading-relaxed">{isEl
+              ? "7 κανάλια (WA/SMS/Viber/Messenger/IG/Push/Email) · φιλτράρισμα κοινού ή paste list · AI generate · live cost breakdown με ΦΠΑ · A4 invoice για τον πελάτη. Paste list = ad-hoc blast χωρίς να βάλεις πρώτα στη βάση."
+              : "7 channels (WA/SMS/Viber/Messenger/IG/Push/Email) · audience filters OR pasted list (CSV-friendly) · AI generate · live cost breakdown with VAT · A4 client invoice. Pasted list = ad-hoc blast without importing to DB first."}</p>
+          </div>
+          <div class="rounded-xl border border-white/10 bg-black/30 p-3">
+            <p class="font-heading font-bold text-sky-200 mb-1">🔗 URL Shortener (owned)</p>
+            <p class="text-white/70 text-xs leading-relaxed">{isEl
+              ? "sallysbar.gr/s/xxxxx — 5-χαρ base36, idempotent, click tracking. Κρατάει SMS σε 1 segment, αντί για 2+. Auto-shorten on paste + ↶ Restore original για 3rd-party UTM."
+              : "sallysbar.gr/s/xxxxx — 5-char base36, idempotent, click tracking. Keeps SMS in 1 segment instead of 2+. Auto-shorten on paste + ↶ Restore original for 3rd-party UTM preservation."}</p>
+          </div>
+          <div class="rounded-xl border border-white/10 bg-black/30 p-3">
+            <p class="font-heading font-bold text-fuchsia-200 mb-1">📬 Unified Inbox</p>
+            <p class="text-white/70 text-xs leading-relaxed">{isEl
+              ? "/admin/inbox — inbound replies (όλα τα κανάλια), delivery receipts, φωνητικές κλήσεις με inline recording playback. Inline reply, αυτόματο STOP unsubscribe, filters, delete-all. Τα μαγαζιά τα έψαχναν σε 5 διαφορετικές εφαρμογές."
+              : "/admin/inbox — inbound replies (every channel), delivery receipts, voice calls with inline recording playback. Inline reply, auto-STOP unsubscribe, filters, delete-all. Replaces 5 separate tools venues used to juggle."}</p>
+          </div>
+          <div class="rounded-xl border border-white/10 bg-black/30 p-3">
+            <p class="font-heading font-bold text-amber-200 mb-1">🔗 Messenger + Instagram Linking</p>
+            <p class="text-white/70 text-xs leading-relaxed">{isEl
+              ? "Κάθε χρήστης συνδέει Messenger/IG μέσω m.me/ig.me ref-links — webhook μας πιάνει PSID/IG-ID + χαρίζει +20 πόντοι. Unlock για 1-click DM campaigns χωρίς να σπάει το Meta 24h rule."
+              : "Users link Messenger/IG via per-user m.me/ig.me ref-links — our webhook captures PSID/IG-ID + awards +20 points. Unlocks 1-click DM campaigns without breaking Meta's 24h reply window."}</p>
+          </div>
+          <div class="rounded-xl border border-white/10 bg-black/30 p-3">
+            <p class="font-heading font-bold text-white mb-1">🎯 Profile Completion Bar</p>
+            <p class="text-white/70 text-xs leading-relaxed">{isEl
+              ? "0–100% progress στο /account με CTA chips για κάθε ελλιπές πεδίο. +20 badge σε Messenger/IG. 100% → celebratory state. Αλλάζει drastically το completion rate (που τροφοδοτεί όλη την CRM)."
+              : "0–100% progress on /account with CTA chips per missing slot. +20 badge on Messenger/IG slots. 100% → celebratory state. Dramatically improves completion rate (the signal that feeds every CRM trigger downstream)."}</p>
+          </div>
+          <div class="rounded-xl border border-white/10 bg-black/30 p-3">
+            <p class="font-heading font-bold text-rose-200 mb-1">📞 Voice + Recording Playback</p>
+            <p class="text-white/70 text-xs leading-relaxed">{isEl
+              ? "Εισερχόμενες κλήσεις στο Vonage number με NCCO greeting + record. Recording playback inline στο /admin/inbox μέσω JWT-signed proxy (RS256 via Web Crypto — άμεση πρόσβαση στο Vonage file υποστηρίζει μόνο JWT auth)."
+              : "Inbound calls to your Vonage number with NCCO greeting + record. Recording plays inline at /admin/inbox via a JWT-signed proxy (RS256 via Web Crypto — direct Vonage file URLs only accept JWT auth)."}</p>
+          </div>
+        </div>
+        <p class="mt-4 text-[11px] text-white/50">{isEl
+          ? "💡 Αυτά είναι τα features που οι περισσότεροι ανταγωνιστές (Toast, Loyverse, Fivestars) ΔΕΝ έχουν σε ένα πακέτο στα €92/μήνα. Στο pitch δώσε έμφαση εδώ."
+          : "💡 These are the features most competitors (Toast, Loyverse, Fivestars) don't bundle at €92/mo. Lead with these in the pitch."}</p>
+      </section>
 
       <!-- Pricing: two plans -->
       <section class="mb-10">
