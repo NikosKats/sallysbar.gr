@@ -1,0 +1,36 @@
+---
+import { supabaseAdmin } from "../../lib/supabase";
+
+export const prerender = false;
+
+const slug = String(Astro.params.slug ?? "").trim().toLowerCase();
+
+// Basic sanity: slug must be 5 alphanumeric chars (matches our shortener format)
+if (!/^[a-z0-9]{5}$/.test(slug)) {
+  return new Response("Not found", { status: 404 });
+}
+
+const { data } = await supabaseAdmin
+  .from("short_links")
+  .select("target_url")
+  .eq("slug", slug)
+  .maybeSingle();
+
+if (!data?.target_url) {
+  return new Response("Short link not found or expired.", { status: 404 });
+}
+
+// Fire-and-forget hit counter — don't block the redirect waiting for the write
+supabaseAdmin.rpc("short_link_hit", { p_slug: slug }).then(() => {}, () => {
+  // Fallback if the RPC doesn't exist: update directly
+  supabaseAdmin
+    .from("short_links")
+    .update({
+      hits: ((data as any).hits ?? 0) + 1,
+      last_hit_at: new Date().toISOString(),
+    })
+    .eq("slug", slug).then(() => {}, () => {});
+});
+
+return Astro.redirect(data.target_url, 302);
+---

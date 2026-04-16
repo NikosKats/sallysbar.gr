@@ -12,6 +12,7 @@ const isEl = lang === "el";
 if (!["admin", "super_admin"].includes(Astro.locals.role ?? "")) {
   return Astro.redirect(withLangPrefix(lang, "/admin"));
 }
+const isSuper = Astro.locals.role === "super_admin";
 
 const { data: messages } = await supabaseAdmin
   .from("vonage_inbound_messages")
@@ -29,7 +30,7 @@ for (const p of profiles ?? []) nameMap.set(p.id, p.full_name ?? "—");
 
 const { data: recentStatus } = await supabaseAdmin
   .from("vonage_message_status")
-  .select("message_uuid, channel, status, error_reason, price_eur, received_at")
+  .select("message_uuid, channel, status, to_address, error_reason, price_eur, received_at")
   .order("received_at", { ascending: false })
   .limit(50);
 
@@ -97,14 +98,27 @@ const matched = (messages ?? []).filter(m => !!m.matched_user_id).length;
       </section>
 
       <!-- Inbound table -->
-      <section class="mt-8">
+      <section class="mt-8" data-table-wrap="inbound">
         <h2 class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-3">📥 {isEl ? "Εισερχόμενα μηνύματα" : "Inbound messages"}</h2>
+        <div class="mb-2 flex flex-wrap items-center gap-2 text-xs">
+          <input type="text" class="js-filter-from rounded-lg bg-black/40 border border-white/10 px-2 py-1 w-36" placeholder={isEl ? "Φίλτρο Από" : "Filter From"} />
+          <input type="text" class="js-filter-to rounded-lg bg-black/40 border border-white/10 px-2 py-1 w-36" placeholder={isEl ? "Φίλτρο Προς" : "Filter To"} />
+          <input type="date" class="js-filter-date-from rounded-lg bg-black/40 border border-white/10 px-2 py-1 [color-scheme:dark]" />
+          <span class="text-white/40">→</span>
+          <input type="date" class="js-filter-date-to rounded-lg bg-black/40 border border-white/10 px-2 py-1 [color-scheme:dark]" />
+          <button class="js-filter-clear rounded-lg bg-white/10 hover:bg-white/20 px-3 py-1">✕ {isEl ? "Καθαρισμός" : "Clear"}</button>
+          <span class="js-filter-count ml-2 text-white/50"></span>
+          {isSuper && (
+            <button class="js-delete-all ml-auto rounded-lg bg-rose-600 hover:bg-rose-500 text-white px-3 py-1 font-semibold" data-table-key="inbound">🗑 {isEl ? "Διαγραφή όλων" : "Delete all"}</button>
+          )}
+        </div>
         <div class="rounded-2xl border border-white/10 bg-white/[0.03] overflow-x-auto">
           <table class="w-full text-sm">
             <thead class="text-[11px] uppercase tracking-wider text-white/55">
               <tr class="border-b border-white/10">
                 <th class="text-left py-2 px-3"></th>
                 <th class="text-left py-2 px-3">{isEl ? "Από" : "From"}</th>
+                <th class="text-left py-2 px-3">{isEl ? "Προς" : "To"}</th>
                 <th class="text-left py-2 px-3">{isEl ? "Χρήστης" : "User"}</th>
                 <th class="text-left py-2 px-3">{isEl ? "Μήνυμα" : "Message"}</th>
                 <th class="text-left py-2 px-3">{isEl ? "Πότε" : "When"}</th>
@@ -113,12 +127,13 @@ const matched = (messages ?? []).filter(m => !!m.matched_user_id).length;
             </thead>
             <tbody>
               {(messages ?? []).length === 0 ? (
-                <tr><td colspan="6" class="py-10 text-center text-white/40">{isEl ? "Καμία εισερχόμενη επικοινωνία ακόμη." : "No inbound messages yet."}</td></tr>
+                <tr><td colspan="7" class="py-10 text-center text-white/40">{isEl ? "Καμία εισερχόμενη επικοινωνία ακόμη." : "No inbound messages yet."}</td></tr>
               ) : (messages ?? []).map((m: any) => (
                 <>
-                <tr class={`border-b border-white/5 ${!m.handled ? "bg-amber-400/[0.03]" : ""}`} data-msg={m.id}>
+                <tr class={`border-b border-white/5 js-filter-row ${!m.handled ? "bg-amber-400/[0.03]" : ""}`} data-msg={m.id} data-from={m.from_address ?? ""} data-to={m.to_address ?? ""} data-when={m.received_at}>
                   <td class="py-2 px-3 text-xl">{channelIcon[m.channel] ?? "📨"}</td>
                   <td class="py-2 px-3 font-mono text-xs text-white/70">{m.from_address}</td>
+                  <td class="py-2 px-3 font-mono text-xs text-white/50">{m.to_address ?? "—"}</td>
                   <td class="py-2 px-3 text-xs">
                     {m.matched_user_id
                       ? <span class="text-emerald-300">✓ {nameMap.get(m.matched_user_id) ?? "—"}</span>
@@ -136,7 +151,7 @@ const matched = (messages ?? []).filter(m => !!m.matched_user_id).length;
                   </td>
                 </tr>
                 <tr class="js-reply-row hidden bg-black/40" data-reply-row={m.id}>
-                  <td colspan="6" class="p-3">
+                  <td colspan="7" class="p-3">
                     <div class="flex items-start gap-2">
                       <textarea class="js-reply-text flex-1 rounded-lg bg-black/40 border border-white/15 px-3 py-2 text-sm" rows="2" placeholder={isEl ? "Γράψε την απάντησή σου…" : "Type your reply…"}></textarea>
                       <div class="flex flex-col gap-1">
@@ -156,13 +171,25 @@ const matched = (messages ?? []).filter(m => !!m.matched_user_id).length;
       </section>
 
       <!-- Status receipts -->
-      <section class="mt-8">
+      <section class="mt-8" data-table-wrap="status">
         <h2 class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-3">📤 {isEl ? "Status παράδοσης (τελευταία 50)" : "Delivery receipts (last 50)"}</h2>
+        <div class="mb-2 flex flex-wrap items-center gap-2 text-xs">
+          <input type="text" class="js-filter-to rounded-lg bg-black/40 border border-white/10 px-2 py-1 w-36" placeholder={isEl ? "Φίλτρο Προς" : "Filter To"} />
+          <input type="date" class="js-filter-date-from rounded-lg bg-black/40 border border-white/10 px-2 py-1 [color-scheme:dark]" />
+          <span class="text-white/40">→</span>
+          <input type="date" class="js-filter-date-to rounded-lg bg-black/40 border border-white/10 px-2 py-1 [color-scheme:dark]" />
+          <button class="js-filter-clear rounded-lg bg-white/10 hover:bg-white/20 px-3 py-1">✕ {isEl ? "Καθαρισμός" : "Clear"}</button>
+          <span class="js-filter-count ml-2 text-white/50"></span>
+          {isSuper && (
+            <button class="js-delete-all ml-auto rounded-lg bg-rose-600 hover:bg-rose-500 text-white px-3 py-1 font-semibold" data-table-key="status">🗑 {isEl ? "Διαγραφή όλων" : "Delete all"}</button>
+          )}
+        </div>
         <div class="rounded-2xl border border-white/10 bg-white/[0.03] overflow-x-auto">
           <table class="w-full text-sm">
             <thead class="text-[11px] uppercase tracking-wider text-white/55">
               <tr class="border-b border-white/10">
                 <th class="text-left py-2 px-3">{isEl ? "Κανάλι" : "Channel"}</th>
+                <th class="text-left py-2 px-3">{isEl ? "Προς" : "To"}</th>
                 <th class="text-left py-2 px-3">{isEl ? "Κατάσταση" : "Status"}</th>
                 <th class="text-left py-2 px-3">{isEl ? "UUID" : "UUID"}</th>
                 <th class="text-left py-2 px-3">{isEl ? "Σφάλμα" : "Error"}</th>
@@ -172,10 +199,11 @@ const matched = (messages ?? []).filter(m => !!m.matched_user_id).length;
             </thead>
             <tbody>
               {(recentStatus ?? []).length === 0 ? (
-                <tr><td colspan="6" class="py-10 text-center text-white/40">{isEl ? "Δεν έχει φτάσει κανένα status ακόμη." : "No status receipts yet."}</td></tr>
+                <tr><td colspan="7" class="py-10 text-center text-white/40">{isEl ? "Δεν έχει φτάσει κανένα status ακόμη." : "No status receipts yet."}</td></tr>
               ) : (recentStatus ?? []).map((s: any) => (
-                <tr class="border-b border-white/5">
+                <tr class="border-b border-white/5 js-filter-row" data-to={s.to_address ?? ""} data-when={s.received_at}>
                   <td class="py-2 px-3">{channelIcon[s.channel] ?? "📨"} {s.channel}</td>
+                  <td class="py-2 px-3 font-mono text-xs text-white/70">{(s as any).to_address ?? "—"}</td>
                   <td class={`py-2 px-3 font-semibold ${statusColor[s.status] ?? "text-white/70"}`}>{s.status}</td>
                   <td class="py-2 px-3 font-mono text-[11px] text-white/50">{s.message_uuid ? s.message_uuid.slice(0, 8) + "…" : "—"}</td>
                   <td class="py-2 px-3 text-xs text-rose-300/80">{s.error_reason ?? "—"}</td>
@@ -188,14 +216,27 @@ const matched = (messages ?? []).filter(m => !!m.matched_user_id).length;
         </div>
       </section>
       <!-- Voice calls -->
-      <section class="mt-8">
+      <section class="mt-8" data-table-wrap="calls">
         <h2 class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-3">📞 {isEl ? "Κλήσεις φωνής" : "Voice calls"}</h2>
+        <div class="mb-2 flex flex-wrap items-center gap-2 text-xs">
+          <input type="text" class="js-filter-from rounded-lg bg-black/40 border border-white/10 px-2 py-1 w-36" placeholder={isEl ? "Φίλτρο Από" : "Filter From"} />
+          <input type="text" class="js-filter-to rounded-lg bg-black/40 border border-white/10 px-2 py-1 w-36" placeholder={isEl ? "Φίλτρο Προς" : "Filter To"} />
+          <input type="date" class="js-filter-date-from rounded-lg bg-black/40 border border-white/10 px-2 py-1 [color-scheme:dark]" />
+          <span class="text-white/40">→</span>
+          <input type="date" class="js-filter-date-to rounded-lg bg-black/40 border border-white/10 px-2 py-1 [color-scheme:dark]" />
+          <button class="js-filter-clear rounded-lg bg-white/10 hover:bg-white/20 px-3 py-1">✕ {isEl ? "Καθαρισμός" : "Clear"}</button>
+          <span class="js-filter-count ml-2 text-white/50"></span>
+          {isSuper && (
+            <button class="js-delete-all ml-auto rounded-lg bg-rose-600 hover:bg-rose-500 text-white px-3 py-1 font-semibold" data-table-key="calls">🗑 {isEl ? "Διαγραφή όλων" : "Delete all"}</button>
+          )}
+        </div>
         <div class="rounded-2xl border border-white/10 bg-white/[0.03] overflow-x-auto">
           <table class="w-full text-sm">
             <thead class="text-[11px] uppercase tracking-wider text-white/55">
               <tr class="border-b border-white/10">
                 <th class="text-left py-2 px-3">{isEl ? "Κατεύθυνση" : "Direction"}</th>
                 <th class="text-left py-2 px-3">{isEl ? "Από" : "From"}</th>
+                <th class="text-left py-2 px-3">{isEl ? "Προς" : "To"}</th>
                 <th class="text-left py-2 px-3">{isEl ? "Χρήστης" : "User"}</th>
                 <th class="text-left py-2 px-3">{isEl ? "Κατάσταση" : "Status"}</th>
                 <th class="text-right py-2 px-3">{isEl ? "Διάρκεια" : "Duration"}</th>
@@ -206,11 +247,12 @@ const matched = (messages ?? []).filter(m => !!m.matched_user_id).length;
             </thead>
             <tbody>
               {(calls ?? []).length === 0 ? (
-                <tr><td colspan="8" class="py-10 text-center text-white/40">{isEl ? "Δεν έχουν έρθει κλήσεις ακόμη." : "No calls yet."}</td></tr>
+                <tr><td colspan="9" class="py-10 text-center text-white/40">{isEl ? "Δεν έχουν έρθει κλήσεις ακόμη." : "No calls yet."}</td></tr>
               ) : (calls ?? []).map((c: any) => (
-                <tr class="border-b border-white/5">
+                <tr class="border-b border-white/5 js-filter-row" data-from={c.from_address ?? ""} data-to={c.to_address ?? ""} data-when={c.started_at}>
                   <td class="py-2 px-3">{c.direction === "inbound" ? "📲" : "📤"} <span class="text-xs text-white/60">{c.direction}</span></td>
                   <td class="py-2 px-3 font-mono text-xs text-white/70">{c.from_address ?? "—"}</td>
+                  <td class="py-2 px-3 font-mono text-xs text-white/50">{c.to_address ?? "—"}</td>
                   <td class="py-2 px-3 text-xs">
                     {c.matched_user_id
                       ? <span class="text-emerald-300">✓ {callNameMap.get(c.matched_user_id) ?? "—"}</span>
@@ -221,7 +263,12 @@ const matched = (messages ?? []).filter(m => !!m.matched_user_id).length;
                   <td class="py-2 px-3 text-right font-mono text-xs">{c.price_eur ? "€" + Number(c.price_eur).toFixed(4) : "—"}</td>
                   <td class="py-2 px-3">
                     {c.recording_url
-                      ? <a href={c.recording_url} target="_blank" class="text-sky-300 hover:text-sky-200 text-xs">🎙 {isEl ? "Ακρόαση" : "Listen"}</a>
+                      ? (() => {
+                          // Extract the UUID from Vonage's URL and route through our authenticated proxy.
+                          const m = String(c.recording_url).match(/\/v1\/files\/([a-f0-9-]{20,})/i);
+                          const proxyUrl = m ? `/api/vonage/recording?uuid=${m[1]}` : c.recording_url;
+                          return <a href={proxyUrl} target="_blank" class="text-sky-300 hover:text-sky-200 text-xs">🎙 {isEl ? "Ακρόαση" : "Listen"}</a>;
+                        })()
                       : <span class="text-white/30 text-xs">—</span>}
                   </td>
                   <td class="py-2 px-3 text-xs text-white/60 whitespace-nowrap">{new Date(c.started_at).toLocaleString()}</td>
@@ -239,6 +286,70 @@ const matched = (messages ?? []).filter(m => !!m.matched_user_id).length;
     </main>
 
     <script is:inline>
+      // Filters — scoped per table-wrap. Pure client-side over already-loaded rows.
+      function applyFilter(wrap) {
+        const f = (sel) => wrap.querySelector(sel);
+        const fromQ = (f(".js-filter-from")?.value ?? "").trim().toLowerCase();
+        const toQ   = (f(".js-filter-to")?.value   ?? "").trim().toLowerCase();
+        const dfrom = f(".js-filter-date-from")?.value;
+        const dto   = f(".js-filter-date-to")?.value;
+        const dfromT = dfrom ? new Date(dfrom + "T00:00:00").getTime() : null;
+        const dtoT   = dto   ? new Date(dto   + "T23:59:59").getTime() : null;
+
+        let shown = 0, total = 0;
+        wrap.querySelectorAll(".js-filter-row").forEach((row) => {
+          total++;
+          const from = (row.getAttribute("data-from") ?? "").toLowerCase();
+          const to   = (row.getAttribute("data-to")   ?? "").toLowerCase();
+          const when = row.getAttribute("data-when");
+          const t    = when ? new Date(when).getTime() : null;
+
+          const pass =
+            (fromQ === "" || from.includes(fromQ)) &&
+            (toQ === ""   || to.includes(toQ))   &&
+            (!dfromT || (t !== null && t >= dfromT)) &&
+            (!dtoT   || (t !== null && t <= dtoT));
+
+          row.style.display = pass ? "" : "none";
+          // Hide the reply-form twin row when the parent is hidden
+          const id = row.getAttribute("data-msg");
+          if (id) {
+            const twin = wrap.querySelector(`tr[data-reply-row="${id}"]`);
+            if (twin && !pass) twin.classList.add("hidden");
+          }
+          if (pass) shown++;
+        });
+        const countEl = f(".js-filter-count");
+        if (countEl) countEl.textContent = shown === total ? "" : `${shown} / ${total}`;
+      }
+
+      document.querySelectorAll("[data-table-wrap]").forEach((wrap) => {
+        ["input", "change"].forEach(ev => {
+          wrap.querySelectorAll(".js-filter-from, .js-filter-to, .js-filter-date-from, .js-filter-date-to").forEach(el => el.addEventListener(ev, () => applyFilter(wrap)));
+        });
+        wrap.querySelector(".js-filter-clear")?.addEventListener("click", () => {
+          wrap.querySelectorAll("input").forEach((i) => { i.value = ""; });
+          applyFilter(wrap);
+        });
+      });
+
+      // Delete all — per table, super_admin only (button only rendered for super_admin).
+      document.querySelectorAll(".js-delete-all").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const key = btn.getAttribute("data-table-key");
+          if (!confirm(`Delete ALL rows from ${key}? This cannot be undone.`)) return;
+          btn.disabled = true;
+          const r = await fetch("/api/admin/inbox-clear", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ table: key }),
+          });
+          const j = await r.json().catch(() => ({}));
+          if (j.ok) location.reload();
+          else { alert("Failed: " + (j.error ?? r.status)); btn.disabled = false; }
+        });
+      });
+
       document.addEventListener("click", async (e) => {
         const t = e.target;
         if (!(t instanceof HTMLElement)) return;

@@ -10,10 +10,24 @@ function json(obj: unknown, status = 200) {
 // Vonage Messages API status webhook.
 // Docs: https://developer.vonage.com/en/messages/concepts/message-status
 // Fires for every state change: submitted → delivered / rejected / read / undeliverable.
-export const POST: APIRoute = async ({ request }) => {
-  let payload: any;
-  try { payload = await request.json(); } catch { return json({ ok: false, error: "bad_json" }, 400); }
+async function parseBody(request: Request): Promise<any> {
+  const ctype = request.headers.get("content-type") ?? "";
+  const raw = await request.text();
+  if (!raw) return {};
+  if (ctype.includes("application/json")) {
+    try { return JSON.parse(raw); } catch { return { _unparsed: raw }; }
+  }
+  if (ctype.includes("application/x-www-form-urlencoded")) {
+    const params = new URLSearchParams(raw);
+    const obj: Record<string, string> = {};
+    for (const [k, v] of params) obj[k] = v;
+    return obj;
+  }
+  // Last-ditch: try JSON anyway
+  try { return JSON.parse(raw); } catch { return { _unparsed: raw, _ctype: ctype }; }
+}
 
+async function handle(payload: any) {
   const messageUuid = String(payload.message_uuid ?? payload.messageUuid ?? "");
   const channel     = String(payload.channel ?? "sms");
   const status      = String(payload.status ?? "unknown");
@@ -21,6 +35,8 @@ export const POST: APIRoute = async ({ request }) => {
   const errorCode   = payload.error?.type ?? payload.error?.code ?? null;
   const errorReason = payload.error?.message ?? payload.error?.detail ?? null;
   const priceEur    = payload.usage?.price ? Number(payload.usage.price) : null;
+
+  console.log("[vonage/status] hit", { messageUuid, channel, status, to });
 
   const { error } = await supabaseAdmin.from("vonage_message_status").insert({
     message_uuid: messageUuid || "",
@@ -58,6 +74,17 @@ export const POST: APIRoute = async ({ request }) => {
   }
 
   return json({ ok: true });
-};
+}
 
-export const GET: APIRoute = async () => json({ ok: true, endpoint: "vonage_status" });
+export const POST: APIRoute = async ({ request }) => handle(await parseBody(request));
+// Some older Vonage configs send GET for the first webhook verification ping
+export const GET: APIRoute = async ({ request }) => {
+  const u = new URL(request.url);
+  // If any query params are present, treat it like a real callback (legacy SMS API behavior)
+  if ([...u.searchParams.keys()].length > 0) {
+    const obj: Record<string, string> = {};
+    for (const [k, v] of u.searchParams) obj[k] = v;
+    return handle(obj);
+  }
+  return json({ ok: true, endpoint: "vonage_status" });
+};

@@ -27,12 +27,27 @@ function renderTemplate(text: string, u: Recipient) {
     .replace(/\{\{\s*points\s*\}\}/gi, String(u.points ?? 0));
 }
 
+// Append a link URL to the message body if provided. Push uses it differently
+// (as tap-target via sendPush), so for push we DON'T append — callers should skip.
+function appendUrl(body: string, url: string | null | undefined): string {
+  if (!url) return body;
+  const clean = String(url).trim();
+  if (!clean) return body;
+  // Don't double-append if the body already contains the exact URL
+  if (body.includes(clean)) return body;
+  return body.replace(/\s+$/, "") + "\n" + clean;
+}
+
 function escapeHtml(s: string) {
   return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
 function buildEmailHtml(text: string, unsubUrl: string) {
-  const safe = escapeHtml(text).replace(/\n/g, "<br/>");
+  // Escape HTML first, then auto-linkify any http(s) URLs (or relative "/paths")
+  const linkified = escapeHtml(text)
+    .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" style="color:#b45309;">$1</a>')
+    .replace(/\n/g, "<br/>");
+  const safe = linkified;
   return `<!doctype html>
 <html><body style="margin:0;padding:0;background:#f5f5f7;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f7;padding:24px 0;">
@@ -128,10 +143,16 @@ export const POST: APIRoute = async ({ request, locals }) => {
     const uid = locals.user?.id;
     if (!uid) return json({ ok: false, error: "no_user" });
     const { data } = await supabaseAdmin.from("profiles").select("id, full_name, phone").eq("id", uid).maybeSingle();
+    // Fallback chain: profiles.phone → auth user's phone → new_phone (set via OTP flow)
+    const authPhone = (locals.user as any)?.phone
+                  || (locals.user as any)?.new_phone
+                  || (locals.user as any)?.user_metadata?.phone
+                  || null;
+    const phone = data?.phone || authPhone;
     recipients = [{
       id: uid,
       full_name: data?.full_name ?? null,
-      phone: data?.phone ?? null,
+      phone: phone ? String(phone) : null,
       email: locals.user?.email ?? null,
       loyalty_tier: null,
     }];
@@ -207,7 +228,9 @@ export const POST: APIRoute = async ({ request, locals }) => {
   const BATCH_DELAY_MS = channel === "sms" || channel === "whatsapp" ? 150 : 0;
 
   for (const u of recipients) {
-    const personalised = renderTemplate(text, u);
+    // For non-push channels, append the optional URL to the end of the body
+    const baseText = renderTemplate(text, u);
+    const personalised = channel === "push" ? baseText : appendUrl(baseText, url);
     let ok = false, errText: string | null = null, toAddr: string | null = null;
     let messageUuid: string | null = null;
 

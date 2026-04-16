@@ -231,10 +231,29 @@ const monthLabels = isEl
             </span>
           </label>
 
-          <!-- For push only: URL -->
-          <label class="block text-sm" id="m-url-wrap" style="display:none;">
-            <span class="text-white/60">{isEl ? "URL push (προορισμός όταν ο χρήστης κάνει κλικ)" : "Push URL (target when user taps)"}</span>
-            <input id="m-url" type="text" placeholder="/menu" class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2 font-mono text-sm" value="/account" />
+          <!-- Link / URL (appended to message body for SMS/WhatsApp/etc. or used as push target) -->
+          <label class="block text-sm" id="m-url-wrap">
+            <span class="text-white/60">
+              <span class="js-url-label">{isEl ? "🔗 Σύνδεσμος / URL (προαιρετικό)" : "🔗 Link / URL (optional)"}</span>
+              <span class="js-url-hint text-[11px] text-white/40 ml-2"></span>
+            </span>
+            <div class="flex gap-2">
+              <input id="m-url" type="text" placeholder="https://sallysbar.gr/book" class="mt-1 flex-1 rounded-lg bg-black/40 border border-white/10 px-3 py-2 font-mono text-sm" />
+              <button id="m-url-shorten" type="button" class="mt-1 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold px-3 text-sm whitespace-nowrap">✂ {isEl ? "Σύντμηση" : "Shorten"}</button>
+            </div>
+            <div class="flex items-center gap-3 mt-1.5 flex-wrap">
+              <label class="inline-flex items-center gap-1.5 text-[11px] text-white/60 cursor-pointer select-none">
+                <input id="m-url-auto" type="checkbox" checked class="h-3.5 w-3.5 accent-sky-500" />
+                {isEl ? "Αυτόματη σύντμηση σε paste" : "Auto-shorten on paste"}
+              </label>
+              <button id="m-url-undo" type="button" class="hidden text-[11px] text-amber-300 hover:text-amber-200 underline underline-offset-2">↶ {isEl ? "Επαναφορά αρχικού URL" : "Restore original URL"}</button>
+            </div>
+            <span class="text-[11px] text-white/40 mt-1 block">
+              {isEl
+                ? "Για SMS/WhatsApp/Viber/Email προστίθεται στο τέλος του μηνύματος. Ξε-τσέκαρε αν θες να κρατήσεις το πλήρες URL (π.χ. για tracking από άλλο εργαλείο)."
+                : "For SMS/WhatsApp/Viber/Email it's appended to the end of the message. Uncheck if you want to keep the full URL (e.g. for third-party tracking)."}
+            </span>
+            <p id="m-url-status" class="text-[11px] mt-1"></p>
           </label>
 
           <!-- For Messenger / Instagram test-sends: platform recipient ID -->
@@ -270,7 +289,14 @@ const monthLabels = isEl
 
       <!-- Recent campaigns -->
       <section class="mt-10 text-left">
-        <p class="text-[10px] uppercase tracking-wider text-amber-300 font-bold mb-3">📚 {isEl ? "Πρόσφατες καμπάνιες" : "Recent campaigns"}</p>
+        <div class="flex items-center justify-between mb-3">
+          <p class="text-[10px] uppercase tracking-wider text-amber-300 font-bold">📚 {isEl ? "Πρόσφατες καμπάνιες" : "Recent campaigns"}</p>
+          {isSuper && (recent ?? []).length > 0 && (
+            <button id="js-campaigns-clear" class="rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold px-3 py-1.5">
+              🗑 {isEl ? "Διαγραφή όλων" : "Delete all"}
+            </button>
+          )}
+        </div>
         {(recent ?? []).length === 0 ? (
           <p class="text-white/40 text-sm text-center py-8">{isEl ? "Δεν έχεις στείλει καμπάνια ακόμη." : "No campaigns sent yet."}</p>
         ) : (
@@ -325,8 +351,21 @@ const monthLabels = isEl
       function syncChannelUi() {
         const ch = $("f-channel").value;
         $("m-subject-wrap").style.display = ch === "email" ? "" : "none";
-        $("m-url-wrap").style.display = ch === "push" ? "" : "none";
+        $("m-url-wrap").style.display = "";  // URL field is useful for every channel
         $("m-recipid-wrap").style.display = (ch === "messenger" || ch === "instagram") ? "" : "none";
+
+        const isEl = document.documentElement.lang === "el";
+        const urlHint = document.querySelector(".js-url-hint");
+        if (urlHint) {
+          if (ch === "push") urlHint.textContent = isEl ? "· προορισμός tap" : "· tap target";
+          else if (ch === "email") urlHint.textContent = isEl ? "· γίνεται clickable link" : "· rendered as clickable link";
+          else urlHint.textContent = isEl ? "· προσαρτάται στο μήνυμα" : "· appended to message";
+        }
+        // Sensible default for push if empty
+        const urlEl = $("m-url");
+        if (ch === "push" && urlEl && !urlEl.value) urlEl.value = "/account";
+        if (ch !== "push" && urlEl && urlEl.value === "/account") urlEl.value = "";
+
         updateDirectSendable();
       }
       function updateDirectSendable() {
@@ -464,18 +503,99 @@ const monthLabels = isEl
       $("m-test").addEventListener("click", () => sendCampaign(true));
       $("m-send").addEventListener("click", () => sendCampaign(false));
 
+      // Delete all campaign logs (super_admin only — button only renders for them)
+      document.getElementById("js-campaigns-clear")?.addEventListener("click", async (e) => {
+        const btn = e.currentTarget;
+        if (!confirm("Delete ALL campaign history? This removes marketing_log rows with trigger_key starting with 'campaign_'. Trigger-fired (birthday, reminder, etc.) rows stay intact. Cannot be undone.")) return;
+        btn.disabled = true;
+        const r = await fetch("/api/admin/campaigns-clear", { method: "POST" });
+        const j = await r.json().catch(() => ({}));
+        if (j.ok) location.reload();
+        else { alert("Failed: " + (j.error ?? r.status)); btn.disabled = false; }
+      });
+
       // Live length counter
       function updateLength() {
         const ch = $("f-channel").value;
-        const max = ch === "sms" ? 160 : ch === "push" ? 120 : ch === "email" ? 800 : 500;
-        const len = $("m-body").value.length;
+        const body = $("m-body").value;
+        const urlVal = ($("m-url")?.value ?? "").trim();
+        // Replicate the server-side appendUrl logic so the counter matches what's actually sent
+        const effectiveBody = (ch !== "push" && urlVal && !body.includes(urlVal))
+          ? (body.replace(/\s+$/, "") + "\n" + urlVal)
+          : body;
+        const len = effectiveBody.length;
         const el = $("m-length");
-        el.textContent = `${len} / ${max}`;
-        el.className = "text-white/50 font-mono" + (len > max ? " !text-rose-300 font-bold" : "");
+
+        // SMS has segment math: 160 chars for 1 segment, 153 chars per segment after that
+        // (concatenated SMS headers eat 7 chars per segment starting at segment 2).
+        if (ch === "sms") {
+          const segments = len <= 160 ? 1 : Math.ceil(len / 153);
+          const isMulti = segments > 1;
+          el.textContent = `${len} chars · ${segments} SMS segment${segments > 1 ? "s" : ""}${isMulti ? ` (~€${(segments * 0.065).toFixed(3)}/msg)` : ""}`;
+          el.className = "text-white/50 font-mono" + (isMulti ? " !text-amber-300 font-bold" : "");
+        } else {
+          const max = ch === "push" ? 120 : ch === "email" ? 800 : 500;
+          el.textContent = `${len} / ${max}`;
+          el.className = "text-white/50 font-mono" + (len > max ? " !text-rose-300 font-bold" : "");
+        }
       }
       $("m-body").addEventListener("input", updateLength);
+      $("m-url")?.addEventListener("input", updateLength);
       $("f-channel").addEventListener("change", updateLength);
       updateLength();
+
+      // URL shortener — swaps the long URL for sallysbar.gr/s/xxxxx
+      let originalUrl = null; // tracks pre-shorten URL so user can restore it
+      async function shortenUrl(force) {
+        const urlInput = $("m-url");
+        const status = $("m-url-status");
+        const undoBtn = $("m-url-undo");
+        const raw = urlInput.value.trim();
+        if (!raw) return;
+        // Only auto-shorten if URL is longer than 22 chars (saves SMS budget)
+        if (!force && raw.length <= 22) return;
+        // Don't re-shorten our own short URLs
+        if (/\/s\/[a-z0-9]{5}(?:[?#]|$)/i.test(raw)) return;
+        // Must be a valid http(s) URL
+        if (!/^https?:\/\//i.test(raw)) return;
+
+        status.innerHTML = '<span class="text-sky-300">✂ Shortening…</span>';
+        try {
+          const r = await fetch("/api/admin/shorten-url", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url: raw }),
+          });
+          const j = await r.json();
+          if (j.ok && j.short) {
+            originalUrl = raw;
+            urlInput.value = j.short;
+            status.innerHTML = `<span class="text-emerald-300">✓ Shortened${j.reused ? " (reused)" : ""}: ${j.short}</span>`;
+            undoBtn?.classList.remove("hidden");
+            updateLength();
+          } else {
+            status.innerHTML = `<span class="text-rose-300">⚠ ${j.error ?? "shorten failed"}</span>`;
+          }
+        } catch (e) {
+          status.innerHTML = `<span class="text-rose-300">⚠ ${String(e)}</span>`;
+        }
+      }
+
+      $("m-url-shorten")?.addEventListener("click", () => shortenUrl(true));
+      // Auto-shorten on paste only if the "auto" checkbox is ticked
+      $("m-url")?.addEventListener("paste", () => {
+        if (!$("m-url-auto")?.checked) return;
+        setTimeout(() => shortenUrl(false), 50);
+      });
+      // Restore the original (long) URL
+      $("m-url-undo")?.addEventListener("click", () => {
+        if (!originalUrl) return;
+        $("m-url").value = originalUrl;
+        $("m-url-status").innerHTML = '<span class="text-white/50">Restored original URL.</span>';
+        $("m-url-undo").classList.add("hidden");
+        originalUrl = null;
+        updateLength();
+      });
 
       // ✨ AI Generate
       $("m-ai").addEventListener("click", async () => {
