@@ -1,0 +1,163 @@
+---
+import "../../styles/global.css";
+import Header from "../../components/Header.astro";
+import AdminNav from "../../components/AdminNav.astro";
+import { supabaseAdmin } from "../../lib/supabase";
+
+export const prerender = false;
+
+if (Astro.locals.role !== "super_admin") {
+  return new Response("Forbidden", { status: 403 });
+}
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+
+const { data: row } = await supabaseAdmin
+  .from("pistotita_os_settings")
+  .select("page_enabled, compare_page_enabled, footer_link_enabled, updated_at")
+  .eq("id", 1)
+  .maybeSingle();
+
+const flags = {
+  page_enabled:         row?.page_enabled !== false,
+  compare_page_enabled: row?.compare_page_enabled !== false,
+  footer_link_enabled:  row?.footer_link_enabled !== false,
+};
+
+const toggles = [
+  {
+    key: "page_enabled",
+    flag: flags.page_enabled,
+    title: isEl ? "Δημόσια σελίδα /pistotita-os" : "Public page /pistotita-os",
+    desc: isEl
+      ? "Η κύρια σελίδα πώλησης του SaaS (hero, modules, pricing, FAQ)."
+      : "The main SaaS sales page (hero, modules, pricing, FAQ).",
+    href: "/pistotita-os",
+  },
+  {
+    key: "compare_page_enabled",
+    flag: flags.compare_page_enabled,
+    title: isEl ? "Σελίδα σύγκρισης /pistotita-os/compare" : "Comparison page /pistotita-os/compare",
+    desc: isEl
+      ? "Πίνακας σύγκρισης με Toast / Loyverse / Fivestars / e-Food / DIY."
+      : "Side-by-side comparison with Toast / Loyverse / Fivestars / e-Food / DIY.",
+    href: "/pistotita-os/compare",
+  },
+  {
+    key: "footer_link_enabled",
+    flag: flags.footer_link_enabled,
+    title: isEl ? "Σύνδεσμος στο footer" : "Footer link",
+    desc: isEl
+      ? "Ο σύνδεσμος «🚀 PistotitaOS — για ιδιοκτήτες» που εμφανίζεται σε κάθε σελίδα."
+      : "The \"🚀 PistotitaOS — for venue owners\" link shown in the global footer on every page.",
+    href: null,
+  },
+];
+---
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{isEl ? "Ρυθμίσεις PistotitaOS" : "PistotitaOS Settings"} — Super Admin</title>
+    <meta name="robots" content="noindex,nofollow" />
+  </head>
+  <body class="min-h-screen bg-[#0a0a0f] text-white font-body antialiased">
+    <Header />
+    <div class="h-20"></div>
+    <AdminNav active="pistotita-os-settings" />
+
+    <main class="mx-auto max-w-3xl px-5 py-10">
+      <div class="mb-6">
+        <p class="text-xs uppercase tracking-[0.28em] text-rose-300 mb-2 flex items-center gap-2">
+          <span class="inline-block h-1.5 w-1.5 rounded-full bg-rose-400 animate-pulse"></span>
+          {isEl ? "ΜΟΝΟ SUPER ADMIN" : "SUPER ADMIN ONLY"}
+        </p>
+        <h1 class="font-heading text-3xl md:text-4xl font-bold">🚀 {isEl ? "Ρυθμίσεις PistotitaOS" : "PistotitaOS Settings"}</h1>
+        <p class="mt-2 text-sm text-white/60 max-w-2xl">
+          {isEl
+            ? "Κρύψε ή εμφάνισε τις δημόσιες σελίδες PistotitaOS. Χρήσιμο όσο δουλεύεις στο SaaS και δεν θέλεις ακόμη να το δείξεις δημόσια, ή όταν κάνεις iterating σε τιμολόγηση."
+            : "Hide or show the public PistotitaOS pages. Useful while you're iterating on the SaaS pitch and don't want visitors to land on it, or while adjusting pricing."}
+        </p>
+      </div>
+
+      <div class="space-y-3">
+        {toggles.map(t => (
+          <div class="js-toggle-row rounded-2xl border border-white/10 bg-white/[0.03] p-5" data-key={t.key}>
+            <div class="flex items-start justify-between gap-4">
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <h3 class="font-heading text-lg font-bold">{t.title}</h3>
+                  {t.href && (
+                    <a href={t.href} target="_blank" rel="noopener" class="text-xs text-white/40 hover:text-amber-300">↗</a>
+                  )}
+                </div>
+                <p class="text-sm text-white/60 mt-1">{t.desc}</p>
+                <p class="js-status text-xs mt-2 font-mono">
+                  <span class="js-status-text">{t.flag ? (isEl ? "🟢 Ενεργό" : "🟢 Enabled") : (isEl ? "🔴 Απενεργοποιημένο" : "🔴 Disabled")}</span>
+                </p>
+              </div>
+              <button
+                class="js-toggle shrink-0 relative w-14 h-8 rounded-full border transition"
+                data-enabled={String(t.flag)}
+                aria-label={isEl ? "Εναλλαγή" : "Toggle"}
+                style={t.flag
+                  ? "background:rgba(16,185,129,.25); border-color:rgba(16,185,129,.6);"
+                  : "background:rgba(255,255,255,.08); border-color:rgba(255,255,255,.15);"}
+              >
+                <span class="js-toggle-knob absolute top-0.5 w-6 h-6 rounded-full bg-white transition-all"
+                      style={t.flag ? "right:0.125rem;" : "left:0.125rem;"}></span>
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <p class="mt-8 text-[11px] text-white/40">
+        {isEl
+          ? "Οι αλλαγές εφαρμόζονται σε <60 δευτερόλεπτα (cache TTL). Απενεργοποιημένες σελίδες γυρνάνε 404 στους επισκέπτες."
+          : "Changes apply within <60 seconds (cache TTL). Disabled pages return 404 to public visitors."}
+      </p>
+
+      <script is:inline>
+        document.querySelectorAll(".js-toggle-row").forEach((row) => {
+          const btn = row.querySelector(".js-toggle");
+          const knob = row.querySelector(".js-toggle-knob");
+          const statusText = row.querySelector(".js-status-text");
+          btn?.addEventListener("click", async () => {
+            const key = row.getAttribute("data-key");
+            const prev = btn.getAttribute("data-enabled") === "true";
+            const next = !prev;
+
+            // Optimistic UI
+            btn.setAttribute("data-enabled", String(next));
+            btn.style.background = next ? "rgba(16,185,129,.25)" : "rgba(255,255,255,.08)";
+            btn.style.borderColor = next ? "rgba(16,185,129,.6)" : "rgba(255,255,255,.15)";
+            knob.style.left = next ? "" : "0.125rem";
+            knob.style.right = next ? "0.125rem" : "";
+            statusText.textContent = next ? "🟢 Enabled" : "🔴 Disabled";
+
+            try {
+              const r = await fetch("/api/admin/pistotita-os-settings", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ key, enabled: next }),
+              });
+              const j = await r.json();
+              if (!j.ok) throw new Error(j.error ?? "failed");
+            } catch (e) {
+              // Revert on error
+              btn.setAttribute("data-enabled", String(prev));
+              btn.style.background = prev ? "rgba(16,185,129,.25)" : "rgba(255,255,255,.08)";
+              btn.style.borderColor = prev ? "rgba(16,185,129,.6)" : "rgba(255,255,255,.15)";
+              knob.style.left = prev ? "" : "0.125rem";
+              knob.style.right = prev ? "0.125rem" : "";
+              statusText.textContent = prev ? "🟢 Enabled" : "🔴 Disabled";
+              alert("Failed to save: " + e.message);
+            }
+          });
+        });
+      </script>
+    </main>
+  </body>
+</html>

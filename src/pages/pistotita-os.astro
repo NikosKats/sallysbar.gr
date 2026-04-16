@@ -3,6 +3,15 @@ import "../styles/global.css";
 import Header from "../components/Header.astro";
 import Footer from "../components/Footer.astro";
 import { site } from "../data/site";
+import { getPistotitaOsFlags } from "../lib/pistotitaOsSettings";
+
+export const prerender = false;
+
+// Super-admin can hide this public sales page while iterating on pricing.
+const flags = await getPistotitaOsFlags();
+if (!flags.page_enabled && Astro.locals.role !== "super_admin") {
+  return new Response("Not Found", { status: 404 });
+}
 
 const lang = Astro.locals.lang ?? "en";
 const isEl = lang === "el";

@@ -2,7 +2,9 @@
 import { site, getSiteCopy } from "../data/site";
 import { getLangFromPath, dict, withLangPrefix } from "../i18n";
 import { getGameFlags } from "../lib/gameFlags";
+import { getPistotitaOsFlags } from "../lib/pistotitaOsSettings";
 const gameFlags = await getGameFlags();
+const pistotitaOsFlags = await getPistotitaOsFlags();
 
 const year = new Date().getFullYear();
 
@@ -31,10 +33,10 @@ const perks = [
 ].filter(Boolean) as { label: string; href: string }[];
 
 const legal = [
-  { label: isEl ? "🚀 PistotitaOS — για ιδιοκτήτες" : "🚀 PistotitaOS — for venue owners", href: withLangPrefix(lang, "/pistotita-os") },
+  pistotitaOsFlags.footer_link_enabled && { label: isEl ? "🚀 PistotitaOS — για ιδιοκτήτες" : "🚀 PistotitaOS — for venue owners", href: withLangPrefix(lang, "/pistotita-os") },
   { label: isEl ? "Πολιτική Απορρήτου" : "Privacy Policy", href: withLangPrefix(lang, "/privacy") },
   { label: isEl ? "Όροι Χρήσης"        : "Terms of Use",   href: withLangPrefix(lang, "/terms") },
-];
+].filter(Boolean) as { label: string; href: string }[];
 
 const brandSocials = [
   { key: "instagram", label: "Instagram", href: site.socials.instagram,  icon: `<path d="M4 4h16v16H4zM16 11.5a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0zM17.5 6.5h.01" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>` },
