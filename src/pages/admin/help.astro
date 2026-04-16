@@ -1240,30 +1240,52 @@ const L = {
     head: isEl ? "45. 📣 CRM Καμπάνιες (bulk send)" : "45. 📣 CRM Campaigns (bulk send)",
     body: isEl ? `
       <p>Στο <a href="${withLangPrefix(lang, "/admin/campaigns")}"><code>/admin/campaigns</code></a> φτιάχνεις στοχευμένες καμπάνιες σε WhatsApp, SMS, Viber, Messenger, Instagram, Push και Email.</p>
-      <p><strong>Ροή:</strong></p>
+      <h4>Πηγή κοινού — δύο επιλογές:</h4>
+      <ul>
+        <li><strong>Φίλτρα χρηστών</strong> (default): κανάλι, συγκατάθεση marketing, loyalty tier, μήνας γενεθλίων, πόλη, ανενεργοί N ημέρες, νέοι εγγεγραμμένοι.</li>
+        <li><strong>📋 Επικολλημένη λίστα</strong>: textarea όπου βάζεις τηλέφωνα (SMS/WA/Viber) ή emails — ένα ανά γραμμή, κόμμα, ή tab (για paste από CSV στήλη). Δείχνει live count: έγκυρες / άκυρες / διπλές (dedup). Ισχύουν τα unsubscribes αυτόματα: αν κάποιο νούμερο ανήκει σε profile με <code>marketing_consent=false</code>, παραλείπεται. Δεν υποστηρίζεται για Push/Messenger/Instagram (απαιτούν user_id/PSID).</li>
+      </ul>
+      <h4>Ροή:</h4>
       <ol>
-        <li><strong>Φίλτρα</strong>: κανάλι, συγκατάθεση marketing, loyalty tier, μήνας γενεθλίων, πόλη, ανενεργοί N ημέρες, νέοι εγγεγραμμένοι.</li>
         <li>🔍 <strong>Υπολογισμός κοινού</strong> — εμφανίζει εκτιμώμενους παραλήπτες <em>και</em> αναλυτικό κόστος: χονδρικό API + προμήθεια PistotitaOS (%) + ΦΠΑ 24% = σύνολο.</li>
         <li>✨ <strong>AI Generate</strong> — δημιουργεί το μήνυμα αυτόματα (με channel-aware όριο χαρακτήρων).</li>
+        <li>🔗 <strong>URL (προαιρετικό)</strong> — προσαρτάται στο τέλος του μηνύματος. Αυτόματη σύντμηση σε paste (<code>sallysbar.gr/s/xxxxx</code>, 5 χαρακτήρες base36). Ξε-τσέκαρε το "Auto-shorten on paste" αν θες να κρατήσεις πλήρες URL (π.χ. UTM για εξωτερικό tracking). ↶ <strong>Restore original URL</strong> επιστρέφει το αρχικό link μετά τη σύντμηση.</li>
         <li>🧪 <strong>Test to me</strong> — στέλνει μόνο σε εσένα.</li>
         <li>🚀 <strong>SEND NOW</strong> — ενεργοποιείται μόνο αφού κάνεις Calculate, με confirmation dialog που δείχνει το σύνολο.</li>
         <li>📄 <strong>Δημιουργία τιμολογίου</strong> — εκτυπώσιμο A4 invoice για τον πελάτη με setup + συνδρομή + VAT.</li>
       </ol>
+      <h4>Πρόσφατες καμπάνιες:</h4>
+      <ul>
+        <li>Πίνακας με τις τελευταίες 20 αποστολές από <code>marketing_log</code> (<code>trigger_key LIKE 'campaign_%'</code>).</li>
+        <li>🗑 <strong>Διαγραφή όλων</strong> (μόνο super_admin): σβήνει όλα τα campaign log entries. Τα trigger-fired rows (birthday/reservation/inactive) <em>δεν</em> επηρεάζονται.</li>
+      </ul>
       <p><strong>Email anti-spam:</strong> υποχρεωτικό θέμα, HTML template με unsubscribe link, <code>List-Unsubscribe</code> header.</p>
       <p><strong>Προμήθεια PistotitaOS:</strong> επεξεργάσιμη μόνο από <code>super_admin</code>. Default 50%. Τιμές βάσει Vonage (Greece Apr 2026).</p>
+      <p><strong>URL Shortener setup (μία φορά):</strong> τρέξε <code>scripts/add-short-links.sql</code> στο Supabase (δημιουργεί τον πίνακα <code>short_links</code>). Κάθε σύντμηση γίνεται μέσω <code>/api/admin/shorten-url</code>· το redirect στο <code>/s/[slug]</code> καταγράφει hits + <code>last_hit_at</code>.</p>
     ` : `
       <p><a href="${withLangPrefix(lang, "/admin/campaigns")}"><code>/admin/campaigns</code></a> is the CRM-style bulk-campaign builder for WhatsApp, SMS, Viber, Messenger, Instagram, Push and Email.</p>
-      <p><strong>Flow:</strong></p>
+      <h4>Audience source — two options:</h4>
+      <ul>
+        <li><strong>User filters</strong> (default): channel, marketing consent, loyalty tier, birthday month, city, inactive N days, signed-up-within.</li>
+        <li><strong>📋 Pasted list</strong>: textarea for ad-hoc blasts — paste phones (SMS/WA/Viber) or emails, one per line / comma / tab (so you can paste a CSV column). Live counter: valid / invalid / duplicates (auto-deduped). Unsubscribes honored: any number belonging to a profile with <code>marketing_consent=false</code> is silently dropped. Not supported for Push/Messenger/Instagram (need user_id/PSID).</li>
+      </ul>
+      <h4>Flow:</h4>
       <ol>
-        <li><strong>Audience filters</strong>: channel, marketing consent, loyalty tier, birthday month, city, inactive N days, signed-up-within.</li>
         <li>🔍 <strong>Calculate</strong> — shows estimated recipients <em>and</em> full cost breakdown: wholesale API + PistotitaOS commission (%) + 24% VAT = total.</li>
         <li>✨ <strong>AI Generate</strong> — writes the message for you (channel-aware length caps).</li>
+        <li>🔗 <strong>URL field (optional)</strong> — appended to the end of the message body. Auto-shortens on paste (<code>sallysbar.gr/s/xxxxx</code>, 5-char base36). Uncheck "Auto-shorten on paste" to keep the full URL (e.g. UTM params for third-party tracking). ↶ <strong>Restore original URL</strong> swaps the short URL back to what you pasted.</li>
         <li>🧪 <strong>Test to me</strong> — single send to the logged-in admin.</li>
         <li>🚀 <strong>SEND NOW</strong> — only enables after Calculate, confirm dialog shows the total.</li>
         <li>📄 <strong>Create invoice</strong> — printable A4 invoice for the customer with setup + subscription + VAT.</li>
       </ol>
+      <h4>Recent campaigns:</h4>
+      <ul>
+        <li>Table of the last 20 sends from <code>marketing_log</code> (<code>trigger_key LIKE 'campaign_%'</code>).</li>
+        <li>🗑 <strong>Delete all</strong> (super_admin only): wipes every campaign log row. Trigger-fired rows (birthday/reservation/inactive) are <em>not</em> touched.</li>
+      </ul>
       <p><strong>Email anti-spam:</strong> required subject, HTML template with unsubscribe link, <code>List-Unsubscribe</code> header.</p>
       <p><strong>PistotitaOS commission:</strong> editable only by <code>super_admin</code>. Default 50%. Rates sourced from Vonage (Greece Apr 2026).</p>
+      <p><strong>URL Shortener one-time setup:</strong> run <code>scripts/add-short-links.sql</code> in Supabase (creates <code>short_links</code> table). Shortening goes through <code>/api/admin/shorten-url</code> (idempotent — same target URL always gets the same slug). Redirect at <code>/s/[slug]</code> records hits + <code>last_hit_at</code>.</p>
     `,
   },
   s46: {
@@ -1421,6 +1443,21 @@ VONAGE_INSTAGRAM_FROM (IG Business ID)</code></pre>
 echo "https://api.nexmo.com" | npx wrangler pages secret put VONAGE_MESSAGES_BASE --project-name=sallysbar</code></pre>
       <p><strong>⚠️ Gotcha:</strong> Χρησιμοποίησε <code>printf '%s' 'secret'</code> με <em>single quotes</em>, όχι <code>echo "secret"</code> — το bash διαγράφει <code>$VAR</code> references αν το secret έχει <code>$</code> μέσα.</p>
       <p><strong>⚠️ Dotenv gotcha:</strong> Το Vite κάνει inlining <code>import.meta.env.X</code> στο build. Για secrets με <code>$</code>, <em>μην</em> τα βάλεις στο <code>.env</code> — μόνο Cloudflare secret. Τα API routes διαβάζουν από <code>locals.runtime.env</code>.</p>
+      <h4>Τρέχουσα ρύθμιση (production):</h4>
+      <ul>
+        <li><code>VONAGE_MESSAGES_BASE</code> = <code>https://api.nexmo.com</code> ✅</li>
+        <li><code>VONAGE_SMS_FROM</code> = <code>Sallys Bar</code> (alphanumeric sender ID)</li>
+        <li><code>VONAGE_WA_FROM</code> = <code>14157386102</code> ⚠️ ακόμα sandbox — χρειάζεται WABA number + Meta Display Name verification</li>
+      </ul>
+      <h4>Όρια alphanumeric sender ID (SMS):</h4>
+      <ul>
+        <li><strong>Μέγιστο 11 χαρακτήρες</strong>.</li>
+        <li>Μόνο <strong>γράμματα, αριθμοί, κενά</strong>. Απόστροφος (<code>'</code>), παύλα (<code>-</code>), τελεία (<code>.</code>), emoji → απορρίπτονται.</li>
+        <li>Γιατί "Sally's Bar" δεν δουλεύει: έχει απόστροφο. Γι' αυτό χρησιμοποιούμε "Sallys Bar".</li>
+        <li><strong>Greek MNOs</strong> (Cosmote/Vodafone/Nova) συχνά απαιτούν <em>pre-registration</em>. Αν το SMS δεν φτάνει ποτέ, άνοιξε ticket στο <a href="https://help.nexmo.com">help.nexmo.com</a>: "Register alphanumeric sender ID for Greece — Sallys Bar".</li>
+      </ul>
+      <h4>WhatsApp display name:</h4>
+      <p>Δεν ρυθμίζεται μέσω API. Το όνομα που βλέπει ο παραλήπτης ("Sally's Bar ✓") έρχεται από το <strong>WhatsApp Business Verified Name</strong> στο Meta Business Manager → WABA → Business Profile → Display Name. Απαιτεί έγκριση από τη Meta (1–5 μέρες).</p>
       <p><strong>Κοστολόγηση (Vonage Greece Apr 2026):</strong> SMS €0.065 · WhatsApp €0.095 · Viber €0.036 · Messenger/Instagram €0.026. Override via env (<code>CAMPAIGN_COST_SMS</code>, κ.λπ.).</p>
     ` : `
       <p>All messaging channels route through the <strong>Vonage Messages API</strong>. Basic auth with API_KEY + API_SECRET.</p>
@@ -1443,7 +1480,95 @@ VONAGE_INSTAGRAM_FROM (IG Business ID)</code></pre>
 echo "https://api.nexmo.com" | npx wrangler pages secret put VONAGE_MESSAGES_BASE --project-name=sallysbar</code></pre>
       <p><strong>⚠️ Gotcha:</strong> Use <code>printf '%s' 'secret'</code> with <em>single quotes</em>, NOT <code>echo "secret"</code> — bash erases <code>$VAR</code> references if the secret contains <code>$</code>.</p>
       <p><strong>⚠️ Dotenv gotcha:</strong> Vite inlines <code>import.meta.env.X</code> at build. For secrets containing <code>$</code>, <em>don't</em> put them in <code>.env</code> — Cloudflare secret only. API routes read from <code>locals.runtime.env</code>.</p>
+      <h4>Current live config (production):</h4>
+      <ul>
+        <li><code>VONAGE_MESSAGES_BASE</code> = <code>https://api.nexmo.com</code> ✅</li>
+        <li><code>VONAGE_SMS_FROM</code> = <code>Sallys Bar</code> (alphanumeric sender ID)</li>
+        <li><code>VONAGE_WA_FROM</code> = <code>14157386102</code> ⚠️ still on WhatsApp sandbox — needs a dedicated WABA number + Meta Display Name verification to display "Sally's Bar ✓".</li>
+      </ul>
+      <h4>Alphanumeric sender ID constraints (SMS):</h4>
+      <ul>
+        <li><strong>Max 11 characters.</strong></li>
+        <li><strong>Letters, digits, and spaces only.</strong> Apostrophe (<code>'</code>), hyphen (<code>-</code>), period (<code>.</code>), emoji → all rejected.</li>
+        <li>Why "Sally's Bar" can't be used: contains an apostrophe. That's why we run with "Sallys Bar".</li>
+        <li><strong>Greek MNOs</strong> (Cosmote/Vodafone/Nova) often require <em>pre-registration</em> of alphanumeric senders. If a test SMS never arrives, open a ticket at <a href="https://help.nexmo.com">help.nexmo.com</a>: "Register alphanumeric sender ID for Greece — Sallys Bar, brand: Sally's Bar". Takes 1–5 business days.</li>
+      </ul>
+      <h4>WhatsApp display name:</h4>
+      <p>Not configurable via API. The name the recipient sees ("Sally's Bar ✓") comes from your <strong>WhatsApp Business Verified Name</strong> in Meta Business Manager → WABA → Business Profile → Display Name. Requires Meta review (1–5 days) and a dedicated WABA phone number (separate from SMS).</p>
       <p><strong>Pricing (Vonage Greece Apr 2026):</strong> SMS €0.065 · WhatsApp €0.095 · Viber €0.036 · Messenger/Instagram €0.026. Override via env (<code>CAMPAIGN_COST_SMS</code>, etc.).</p>
+    `,
+  },
+  s50: {
+    head: isEl ? "50. 📬 Εισερχόμενα, Delivery Receipts & Κλήσεις (/admin/inbox)" : "50. 📬 Inbox, Delivery Receipts & Voice Calls (/admin/inbox)",
+    body: isEl ? `
+      <p>Στο <a href="${withLangPrefix(lang, "/admin/inbox")}"><code>/admin/inbox</code></a> βλέπεις τρία ξεχωριστά tables — εισερχόμενα μηνύματα πελατών, delivery receipts των καμπανιών σου, και εισερχόμενες φωνητικές κλήσεις.</p>
+      <h4>📨 Εισερχόμενα μηνύματα (τελευταία 100):</h4>
+      <ul>
+        <li>Κάθε απάντηση πελάτη σε SMS / WhatsApp / Viber / Messenger / IG με channel icon, αποστολέα, δικό σου αριθμό, κείμενο, timestamp.</li>
+        <li><strong>💬 Reply inline</strong> — εκτεταμένη φόρμα απάντησης ανά γραμμή· στέλνει πίσω στο ίδιο κανάλι μέσω Vonage Messages API.</li>
+        <li>Αυτόματο matching σε <code>profiles.phone</code> — δείχνει όνομα μέλους αντί για άγνωστο νούμερο.</li>
+        <li><strong>Αυτόματη διαγραφή συνδρομής</strong> όταν ο χρήστης απαντήσει "STOP", "unsubscribe", "παυση", "διαγραφη", "quit" — γυρίζει το <code>marketing_consent</code> σε false.</li>
+      </ul>
+      <h4>📤 Delivery receipts (τελευταία 50):</h4>
+      <ul>
+        <li>Κάθε status update από Vonage: <code>submitted</code> → <code>delivered</code> / <code>rejected</code> / <code>read</code> / <code>undeliverable</code>.</li>
+        <li>Στήλες: κανάλι, προς, status (χρωματιστό), UUID, error reason, κόστος (€), πότε.</li>
+        <li>Το webhook είναι στο <code>/api/vonage/status</code> — δέχεται POST JSON ή form-urlencoded, και GET με query params (legacy SMS API).</li>
+      </ul>
+      <h4>📞 Voice calls (τελευταία 50):</h4>
+      <ul>
+        <li>Εισερχόμενες κλήσεις στο Vonage number. Στήλες: κατεύθυνση, αποστολέας/παραλήπτης, status, διάρκεια, κόστος, εγγραφή.</li>
+        <li><strong>Εγγραφή (recording)</strong> — αν η κλήση ηχογραφήθηκε, παίζει inline από <code>/api/vonage/recording?uuid=…</code> (JWT-signed admin-only proxy, stream από <code>api-eu.nexmo.com</code>).</li>
+        <li>NCCO: αγγλικά greeting → ελληνικά (Greeklish για να μην σπάει το TTS) → record → beep → ευχαριστήριο.</li>
+      </ul>
+      <h4>Φίλτρα σε κάθε table:</h4>
+      <p>From / To / date-range. "Clear" reset, "Delete all" (μόνο super_admin) καθαρίζει όλον τον πίνακα — ένα ξεχωριστό endpoint για κάθε πίνακα (<code>/api/admin/inbox-clear</code>).</p>
+      <h4>Setup (μία φορά):</h4>
+      <ol>
+        <li>Τρέξε <code>scripts/add-vonage-webhooks.sql</code> στο Supabase — δημιουργεί <code>vonage_inbound_messages</code>, <code>vonage_message_status</code>, <code>vonage_voice_calls</code>.</li>
+        <li>Vonage Dashboard → Messages Application:<br>
+          Inbound URL: <code>https://www.sallysbar.gr/api/vonage/inbound</code><br>
+          Status URL: <code>https://www.sallysbar.gr/api/vonage/status</code>.<br>
+          <strong>Must be <code>www.</code></strong> — ο non-www κάνει 301 redirect και το POST body χάνεται.
+        </li>
+        <li>Για φωνή: Voice Application με Answer URL <code>/api/vonage/voice-answer</code>, Event URL <code>/api/vonage/voice-events</code>, Fallback URL <code>/api/vonage/voice-fallback</code>. Public key στο App για recording JWT signing.</li>
+        <li>Cloudflare secrets: <code>VONAGE_APP_ID</code>, <code>VONAGE_APP_PRIVATE_KEY</code> (PKCS8 — upload via <code>cat private.key | wrangler pages secret put</code>, όχι paste στο chat).</li>
+      </ol>
+    ` : `
+      <p><a href="${withLangPrefix(lang, "/admin/inbox")}"><code>/admin/inbox</code></a> is the unified monitoring dashboard for three streams — customer replies, delivery receipts on campaigns you send, and inbound voice calls to your Vonage number.</p>
+      <h4>📨 Inbound messages (last 100):</h4>
+      <ul>
+        <li>Every customer reply on SMS / WhatsApp / Viber / Messenger / IG with channel icon, sender, your number, body text, timestamp.</li>
+        <li><strong>💬 Inline reply</strong> — collapsible per-row reply form; sends back through the same channel via Vonage Messages API.</li>
+        <li>Auto-matched to <code>profiles.phone</code> so you see member name instead of an unknown number.</li>
+        <li><strong>Auto-unsubscribe</strong> when the user replies "STOP", "unsubscribe", "παυση", "διαγραφη", "quit" — flips <code>marketing_consent</code> to false on their profile.</li>
+      </ul>
+      <h4>📤 Delivery receipts (last 50):</h4>
+      <ul>
+        <li>Every status update from Vonage: <code>submitted</code> → <code>delivered</code> / <code>rejected</code> / <code>read</code> / <code>undeliverable</code>.</li>
+        <li>Columns: channel, recipient, coloured status, UUID, error reason, cost (€), when.</li>
+        <li>Webhook lives at <code>/api/vonage/status</code> — accepts POST JSON or form-urlencoded, and GET with query params (legacy SMS API compatibility).</li>
+        <li><strong>If this table is empty but campaigns show ✓:</strong> the Status URL on your Vonage Application isn't being hit. Check Cloudflare Pages Functions logs for <code>[vonage/status] hit</code>; if nothing, the URL is wrong or the number's "Messages settings" radio is on "With number settings" instead of "With application settings".</li>
+      </ul>
+      <h4>📞 Voice calls (last 50):</h4>
+      <ul>
+        <li>Inbound calls to your Vonage number. Columns: direction, from/to, status, duration, cost, recording.</li>
+        <li><strong>Recording playback</strong> — if the call was recorded, inline <code>&lt;audio&gt;</code> streams it from <code>/api/vonage/recording?uuid=…</code> — a JWT-signed admin-only proxy that fetches the MP3 from <code>api-eu.nexmo.com</code> (direct URLs require RS256 JWT auth, not publicly accessible).</li>
+        <li>NCCO: English greeting → Greek (in Greeklish — curly apostrophes and em-dashes silently kill Vonage TTS) → record → beep → thank-you close.</li>
+      </ul>
+      <h4>Filters on every table:</h4>
+      <p>From / To / date-range. "Clear" resets, "Delete all" (super_admin only) wipes that table — separate endpoint per stream under <code>/api/admin/inbox-clear</code>.</p>
+      <h4>One-time setup:</h4>
+      <ol>
+        <li>Run <code>scripts/add-vonage-webhooks.sql</code> in Supabase — creates <code>vonage_inbound_messages</code>, <code>vonage_message_status</code>, <code>vonage_voice_calls</code> with proper RLS.</li>
+        <li>Vonage Dashboard → Messages Application:<br>
+          Inbound URL: <code>https://www.sallysbar.gr/api/vonage/inbound</code><br>
+          Status URL: <code>https://www.sallysbar.gr/api/vonage/status</code><br>
+          <strong>MUST be <code>www.</code></strong> — non-www 301-redirects and Vonage silently drops the POST body on redirect.
+        </li>
+        <li>For voice: Voice Application with Answer URL <code>/api/vonage/voice-answer</code>, Event URL <code>/api/vonage/voice-events</code>, Fallback URL <code>/api/vonage/voice-fallback</code>. Public Key uploaded on the Application (required for recording JWT signing).</li>
+        <li>Cloudflare secrets: <code>VONAGE_APP_ID</code>, <code>VONAGE_APP_PRIVATE_KEY</code> (PKCS8 — upload via <code>cat private.key | wrangler pages secret put</code>, do NOT paste the key into chat).</li>
+      </ol>
     `,
   },
 };
@@ -1497,10 +1622,11 @@ const sections = [
   { id: "card-admin",    icon: "🪪", tint: "bg-emerald-300/15", ...L.s47 },
   { id: "pistotita-os",  icon: "🚀", tint: "bg-amber-300/15",   ...L.s48 },
   { id: "vonage-api",    icon: "📞", tint: "bg-sky-300/15",     ...L.s49 },
+  { id: "inbox-dash",    icon: "📬", tint: "bg-emerald-300/15", ...L.s50 },
   { id: "troubleshoot",   icon: "🩹", tint: "bg-red-300/15",     ...L.s14 },
 ];
 
-const tocIds = ["install","push","customer","waiter","barman","deliver","admin-overview","admin-menu","admin-qr","admin-events","admin-users","admin-tips","telegram","marketing","mkt-analytics","gamification","customer-pwa","legal","wheel","customer-dash","wallet-share","user-dossier","notif-scope","play-crosspromo","team-chat","settings-profile","social-card","table-settings","staff-sidebar","referral-gate","quests-ai-confirm","tasks-admin","wheel-settings","address-autocomplete","sitemap-seo","super-admin","saas-tooling","games-toggles","wheel-redeem","scratch-editor","tasks-crud","games-pages","marketing-automation","crm-campaigns","social-linking","card-admin","pistotita-os","vonage-api","troubleshoot"];
+const tocIds = ["install","push","customer","waiter","barman","deliver","admin-overview","admin-menu","admin-qr","admin-events","admin-users","admin-tips","telegram","marketing","mkt-analytics","gamification","customer-pwa","legal","wheel","customer-dash","wallet-share","user-dossier","notif-scope","play-crosspromo","team-chat","settings-profile","social-card","table-settings","staff-sidebar","referral-gate","quests-ai-confirm","tasks-admin","wheel-settings","address-autocomplete","sitemap-seo","super-admin","saas-tooling","games-toggles","wheel-redeem","scratch-editor","tasks-crud","games-pages","marketing-automation","crm-campaigns","social-linking","card-admin","pistotita-os","vonage-api","inbox-dash","troubleshoot"];
 ---
 
 <html lang={lang}>
