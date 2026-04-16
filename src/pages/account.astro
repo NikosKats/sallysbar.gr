@@ -263,26 +263,30 @@ function statusLabel(s: string) {
         </div>
       </section>
 
-      {hasCard && completionPct < 100 && (
-        <section class="order-4 rounded-2xl border border-fuchsia-400/30 bg-gradient-to-br from-fuchsia-500/[0.08] via-amber-500/[0.04] to-transparent p-5">
-          <div class="flex items-center justify-between gap-3 mb-3">
-            <div>
-              <p class="text-[10px] uppercase tracking-[0.22em] text-fuchsia-200/80 font-bold">
-                {isEl ? "🎯 Ολοκλήρωσε το προφίλ σου" : "🎯 Complete your profile"}
-              </p>
-              <p class="text-sm text-white/70 mt-0.5">
-                {isEl
+      <section class={`order-4 rounded-2xl border p-5 ${completionPct === 100 ? "border-emerald-400/40 bg-gradient-to-br from-emerald-500/[0.10] via-amber-500/[0.04] to-transparent" : "border-fuchsia-400/30 bg-gradient-to-br from-fuchsia-500/[0.08] via-amber-500/[0.04] to-transparent"}`}>
+        <div class="flex items-center justify-between gap-3 mb-3">
+          <div>
+            <p class={`text-[10px] uppercase tracking-[0.22em] font-bold ${completionPct === 100 ? "text-emerald-200/90" : "text-fuchsia-200/80"}`}>
+              {completionPct === 100
+                ? (isEl ? "✅ Το προφίλ σου είναι πλήρες" : "✅ Your profile is complete")
+                : (isEl ? "🎯 Ολοκλήρωσε το προφίλ σου" : "🎯 Complete your profile")}
+            </p>
+            <p class="text-sm text-white/70 mt-0.5">
+              {completionPct === 100
+                ? (isEl ? "Κερδίζεις όλα τα VIP perks & bonus πόντους. Ευχαριστούμε!" : "You're unlocking every VIP perk & bonus point. Thank you!")
+                : isEl
                   ? `${completionDone}/${completionTotal} βήματα · ξεκλείδωσε έξτρα πόντους & VIP perks`
                   : `${completionDone}/${completionTotal} steps · unlock extra points & VIP perks`}
-              </p>
-            </div>
-            <div class="text-right shrink-0">
-              <p class="font-heading text-3xl font-bold text-fuchsia-200">{completionPct}%</p>
-            </div>
+            </p>
           </div>
-          <div class="h-2 w-full rounded-full bg-black/40 overflow-hidden">
-            <div class="h-full bg-gradient-to-r from-fuchsia-500 to-amber-400 transition-all" style={`width:${completionPct}%`}></div>
+          <div class="text-right shrink-0">
+            <p class={`font-heading text-3xl font-bold ${completionPct === 100 ? "text-emerald-200" : "text-fuchsia-200"}`}>{completionPct}%</p>
           </div>
+        </div>
+        <div class="h-2 w-full rounded-full bg-black/40 overflow-hidden">
+          <div class={`h-full transition-all ${completionPct === 100 ? "bg-gradient-to-r from-emerald-500 to-amber-400" : "bg-gradient-to-r from-fuchsia-500 to-amber-400"}`} style={`width:${completionPct}%`}></div>
+        </div>
+        {completionPct < 100 && (
           <div class="mt-4 flex flex-wrap gap-2">
             {completionSlots.filter(s => !s.done).map(s => (
               <a href={s.href} target={s.href.startsWith("http") ? "_blank" : "_self"} rel={s.href.startsWith("http") ? "noopener" : ""}
@@ -296,8 +300,18 @@ function statusLabel(s: string) {
               </a>
             ))}
           </div>
-        </section>
-      )}
+        )}
+        {completionPct === 100 && (
+          <div class="mt-4 flex flex-wrap gap-2 text-xs text-emerald-200/80">
+            {completionSlots.map(s => (
+              <span class="inline-flex items-center gap-1.5 rounded-xl border border-emerald-400/25 bg-emerald-400/[0.06] px-3 py-1.5">
+                <span class="text-emerald-300">✓</span>
+                <span>{s.label}</span>
+              </span>
+            ))}
+          </div>
+        )}
+      </section>
 
       {!hasCard && (
         <div class="order-4 rounded-2xl border border-amber-400/40 bg-gradient-to-br from-amber-500/10 via-amber-400/5 to-transparent p-6 space-y-4">
