@@ -52,6 +52,10 @@ const L = {
     "Tasks: kill & CRUD",
     "Games hub & dedicated pages",
     "Επίλυση προβλημάτων",
+    "Συνεργάτες (directory + ανά συνεργάτη admin)",
+    "Welcome drinks & εξαργύρωση από staff",
+    "Κρατήσεις — ημερολόγιο, όριο τραπεζιών, SMS manage link",
+    "QR για αεροδρόμιο/λιμάνι + σελίδα /visit",
   ] : [
     "Install the app (PWA)",
     "Enable push notifications",
@@ -86,6 +90,10 @@ const L = {
     "Tasks: kill & CRUD",
     "Games hub & dedicated pages",
     "Troubleshooting",
+    "Partners (directory + per-partner admin)",
+    "Welcome drinks & staff redemption",
+    "Reservations — calendar, capacity, SMS manage links",
+    "Travel-hub QR (airport/port) + /visit page",
   ],
 
   s1: {
@@ -1643,6 +1651,234 @@ echo "https://api.nexmo.com" | npx wrangler pages secret put VONAGE_MESSAGES_BAS
       </ul>
     `,
   },
+
+  s52: {
+    head: isEl ? "52. Συνεργάτες — Directory + Ανά συνεργάτη διαχείριση" : "52. Partners — Directory + per-partner admin",
+    body: isEl ? `
+      <p>Καταλύματα και τοπικές επιχειρήσεις που στέλνουν επισκέπτες στο Sally's. Κάθε συνεργάτης παίρνει δικό του <code>/welcome/&lt;slug&gt;</code>, πρόθεμα κωδικού (π.χ. HEL), δώρο και (προαιρετικά) προμήθεια.</p>
+      <h4>🔌 Ενεργοποίηση (μία φορά):</h4>
+      <ol>
+        <li>Supabase → SQL → τρέξε <code>scripts/add-partners.sql</code>. Τα ALTER TABLE στο τέλος είναι idempotent.</li>
+        <li>Supabase → Storage → New bucket → όνομα <code>partners</code> · Public ON · 5MB όριο (ή δημιουργείται αυτόματα από το upload endpoint).</li>
+      </ol>
+      <h4>👨‍💼 Admin flow:</h4>
+      <ul>
+        <li><a href="${withLangPrefix(lang, "/admin/partners")}"><code>/admin/partners</code></a> — λίστα με Active/Public badges, "+ Νέος συνεργάτης".</li>
+        <li>Στο modal δημιουργίας υπάρχει <strong>🧲 Auto-import</strong>: επικολλάς URL Google Business / Booking / ιστοσελίδα και συμπληρώνονται αυτόματα όνομα, περιγραφή, πόλη, logo.</li>
+        <li><a href="${withLangPrefix(lang, "/admin/partners/helens")}"><code>/admin/partners/&lt;slug&gt;</code></a> — πλήρης διαχείριση: στοιχεία, φωτογραφία (upload με live preview + auto-save), Google Business, Google Maps, απόσταση από το μπαρ, δώρο (gift_label), commission, monthly report email, notes, toggles (email OTP / phone OTP / Facebook login / active / public).</li>
+        <li>Τα πάντα αποθηκεύονται άμεσα μέσω <code>PATCH /api/admin/partners</code>.</li>
+      </ul>
+      <h4>🖨 Εκτυπώσιμη αφίσα A4:</h4>
+      <p>Στη σελίδα ανά συνεργάτη → κουμπί <strong>🖨 Αφίσα A4</strong> → σελίδα <code>/admin/partner-poster?slug=&lt;&gt;</code> με branding Sally's + logo/χρώματα συνεργάτη + QR στο <code>/welcome/&lt;slug&gt;</code>. Έτοιμη για εκτύπωση στα δωμάτια.</p>
+      <h4>🌐 Δημόσια όψη:</h4>
+      <ul>
+        <li><a href="${withLangPrefix(lang, "/partners")}"><code>/partners</code></a> — directory με κάρτες (μεγάλη φωτογραφία 4:3, όνομα, πόλη, απόσταση, σύντομη περιγραφή). Click → σελίδα λεπτομερειών <code>/partners/&lt;slug&gt;</code>.</li>
+        <li><strong>Το δώρο ΔΕΝ φαίνεται</strong> στη δημόσια σελίδα — αποκαλύπτεται μόνο μέσω του in-room QR.</li>
+        <li>Κάρτες παράγουν στο nav του δημόσιου site κάτω από <strong>🤝 Our Partners</strong>.</li>
+      </ul>
+      <h4>📬 Φόρμα «Γίνε συνεργάτης»:</h4>
+      <p>Στο τέλος του <code>/partners</code> → POST στο <code>/api/partners/enquiry</code> → μήνυμα Telegram στον κατάλληλο bot. Env vars: <code>TELEGRAM_PARTNERS_BOT_TOKEN</code> + <code>TELEGRAM_PARTNERS_CHAT_ID</code> (fallback στα reservations bot vars αν λείπουν).</p>
+    ` : `
+      <p>Apartments & local businesses that send guests to Sally's. Each partner gets its own <code>/welcome/&lt;slug&gt;</code>, code prefix (e.g. HEL), gift, and (optionally) commission terms.</p>
+      <h4>🔌 One-time setup:</h4>
+      <ol>
+        <li>Supabase → SQL → run <code>scripts/add-partners.sql</code>. ALTER TABLE statements are idempotent.</li>
+        <li>Supabase → Storage → New bucket → name <code>partners</code> · Public ON · 5MB limit (or created automatically by the upload endpoint).</li>
+      </ol>
+      <h4>👨‍💼 Admin flow:</h4>
+      <ul>
+        <li><a href="${withLangPrefix(lang, "/admin/partners")}"><code>/admin/partners</code></a> — list with Active/Public badges + "+ New partner".</li>
+        <li>Create modal has a <strong>🧲 Auto-import</strong> block: paste a Google Business / Booking.com / website URL → name, description, city, logo are fetched automatically (Open Graph + JSON-LD scrape).</li>
+        <li><a href="${withLangPrefix(lang, "/admin/partners/helens")}"><code>/admin/partners/&lt;slug&gt;</code></a> — full management: info, photo (upload with live preview + auto-save to DB), Google Business, Google Maps, distance-from-bar, gift label, commission, monthly report email, notes, toggles (email OTP / phone OTP / Facebook login / active / public).</li>
+        <li>All fields save instantly via <code>PATCH /api/admin/partners</code>.</li>
+      </ul>
+      <h4>🖨 Printable A4 poster:</h4>
+      <p>On the per-partner page → <strong>🖨 A4 poster</strong> button → <code>/admin/partner-poster?slug=&lt;&gt;</code> renders a Sally's-branded A4 with partner logo/name/gift and a QR to <code>/welcome/&lt;slug&gt;</code>. Ready to print for in-room placement.</p>
+      <h4>🌐 Public side:</h4>
+      <ul>
+        <li><a href="${withLangPrefix(lang, "/partners")}"><code>/partners</code></a> — directory grid (large 4:3 photo, name, city, distance, short description). Card is clickable → detail page <code>/partners/&lt;slug&gt;</code> with long description + Website/Directions/Reviews.</li>
+        <li><strong>The gift is intentionally hidden</strong> on the public page — only revealed to guests who scan the in-room QR.</li>
+        <li>Linked from the main site nav as <strong>🤝 Our Partners</strong>.</li>
+      </ul>
+      <h4>📬 "Become a partner" form:</h4>
+      <p>At the bottom of <code>/partners</code> → <code>POST /api/partners/enquiry</code> → HTML-formatted Telegram message. Env vars: <code>TELEGRAM_PARTNERS_BOT_TOKEN</code> + <code>TELEGRAM_PARTNERS_CHAT_ID</code> (falls back to reservations bot vars if unset).</p>
+    `,
+  },
+
+  s53: {
+    head: isEl ? "53. Welcome drinks & εξαργύρωση από staff" : "53. Welcome drinks & staff redemption",
+    body: isEl ? `
+      <p>Οι επισκέπτες συνεργατών σκανάρουν το QR στο δωμάτιο → <code>/welcome/&lt;slug&gt;</code> → εγγράφονται στο Sally's loyalty με 2-step verification → παίρνουν κωδικό (π.χ. HEL-A4K9) → τον δείχνουν στο μπαρ → δωρεάν ποτό.</p>
+      <h4>🔌 Ενεργοποίηση (μία φορά):</h4>
+      <ol>
+        <li>Supabase → SQL → τρέξε <code>scripts/add-welcome-drinks.sql</code> + <code>scripts/add-welcome-settings.sql</code>.</li>
+        <li>Cloudflare secrets: <code>VONAGE_API_KEY</code>, <code>VONAGE_SIGNATURE_SECRET</code> (phone OTP) + <code>RESEND_API_KEY</code> (email OTP).</li>
+        <li>Για Facebook login: ενεργοποίησε Facebook provider στο Supabase → Authentication → Providers.</li>
+      </ol>
+      <h4>🧍 Flow πελάτη (2 βήματα):</h4>
+      <ol>
+        <li><strong>Βήμα 1</strong> — Φόρμα: Όνομα, Email, Password, Τηλέφωνο (με dropdown κωδικών χώρας 🇬🇧🇬🇷 + 22 άλλων). Εναλλακτικά: μπλε κουμπί <strong>Continue with Facebook</strong> που προσυμπληρώνει name+email (αν είναι ενεργοποιημένο στον συνεργάτη).</li>
+        <li><strong>Βήμα 2</strong> — Εισαγωγή 6-ψήφιων OTP (📧 email + 📱 SMS). Τα βήματα παραλείπονται αν ο ιδιοκτήτης έχει απενεργοποιήσει τις αντίστοιχες επαληθεύσεις στο <code>/admin/partners/&lt;slug&gt;</code>.</li>
+      </ol>
+      <h4>📤 Παράδοση κωδικού:</h4>
+      <p>Μετά την επαλήθευση, ο κωδικός εμφανίζεται στη σελίδα <strong>+ στέλνεται σε SMS + email</strong>. Background via <code>ctx.waitUntil</code> ώστε η σελίδα να απαντάει άμεσα.</p>
+      <h4>🍹 Εξαργύρωση από προσωπικό:</h4>
+      <ul>
+        <li><a href="${withLangPrefix(lang, "/staff/welcome")}"><code>/staff/welcome</code></a> — οθόνη με μεγάλο input κωδικού. Πληκτρολογείς → βλέπεις στοιχεία επισκέπτη + δώρο προς σερβίρισμα → πράσινο κουμπί <strong>✓ Mark drink as served</strong>.</li>
+        <li>Διπλή εξαργύρωση αποτρέπεται (status πάει σε <code>redeemed</code>).</li>
+        <li>Το nav entry είναι <strong>🍹 Helen's welcome code</strong> στη Staff ομάδα του sidebar (δουλεύει για ΟΛΟΥΣ τους κωδικούς, όχι μόνο Helen's).</li>
+      </ul>
+      <h4>⚙️ Ανά συνεργάτη ρυθμίσεις:</h4>
+      <p>Στο <code>/admin/partners/&lt;slug&gt;</code> μπορείς να αλλάξεις:</p>
+      <ul>
+        <li><strong>Gift label</strong> — η φράση που εμφανίζεται σε SMS/email/landing/staff (π.χ. «free welcome drink», «20% off first drink», «free Sally's Spritz»). Προεπισκόπηση SMS ζωντανά.</li>
+        <li><strong>Email OTP / Phone OTP / Facebook login</strong> — κάθε τοggle είναι ανεξάρτητο.</li>
+      </ul>
+      <h4>📊 Στατιστικά:</h4>
+      <p>Στο <code>/admin/partners/&lt;slug&gt;</code> KPIs: σύνολο signups · εκκρεμή · εξαργυρωμένα (με %) · τελευταίες 7 ημέρες. Λίστα εγγραφών με φίλτρα.</p>
+    ` : `
+      <p>Partner guests scan the in-room QR → <code>/welcome/&lt;slug&gt;</code> → sign up for Sally's loyalty with 2-step verification → receive a code (e.g. HEL-A4K9) → show it at the bar → get their free drink.</p>
+      <h4>🔌 One-time setup:</h4>
+      <ol>
+        <li>Supabase → SQL → run <code>scripts/add-welcome-drinks.sql</code> + <code>scripts/add-welcome-settings.sql</code>.</li>
+        <li>Cloudflare secrets: <code>VONAGE_API_KEY</code>, <code>VONAGE_SIGNATURE_SECRET</code> (phone OTP) + <code>RESEND_API_KEY</code> (email OTP).</li>
+        <li>For Facebook login: enable the Facebook provider in Supabase → Authentication → Providers (needs a Facebook App ID + Secret from developers.facebook.com).</li>
+      </ol>
+      <h4>🧍 Guest flow (2 steps):</h4>
+      <ol>
+        <li><strong>Step 1</strong> — Form: Name, Email, Password, Phone (country-code dropdown 🇬🇧🇬🇷 + 22 others). Alternative: blue <strong>Continue with Facebook</strong> button that pre-fills name+email read-only (shows only if the partner has the toggle on).</li>
+        <li><strong>Step 2</strong> — Two 6-digit OTP inputs (📧 email + 📱 SMS). The whole step is skipped if the owner turned both verifications off for that partner on <code>/admin/partners/&lt;slug&gt;</code>; if only one is required, only that input shows.</li>
+      </ol>
+      <h4>📤 Code delivery:</h4>
+      <p>After verification the code is shown on screen <strong>and sent via SMS + email</strong>. Deliveries run behind <code>ctx.waitUntil</code> so the success screen renders instantly without blocking on Vonage/Resend.</p>
+      <h4>🍹 Staff redemption:</h4>
+      <ul>
+        <li><a href="${withLangPrefix(lang, "/staff/welcome")}"><code>/staff/welcome</code></a> — big centred code input. Type → see guest details + a highlighted "Gift to serve: &lt;label&gt;" banner → tap the green <strong>✓ Mark drink as served</strong>.</li>
+        <li>Double-redemption is blocked (status flips to <code>redeemed</code>).</li>
+        <li>Nav entry is <strong>🍹 Helen's welcome code</strong> under Staff (works for ALL partner codes — the name is historical).</li>
+      </ul>
+      <h4>⚙️ Per-partner settings:</h4>
+      <p>On <code>/admin/partners/&lt;slug&gt;</code> you can adjust:</p>
+      <ul>
+        <li><strong>Gift label</strong> — phrase shown in SMS/email/landing/staff (e.g. "free welcome drink", "20% off first drink", "free signature Sally's Spritz"). Live SMS preview below the input.</li>
+        <li><strong>Email OTP / Phone OTP / Facebook login</strong> — each toggle is independent. All defaults are ON (strict).</li>
+      </ul>
+      <h4>📊 Stats:</h4>
+      <p>On <code>/admin/partners/&lt;slug&gt;</code> KPI tiles: total signups · waiting · redeemed (with conversion %) · last 7 days. Filterable list of signups below.</p>
+    `,
+  },
+
+  s54: {
+    head: isEl ? "54. Κρατήσεις — Ημερολόγιο, όριο τραπεζιών, SMS manage link" : "54. Reservations — calendar, capacity cap, manage-booking SMS",
+    body: isEl ? `
+      <h4>📅 Ημερολόγιο Κρατήσεων:</h4>
+      <p><a href="${withLangPrefix(lang, "/admin/reservations-calendar")}"><code>/admin/reservations-calendar</code></a> — month-view με badges ανά ημέρα (🤖 AI-pending · ⏳ pending · ✓ confirmed · ✕ cancelled) + heatmap βάσει αριθμού ατόμων. Πάτα ημέρα → side panel με τις κρατήσεις της ημέρας + Confirm/Cancel inline.</p>
+      <h4>🚪 Όριο τραπεζιών (capacity cap):</h4>
+      <ul>
+        <li>Default <strong>20 τραπέζια/βράδυ</strong>. Αλλάζει από <code>site.dailyTableCapacity</code> στο <code>src/data/site.ts</code>.</li>
+        <li>Μετράνε ως «used»: <code>pending</code>, <code>pending_ai</code>, <code>confirmed</code>. Τα cancelled/rejected απελευθερώνουν θέση.</li>
+        <li>Όταν γεμίσει:
+          <ul>
+            <li>Ο AI agent λέει αυτόματα «we're fully booked on &lt;date&gt;» και προσφέρει διαφορετική ημέρα ή waitlist.</li>
+            <li>Το <code>POST /api/admin/reservations</code> επιστρέφει 409 — η φόρμα νέας κράτησης εμφανίζει confirm «Override capacity?» (με <code>force=true</code> μπορεί να ξεπεραστεί).</li>
+            <li>Στο ημερολόγιο η ημέρα βάφεται κόκκινη με badge <strong>FULL</strong>.</li>
+          </ul>
+        </li>
+      </ul>
+      <h4>✏️ Νέα κράτηση & επεξεργασία:</h4>
+      <ul>
+        <li>Κουμπί <strong>+ Νέα κράτηση</strong> στο <a href="${withLangPrefix(lang, "/admin/reservations")}"><code>/admin/reservations</code></a> → modal (υποχρεωτικά: ημερομηνία, ώρα, όνομα, άτομα, τηλέφωνο με E.164 pattern).</li>
+        <li>Κουμπί <strong>Edit</strong> σε κάθε γραμμή → ίδιο modal για επεξεργασία.</li>
+        <li>Νέα API methods: <code>POST</code> (δημιουργία), <code>PUT</code> (επεξεργασία), <code>PATCH</code> (status transitions με SMS side-effects), <code>DELETE</code>.</li>
+      </ul>
+      <h4>📱 SMS στον πελάτη με manage link:</h4>
+      <ul>
+        <li>Όταν επιβεβαιώνεται κράτηση (από dashboard ή Telegram button) στέλνεται SMS με κωδικοποιημένο manage URL: <code>sallysbar.gr/s/xxxxx</code> (αυτόματα shortened μέσω πίνακα <code>short_links</code>).</li>
+        <li>Ο πελάτης ανοίγει το link → <code>/manage/&lt;id&gt;?t=&lt;hmac&gt;</code> → βλέπει λεπτομέρειες, κουμπιά Directions/Call, ⭐ Leave a Google review + κουμπί <strong>Cancel booking</strong>.</li>
+        <li>Τα URLs είναι HMAC-signed (βλ. <code>src/lib/booking-tokens.ts</code>) — δεν μπορεί κανείς να μαντέψει id άλλης κράτησης.</li>
+        <li>Η ακύρωση από τον πελάτη προκαλεί Telegram ειδοποίηση στο κανάλι (<code>❌ Customer cancelled their booking</code>).</li>
+      </ul>
+      <h4>🧪 Test SMS panel:</h4>
+      <p>Στο <code>/admin/reservations</code> υπάρχει expandable panel <strong>📱 Test SMS</strong> για δοκιμή σε οποιονδήποτε αριθμό. Χρήσιμο για debug credentials Vonage (<code>/api/ai-voice/vonage-diag</code> δείχνει ποιες μεταβλητές είναι set).</p>
+      <h4>🔔 Toast ενημέρωση:</h4>
+      <p>Κάθε Confirm/Cancel δείχνει toast στη δεξιά κάτω γωνία: «✓ Confirmed. SMS sent to customer» (πράσινο) / «✓ Confirmed, but SMS failed: ...» (κίτρινο) / «✓ Confirmed (no SMS sent — already decided)» (λευκό).</p>
+      <h4>📞 Telegram webhook fix:</h4>
+      <p>Το webhook είχε registered-url <code>https://sallysbar.gr/api/telegram-webhook</code> (apex) που 301 στο www — Telegram <strong>δεν ακολουθεί redirects</strong>. Τώρα το <code>/api/admin/setup-webhook</code> hardcode το canonical <code>www</code> URL και το <code>handleBookingCallback</code> χρησιμοποιεί <code>cb.message.chat.id</code> (αντί για hardcoded env) ώστε να δουλεύει σε όλα τα κανάλια.</p>
+    ` : `
+      <h4>📅 Reservations Calendar:</h4>
+      <p><a href="${withLangPrefix(lang, "/admin/reservations-calendar")}"><code>/admin/reservations-calendar</code></a> — month view with per-day badges (🤖 AI-pending · ⏳ pending · ✓ confirmed · ✕ cancelled) and a guest-count heatmap. Click a day → right-side panel with that day's reservations + inline Confirm/Cancel. Monday-first week layout, browses past and future months.</p>
+      <h4>🚪 Capacity cap:</h4>
+      <ul>
+        <li>Default <strong>20 tables/night</strong>. Configurable via <code>site.dailyTableCapacity</code> in <code>src/data/site.ts</code>.</li>
+        <li>Counted as "used": <code>pending</code>, <code>pending_ai</code>, <code>confirmed</code>. Cancelled / rejected rows free the slot back up.</li>
+        <li>When full:
+          <ul>
+            <li>AI agent automatically says "we're fully booked on &lt;date&gt;" and offers a different date or waitlist (agent reads the tool's message verbatim).</li>
+            <li><code>POST /api/admin/reservations</code> returns 409 — the new-reservation modal shows an "Override capacity?" confirm (you can force with <code>force=true</code>).</li>
+            <li>On the calendar, the day gets a red border + bold <strong>FULL</strong> badge.</li>
+          </ul>
+        </li>
+      </ul>
+      <h4>✏️ New reservation & editing:</h4>
+      <ul>
+        <li><strong>+ New reservation</strong> button on <a href="${withLangPrefix(lang, "/admin/reservations")}"><code>/admin/reservations</code></a> → modal (required: date, time, name, party size, phone in E.164 format).</li>
+        <li><strong>Edit</strong> button on every row → same modal in edit mode.</li>
+        <li>New API verbs: <code>POST</code> (create), <code>PUT</code> (edit), <code>PATCH</code> (status transitions with SMS side-effects), <code>DELETE</code>.</li>
+      </ul>
+      <h4>📱 Manage-booking SMS:</h4>
+      <ul>
+        <li>When a reservation is confirmed (from dashboard or Telegram Confirm), the caller gets an SMS with a signed manage URL shortened via the <code>short_links</code> table: <code>sallysbar.gr/s/xxxxx</code>.</li>
+        <li>They tap the link → <code>/manage/&lt;id&gt;?t=&lt;hmac&gt;</code> → see booking details + Directions / Call buttons + ⭐ Leave a Google review + <strong>Cancel booking</strong>.</li>
+        <li>URLs are HMAC-signed (see <code>src/lib/booking-tokens.ts</code>) — iterating reservation UUIDs can't reveal or cancel other people's bookings. HMAC key is <code>VAPI_TOOL_SECRET</code>.</li>
+        <li>Customer-triggered cancellation fires a Telegram alert in the booking channel (<code>❌ Customer cancelled their booking</code>).</li>
+      </ul>
+      <h4>🧪 Test SMS panel:</h4>
+      <p>Expandable <strong>📱 Test SMS</strong> panel on <code>/admin/reservations</code> lets you fire a one-off SMS to any number — useful to verify Vonage credentials + sender-ID delivery without having to create a reservation. The <code>/api/ai-voice/vonage-diag</code> endpoint is a companion diagnostic that reports which env vars are configured (without leaking values).</p>
+      <h4>🔔 Toast feedback:</h4>
+      <p>Every Confirm/Cancel fires a toast at bottom-right: "✓ Confirmed. SMS sent to customer" (green) / "✓ Confirmed, but SMS failed: &lt;reason&gt;" (amber) / "✓ Confirmed (no SMS sent — already decided)" (white). The "already decided" toast is especially useful — it tells you when Telegram Confirm was a no-op because the dashboard was clicked first.</p>
+      <h4>📞 Telegram webhook fix:</h4>
+      <p>The webhook was registered at <code>https://sallysbar.gr/api/telegram-webhook</code> (apex) which 301-redirected to www — and <strong>Telegram doesn't follow redirects</strong>. <code>/api/admin/setup-webhook</code> now hardcodes the canonical <code>www</code> URL, and <code>handleBookingCallback</code> uses <code>cb.message.chat.id</code> (instead of a hardcoded env var) so booking confirmations work from any Telegram channel.</p>
+    `,
+  },
+
+  s55: {
+    head: isEl ? "55. QR για αεροδρόμιο/λιμάνι + σελίδα /visit" : "55. Travel-hub QR (airport/port) + /visit page",
+    body: isEl ? `
+      <p>Αφίσες A4 για το αεροδρόμιο, λιμάνι (Σάμη / Αργοστόλι / Πόρο), taxi ουρά, ενοικιάσεις αυτοκινήτων. Ο ταξιδιώτης σκανάρει → πέφτει σε branded σελίδα Sally's με όλες τις πληροφορίες.</p>
+      <h4>🛬 Νέα σελίδα /visit:</h4>
+      <p><a href="${withLangPrefix(lang, "/visit")}"><code>/visit</code></a> — hero photo · tagline · 2×2 info grid (διεύθυνση · ώρες · ~50 λεπτά από αεροδρόμιο · Google rating) · prominent <strong>📍 Get directions</strong> + call buttons · μενού / κράτηση / reviews / Instagram · επόμενες εκδηλώσεις (auto από DB).</p>
+      <h4>📣 Presets στο /admin/marketing:</h4>
+      <ul>
+        <li><strong>✈️ Just landed at the airport</strong> — target <code>/visit</code>, source=airport, campaign=arrivals</li>
+        <li><strong>🚢 Just docked</strong> — target <code>/visit</code>, source=port, campaign=port-arrivals</li>
+        <li>Τα δύο έχουν ξεχωριστά UTM tags ώστε να φαίνεται ποια τοποθεσία αποδίδει.</li>
+      </ul>
+      <h4>🔁 Flow:</h4>
+      <p>Επιβάτης σκανάρει QR → <code>/r/&lt;slug&gt;</code> (tracker με cookie/hit counter) → 302 στο <code>/visit?utm_*</code> → χρήστης βλέπει σελίδα → πατά «Get directions» → Google Maps. Τα scans μετρώνται σε <a href="${withLangPrefix(lang, "/admin/marketing-analytics")}"><code>/admin/marketing-analytics</code></a> ανά campaign.</p>
+      <h4>🤝 Άλλα νέα presets:</h4>
+      <ul>
+        <li><strong>🍹 Helen's Welcome</strong> → <code>/welcome/helens</code> (in-room card).</li>
+        <li><strong>🤝 Our Partners</strong> → <code>/partners</code> (για coaster / receipt στο μπαρ — όχι δώρο, μόνο directory).</li>
+      </ul>
+    ` : `
+      <p>A4 posters for the airport, ports (Sami / Argostoli / Poros), taxi queue, car-rental counters. Traveller scans → lands on a branded Sally's info page instead of dropping straight into Google Maps cold.</p>
+      <h4>🛬 New /visit page:</h4>
+      <p><a href="${withLangPrefix(lang, "/visit")}"><code>/visit</code></a> — hero photo · tagline · 2×2 info grid (address · opening hours · ~50 min from airport · Google rating) · prominent <strong>📍 Get directions</strong> + Call buttons · menu / book a table / reviews / Instagram · upcoming events (auto-fetched from DB).</p>
+      <h4>📣 Marketing presets on /admin/marketing:</h4>
+      <ul>
+        <li><strong>✈️ Just landed at the airport</strong> — target <code>/visit</code>, source=airport, campaign=arrivals</li>
+        <li><strong>🚢 Just docked</strong> — target <code>/visit</code>, source=port, campaign=port-arrivals</li>
+        <li>Two distinct UTM campaigns so you can see in analytics which placement is pulling weight.</li>
+      </ul>
+      <h4>🔁 Flow:</h4>
+      <p>Traveller scans the QR → <code>/r/&lt;slug&gt;</code> (the campaign tracker with hit-counter) → 302 to <code>/visit?utm_*</code> → user reads the page → taps "Get directions" → Google Maps navigation opens. Scan counts appear in <a href="${withLangPrefix(lang, "/admin/marketing-analytics")}"><code>/admin/marketing-analytics</code></a> split by campaign.</p>
+      <h4>🤝 Other new presets:</h4>
+      <ul>
+        <li><strong>🍹 Helen's Welcome</strong> → <code>/welcome/helens</code> (in-room A6 card).</li>
+        <li><strong>🤝 Our Partners</strong> → <code>/partners</code> (coaster / receipt inside Sally's — directory-only, no gift revealed).</li>
+      </ul>
+    `,
+  },
 };
 
 const sections = [
@@ -1697,9 +1933,13 @@ const sections = [
   { id: "inbox-dash",    icon: "📬", tint: "bg-emerald-300/15", ...L.s50 },
   { id: "ai-voice",      icon: "🤖", tint: "bg-violet-300/15",   ...L.s51 },
   { id: "troubleshoot",   icon: "🩹", tint: "bg-red-300/15",     ...L.s14 },
+  { id: "partners",         icon: "🤝", tint: "bg-amber-300/15",   ...L.s52 },
+  { id: "welcome-drinks",   icon: "🍹", tint: "bg-amber-300/15",   ...L.s53 },
+  { id: "reservations-v2",  icon: "📅", tint: "bg-sky-300/15",     ...L.s54 },
+  { id: "visit-arrivals",   icon: "🛬", tint: "bg-fuchsia-300/15", ...L.s55 },
 ];
 
-const tocIds = ["install","push","customer","waiter","barman","deliver","admin-overview","admin-menu","admin-qr","admin-events","admin-users","admin-tips","telegram","marketing","mkt-analytics","gamification","customer-pwa","legal","wheel","customer-dash","wallet-share","user-dossier","notif-scope","play-crosspromo","team-chat","settings-profile","social-card","table-settings","staff-sidebar","referral-gate","quests-ai-confirm","tasks-admin","wheel-settings","address-autocomplete","sitemap-seo","super-admin","saas-tooling","games-toggles","wheel-redeem","scratch-editor","tasks-crud","games-pages","marketing-automation","crm-campaigns","social-linking","card-admin","pistotita-os","vonage-api","inbox-dash","ai-voice","troubleshoot"];
+const tocIds = ["install","push","customer","waiter","barman","deliver","admin-overview","admin-menu","admin-qr","admin-events","admin-users","admin-tips","telegram","marketing","mkt-analytics","gamification","customer-pwa","legal","wheel","customer-dash","wallet-share","user-dossier","notif-scope","play-crosspromo","team-chat","settings-profile","social-card","table-settings","staff-sidebar","referral-gate","quests-ai-confirm","tasks-admin","wheel-settings","address-autocomplete","sitemap-seo","super-admin","saas-tooling","games-toggles","wheel-redeem","scratch-editor","tasks-crud","games-pages","marketing-automation","crm-campaigns","social-linking","card-admin","pistotita-os","vonage-api","inbox-dash","ai-voice","troubleshoot","partners","welcome-drinks","reservations-v2","visit-arrivals"];
 ---
 
 <html lang={lang}>
