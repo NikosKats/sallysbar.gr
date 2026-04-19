@@ -1,0 +1,190 @@
+---
+import "../styles/global.css";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+import { supabaseAdmin } from "../lib/supabase";
+
+export const prerender = false;
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+
+// Try the full column set; if a new column hasn't been added yet (e.g. before
+// running the latest SQL migration) the query errors — retry with a minimal
+// projection so the page still renders the partners list.
+async function loadPartners() {
+  const full = await supabaseAdmin
+    .from("partners")
+    .select("slug, name, short_description, website_url, google_business_url, google_maps_url, logo_url, city, distance_from_bar, gift_label")
+    .eq("active", true)
+    .eq("visible_on_public_page", true)
+    .order("sort_order", { ascending: true })
+    .order("name",        { ascending: true });
+  if (!full.error) return full.data ?? [];
+  console.warn("[/partners] full select failed, retrying minimal:", full.error.message);
+  const min = await supabaseAdmin
+    .from("partners")
+    .select("slug, name, short_description, website_url, logo_url, city, gift_label")
+    .eq("active", true)
+    .eq("visible_on_public_page", true)
+    .order("sort_order", { ascending: true })
+    .order("name",        { ascending: true });
+  return min.data ?? [];
+}
+
+const list = await loadPartners();
+const title = (isEl ? "Συνεργάτες" : "Our Partners") + " — Sally's Bar";
+---
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={isEl
+      ? "Καταλύματα και επιχειρήσεις στη Σκάλα Κεφαλονιάς που στέλνουν τους επισκέπτες τους στο Sally's Bar για ένα δωρεάν καλωσόρισμα."
+      : "Apartments and businesses in Skala, Kefalonia that send their guests to Sally's Bar for a free welcome — and the perks they offer."} />
+    <link rel="canonical" href={`https://sallysbar.gr${isEl ? "/el" : ""}/partners`} />
+  </head>
+  <body class="min-h-screen bg-[#0a0a0f] text-white font-body antialiased">
+    <Header />
+
+    <main class="mx-auto max-w-5xl px-6 py-16 pt-32">
+      <p class="text-xs uppercase tracking-[0.28em] text-amber-200/80 mb-3">{isEl ? "Sally's Bar · Σκάλα Κεφαλονιάς" : "Sally's Bar · Skala · Kefalonia"}</p>
+      <h1 class="font-heading text-4xl md:text-5xl font-bold leading-tight bg-gradient-to-br from-white via-amber-50 to-amber-200/80 bg-clip-text text-transparent">
+        {isEl ? "Οι Συνεργάτες μας" : "Our Partners"}
+      </h1>
+      <p class="mt-4 text-white/75 max-w-2xl leading-relaxed">
+        {isEl
+          ? "Καταλύματα και τοπικές επιχειρήσεις στη Σκάλα συνεργάζονται μαζί μας για να σας καλωσορίσουμε. Διαμένετε σε ένα από αυτά; Ζητήστε τον κωδικό σας και δείξτε τον στο μπαρ."
+          : "Apartments and local businesses in Skala team up with us to make your stay sweeter. Staying with one of them? Ask for your welcome code and show it at the bar."}
+      </p>
+
+      {list.length === 0 ? (
+        <div class="mt-12 rounded-2xl border border-white/10 bg-white/[0.03] p-10 text-center text-white/55 text-sm">
+          {isEl ? "Σύντομα." : "Coming soon."}
+        </div>
+      ) : (
+        <div class="mt-10 grid sm:grid-cols-2 gap-4">
+          {list.map((p: any) => (
+            <a href={`/partners/${p.slug}`} class="group block rounded-2xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.05] hover:border-amber-400/30 transition overflow-hidden flex flex-col focus:outline-none focus:ring-2 focus:ring-amber-400/60">
+              {p.logo_url ? (
+                <img src={p.logo_url} alt={p.name} class="w-full aspect-[4/3] object-cover bg-black/40 group-hover:scale-[1.02] transition-transform" loading="lazy" />
+              ) : (
+                <div class="w-full aspect-[4/3] bg-gradient-to-br from-amber-300/25 to-amber-500/15 border-b border-amber-400/20 grid place-items-center text-amber-200 font-heading text-6xl font-bold">
+                  {p.name?.[0] ?? "?"}
+                </div>
+              )}
+
+              <div class="p-5 flex flex-col flex-1">
+                <h2 class="font-heading text-xl font-bold text-white group-hover:text-amber-100 transition-colors">{p.name}</h2>
+                <div class="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                  {p.city && <span class="text-xs text-white/55">📍 {p.city}</span>}
+                  {p.distance_from_bar && <span class="text-[11px] text-amber-200/80">🚶 {p.distance_from_bar} {isEl ? "από το μπαρ" : "from the bar"}</span>}
+                </div>
+
+                {p.short_description && (
+                  <p class="mt-3 text-sm text-white/70 leading-relaxed line-clamp-3">{p.short_description}</p>
+                )}
+
+                <p class="mt-auto pt-4 border-t border-white/5 text-xs text-amber-200/80 group-hover:text-amber-200 transition-colors">
+                  {isEl ? "Δες περισσότερα →" : "View details →"}
+                </p>
+              </div>
+            </a>
+          ))}
+        </div>
+      )}
+
+      <section id="contact" class="mt-16 rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.03] to-amber-500/[0.05] p-6 md:p-8">
+        <p class="text-[10px] uppercase tracking-[0.28em] text-amber-200/80 mb-2">{isEl ? "Είστε επιχείρηση;" : "Are you a local business?"}</p>
+        <h2 class="font-heading text-2xl md:text-3xl font-bold text-white mb-2">
+          {isEl ? "Γίνετε συνεργάτης μας" : "Become a partner"}
+        </h2>
+        <p class="text-sm text-white/70 leading-relaxed max-w-2xl mb-5">
+          {isEl
+            ? "Στέλνετε τους επισκέπτες σας στο Sally's για ένα μοναδικό καλωσόρισμα. Δωρεάν, χωρίς συμβόλαιο, με δικό σας κωδικό QR."
+            : "Send your guests to Sally's for a memorable welcome. Free to join, no contract, your own branded QR code."}
+        </p>
+
+        <form id="partnerForm" class="grid sm:grid-cols-2 gap-3 max-w-2xl">
+          <label class="block">
+            <span class="text-xs text-white/60">{isEl ? "Όνομα επιχείρησης" : "Business name"}</span>
+            <input required type="text" name="business" maxlength="120" class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2.5 text-white focus:outline-none focus:border-amber-400/50" />
+          </label>
+          <label class="block">
+            <span class="text-xs text-white/60">{isEl ? "Όνομά σας" : "Your name"}</span>
+            <input required type="text" name="name" maxlength="120" autocomplete="name" class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2.5 text-white focus:outline-none focus:border-amber-400/50" />
+          </label>
+          <label class="block">
+            <span class="text-xs text-white/60">Email</span>
+            <input required type="email" name="email" maxlength="160" autocomplete="email" class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2.5 text-white focus:outline-none focus:border-amber-400/50" />
+          </label>
+          <label class="block">
+            <span class="text-xs text-white/60">{isEl ? "Τηλέφωνο (προαιρετικό)" : "Phone (optional)"}</span>
+            <input type="tel" name="phone" maxlength="30" autocomplete="tel" class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2.5 text-white font-mono focus:outline-none focus:border-amber-400/50" />
+          </label>
+          <label class="block sm:col-span-2">
+            <span class="text-xs text-white/60">{isEl ? "Μήνυμα" : "Message"}</span>
+            <textarea required name="message" rows="4" maxlength="1500" placeholder={isEl ? "Πόσα δωμάτια έχετε; Τι ζητάτε; Χρονοδιάγραμμα;" : "How many rooms do you have? What are you looking for? Timeline?"} class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2.5 text-white focus:outline-none focus:border-amber-400/50"></textarea>
+          </label>
+          <div class="sm:col-span-2 flex items-center gap-3">
+            <button type="submit" id="partnerBtn" class="rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold px-5 py-2.5 text-sm transition">
+              ✉️ {isEl ? "Αποστολή" : "Send enquiry"}
+            </button>
+            <p id="partnerMsg" class="text-xs text-white/60 min-h-[1em]"></p>
+          </div>
+        </form>
+      </section>
+
+      <script is:inline define:vars={{ isEl }}>
+        (function() {
+          const form = document.getElementById("partnerForm");
+          const btn  = document.getElementById("partnerBtn");
+          const msg  = document.getElementById("partnerMsg");
+          if (!form) return;
+          form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            msg.style.color = "rgba(255,255,255,0.6)";
+            msg.textContent = isEl ? "Αποστολή…" : "Sending…";
+            btn.disabled = true;
+            const orig = btn.textContent;
+            const fd = new FormData(form);
+            try {
+              const res = await fetch("/api/partners/enquiry", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  business: fd.get("business"),
+                  name:     fd.get("name"),
+                  email:    fd.get("email"),
+                  phone:    fd.get("phone"),
+                  message:  fd.get("message"),
+                }),
+              });
+              const j = await res.json().catch(() => ({}));
+              if (!res.ok || !j.ok) {
+                msg.style.color = "#fca5a5";
+                msg.textContent = j?.message || j?.error || ("HTTP " + res.status);
+                btn.disabled = false;
+                btn.textContent = orig;
+                return;
+              }
+              msg.style.color = "#6ee7b7";
+              msg.textContent = "✓ " + (isEl ? "Λήφθηκε! Θα επικοινωνήσουμε σύντομα." : "Got it! We'll be in touch soon.");
+              form.reset();
+              btn.disabled = false;
+              btn.textContent = orig;
+            } catch (err) {
+              msg.style.color = "#fca5a5";
+              msg.textContent = err?.message || "network error";
+              btn.disabled = false;
+              btn.textContent = orig;
+            }
+          });
+        })();
+      </script>
+    </main>
+
+    <Footer />
+  </body>
+</html>

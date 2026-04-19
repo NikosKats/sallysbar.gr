@@ -1,0 +1,142 @@
+---
+import "../styles/global.css";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+import { site, getSiteCopy } from "../data/site";
+import { supabaseAdmin } from "../lib/supabase";
+import { withLangPrefix } from "../i18n";
+
+export const prerender = false;
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+const copy = getSiteCopy(lang);
+
+// Pull up to 3 upcoming events so travelers can plan their night
+const todayIso = new Date().toISOString().slice(0, 10);
+let upcoming: any[] = [];
+try {
+  const { data } = await supabaseAdmin
+    .from("events")
+    .select("id, title, title_el, event_date, event_time")
+    .eq("is_published", true)
+    .gte("event_date", todayIso)
+    .order("event_date", { ascending: true })
+    .limit(3);
+  upcoming = data ?? [];
+} catch {}
+
+function fmtDate(d: string) {
+  return new Date(d + "T00:00:00").toLocaleDateString(isEl ? "el-GR" : "en-GB", {
+    weekday: "short", day: "numeric", month: "short",
+  });
+}
+
+const title = (isEl ? "Επισκεφτείτε το Sally's Bar" : "Visit Sally's Bar") + " — " + copy.addressShort;
+const description = isEl
+  ? `Μόλις φτάσατε στην Κεφαλονιά; Περάστε από το Sally's Bar στη Σκάλα — κοκτέιλ, μουσική, άνθρωποι. ${copy.hoursText}.`
+  : `Just arrived in Kefalonia? Drop in at Sally's Bar in Skala — cocktails, music, good people. ${copy.hoursText}.`;
+
+const rating = site.ratings?.google;
+---
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={`https://sallysbar.gr${isEl ? "/el" : ""}/visit`} />
+    <meta property="og:title" content={isEl ? "Sally's Bar — Σκάλα Κεφαλονιάς" : "Sally's Bar — Skala, Kefalonia"} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content="https://sallysbar.gr/hero/1-hero.webp" />
+    <meta property="og:type" content="website" />
+  </head>
+  <body class="min-h-screen bg-[#0a0a0f] text-white font-body antialiased">
+    <Header />
+
+    <main class="mx-auto max-w-3xl px-5 py-10 pt-28">
+      <article class="rounded-3xl border border-white/10 bg-white/[0.03] overflow-hidden">
+        <img src="/hero/1-hero.webp" alt="Sally's Bar" class="w-full aspect-[16/9] object-cover bg-black/40" loading="eager" />
+
+        <div class="p-6 md:p-8 space-y-5">
+          <header>
+            <p class="text-[10px] uppercase tracking-[0.26em] text-amber-200/80 mb-2">
+              {isEl ? "Μόλις φτάσατε στην Κεφαλονιά;" : "Just arrived in Kefalonia?"}
+            </p>
+            <h1 class="font-heading text-3xl md:text-5xl font-bold leading-tight bg-gradient-to-br from-white via-amber-50 to-amber-200/80 bg-clip-text text-transparent">
+              {isEl ? "Ελάτε στο Sally's Bar" : "Come say hi at Sally's Bar"}
+            </h1>
+            <p class="mt-3 text-base md:text-lg text-white/80 leading-relaxed">{copy.tagline}</p>
+          </header>
+
+          <div class="grid grid-cols-2 gap-3 text-sm">
+            <div class="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-3">
+              <p class="text-[10px] uppercase tracking-wider text-white/50">{isEl ? "Διεύθυνση" : "Address"}</p>
+              <p class="mt-1 text-white/90 font-medium">{copy.addressShort}</p>
+              <p class="text-[11px] text-white/50">{isEl ? "Κεντρική πλατεία Σκάλας" : "Main square, Skala"}</p>
+            </div>
+            <div class="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-3">
+              <p class="text-[10px] uppercase tracking-wider text-white/50">{isEl ? "Ώρες" : "Hours"}</p>
+              <p class="mt-1 text-white/90 font-medium">{site.hours.opens}–{site.hours.closes}</p>
+              <p class="text-[11px] text-white/50">{isEl ? "Καθημερινά (καλοκαίρι)" : "Daily (summer)"}</p>
+            </div>
+            <div class="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-3">
+              <p class="text-[10px] uppercase tracking-wider text-white/50">{isEl ? "Από αεροδρόμιο" : "From airport"}</p>
+              <p class="mt-1 text-white/90 font-medium">~50 min</p>
+              <p class="text-[11px] text-white/50">{isEl ? "με αυτοκίνητο / ταξί" : "by car / taxi"}</p>
+            </div>
+            <div class="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-3">
+              <p class="text-[10px] uppercase tracking-wider text-white/50">{isEl ? "Αξιολόγηση" : "Rating"}</p>
+              <p class="mt-1 text-white/90 font-medium">⭐ {rating?.rating} / 5</p>
+              <p class="text-[11px] text-white/50">{rating?.count} {isEl ? "κριτικές Google" : "Google reviews"}</p>
+            </div>
+          </div>
+
+          {description && (
+            <p class="text-sm text-white/75 leading-relaxed pt-2 border-t border-white/10">{copy.description}</p>
+          )}
+
+          <div class="grid sm:grid-cols-2 gap-2 pt-2">
+            <a href={site.mapsShareUrl} target="_blank" rel="noopener" class="text-center text-sm rounded-xl bg-gradient-to-br from-amber-300 to-amber-500 text-black font-bold px-4 py-3.5 shadow-lg shadow-amber-500/20 active:scale-[0.99] transition">
+              📍 {isEl ? "Οδηγίες στο Sally's" : "Get directions"}
+            </a>
+            <a href={`tel:${site.phoneE164}`} class="text-center text-sm rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-white/90 px-4 py-3.5 font-medium transition">
+              📞 {site.phoneDisplay}
+            </a>
+            <a href={withLangPrefix(lang, "/menu")} class="text-center text-sm rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-white/85 px-4 py-3 font-medium transition">
+              📜 {isEl ? "Δες το μενού" : "View the menu"}
+            </a>
+            <a href={withLangPrefix(lang, "/book")} class="text-center text-sm rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-white/85 px-4 py-3 font-medium transition">
+              🍸 {isEl ? "Κράτηση τραπεζιού" : "Book a table"}
+            </a>
+            <a href={site.reviews.googleUrl} target="_blank" rel="noopener" class="text-center text-sm rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-white/85 px-4 py-3 font-medium transition">
+              ⭐ {isEl ? "Κριτικές Google" : "Google reviews"}
+            </a>
+            <a href={site.socials.instagram} target="_blank" rel="noopener" class="text-center text-sm rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-white/85 px-4 py-3 font-medium transition">
+              📸 Instagram
+            </a>
+          </div>
+
+          {upcoming.length > 0 && (
+            <div class="pt-4 border-t border-white/10">
+              <p class="text-[10px] uppercase tracking-wider text-amber-200/80 mb-2">{isEl ? "Επόμενες βραδιές" : "What's on"}</p>
+              <ul class="space-y-1.5">
+                {upcoming.map(ev => {
+                  const t = isEl ? (ev.title_el ?? ev.title) : (ev.title ?? ev.title_el);
+                  return (
+                    <li class="flex items-center justify-between gap-2 text-sm">
+                      <span class="text-white/85">🎵 {t}</span>
+                      <span class="text-white/50 text-xs whitespace-nowrap">{fmtDate(ev.event_date)}{ev.event_time ? ` · ${ev.event_time.slice(0,5)}` : ""}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+        </div>
+      </article>
+    </main>
+
+    <Footer />
+  </body>
+</html>

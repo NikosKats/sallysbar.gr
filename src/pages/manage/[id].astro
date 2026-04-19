@@ -1,0 +1,170 @@
+---
+import "../../styles/global.css";
+import { supabaseAdmin } from "../../lib/supabase";
+import { verifyBookingToken, getBookingSecret } from "../../lib/booking-tokens";
+import { site } from "../../data/site";
+
+export const prerender = false;
+
+const id = String(Astro.params.id ?? "").trim();
+const token = new URL(Astro.request.url).searchParams.get("t") ?? "";
+
+// Gate: valid-looking UUID + valid HMAC signature
+const uuidLike = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+let ok = uuidLike.test(id);
+if (ok) ok = await verifyBookingToken(id, token, getBookingSecret(Astro.locals));
+
+let r: any = null;
+if (ok) {
+  const { data } = await supabaseAdmin
+    .from("reservations")
+    .select("id, name, phone, email, date, time, party_size, notes, status, source, created_at")
+    .eq("id", id)
+    .maybeSingle();
+  r = data;
+}
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+
+function fmtDate(d: string) {
+  return new Date(`${d}T00:00:00`).toLocaleDateString(isEl ? "el-GR" : "en-GB", {
+    weekday: "long", day: "numeric", month: "long", year: "numeric",
+  });
+}
+
+const statusCopy: Record<string, { en: string; el: string; color: string }> = {
+  confirmed: { en: "Confirmed",   el: "Επιβεβαιωμένη", color: "emerald" },
+  pending:   { en: "Pending",     el: "Εκκρεμής",       color: "amber" },
+  pending_ai:{ en: "Pending AI review", el: "Εκκρεμεί έλεγχος AI", color: "violet" },
+  cancelled: { en: "Cancelled",   el: "Ακυρωμένη",      color: "rose" },
+  rejected:  { en: "Rejected",    el: "Απορρίφθηκε",    color: "rose" },
+};
+
+const now = new Date();
+const bookingDateTime = r ? new Date(`${r.date}T${r.time}:00+03:00`) : null;
+const isFuture = bookingDateTime ? bookingDateTime.getTime() > now.getTime() : false;
+const cancellable = r && isFuture && ["confirmed", "pending", "pending_ai"].includes(r.status);
+---
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{isEl ? "Η κράτησή σας" : "Your booking"} — Sally's Bar</title>
+    <meta name="robots" content="noindex,nofollow" />
+  </head>
+  <body class="min-h-screen bg-[#0a0a0f] text-white font-body antialiased">
+    <main class="mx-auto max-w-lg px-5 py-10 md:py-16">
+      <a href="/" class="inline-flex items-center gap-2 text-xs uppercase tracking-[0.22em] text-amber-200/80 hover:text-amber-200 mb-6">
+        ← Sally's Bar
+      </a>
+
+      {!ok || !r ? (
+        <div class="rounded-2xl border border-rose-400/30 bg-rose-500/[0.08] p-6">
+          <h1 class="font-heading text-2xl font-bold text-rose-200 mb-2">{isEl ? "Μη έγκυρος σύνδεσμος" : "Invalid link"}</h1>
+          <p class="text-sm text-white/70">
+            {isEl
+              ? "Ο σύνδεσμος έχει λήξει ή δεν είναι σωστός. Αν χρειάζεστε βοήθεια με την κράτησή σας, καλέστε μας στο "
+              : "This link is invalid or expired. For help with your booking please call "}
+            <a class="text-amber-300 hover:underline" href={`tel:${site.phoneE164}`}>{site.phoneDisplay}</a>.
+          </p>
+        </div>
+      ) : (
+        <>
+          <p class="text-[10px] uppercase tracking-[0.28em] text-amber-200/80 mb-2">{isEl ? "Η κράτησή σας" : "Your booking"}</p>
+          <h1 class="font-heading text-3xl md:text-4xl font-bold leading-tight bg-gradient-to-br from-white via-amber-50 to-amber-200/80 bg-clip-text text-transparent mb-6">
+            Sally's Bar · Skala
+          </h1>
+
+          <div class="rounded-2xl border border-white/10 bg-white/[0.04] p-5 space-y-3">
+            <div class="flex items-center justify-between gap-2 pb-2 border-b border-white/10">
+              <p class="text-sm font-semibold">{r.name}</p>
+              {(() => {
+                const sc = statusCopy[r.status] ?? statusCopy.pending;
+                const label = isEl ? sc.el : sc.en;
+                return <span class={`text-[11px] font-semibold rounded-full border px-2.5 py-1 border-${sc.color}-400/40 bg-${sc.color}-500/15 text-${sc.color}-200`}>{label}</span>;
+              })()}
+            </div>
+            <div class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 text-sm">
+              <span class="text-white/50">{isEl ? "Ημερομηνία" : "Date"}</span><span class="text-white/90">{fmtDate(r.date)}</span>
+              <span class="text-white/50">{isEl ? "Ώρα" : "Time"}</span><span class="text-white/90">{r.time}</span>
+              <span class="text-white/50">{isEl ? "Άτομα" : "Party"}</span><span class="text-white/90">{r.party_size}</span>
+              {r.phone && (<><span class="text-white/50">{isEl ? "Τηλέφωνο" : "Phone"}</span><span class="text-white/90">{r.phone}</span></>)}
+              {r.notes && (<><span class="text-white/50">{isEl ? "Σημειώσεις" : "Notes"}</span><span class="text-white/90 italic">{r.notes}</span></>)}
+            </div>
+          </div>
+
+          <div class="mt-4 grid grid-cols-2 gap-3">
+            <a href={site.mapsShareUrl} target="_blank" rel="noopener" class="flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-white/85 hover:text-amber-200 px-4 py-3 text-sm font-medium transition">
+              📍 {isEl ? "Οδηγίες" : "Directions"}
+            </a>
+            <a href={`tel:${site.phoneE164}`} class="flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-white/85 hover:text-amber-200 px-4 py-3 text-sm font-medium transition">
+              📞 {isEl ? "Κάλεσε" : "Call us"}
+            </a>
+          </div>
+
+          <a href={site.reviews.googleUrl} target="_blank" rel="noopener" class="mt-3 flex items-center justify-center gap-2 rounded-xl border border-amber-400/40 bg-gradient-to-br from-amber-400/15 to-amber-500/10 hover:from-amber-400/25 hover:to-amber-500/20 text-amber-100 px-4 py-3 text-sm font-semibold transition">
+            ⭐ {isEl ? "Αφήστε μια αξιολόγηση στο Google" : "Leave a Google review"}
+          </a>
+
+          {cancellable ? (
+            <form id="cancelForm" class="mt-6">
+              <input type="hidden" name="id" value={r.id} />
+              <input type="hidden" name="t" value={token} />
+              <button type="submit" id="cancelBtn" class="w-full rounded-xl border border-rose-400/40 bg-rose-500/15 hover:bg-rose-500/25 text-rose-200 px-4 py-3 text-sm font-semibold transition">
+                {isEl ? "Ακύρωση κράτησης" : "Cancel booking"}
+              </button>
+              <p id="cancelMsg" class="mt-2 text-xs text-white/50 text-center"></p>
+            </form>
+          ) : (
+            r.status === "cancelled" || r.status === "rejected" ? (
+              <p class="mt-6 text-xs text-white/50 text-center">{isEl ? "Αυτή η κράτηση έχει ακυρωθεί." : "This booking has been cancelled."}</p>
+            ) : !isFuture ? (
+              <p class="mt-6 text-xs text-white/50 text-center">{isEl ? "Η ημερομηνία έχει παρέλθει." : "This booking is in the past."}</p>
+            ) : null
+          )}
+
+          <p class="mt-8 text-[11px] text-white/40 text-center leading-relaxed">
+            {isEl
+              ? `Χρειάζεστε αλλαγή; Απαντήστε STOP για να σταματήσετε τα SMS ή καλέστε μας στο ${site.phoneDisplay}.`
+              : `Need to change something else? Reply STOP to opt out of SMS or call us on ${site.phoneDisplay}.`}
+          </p>
+        </>
+      )}
+    </main>
+
+    {ok && r && cancellable && (
+      <script is:inline>
+        (function() {
+          const form = document.getElementById("cancelForm");
+          const btn  = document.getElementById("cancelBtn");
+          const msg  = document.getElementById("cancelMsg");
+          if (!form || !btn || !msg) return;
+          form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            if (!confirm("Cancel this booking?")) return;
+            btn.disabled = true; btn.textContent = "Cancelling…";
+            const fd = new FormData(form);
+            const body = { id: fd.get("id"), t: fd.get("t") };
+            try {
+              const res = await fetch("/api/booking/cancel", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(body),
+              });
+              const j = await res.json().catch(() => ({}));
+              if (!res.ok || !j.ok) throw new Error(j?.error || ("HTTP " + res.status));
+              msg.textContent = "✓ Cancelled.";
+              btn.textContent = "Cancelled";
+              setTimeout(() => location.reload(), 1200);
+            } catch (err) {
+              msg.textContent = "Failed: " + (err?.message || "error");
+              btn.disabled = false;
+              btn.textContent = "Cancel booking";
+            }
+          });
+        })();
+      </script>
+    )}
+  </body>
+</html>

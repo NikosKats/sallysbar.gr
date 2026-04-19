@@ -1,0 +1,7 @@
+---
+export const prerender = false;
+
+// Deprecated — replaced by the partner-agnostic /admin/partners/<slug> page.
+// Kept as a redirect so any bookmarks keep working.
+return Astro.redirect("/admin/partners/helens", 301);
+---

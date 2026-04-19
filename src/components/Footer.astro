@@ -51,7 +51,15 @@ const brandSocials = [
       <!-- Brand -->
       <div>
         <a href={withLangPrefix(lang, "/")} class="inline-flex items-center gap-2">
-          <img src="/icon-customer-192.png" width="36" height="36" alt={site.name} class="rounded-xl" loading="lazy" />
+          <img
+            src="/logo/logo-64.webp"
+            srcset="/logo/logo-64.webp 1x, /logo/logo-128.webp 2x"
+            alt="Sally's Bar logo"
+            width="36" height="36"
+            class="h-9 w-9 rounded-md object-contain"
+            loading="lazy"
+            decoding="async"
+          />
           <span class="font-heading text-lg font-bold">{site.name}</span>
         </a>
         <p class="mt-3 text-sm text-white/55 leading-relaxed max-w-xs">{copy.tagline}</p>

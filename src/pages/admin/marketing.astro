@@ -66,6 +66,26 @@ const presets = [
   { key: "uk", name: isEl ? "🇬🇧 UK Visitors Welcome" : "🇬🇧 UK Visitors Welcome", emoji: "🇬🇧",
     desc: isEl ? "Αγγλικό landing για travel magazines." : "English landing for travel-mag ads.",
     target: `${origin}/?lang=en`, source: "travel-mag", medium: "print", campaign: "uk-tourists" },
+  { key: "helens-welcome", name: isEl ? "🍹 Καλωσόρισμα Helen's (Δωρεάν Ποτό)" : "🍹 Helen's Welcome (Free Drink)", emoji: "🍹",
+    desc: isEl
+      ? "Κάρτα A6 στα δωμάτια της Helen's. Επισκέπτης σκανάρει → εγγραφή στην κάρτα Sally's → δωρεάν ποτό. Κείμενο: «Welcome from Helen's & Sally's — Your first cocktail is on us 🍹  Scan → sign up → show the code at the bar.»"
+      : "A6 card in every Helen's room. Guest scans → signs up for Sally's loyalty → free welcome drink. Card copy: «Welcome from Helen's & Sally's — Your first cocktail is on us 🍹  Scan → sign up → show the code at the bar.»",
+    target: `${origin}/welcome/helens`, source: "helens-room", medium: "qr", campaign: "helens-welcome" },
+  { key: "arrivals", name: isEl ? "✈️ Άφιξη στο αεροδρόμιο — «Έλα στο Sally's»" : "✈️ Just landed at the airport — \"Come to Sally's\"", emoji: "✈️",
+    desc: isEl
+      ? "Αφίσα A4 για αεροδρόμιο, taxi ουρά, ενοικιάσεις αυτοκινήτων. Επιβάτης σκανάρει → βλέπει πλήρη πληροφορία για το Sally's + οδηγίες. Κείμενο: «Φτάνεις στην Κεφαλονιά; Ελα για ένα ποτό στο Sally's Bar — Σκάλα · 50 λεπτά με αυτοκίνητο». Στοχεύει τουρίστες που μόλις έφτασαν και δεν έχουν ακόμα αποφασίσει τι θα κάνουν απόψε."
+      : "A4 poster for the airport, taxi queue, car-rental desks. Traveller scans → lands on full Sally's info page with directions. Copy: «Just landed in Kefalonia? Come say hi at Sally's Bar — Skala · ~50 min drive». Targets travellers who just arrived and haven't decided their evening yet.",
+    target: `${origin}/visit`, source: "airport", medium: "qr", campaign: "arrivals" },
+  { key: "port-arrivals", name: isEl ? "🚢 Στο λιμάνι — «Έλα στο Sally's»" : "🚢 Just docked — \"Come to Sally's\"", emoji: "🚢",
+    desc: isEl
+      ? "Αφίσα A4 για Σάμη, Αργοστόλι, Πόρο — λιμεναρχεία, ferry terminals, cruise dock, info kiosk. Επιβάτης/ναύτης σκανάρει → πλήρης σελίδα Sally's + οδηγίες. Ιδανικό για επιβάτες κρουαζιέρας με λίγες ώρες στο νησί και ferry επιβάτες που ψάχνουν πού να πάνε απόψε."
+      : "A4 poster for Sami, Argostoli, Poros — port authority, ferry terminals, cruise dock, tourist info kiosk. Passenger scans → full Sally's page with directions. Perfect for cruise guests with a few hours on the island and ferry arrivals figuring out where to go tonight.",
+    target: `${origin}/visit`, source: "port", medium: "qr", campaign: "port-arrivals" },
+  { key: "our-partners", name: isEl ? "🤝 Οι Συνεργάτες μας" : "🤝 Our Partners", emoji: "🤝",
+    desc: isEl
+      ? "QR στη Sally's (σουβέρ / γάμπα αποδείξεων / menu) προς τη δημόσια λίστα συνεργατών. Βοηθά τουρίστες να βρουν καταλύματα συνεργάτες (και να κλείνουν direct, χωρίς προμήθεια OTA). Δεν αποκαλύπτει το δώρο — αυτό μένει μόνο για όσους σκανάρουν το δωμάτιο."
+      : "QR inside Sally's (coasters / receipt / menu) pointing to the public partners directory. Helps tourists find partner apartments (and book direct — saves the OTA commission). Doesn't reveal the gift — that's still only unlocked by in-room QR.",
+    target: `${origin}/partners`, source: "bar", medium: "qr", campaign: "our-partners" },
 ];
 ---
 

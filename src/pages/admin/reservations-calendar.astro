@@ -1,0 +1,495 @@
+---
+import "../../styles/global.css";
+import Header from "../../components/Header.astro";
+import AdminNav from "../../components/AdminNav.astro";
+import { supabaseAdmin } from "../../lib/supabase";
+import { dict, withLangPrefix } from "../../i18n";
+import { site } from "../../data/site";
+
+const DAILY_CAPACITY = site.dailyTableCapacity ?? 20;
+
+const lang = Astro.locals.lang ?? "en";
+const t    = dict[lang];
+const isEl = lang === "el";
+
+// --- Parse month (defaults to current, allows browsing past AND future) ---
+const url    = new URL(Astro.request.url);
+const mParam = url.searchParams.get("m");
+const now    = new Date();
+let year  = now.getFullYear();
+let month = now.getMonth(); // 0-indexed
+
+if (mParam && /^\d{4}-\d{2}$/.test(mParam)) {
+  const parts = mParam.split("-").map(Number);
+  year  = parts[0];
+  month = parts[1] - 1;
+}
+
+const monthStart = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+const monthEndDate = new Date(year, month + 1, 0).getDate();
+const monthEnd   = `${year}-${String(month + 1).padStart(2, "0")}-${String(monthEndDate).padStart(2, "0")}`;
+
+// --- Fetch reservations for this month (keyed by reservation date, not created_at) ---
+const { data: rawRes } = await supabaseAdmin
+  .from("reservations")
+  .select("id, name, email, phone, date, time, party_size, notes, status, source, created_at")
+  .gte("date", monthStart)
+  .lte("date", monthEnd)
+  .order("date", { ascending: true })
+  .order("time", { ascending: true })
+  .limit(2000);
+
+const reservations = rawRes ?? [];
+
+// --- Group by date ---
+type Reservation = typeof reservations[number];
+const dayMap = new Map<string, Reservation[]>();
+for (const r of reservations) {
+  const iso = r.date;
+  if (!dayMap.has(iso)) dayMap.set(iso, []);
+  dayMap.get(iso)!.push(r);
+}
+
+// --- Today ISO (in local time) ---
+const todayIso = now.getFullYear() + "-" +
+  String(now.getMonth() + 1).padStart(2, "0") + "-" +
+  String(now.getDate()).padStart(2, "0");
+
+// --- Build per-day stats ---
+const daysInMonth = monthEndDate;
+
+type DayStat = {
+  iso: string; dayNum: number;
+  total: number; pending: number; pendingAi: number; confirmed: number; cancelled: number;
+  active: number; isFull: boolean;
+  totalGuests: number;
+  isToday: boolean; isPast: boolean;
+  bgStyle: string; borderStyle: string; opacityStyle: string; dayNumStyle: string;
+};
+
+const dayStats: DayStat[] = [];
+for (let d = 1; d <= daysInMonth; d++) {
+  const iso = year + "-" + String(month + 1).padStart(2, "0") + "-" + String(d).padStart(2, "0");
+  const list = dayMap.get(iso) ?? [];
+  const pending   = list.filter(r => r.status === "pending").length;
+  const pendingAi = list.filter(r => r.status === "pending_ai").length;
+  const confirmed = list.filter(r => r.status === "confirmed").length;
+  const cancelled = list.filter(r => r.status === "cancelled").length;
+  const totalGuests = list
+    .filter(r => r.status !== "cancelled")
+    .reduce((s, r) => s + (r.party_size ?? 0), 0);
+
+  const active = pending + pendingAi + confirmed;
+  dayStats.push({
+    iso, dayNum: d,
+    total: list.length, pending, pendingAi, confirmed, cancelled, totalGuests,
+    active, isFull: active >= DAILY_CAPACITY,
+    isToday: iso === todayIso,
+    isPast:  iso < todayIso,
+    bgStyle: "", borderStyle: "", opacityStyle: "", dayNumStyle: "",
+  });
+}
+
+// Intensity based on guest count (warmer if more guests)
+const maxGuests = Math.max(...dayStats.map(d => d.totalGuests), 1);
+for (const d of dayStats) {
+  const i = d.totalGuests > 0 ? Math.round((d.totalGuests / maxGuests) * 100) : 0;
+  const bgA = d.totalGuests > 0 ? (0.04 + i * 0.0025).toFixed(3) : "0.02";
+  const bC  = d.isFull
+    ? "rgba(244,63,94,0.7)" // red ring when fully booked
+    : d.isToday
+      ? "rgba(251,191,36,0.7)"
+      : d.pendingAi > 0
+        ? "rgba(167,139,250,0.55)" // violet ring when AI-pending present
+        : d.pending > 0
+          ? "rgba(251,191,36,0.35)"
+          : d.totalGuests > 0
+            ? "rgba(74,222,128," + (0.1 + i * 0.003).toFixed(3) + ")"
+            : "rgba(255,255,255,0.06)";
+  const bW = d.isFull ? "2px" : d.isToday ? "2px" : d.pendingAi > 0 || d.pending > 0 ? "1.5px" : "1px";
+  d.bgStyle      = "background:rgba(251,191,36," + bgA + ")";
+  d.borderStyle  = "border:" + bW + " solid " + bC;
+  d.opacityStyle = d.isPast ? "opacity:0.5" : "";
+  d.dayNumStyle  = d.isToday
+    ? "color:#fbbf24;font-weight:700"
+    : d.isPast ? "color:rgba(255,255,255,0.35)" : "color:rgba(255,255,255,0.85)";
+}
+
+// --- Build calendar weeks (Monday-first) ---
+// new Date(...).getDay() returns 0=Sun..6=Sat; convert to 0=Mon..6=Sun
+const firstDow0 = new Date(year, month, 1).getDay();
+const firstDow  = (firstDow0 + 6) % 7;
+const flatDays: (DayStat | null)[] = [...Array(firstDow).fill(null), ...dayStats];
+while (flatDays.length % 7 !== 0) flatDays.push(null);
+
+type Week = { days: (DayStat | null)[]; totalRes: number; totalGuests: number };
+const weeks: Week[] = [];
+for (let wi = 0; wi < flatDays.length / 7; wi++) {
+  const wDays = flatDays.slice(wi * 7, wi * 7 + 7);
+  const totalRes = wDays.reduce((s, d) => s + (d?.total ?? 0), 0);
+  const totalGuests = wDays.reduce((s, d) => s + (d?.totalGuests ?? 0), 0);
+  weeks.push({ days: wDays, totalRes, totalGuests });
+}
+
+// --- Month KPIs ---
+const monthTotal      = dayStats.reduce((s, d) => s + d.total, 0);
+const monthGuests     = dayStats.reduce((s, d) => s + d.totalGuests, 0);
+const monthPending    = dayStats.reduce((s, d) => s + d.pending + d.pendingAi, 0);
+const monthConfirmed  = dayStats.reduce((s, d) => s + d.confirmed, 0);
+
+// --- Month label ---
+const monthNamesArr = isEl
+  ? ["Ιανουάριος","Φεβρουάριος","Μάρτιος","Απρίλιος","Μάιος","Ιούνιος",
+     "Ιούλιος","Αύγουστος","Σεπτέμβριος","Οκτώβριος","Νοέμβριος","Δεκέμβριος"]
+  : ["January","February","March","April","May","June",
+     "July","August","September","October","November","December"];
+const monthLabel = monthNamesArr[month] + " " + year;
+
+// --- Prev / next params ---
+let prevY = year, prevM = month - 1;
+if (prevM < 0) { prevM = 11; prevY--; }
+let nextY = year, nextM = month + 1;
+if (nextM > 11) { nextM = 0; nextY++; }
+
+const prevParam = prevY + "-" + String(prevM + 1).padStart(2, "0");
+const nextParam = nextY + "-" + String(nextM + 1).padStart(2, "0");
+
+const baseUrl       = withLangPrefix(lang, "/admin/reservations-calendar");
+const prevLink      = baseUrl + "?m=" + prevParam;
+const nextLink      = baseUrl + "?m=" + nextParam;
+const thisMonthLink = baseUrl;
+
+// --- Day headers (Monday-first) ---
+const dayHeaders = isEl
+  ? ["Δευ","Τρί","Τετ","Πέμ","Παρ","Σαβ","Κυρ"]
+  : ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+
+// --- Detail data for JS panel ---
+type DetailRec = {
+  total: number; pending: number; pendingAi: number; confirmed: number; cancelled: number;
+  totalGuests: number;
+  reservations: {
+    id: string; name: string; phone: string; email: string;
+    time: string; party_size: number;
+    notes: string; status: string; source: string;
+  }[];
+};
+const detailData: Record<string, DetailRec> = {};
+for (const [iso, list] of dayMap.entries()) {
+  detailData[iso] = {
+    total: list.length,
+    pending:   list.filter(r => r.status === "pending").length,
+    pendingAi: list.filter(r => r.status === "pending_ai").length,
+    confirmed: list.filter(r => r.status === "confirmed").length,
+    cancelled: list.filter(r => r.status === "cancelled").length,
+    totalGuests: list.filter(r => r.status !== "cancelled").reduce((s, r) => s + (r.party_size ?? 0), 0),
+    reservations: list.map(r => ({
+      id: r.id,
+      name: r.name ?? "",
+      phone: r.phone ?? "",
+      email: r.email ?? "",
+      time: r.time ?? "",
+      party_size: r.party_size ?? 0,
+      notes: r.notes ?? "",
+      status: r.status ?? "pending",
+      source: r.source ?? "web",
+    })),
+  };
+}
+const detailDataJson = JSON.stringify(detailData);
+---
+
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{isEl ? "Ημερολόγιο Κρατήσεων" : "Reservations Calendar"} — Sally's Bar</title>
+    <meta name="robots" content="noindex,nofollow" />
+    <style>
+      .day-cell {
+        cursor: pointer;
+        border-radius: .75rem;
+        padding: .5rem;
+        min-height: 5.5rem;
+        display: flex;
+        flex-direction: column;
+        transition: transform .1s, filter .1s;
+      }
+      .day-cell:hover  { filter: brightness(1.25); transform: translateY(-1px); }
+      .day-cell.active { outline: 2px solid rgba(251,191,36,.9); outline-offset: 1px; }
+      .day-cell.empty  { cursor: default; }
+      .day-cell.empty:hover { filter: none; transform: none; }
+      /* Detail panel */
+      #panel {
+        position: fixed; top: 0; right: 0;
+        height: 100dvh; width: min(440px, 100vw);
+        background: #16161f;
+        border-left: 1px solid rgba(255,255,255,.1);
+        transform: translateX(100%);
+        transition: transform .25s cubic-bezier(.4,0,.2,1);
+        z-index: 200;
+        display: flex; flex-direction: column;
+        overflow: hidden;
+      }
+      #panel.open { transform: translateX(0); }
+      #panelBody  { overflow-y: auto; flex: 1; }
+      #overlay {
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,.55);
+        z-index: 199; display: none; cursor: pointer;
+      }
+      #overlay.open { display: block; }
+      .pill {
+        display: inline-flex; align-items: center; gap: .25rem;
+        padding: .125rem .4rem; border-radius: 999px;
+        font-size: 10px; font-weight: 600; line-height: 1;
+      }
+    </style>
+  </head>
+  <body class="min-h-screen bg-[#0b0b10] text-white">
+    <Header />
+    <div class="h-20"></div>
+
+    <AdminNav active="reservations-calendar" />
+
+    <main class="mx-auto max-w-7xl px-4 py-6 space-y-6">
+
+      <!-- Month nav + KPIs -->
+      <div class="flex items-center justify-between flex-wrap gap-4">
+        <div class="flex items-center gap-2">
+          <a href={prevLink} class="flex items-center justify-center w-9 h-9 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition text-white/60 hover:text-white text-xl leading-none">‹</a>
+          <h1 class="text-xl font-bold text-white min-w-[11rem] text-center">{monthLabel}</h1>
+          <a href={nextLink} class="flex items-center justify-center w-9 h-9 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition text-white/60 hover:text-white text-xl leading-none">›</a>
+          <a href={thisMonthLink} class="ml-2 text-xs rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 transition px-3 py-2 text-white/70 hover:text-white">
+            {isEl ? "Τρέχων μήνας" : "This month"}
+          </a>
+        </div>
+
+        <div class="flex items-center gap-2 flex-wrap">
+          <div class="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+            <p class="text-[10px] uppercase tracking-wider text-white/50">{isEl ? "Κρατήσεις" : "Reservations"}</p>
+            <p class="text-sm font-semibold text-amber-200">{monthTotal}</p>
+          </div>
+          <div class="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+            <p class="text-[10px] uppercase tracking-wider text-white/50">{isEl ? "Άτομα" : "Guests"}</p>
+            <p class="text-sm font-semibold text-emerald-300">{monthGuests}</p>
+          </div>
+          <div class="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+            <p class="text-[10px] uppercase tracking-wider text-white/50">{isEl ? "Εκκρεμούν" : "Pending"}</p>
+            <p class="text-sm font-semibold text-violet-300">{monthPending}</p>
+          </div>
+          <div class="rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+            <p class="text-[10px] uppercase tracking-wider text-white/50">{isEl ? "Επιβεβ." : "Confirmed"}</p>
+            <p class="text-sm font-semibold text-emerald-400">{monthConfirmed}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Calendar grid -->
+      <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-3 sm:p-4">
+        <div class="grid grid-cols-7 gap-1 sm:gap-2 mb-2">
+          {dayHeaders.map(h => (
+            <div class="text-center text-[10px] uppercase tracking-wider text-white/40 font-semibold py-1">{h}</div>
+          ))}
+        </div>
+
+        <div class="space-y-1 sm:space-y-2">
+          {weeks.map(w => (
+            <div class="grid grid-cols-7 gap-1 sm:gap-2">
+              {w.days.map(d => d ? (
+                <button
+                  type="button"
+                  class="day-cell text-left"
+                  data-iso={d.iso}
+                  style={`${d.bgStyle};${d.borderStyle};${d.opacityStyle}`}
+                >
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="text-xs" style={d.dayNumStyle}>{d.dayNum}</span>
+                    {d.total > 0 && (
+                      <span class="text-[10px] font-semibold text-white/70">{d.active}/{DAILY_CAPACITY}</span>
+                    )}
+                  </div>
+                  {d.total > 0 ? (
+                    <div class="flex flex-wrap gap-0.5 mt-auto">
+                      {d.isFull && <span class="pill bg-rose-500/30 text-rose-100 font-bold">{isEl ? "ΓΕΜΑΤΟ" : "FULL"}</span>}
+                      {d.pendingAi > 0 && <span class="pill bg-violet-500/20 text-violet-200">🤖 {d.pendingAi}</span>}
+                      {d.pending   > 0 && <span class="pill bg-amber-500/20 text-amber-200">⏳ {d.pending}</span>}
+                      {d.confirmed > 0 && <span class="pill bg-emerald-500/20 text-emerald-200">✓ {d.confirmed}</span>}
+                      {d.cancelled > 0 && <span class="pill bg-red-500/15 text-red-200">✕ {d.cancelled}</span>}
+                    </div>
+                  ) : (
+                    <div class="mt-auto text-[10px] text-white/20">—</div>
+                  )}
+                </button>
+              ) : (
+                <div class="day-cell empty" style="background:transparent;border:1px dashed rgba(255,255,255,.05)"></div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <p class="text-xs text-white/40">
+        {isEl
+          ? "Πάτα σε μια ημέρα για να δεις τις κρατήσεις και να εγκρίνεις/ακυρώσεις."
+          : "Click a day to view reservations and confirm / cancel them."}
+      </p>
+    </main>
+
+    <!-- Detail panel -->
+    <div id="overlay"></div>
+    <aside id="panel" aria-hidden="true">
+      <header class="border-b border-white/10 px-4 py-3 flex items-center justify-between">
+        <div>
+          <p class="text-[10px] uppercase tracking-wider text-white/40">{isEl ? "Ημέρα" : "Day"}</p>
+          <p id="panelTitle" class="text-lg font-semibold text-amber-200">—</p>
+        </div>
+        <button id="panelClose" aria-label="Close" class="text-white/50 hover:text-white text-2xl leading-none">×</button>
+      </header>
+      <div id="panelBody" class="px-4 py-4 space-y-3"></div>
+    </aside>
+
+    <script is:inline define:vars={{ detailDataJson, lang, isEl }}>
+      (function () {
+        const data = JSON.parse(detailDataJson);
+        const panel   = document.getElementById("panel");
+        const overlay = document.getElementById("overlay");
+        const body    = document.getElementById("panelBody");
+        const title   = document.getElementById("panelTitle");
+        const closeBtn = document.getElementById("panelClose");
+
+        function openPanel(iso) {
+          const rec = data[iso] || { total: 0, reservations: [] };
+          const dateLabel = new Date(iso + "T00:00:00").toLocaleDateString(isEl ? "el-GR" : "en-GB", {
+            weekday: "long", day: "numeric", month: "short", year: "numeric",
+          });
+          title.textContent = dateLabel;
+          body.innerHTML = renderBody(rec, iso);
+          panel.classList.add("open");
+          panel.setAttribute("aria-hidden", "false");
+          overlay.classList.add("open");
+          document.body.style.overflow = "hidden";
+          document.querySelectorAll(".day-cell").forEach(el => el.classList.toggle("active", el.dataset.iso === iso));
+          wireActionButtons(iso);
+        }
+
+        function closePanel() {
+          panel.classList.remove("open");
+          panel.setAttribute("aria-hidden", "true");
+          overlay.classList.remove("open");
+          document.body.style.overflow = "";
+          document.querySelectorAll(".day-cell.active").forEach(el => el.classList.remove("active"));
+        }
+
+        function statusBadge(s) {
+          const map = {
+            "pending":    { cls: "bg-amber-500/20 text-amber-200",   label: isEl ? "Εκκρεμής" : "Pending" },
+            "pending_ai": { cls: "bg-violet-500/20 text-violet-200", label: isEl ? "🤖 Εκκρεμεί AI" : "🤖 AI pending" },
+            "confirmed":  { cls: "bg-emerald-500/20 text-emerald-200", label: isEl ? "Επιβεβαιωμένη" : "Confirmed" },
+            "cancelled":  { cls: "bg-red-500/15 text-red-200",        label: isEl ? "Ακυρωμένη" : "Cancelled" },
+          };
+          const v = map[s] || { cls: "bg-white/10 text-white/70", label: s };
+          return `<span class="pill ${v.cls}">${v.label}</span>`;
+        }
+
+        function esc(s) {
+          return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+        }
+
+        function renderBody(rec, iso) {
+          if (!rec || !rec.reservations?.length) {
+            return `<p class="text-sm text-white/50">${isEl ? "Καμία κράτηση για αυτή την ημέρα." : "No reservations for this day."}</p>`;
+          }
+          const summary = `
+            <div class="flex flex-wrap gap-1.5 text-xs">
+              ${rec.total       ? `<span class="pill bg-white/10 text-white/80">${rec.total} ${isEl ? "σύνολο" : "total"}</span>` : ""}
+              ${rec.totalGuests ? `<span class="pill bg-emerald-500/15 text-emerald-200">${rec.totalGuests} ${isEl ? "άτομα" : "guests"}</span>` : ""}
+              ${rec.pendingAi   ? `<span class="pill bg-violet-500/20 text-violet-200">🤖 ${rec.pendingAi}</span>` : ""}
+              ${rec.pending     ? `<span class="pill bg-amber-500/20 text-amber-200">⏳ ${rec.pending}</span>` : ""}
+              ${rec.confirmed   ? `<span class="pill bg-emerald-500/20 text-emerald-200">✓ ${rec.confirmed}</span>` : ""}
+              ${rec.cancelled   ? `<span class="pill bg-red-500/15 text-red-200">✕ ${rec.cancelled}</span>` : ""}
+            </div>
+          `;
+          const list = rec.reservations.map(r => {
+            const unresolved = r.status === "pending" || r.status === "pending_ai";
+            const notCancelled = r.status !== "cancelled";
+            const actions = `
+              <div class="flex flex-wrap gap-2 mt-2" data-id="${r.id}">
+                ${unresolved    ? `<button data-act="confirm" class="flex-1 min-w-[110px] rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/40 text-emerald-200 text-xs font-semibold px-2.5 py-1.5">✓ ${isEl ? "Επιβεβαίωση" : "Confirm"}</button>` : ""}
+                ${notCancelled  ? `<button data-act="cancel"  class="flex-1 min-w-[110px] rounded-lg bg-red-500/15 hover:bg-red-500/25 border border-red-400/30 text-red-200 text-xs font-semibold px-2.5 py-1.5">✕ ${isEl ? "Ακύρωση" : "Cancel"}</button>` : ""}
+              </div>
+            `;
+            return `
+              <article class="rounded-xl border border-white/10 bg-white/[0.04] p-3">
+                <div class="flex items-start justify-between gap-2">
+                  <div class="min-w-0">
+                    <p class="text-sm font-semibold text-white truncate">${esc(r.name || "—")}</p>
+                    <p class="text-xs text-white/60">${esc(r.time)} · ${r.party_size} ${isEl ? "άτομα" : "guests"}${r.source === "ai_voice" ? ` · <span class="text-violet-300">AI</span>` : ""}</p>
+                  </div>
+                  ${statusBadge(r.status)}
+                </div>
+                ${r.phone ? `<p class="text-xs text-white/60 mt-1">📞 <a class="hover:text-amber-200" href="tel:${esc(r.phone)}">${esc(r.phone)}</a></p>` : ""}
+                ${r.email ? `<p class="text-xs text-white/60">✉ <a class="hover:text-amber-200" href="mailto:${esc(r.email)}">${esc(r.email)}</a></p>` : ""}
+                ${r.notes ? `<p class="text-xs text-white/70 italic mt-1">📝 ${esc(r.notes)}</p>` : ""}
+                ${actions}
+                <p class="text-[10px] text-white/30 mt-2 font-mono">#${esc(r.id.slice(0, 8))}</p>
+              </article>
+            `;
+          }).join("");
+          return summary + `<div class="space-y-2">${list}</div>`;
+        }
+
+        async function patchReservation(id, status, btn) {
+          const orig = btn.textContent;
+          btn.disabled = true;
+          btn.textContent = "…";
+          try {
+            const res = await fetch("/api/admin/reservations", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ id, status }),
+            });
+            const j = await res.json().catch(() => ({}));
+            if (!res.ok || j?.error) throw new Error(j?.error || ("HTTP " + res.status));
+            // update local data then re-render
+            for (const iso of Object.keys(data)) {
+              const r = data[iso].reservations.find(x => x.id === id);
+              if (r) { r.status = status; break; }
+            }
+            // re-render current panel
+            const activeIso = document.querySelector(".day-cell.active")?.dataset.iso;
+            if (activeIso) {
+              body.innerHTML = renderBody(data[activeIso], activeIso);
+              wireActionButtons(activeIso);
+            }
+          } catch (e) {
+            alert((isEl ? "Απέτυχε: " : "Failed: ") + (e?.message || "error"));
+            btn.disabled = false;
+            btn.textContent = orig;
+          }
+        }
+
+        function wireActionButtons(iso) {
+          body.querySelectorAll("[data-id]").forEach(row => {
+            const id = row.dataset.id;
+            row.querySelectorAll("button[data-act]").forEach(btn => {
+              btn.addEventListener("click", () => {
+                const act = btn.dataset.act;
+                const newStatus = act === "confirm" ? "confirmed" : "cancelled";
+                if (act === "cancel" && !confirm(isEl ? "Σίγουρα ακύρωση;" : "Cancel this reservation?")) return;
+                patchReservation(id, newStatus, btn);
+              });
+            });
+          });
+        }
+
+        document.querySelectorAll(".day-cell[data-iso]").forEach(el => {
+          el.addEventListener("click", () => openPanel(el.dataset.iso));
+        });
+        closeBtn.addEventListener("click", closePanel);
+        overlay.addEventListener("click", closePanel);
+        document.addEventListener("keydown", e => { if (e.key === "Escape") closePanel(); });
+      })();
+    </script>
+  </body>
+</html>

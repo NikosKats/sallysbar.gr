@@ -44,6 +44,7 @@ export function getAdminNavGroups(lang: "en" | "el", t: any, role?: string | nul
     ]},
     { title: isEl ? "Λειτουργία" : "Operations", items: [
       { key: "reservations",        label: t.admin.nav.reservations,                       href: withLangPrefix(lang, "/admin/reservations"),        icon: I.reservations },
+      { key: "reservations-calendar", label: isEl ? "📅 Ημερολόγιο Κρατήσεων" : "📅 Reservations Calendar", href: withLangPrefix(lang, "/admin/reservations-calendar"), icon: I.calendar },
       { key: "events",              label: t.admin.nav.events,                             href: withLangPrefix(lang, "/admin/events"),              icon: I.events },
       { key: "orders",              label: t.admin.nav.orders,                             href: withLangPrefix(lang, "/admin/orders"),              icon: I.orders },
       { key: "tips",                label: t.admin.nav.tips,                               href: withLangPrefix(lang, "/admin/tips"),                icon: I.tips },
@@ -51,6 +52,7 @@ export function getAdminNavGroups(lang: "en" | "el", t: any, role?: string | nul
       { key: "marketing-analytics", label: isEl ? "Marketing Analytics" : "Marketing Analytics", href: withLangPrefix(lang, "/admin/marketing-analytics"), icon: I.analytics },
       { key: "marketing-automation", label: isEl ? "⚙️ Αυτοματισμοί Marketing" : "⚙️ Marketing Automation", href: withLangPrefix(lang, "/admin/marketing-automation"), icon: I.marketing },
       { key: "campaigns",             label: isEl ? "📣 CRM Καμπάνιες" : "📣 CRM Campaigns", href: withLangPrefix(lang, "/admin/campaigns"), icon: I.marketing },
+      { key: "partners",              label: isEl ? "🤝 Συνεργάτες" : "🤝 Partners", href: withLangPrefix(lang, "/admin/partners"), icon: I.users },
       { key: "inbox",                 label: isEl ? "📬 Εισερχόμενα" : "📬 Inbox", href: withLangPrefix(lang, "/admin/inbox"), icon: I.chat },
       { key: "ai-calls",               label: isEl ? "🤖 Συνομιλίες AI" : "🤖 AI Conversations", href: withLangPrefix(lang, "/admin/ai-calls"), icon: I.chat },
       { key: "social-links",          label: isEl ? "🔗 Social Links" : "🔗 Social Links", href: withLangPrefix(lang, "/admin/social-links"), icon: I.marketing },
@@ -74,6 +76,7 @@ export function getAdminNavGroups(lang: "en" | "el", t: any, role?: string | nul
       { key: "staff-new-order", label: t.user?.newOrder     ?? (isEl ? "Νέα Παραγγελία" : "New Order"),        href: withLangPrefix(lang, "/staff/order"), icon: I.newOrder },
       { key: "staff-chat",      label: isEl ? "Ομάδα (Chat)" : "Team Chat",                                    href: withLangPrefix(lang, "/staff/chat"),  icon: I.chat },
       { key: "staff-quest-review", label: isEl ? "🎯 Quest εγκρίσεις" : "🎯 Quest approvals",                  href: withLangPrefix(lang, "/staff/quest-review"), icon: I.quests },
+      { key: "staff-welcome",      label: isEl ? "🍹 Κωδικός Helen's" : "🍹 Helen's welcome code",              href: withLangPrefix(lang, "/staff/welcome"),      icon: I.loyalty },
     ]},
     { title: isEl ? "Σύστημα" : "System", items: [
       { key: "users",   label: t.admin.nav.users,                href: withLangPrefix(lang, "/admin/users"),   icon: I.users },

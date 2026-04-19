@@ -4,6 +4,9 @@ import Header from "../../components/Header.astro";
 import AdminNav from "../../components/AdminNav.astro";
 import { supabaseAdmin } from "../../lib/supabase";
 import { dict, withLangPrefix } from "../../i18n";
+import { site } from "../../data/site";
+
+const DAILY_CAPACITY = site.dailyTableCapacity ?? 20;
 
 const lang = Astro.locals.lang ?? "en";
 const t    = dict[lang];
@@ -72,7 +75,15 @@ const counts = {
 
       <!-- Header + filters -->
       <div class="flex flex-wrap items-center justify-between gap-4">
-        <h1 class="text-xl font-bold">{isEl ? "Κρατήσεις" : "Reservations"}</h1>
+        <div class="flex items-center gap-3">
+          <h1 class="text-xl font-bold">{isEl ? "Κρατήσεις" : "Reservations"}</h1>
+          <button id="newResBtn" type="button" class="rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-sm font-bold px-3 py-1.5 transition">
+            + {isEl ? "Νέα κράτηση" : "New reservation"}
+          </button>
+          <span class="text-xs text-white/40">
+            {isEl ? "Καπάκι: " : "Cap: "}{DAILY_CAPACITY}{isEl ? " τραπέζια/βράδυ" : " tables/night"}
+          </span>
+        </div>
         <form method="get" class="flex items-center gap-2 flex-wrap">
           <input
             type="date"
@@ -91,6 +102,29 @@ const counts = {
           )}
         </form>
       </div>
+
+      <!-- Test SMS panel — lets staff verify Vonage delivery without creating a booking -->
+      <details class="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+        <summary class="cursor-pointer text-sm text-white/70 flex items-center gap-2 list-none">
+          <span class="text-amber-300">📱</span>
+          <span class="font-medium">{isEl ? "Δοκιμαστικό SMS" : "Test SMS"}</span>
+          <span class="text-xs text-white/40 ml-auto">{isEl ? "Έλεγχος Vonage" : "Check Vonage delivery"}</span>
+        </summary>
+        <form id="testSmsForm" class="mt-3 flex flex-wrap items-end gap-2 text-sm">
+          <label class="flex-1 min-w-[200px]">
+            <span class="block text-xs text-white/50 mb-1">{isEl ? "Αριθμός (E.164)" : "Number (E.164)"}</span>
+            <input required type="tel" name="to" placeholder="+306943649190" class="w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2 font-mono text-sm" />
+          </label>
+          <label class="flex-[2] min-w-[260px]">
+            <span class="block text-xs text-white/50 mb-1">{isEl ? "Μήνυμα" : "Message"}</span>
+            <input required type="text" name="text" value={isEl ? "Δοκιμή SMS από Sally's Bar." : "Test SMS from Sally's Bar."} class="w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2 text-sm" />
+          </label>
+          <button type="submit" id="testSmsBtn" class="rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-sm font-bold px-4 py-2 transition">
+            {isEl ? "Αποστολή" : "Send"}
+          </button>
+        </form>
+        <p id="testSmsMsg" class="text-xs text-white/60 mt-2 min-h-[1em] font-mono break-all"></p>
+      </details>
 
       <!-- Status tabs -->
       <div class="flex items-center gap-2 flex-wrap text-sm">
@@ -159,6 +193,20 @@ const counts = {
                       </span>
                     </td>
                     <td class="px-4 py-3 text-right whitespace-nowrap">
+                      <button
+                        class="action-btn edit-btn text-xs px-2.5 py-1 rounded-lg border border-sky-400/30 text-sky-300 hover:bg-sky-400/10 transition mr-1"
+                        data-id={r.id}
+                        data-action="edit"
+                        data-name={r.name}
+                        data-email={r.email ?? ""}
+                        data-phone={r.phone ?? ""}
+                        data-date={r.date}
+                        data-time={r.time}
+                        data-party={r.party_size}
+                        data-notes={r.notes ?? ""}
+                      >
+                        {isEl ? "Επεξ." : "Edit"}
+                      </button>
                       {r.status !== "confirmed" && (
                         <button
                           class="action-btn confirm-btn text-xs px-2.5 py-1 rounded-lg border border-green-400/30 text-green-400 hover:bg-green-400/10 transition mr-1"
@@ -193,6 +241,123 @@ const counts = {
         </div>
       )}
     </main>
+
+    <!-- Toast -->
+    <div id="toastHost" class="fixed bottom-6 right-6 z-[90] flex flex-col gap-2 max-w-sm pointer-events-none"></div>
+
+    <!-- New reservation modal -->
+    <div id="newOverlay" class="fixed inset-0 z-[80] hidden bg-black/70 backdrop-blur-sm items-center justify-center p-4">
+      <div class="w-full max-w-md rounded-2xl border border-white/10 bg-[#16161f] shadow-xl">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-white/10">
+          <h3 class="font-semibold text-amber-200">{isEl ? "Νέα κράτηση" : "New reservation"}</h3>
+          <button id="newClose" class="text-white/50 hover:text-white text-2xl leading-none">×</button>
+        </div>
+        <form id="newForm" class="p-5 space-y-3 text-sm">
+          <div class="grid grid-cols-2 gap-3">
+            <label class="block">
+              <span class="text-xs text-white/60">{isEl ? "Ημερομηνία" : "Date"}</span>
+              <input required type="date" name="date" class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2" />
+            </label>
+            <label class="block">
+              <span class="text-xs text-white/60">{isEl ? "Ώρα" : "Time"}</span>
+              <input required type="time" name="time" class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2" />
+            </label>
+          </div>
+          <label class="block">
+            <span class="text-xs text-white/60">{isEl ? "Όνομα" : "Name"}</span>
+            <input required type="text" name="name" placeholder={isEl ? "π.χ. Γιώργος Παπαδόπουλος" : "e.g. George Smith"} class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2" />
+          </label>
+          <div class="grid grid-cols-2 gap-3">
+            <label class="block">
+              <span class="text-xs text-white/60">{isEl ? "Άτομα" : "Party size"}</span>
+              <input required type="number" name="party_size" min="1" max="50" value="2" class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2" />
+            </label>
+            <label class="block">
+              <span class="text-xs text-white/60">{isEl ? "Τηλέφωνο" : "Phone"}</span>
+              <input required type="tel" name="phone" placeholder="+306943649190" pattern="\+\d{8,15}" title={isEl ? "E.164, π.χ. +306943649190" : "E.164, e.g. +306943649190"} class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2 font-mono" />
+            </label>
+          </div>
+          <label class="block">
+            <span class="text-xs text-white/60">Email {isEl ? "(προαιρετικό)" : "(optional)"}</span>
+            <input type="email" name="email" class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2" />
+          </label>
+          <label class="block">
+            <span class="text-xs text-white/60">{isEl ? "Σημειώσεις" : "Notes"}</span>
+            <textarea name="notes" rows="2" placeholder={isEl ? "θέση παράθυρο, αλλεργίες, …" : "window seat, allergies, …"} class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2"></textarea>
+          </label>
+          <label class="block">
+            <span class="text-xs text-white/60">{isEl ? "Κατάσταση" : "Status"}</span>
+            <select name="status" class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2">
+              <option value="confirmed" selected>{isEl ? "Επιβεβαιωμένη" : "Confirmed"}</option>
+              <option value="pending">{isEl ? "Εκκρεμής" : "Pending"}</option>
+            </select>
+          </label>
+          <p id="newMsg" class="text-xs text-rose-300 min-h-[1em]"></p>
+          <div class="flex items-center gap-2 pt-2">
+            <button type="submit" id="newSave" class="flex-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-sm font-bold px-4 py-2 transition">
+              {isEl ? "Δημιουργία" : "Create"}
+            </button>
+            <button type="button" id="newCancel" class="rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-sm text-white/70 px-4 py-2 transition">
+              {isEl ? "Άκυρο" : "Cancel"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Edit modal -->
+    <div id="editOverlay" class="fixed inset-0 z-[80] hidden bg-black/70 backdrop-blur-sm items-center justify-center p-4">
+      <div class="w-full max-w-md rounded-2xl border border-white/10 bg-[#16161f] shadow-xl">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-white/10">
+          <h3 class="font-semibold text-amber-200">{isEl ? "Επεξεργασία κράτησης" : "Edit reservation"}</h3>
+          <button id="editClose" class="text-white/50 hover:text-white text-2xl leading-none">×</button>
+        </div>
+        <form id="editForm" class="p-5 space-y-3 text-sm">
+          <input type="hidden" name="id" />
+          <div class="grid grid-cols-2 gap-3">
+            <label class="block">
+              <span class="text-xs text-white/60">{isEl ? "Ημερομηνία" : "Date"}</span>
+              <input required type="date" name="date" class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2" />
+            </label>
+            <label class="block">
+              <span class="text-xs text-white/60">{isEl ? "Ώρα" : "Time"}</span>
+              <input required type="time" name="time" class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2" />
+            </label>
+          </div>
+          <label class="block">
+            <span class="text-xs text-white/60">{isEl ? "Όνομα" : "Name"}</span>
+            <input required type="text" name="name" class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2" />
+          </label>
+          <div class="grid grid-cols-2 gap-3">
+            <label class="block">
+              <span class="text-xs text-white/60">{isEl ? "Άτομα" : "Party size"}</span>
+              <input required type="number" name="party_size" min="1" max="50" class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2" />
+            </label>
+            <label class="block">
+              <span class="text-xs text-white/60">{isEl ? "Τηλέφωνο" : "Phone"}</span>
+              <input type="tel" name="phone" class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2 font-mono" />
+            </label>
+          </div>
+          <label class="block">
+            <span class="text-xs text-white/60">Email</span>
+            <input type="email" name="email" class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2" />
+          </label>
+          <label class="block">
+            <span class="text-xs text-white/60">{isEl ? "Σημειώσεις" : "Notes"}</span>
+            <textarea name="notes" rows="2" class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2"></textarea>
+          </label>
+          <p id="editMsg" class="text-xs text-rose-300 min-h-[1em]"></p>
+          <div class="flex items-center gap-2 pt-2">
+            <button type="submit" id="editSave" class="flex-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-sm font-bold px-4 py-2 transition">
+              {isEl ? "Αποθήκευση" : "Save"}
+            </button>
+            <button type="button" id="editCancel" class="rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 text-sm text-white/70 px-4 py-2 transition">
+              {isEl ? "Άκυρο" : "Cancel"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
 
     <script define:vars={{ isEl }}>
       const statusColors = { confirmed: "#4ade80", cancelled: "#f87171", pending: "#fbbf24", pending_ai: "#a78bfa" };
@@ -233,6 +398,188 @@ const counts = {
         cell.appendChild(makeBtn(id, "delete"));
       }
 
+      // Edit modal wiring
+      const overlay = document.getElementById("editOverlay");
+      const form    = document.getElementById("editForm");
+      const msgEl   = document.getElementById("editMsg");
+      function openEdit(b) {
+        form.id.value         = b.dataset.id;
+        form.name.value       = b.dataset.name  ?? "";
+        form.email.value      = b.dataset.email ?? "";
+        form.phone.value      = b.dataset.phone ?? "";
+        form.date.value       = b.dataset.date  ?? "";
+        form.time.value       = (b.dataset.time ?? "").slice(0, 5);
+        form.party_size.value = b.dataset.party ?? "";
+        form.notes.value      = b.dataset.notes ?? "";
+        msgEl.textContent = "";
+        overlay.classList.remove("hidden");
+        overlay.classList.add("flex");
+      }
+      function closeEdit() {
+        overlay.classList.add("hidden");
+        overlay.classList.remove("flex");
+      }
+      document.getElementById("editClose")?.addEventListener("click", closeEdit);
+      document.getElementById("editCancel")?.addEventListener("click", closeEdit);
+      overlay?.addEventListener("click", (e) => { if (e.target === overlay) closeEdit(); });
+
+      form?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const fd = new FormData(form);
+        const payload = Object.fromEntries(fd.entries());
+        payload.party_size = Number(payload.party_size);
+        const saveBtn = document.getElementById("editSave");
+        saveBtn.disabled = true; saveBtn.textContent = "…";
+        try {
+          const res = await fetch("/api/admin/reservations", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          const j = await res.json().catch(() => ({}));
+          if (!res.ok || j.error) throw new Error(j?.error || ("HTTP " + res.status));
+          // Refresh to show updated row (simplest, also re-sorts by date/time)
+          location.reload();
+        } catch (err) {
+          msgEl.textContent = (isEl ? "Σφάλμα: " : "Error: ") + (err?.message || "");
+          saveBtn.disabled = false;
+          saveBtn.textContent = isEl ? "Αποθήκευση" : "Save";
+        }
+      });
+
+      // Toast
+      const toastHost = document.getElementById("toastHost");
+      function toast(text, tone = "info", ms = 4000) {
+        const tones = {
+          ok:    "border-emerald-400/40 bg-emerald-500/15 text-emerald-100",
+          warn:  "border-amber-400/40 bg-amber-500/15 text-amber-100",
+          error: "border-rose-400/40 bg-rose-500/15 text-rose-100",
+          info:  "border-white/20 bg-white/[0.08] text-white",
+        };
+        const el = document.createElement("div");
+        el.className = `pointer-events-auto rounded-xl border px-4 py-3 text-sm shadow-xl backdrop-blur-sm transition-all duration-300 translate-x-0 ${tones[tone] ?? tones.info}`;
+        el.textContent = text;
+        toastHost.appendChild(el);
+        // fade out
+        setTimeout(() => {
+          el.style.opacity = "0";
+          el.style.transform = "translateX(20px)";
+          setTimeout(() => el.remove(), 300);
+        }, ms);
+      }
+
+      function smsReason(reason) {
+        return ({
+          no_phone:         isEl ? "χωρίς τηλέφωνο" : "no phone on file",
+          already_decided:  isEl ? "είχε ήδη αποφασιστεί" : "already decided",
+          not_a_decision:   isEl ? "δεν στέλνει SMS σε αυτή την κατάσταση" : "no SMS for this status",
+        })[reason] ?? reason;
+      }
+
+      // New reservation modal
+      const newOverlay = document.getElementById("newOverlay");
+      const newForm    = document.getElementById("newForm");
+      const newMsg     = document.getElementById("newMsg");
+      function openNew() {
+        newForm.reset();
+        // Default date to today, time to next half-hour
+        const now = new Date();
+        const iso = now.getFullYear() + "-" + String(now.getMonth()+1).padStart(2,"0") + "-" + String(now.getDate()).padStart(2,"0");
+        const h = now.getHours(), m = now.getMinutes();
+        const nh = m < 30 ? h : (h + 1) % 24;
+        const nm = m < 30 ? 30 : 0;
+        newForm.date.value = iso;
+        newForm.time.value = String(nh).padStart(2,"0") + ":" + String(nm).padStart(2,"0");
+        newMsg.textContent = "";
+        newOverlay.classList.remove("hidden");
+        newOverlay.classList.add("flex");
+      }
+      function closeNew() {
+        newOverlay.classList.add("hidden");
+        newOverlay.classList.remove("flex");
+      }
+      document.getElementById("newResBtn")?.addEventListener("click", openNew);
+      document.getElementById("newClose")?.addEventListener("click", closeNew);
+      document.getElementById("newCancel")?.addEventListener("click", closeNew);
+      newOverlay?.addEventListener("click", (e) => { if (e.target === newOverlay) closeNew(); });
+
+      newForm?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const fd = new FormData(newForm);
+        const payload = Object.fromEntries(fd.entries());
+        payload.party_size = Number(payload.party_size);
+        const btn = document.getElementById("newSave");
+        btn.disabled = true; btn.textContent = "…";
+        try {
+          const res = await fetch("/api/admin/reservations", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          const j = await res.json().catch(() => ({}));
+          if (res.status === 409 && j?.full) {
+            const cap = j.capacity || {};
+            const want = isEl ? "Παράκαμψη και δημιουργία;" : "Override capacity and create anyway?";
+            const msg = (isEl ? "Γεμάτο: " : "Fully booked: ") + (cap.used ?? "?") + "/" + (cap.capacity ?? "?") + ". " + want;
+            if (confirm(msg)) {
+              payload.force = true;
+              const r2 = await fetch("/api/admin/reservations", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+              });
+              const j2 = await r2.json().catch(() => ({}));
+              if (!r2.ok || j2.error) throw new Error(j2?.error || ("HTTP " + r2.status));
+              toast(isEl ? "Δημιουργήθηκε (παράκαμψη ορίου)" : "Created (capacity override)", "warn");
+              location.reload();
+              return;
+            }
+            newMsg.textContent = isEl ? "Δεν δημιουργήθηκε." : "Not created.";
+            btn.disabled = false;
+            btn.textContent = isEl ? "Δημιουργία" : "Create";
+            return;
+          }
+          if (!res.ok || j.error) throw new Error(j?.error || ("HTTP " + res.status));
+          toast(isEl ? "Η κράτηση δημιουργήθηκε" : "Reservation created", "ok");
+          location.reload();
+        } catch (err) {
+          newMsg.textContent = (isEl ? "Σφάλμα: " : "Error: ") + (err?.message || "");
+          btn.disabled = false;
+          btn.textContent = isEl ? "Δημιουργία" : "Create";
+        }
+      });
+
+      // Test SMS form
+      const testForm = document.getElementById("testSmsForm");
+      const testMsg  = document.getElementById("testSmsMsg");
+      const testBtn  = document.getElementById("testSmsBtn");
+      testForm?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const fd = new FormData(testForm);
+        testMsg.textContent = isEl ? "Αποστολή…" : "Sending…";
+        testBtn.disabled = true;
+        try {
+          const res = await fetch("/api/admin/test-sms", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ to: fd.get("to"), text: fd.get("text") }),
+          });
+          const j = await res.json().catch(() => ({}));
+          if (j?.result?.ok) {
+            testMsg.style.color = "#6ee7b7";
+            testMsg.textContent = "✓ " + (isEl ? "Αποστάλθηκε. UUID: " : "Sent. UUID: ") + j.result.message_uuid;
+          } else {
+            testMsg.style.color = "#fca5a5";
+            testMsg.textContent = "✕ " + (j?.result?.error || j?.error || ("HTTP " + res.status));
+          }
+        } catch (err) {
+          testMsg.style.color = "#fca5a5";
+          testMsg.textContent = "✕ " + (err?.message || "error");
+        } finally {
+          testBtn.disabled = false;
+        }
+      });
+
       // Event delegation on table body
       document.getElementById("resBody")?.addEventListener("click", async (e) => {
         const btn = e.target.closest(".action-btn");
@@ -242,6 +589,11 @@ const counts = {
         const action = btn.dataset.action;
         const row    = btn.closest("tr");
 
+        if (action === "edit") {
+          openEdit(btn);
+          return;
+        }
+
         if (action === "delete") {
           if (!confirm(isEl ? "Διαγραφή κράτησης;" : "Delete this reservation?")) return;
           const res = await fetch("/api/admin/reservations", {
@@ -249,18 +601,25 @@ const counts = {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ id }),
           });
-          if (res.ok) row?.remove();
-          else alert(isEl ? "Σφάλμα." : "Error.");
+          if (res.ok) { row?.remove(); toast(isEl ? "Η κράτηση διαγράφηκε" : "Reservation deleted", "ok"); }
+          else toast(isEl ? "Σφάλμα διαγραφής" : "Delete failed", "error");
           return;
         }
 
         // Confirm / Cancel
+        btn.disabled = true;
         const res = await fetch("/api/admin/reservations", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id, status: action }),
         });
-        if (!res.ok) { alert(isEl ? "Σφάλμα." : "Error."); return; }
+        let j = {};
+        try { j = await res.json(); } catch {}
+        if (!res.ok) {
+          btn.disabled = false;
+          toast((isEl ? "Σφάλμα: " : "Error: ") + (j?.error || ("HTTP " + res.status)), "error");
+          return;
+        }
 
         // Update badge
         const badge = row?.querySelector(".status-badge");
@@ -274,6 +633,21 @@ const counts = {
         // Rebuild action buttons
         const actionsCell = row?.querySelector("td:last-child");
         if (actionsCell) rebuildActions(actionsCell, id, action);
+
+        // SMS status toast
+        const sms = j?.sms;
+        const verb = action === "confirmed"
+          ? (isEl ? "Επιβεβαιώθηκε" : "Confirmed")
+          : (isEl ? "Ακυρώθηκε" : "Cancelled");
+        if (sms?.attempted && sms?.ok) {
+          toast(`✓ ${verb}. ${isEl ? "SMS στάλθηκε στον πελάτη" : "SMS sent to customer"}`, "ok");
+        } else if (sms?.attempted && !sms?.ok) {
+          toast(`✓ ${verb}, ${isEl ? "αλλά το SMS απέτυχε" : "but SMS failed"}: ${sms.error ?? ""}`, "warn", 7000);
+        } else if (sms?.reason) {
+          toast(`✓ ${verb} (${isEl ? "δεν στάλθηκε SMS" : "no SMS sent"} — ${smsReason(sms.reason)})`, "info");
+        } else {
+          toast(`✓ ${verb}`, "ok");
+        }
       });
     </script>
   </body>

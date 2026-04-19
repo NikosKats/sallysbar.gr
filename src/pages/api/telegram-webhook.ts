@@ -7,6 +7,9 @@ import {
 } from "../../lib/telegram";
 import { pushOrderStatus, pushToUser } from "../../lib/pushOrders";
 import { sendEmail } from "../../lib/email";
+import { sendMessage as sendVonage, setRuntimeEnv as setVonageEnv } from "../../lib/vonage-messages";
+import { buildManageUrl } from "../../lib/booking-tokens";
+import { shortenUrl } from "../../lib/url-shortener";
 
 type OrderItem = { name: string; qty: number; price_cents: number };
 
@@ -14,7 +17,7 @@ function formatItems(items: OrderItem[]) {
   return items.map((i) => `  • ${i.qty}× ${i.name}`).join("\n");
 }
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, locals }) => {
   let body: Record<string, unknown>;
   try {
     body = await request.json();
@@ -23,7 +26,7 @@ export const POST: APIRoute = async ({ request }) => {
   }
 
   try {
-    return await handleUpdate(body);
+    return await handleUpdate(body, locals);
   } catch (err) {
     const errText = err instanceof Error ? `${err.message}\n${err.stack ?? ""}` : String(err);
     try {
@@ -36,7 +39,7 @@ export const POST: APIRoute = async ({ request }) => {
   }
 };
 
-async function handleUpdate(body: Record<string, unknown>): Promise<Response> {
+async function handleUpdate(body: Record<string, unknown>, locals: any): Promise<Response> {
   if (!body.callback_query) return new Response("ok");
 
   const cb = body.callback_query as {
@@ -52,7 +55,7 @@ async function handleUpdate(body: Record<string, unknown>): Promise<Response> {
   }
 
   if (action === "confirm_booking" || action === "reject_booking") {
-    return handleBookingCallback(action, orderId, cb);
+    return handleBookingCallback(action, orderId, cb, locals);
   }
 
   const { data: order } = await supabaseAdmin
@@ -204,7 +207,8 @@ function escapeHtml(s: string) {
 async function handleBookingCallback(
   action: string,
   reservationId: string,
-  cb: { id: string; message: { message_id: number; chat: { id: number } } }
+  cb: { id: string; message: { message_id: number; chat: { id: number } } },
+  locals: any,
 ): Promise<Response> {
   const { data: r } = await supabaseAdmin
     .from("reservations")
@@ -219,11 +223,36 @@ async function handleBookingCallback(
 
   const confirmed = action === "confirm_booking";
   const newStatus = confirmed ? "confirmed" : "rejected";
+  const wasUnresolved = r.status === "pending" || r.status === "pending_ai";
 
   await supabaseAdmin
     .from("reservations")
     .update({ status: newStatus, decided_at: new Date().toISOString() })
     .eq("id", reservationId);
+
+  // SMS the caller on a status transition — only if they have a phone and
+  // this is the first decision (don't re-SMS on double-clicks).
+  if (r.phone && wasUnresolved) {
+    setVonageEnv(locals?.runtime?.env);
+    try {
+      const firstName = (r.name ?? "").split(" ")[0] || "there";
+      const niceDate = new Date(`${r.date}T00:00:00`).toLocaleDateString("en-GB", {
+        weekday: "short", day: "numeric", month: "short",
+      });
+      const manageUrl = confirmed
+        ? await shortenUrl(await buildManageUrl(reservationId, locals))
+        : "";
+      const text = confirmed
+        ? `Hi ${firstName}, your table for ${r.party_size} at Sally's Bar on ${niceDate} at ${r.time} is confirmed. Manage/cancel: ${manageUrl} — see you then! Reply STOP to opt out.`
+        : `Hi ${firstName}, unfortunately we can't accommodate your booking for ${niceDate} at ${r.time}. Please call us on +30 694 627 2083 to rearrange. Sally's Bar.`;
+      const result = await sendVonage(r.phone, text, { channel: "sms" });
+      if (!result.ok) {
+        console.warn("[booking] SMS failed", result);
+      }
+    } catch (e: any) {
+      console.warn("[booking] SMS error", e?.message);
+    }
+  }
 
   const header = confirmed
     ? `✅ <b>Booking confirmed</b>`
@@ -235,41 +264,43 @@ async function handleBookingCallback(
     `👤 <b>${escapeHtml(r.name)}</b>`,
     `👥 Party of ${r.party_size}`,
     `🗓 ${escapeHtml(r.date)} at ${escapeHtml(r.time)}`,
-    `✉️ ${escapeHtml(r.email)}`,
+    r.email ? `✉️ ${escapeHtml(r.email)}` : "",
     r.phone ? `📞 ${escapeHtml(r.phone)}` : "",
     r.notes ? `\n📝 <i>${escapeHtml(r.notes)}</i>` : "",
     `\n<code>#${reservationId.slice(0, 8)}</code>`,
   ].filter(Boolean);
 
   await editMessageText(
-    import.meta.env.TELEGRAM_BOOKING_CHAT_ID,
+    cb.message.chat.id,
     cb.message.message_id,
     lines.join("\n"),
     { reply_markup: { inline_keyboard: [] } }
   );
 
-  // Notify customer
-  try {
-    const subject = confirmed
-      ? `Your booking at Sally's Bar is confirmed ✅`
-      : `Your booking at Sally's Bar could not be confirmed`;
-    const intro = confirmed
-      ? `Great news — we've confirmed your booking. We can't wait to see you!`
-      : `Unfortunately we couldn't accommodate your booking at the requested time. Please try another slot or contact us directly.`;
-    const html = `
-      <div style="font-family:system-ui,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#111">
-        <h2 style="margin:0 0 12px">${confirmed ? "Booking confirmed ✅" : "Booking not confirmed"}</h2>
-        <p>Hi ${escapeHtml(r.name)},</p>
-        <p>${intro}</p>
-        <div style="background:#f6f6f6;border-radius:12px;padding:16px;margin:16px 0">
-          <div><strong>Date:</strong> ${escapeHtml(r.date)} at ${escapeHtml(r.time)}</div>
-          <div><strong>Party:</strong> ${r.party_size}</div>
-          ${r.notes ? `<div><strong>Notes:</strong> ${escapeHtml(r.notes)}</div>` : ""}
-        </div>
-        <p style="color:#666;font-size:12px">Sally's Bar · Skala</p>
-      </div>`;
-    await sendEmail({ to: r.email, subject, html });
-  } catch (e) { console.warn("[booking] email failed", e); }
+  // Notify customer (email — only when we have one; AI voice bookings don't)
+  if (r.email) {
+    try {
+      const subject = confirmed
+        ? `Your booking at Sally's Bar is confirmed ✅`
+        : `Your booking at Sally's Bar could not be confirmed`;
+      const intro = confirmed
+        ? `Great news — we've confirmed your booking. We can't wait to see you!`
+        : `Unfortunately we couldn't accommodate your booking at the requested time. Please try another slot or contact us directly.`;
+      const html = `
+        <div style="font-family:system-ui,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#111">
+          <h2 style="margin:0 0 12px">${confirmed ? "Booking confirmed ✅" : "Booking not confirmed"}</h2>
+          <p>Hi ${escapeHtml(r.name)},</p>
+          <p>${intro}</p>
+          <div style="background:#f6f6f6;border-radius:12px;padding:16px;margin:16px 0">
+            <div><strong>Date:</strong> ${escapeHtml(r.date)} at ${escapeHtml(r.time)}</div>
+            <div><strong>Party:</strong> ${r.party_size}</div>
+            ${r.notes ? `<div><strong>Notes:</strong> ${escapeHtml(r.notes)}</div>` : ""}
+          </div>
+          <p style="color:#666;font-size:12px">Sally's Bar · Skala</p>
+        </div>`;
+      await sendEmail({ to: r.email, subject, html });
+    } catch (e) { console.warn("[booking] email failed", e); }
+  }
 
   if (r.user_id) {
     try {

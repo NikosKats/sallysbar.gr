@@ -1,0 +1,139 @@
+---
+import "../../styles/global.css";
+import Header from "../../components/Header.astro";
+import Footer from "../../components/Footer.astro";
+import { supabaseAdmin } from "../../lib/supabase";
+import { withLangPrefix } from "../../i18n";
+
+export const prerender = false;
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+
+const slug = String(Astro.params.slug ?? "").trim().toLowerCase();
+if (!/^[a-z0-9][a-z0-9-]{1,30}[a-z0-9]$/.test(slug)) {
+  return Astro.redirect(withLangPrefix(lang, "/partners"));
+}
+
+// Defensive select — fall back if the newer columns aren't migrated yet.
+async function loadPartner(s: string) {
+  const full = await supabaseAdmin
+    .from("partners")
+    .select("slug, name, short_description, long_description, website_url, google_business_url, google_maps_url, logo_url, city, distance_from_bar, active, visible_on_public_page")
+    .eq("slug", s)
+    .maybeSingle();
+  if (!full.error) return full.data ?? null;
+  console.warn("[/partners/:slug] full select failed:", full.error.message);
+  const min = await supabaseAdmin
+    .from("partners")
+    .select("slug, name, short_description, long_description, website_url, logo_url, city, active, visible_on_public_page")
+    .eq("slug", s)
+    .maybeSingle();
+  return min.data ?? null;
+}
+
+const p: any = await loadPartner(slug);
+if (!p || !p.active || !p.visible_on_public_page) {
+  return Astro.redirect(withLangPrefix(lang, "/partners"));
+}
+
+const title = `${p.name} — ${isEl ? "Συνεργάτης" : "Partner"} · Sally's Bar`;
+const description = p.short_description || (isEl
+  ? `${p.name} — συνεργάτης του Sally's Bar στη Σκάλα.`
+  : `${p.name} — a partner of Sally's Bar in Skala.`);
+---
+<html lang={lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={`https://sallysbar.gr${isEl ? "/el" : ""}/partners/${p.slug}`} />
+    <meta property="og:title" content={p.name} />
+    <meta property="og:description" content={description} />
+    {p.logo_url && <meta property="og:image" content={p.logo_url} />}
+    <meta property="og:type" content="website" />
+  </head>
+  <body class="min-h-screen bg-[#0a0a0f] text-white font-body antialiased">
+    <Header />
+
+    <main class="mx-auto max-w-3xl px-5 py-10 pt-28">
+      <nav class="text-xs text-white/50 mb-4">
+        <a href={withLangPrefix(lang, "/partners")} class="hover:text-amber-200">← {isEl ? "Όλοι οι συνεργάτες" : "All partners"}</a>
+      </nav>
+
+      <article class="rounded-3xl border border-white/10 bg-white/[0.03] overflow-hidden">
+        {p.logo_url ? (
+          <img src={p.logo_url} alt={p.name} class="w-full aspect-[16/9] object-cover bg-black/40" loading="eager" />
+        ) : (
+          <div class="w-full aspect-[16/9] bg-gradient-to-br from-amber-300/25 to-amber-500/15 border-b border-amber-400/20 grid place-items-center text-amber-200 font-heading text-8xl font-bold">
+            {p.name?.[0] ?? "?"}
+          </div>
+        )}
+
+        <div class="p-6 md:p-8 space-y-5">
+          <header>
+            <p class="text-[10px] uppercase tracking-[0.26em] text-amber-200/80 mb-2">
+              {isEl ? "Συνεργάτης του Sally's Bar" : "A partner of Sally's Bar"}
+            </p>
+            <h1 class="font-heading text-3xl md:text-4xl font-bold leading-tight bg-gradient-to-br from-white via-amber-50 to-amber-200/80 bg-clip-text text-transparent">
+              {p.name}
+            </h1>
+            <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+              {p.city && <span class="text-white/65">📍 {p.city}</span>}
+              {p.distance_from_bar && (
+                <span class="text-amber-200/85">🚶 {p.distance_from_bar} {isEl ? "από το μπαρ" : "from the bar"}</span>
+              )}
+            </div>
+          </header>
+
+          {p.short_description && (
+            <p class="text-base text-white/80 leading-relaxed">{p.short_description}</p>
+          )}
+
+          {p.long_description && (
+            <div class="pt-3 border-t border-white/10 text-sm text-white/70 leading-relaxed whitespace-pre-wrap">
+              {p.long_description}
+            </div>
+          )}
+
+          <div class="grid sm:grid-cols-3 gap-2 pt-3 border-t border-white/10">
+            {p.website_url && (
+              <a href={p.website_url} target="_blank" rel="noopener nofollow" class="text-center text-sm rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-white/85 px-4 py-3 font-medium transition">
+                ↗ {isEl ? "Ιστοσελίδα" : "Visit website"}
+              </a>
+            )}
+            {p.google_maps_url && (
+              <a href={p.google_maps_url} target="_blank" rel="noopener nofollow" class="text-center text-sm rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-white/85 px-4 py-3 font-medium transition">
+                📍 {isEl ? "Οδηγίες" : "Directions"}
+              </a>
+            )}
+            {p.google_business_url && (
+              <a href={p.google_business_url} target="_blank" rel="noopener nofollow" class="text-center text-sm rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-white/85 px-4 py-3 font-medium transition">
+                ⭐ {isEl ? "Κριτικές Google" : "Google reviews"}
+              </a>
+            )}
+          </div>
+        </div>
+      </article>
+
+      <section class="mt-10 rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.03] to-amber-500/[0.05] p-6 md:p-8 text-center">
+        <p class="text-[10px] uppercase tracking-[0.28em] text-amber-200/80 mb-2">
+          {isEl ? "Διαμονή εδώ;" : "Staying here?"}
+        </p>
+        <h2 class="font-heading text-xl md:text-2xl font-bold text-white mb-2">
+          {isEl
+            ? "Αναζήτησε τον κωδικό καλωσορίσματος στο δωμάτιό σου"
+            : "Look for your welcome code in your room"}
+        </h2>
+        <p class="text-sm text-white/70 leading-relaxed max-w-xl mx-auto">
+          {isEl
+            ? `Θα βρεις μια κάρτα με QR στο δωμάτιό σου από το ${p.name}. Σκάναρέ την για το δώρο σου στο Sally's.`
+            : `You'll find a QR card in your room from ${p.name}. Scan it for your welcome at Sally's.`}
+        </p>
+      </section>
+    </main>
+
+    <Footer />
+  </body>
+</html>

@@ -1,0 +1,455 @@
+---
+import "../../styles/global.css";
+import { site } from "../../data/site";
+import { getWelcomeSettings } from "../../lib/welcome-settings";
+import { supabaseAdmin } from "../../lib/supabase";
+
+export const prerender = false;
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+const welcomeSettings = await getWelcomeSettings();
+const giftLabel = welcomeSettings.gift_label;
+
+// Pull the partner's Facebook toggle so the button only shows when the owner
+// opted in. Defensive: if the column is missing we default to ON.
+let allowFacebook = true;
+try {
+  const { data } = await supabaseAdmin
+    .from("partners")
+    .select("allow_facebook_login")
+    .eq("slug", "helens")
+    .maybeSingle();
+  if (data && data.allow_facebook_login === false) allowFacebook = false;
+} catch {}
+
+const supabaseUrl     = import.meta.env.PUBLIC_SUPABASE_URL ?? "";
+const supabaseAnonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY ?? "";
+---
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{isEl ? "Καλωσήρθατε από τη Helen's" : "Welcome from Helen's"} — Sally's Bar</title>
+    <meta name="robots" content="noindex,nofollow" />
+  </head>
+  <body class="min-h-screen bg-[#0a0a0f] text-white font-body antialiased">
+    <main class="mx-auto max-w-lg px-5 py-10 md:py-14">
+      <p class="text-[10px] uppercase tracking-[0.28em] text-amber-200/80 mb-2">
+        {isEl ? "Από τη Helen's Studios" : "From Helen's Studios"}
+      </p>
+      <h1 class="font-heading text-3xl md:text-5xl font-bold leading-tight bg-gradient-to-br from-white via-amber-50 to-amber-200/80 bg-clip-text text-transparent mb-3">
+        {isEl ? `Ένα ${giftLabel} στο Sally's` : `A ${giftLabel} at Sally's`}
+      </h1>
+      <p class="text-white/75 text-sm md:text-base leading-relaxed mb-6">
+        {isEl
+          ? `Γίνετε μέλος της κάρτας πιστότητας Sally's και απολαύστε το ${giftLabel} στην κεντρική πλατεία της Σκάλας.`
+          : `Join Sally's loyalty card and enjoy your ${giftLabel} on Skala's main square.`}
+      </p>
+
+      {/* Step markers */}
+      <ol class="mb-6 grid grid-cols-3 gap-2 text-center text-[11px]" id="stepBadges">
+        <li data-step="1" class="step-badge active rounded-xl border border-amber-400/40 bg-amber-500/15 px-2 py-2">
+          <div class="font-bold text-base leading-none mb-1 text-amber-200">1</div>
+          <div class="text-white/80 leading-snug">{isEl ? "Στοιχεία" : "Your details"}</div>
+        </li>
+        <li data-step="2" class="step-badge rounded-xl border border-white/10 bg-white/[0.04] px-2 py-2">
+          <div class="font-bold text-base leading-none mb-1 text-white/50">2</div>
+          <div class="text-white/60 leading-snug">{isEl ? "Επαλήθευση" : "Verify"}</div>
+        </li>
+        <li data-step="3" class="step-badge rounded-xl border border-white/10 bg-white/[0.04] px-2 py-2">
+          <div class="font-bold text-base leading-none mb-1 text-white/50">3</div>
+          <div class="text-white/60 leading-snug">{isEl ? "Κωδικός στο μπαρ" : "Code at the bar"}</div>
+        </li>
+      </ol>
+
+      {/* STEP 1 — details form */}
+      <form id="signupForm" class="rounded-2xl border border-white/10 bg-white/[0.04] p-5 space-y-3">
+        {allowFacebook && (
+          <>
+            <button type="button" id="fbBtn" class="w-full rounded-xl bg-[#1877F2] hover:bg-[#166fe5] text-white font-semibold px-4 py-2.5 flex items-center justify-center gap-2 transition">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+              <span>{isEl ? "Συνέχεια με Facebook" : "Continue with Facebook"}</span>
+            </button>
+            <div class="relative flex items-center gap-3 my-1">
+              <div class="flex-1 h-px bg-white/10"></div>
+              <span class="text-[10px] uppercase tracking-widest text-white/40">{isEl ? "ή" : "or"}</span>
+              <div class="flex-1 h-px bg-white/10"></div>
+            </div>
+            <div id="fbLoggedIn" class="hidden rounded-xl border border-emerald-400/30 bg-emerald-500/[0.08] px-3 py-2 text-xs text-emerald-100">
+              ✓ {isEl ? "Συνδεδεμένος ως" : "Signed in as"} <span id="fbName" class="font-semibold"></span>. {isEl ? "Συμπληρώθηκαν όνομα & email." : "Name & email pre-filled."}
+              <button type="button" id="fbLogout" class="ml-1 underline hover:text-white">{isEl ? "Αποσύνδεση" : "log out"}</button>
+            </div>
+          </>
+        )}
+        <label class="block">
+          <span class="text-xs text-white/60">{isEl ? "Ονοματεπώνυμο" : "Full name"}</span>
+          <input required type="text" name="full_name" autocomplete="name" minlength="2" maxlength="120" class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2.5 text-white focus:outline-none focus:border-amber-400/50" />
+        </label>
+        <label class="block">
+          <span class="text-xs text-white/60">Email</span>
+          <input required type="email" name="email" autocomplete="email" class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2.5 text-white focus:outline-none focus:border-amber-400/50" />
+        </label>
+        <label class="block">
+          <span class="text-xs text-white/60">{isEl ? "Κωδικός (6+ χαρακτήρες)" : "Password (6+ characters)"}</span>
+          <input required type="password" name="password" autocomplete="new-password" minlength="6" class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2.5 text-white focus:outline-none focus:border-amber-400/50" />
+        </label>
+        <div class="block">
+          <span class="text-xs text-white/60">{isEl ? "Τηλέφωνο" : "Phone"}</span>
+          <div class="mt-1 flex gap-2">
+            <select required name="country_code" class="w-32 rounded-lg bg-black/40 border border-white/10 px-2 py-2.5 text-white font-mono text-sm focus:outline-none focus:border-amber-400/50">
+              <option value="+44" selected>🇬🇧 +44</option>
+              <option value="+30">🇬🇷 +30</option>
+              <option value="+1">🇺🇸 +1</option>
+              <option value="+33">🇫🇷 +33</option>
+              <option value="+34">🇪🇸 +34</option>
+              <option value="+39">🇮🇹 +39</option>
+              <option value="+49">🇩🇪 +49</option>
+              <option value="+31">🇳🇱 +31</option>
+              <option value="+32">🇧🇪 +32</option>
+              <option value="+41">🇨🇭 +41</option>
+              <option value="+43">🇦🇹 +43</option>
+              <option value="+45">🇩🇰 +45</option>
+              <option value="+46">🇸🇪 +46</option>
+              <option value="+47">🇳🇴 +47</option>
+              <option value="+48">🇵🇱 +48</option>
+              <option value="+351">🇵🇹 +351</option>
+              <option value="+353">🇮🇪 +353</option>
+              <option value="+357">🇨🇾 +357</option>
+              <option value="+358">🇫🇮 +358</option>
+              <option value="+359">🇧🇬 +359</option>
+              <option value="+385">🇭🇷 +385</option>
+              <option value="+386">🇸🇮 +386</option>
+              <option value="+420">🇨🇿 +420</option>
+              <option value="+421">🇸🇰 +421</option>
+              <option value="+972">🇮🇱 +972</option>
+            </select>
+            <input required type="tel" name="phone_local" autocomplete="tel-national" inputmode="numeric" placeholder="7911 123456" pattern="[\d\s\-]{6,15}" class="flex-1 rounded-lg bg-black/40 border border-white/10 px-3 py-2.5 text-white font-mono focus:outline-none focus:border-amber-400/50" />
+          </div>
+          <p class="mt-1 text-[10px] text-white/40">
+            {isEl ? "Επιλέξτε χώρα και πληκτρολογήστε μόνο τα τοπικά ψηφία." : "Pick country, then local digits only (UK leading 0 is dropped)."}
+          </p>
+        </div>
+        <label class="flex items-start gap-2 cursor-pointer">
+          <input type="checkbox" name="marketing" class="mt-1 h-4 w-4 accent-amber-500" />
+          <span class="text-[11px] text-white/60 leading-snug">
+            {isEl
+              ? "Θέλω να λαμβάνω ειδικές προσφορές (προαιρετικό — STOP ανά πάσα στιγμή)."
+              : "I'd like Sally's offers & news (optional — reply STOP anytime)."}
+          </span>
+        </label>
+        <p class="text-[11px] text-white/50 leading-relaxed">
+          {isEl
+            ? "Με την εγγραφή συμφωνείτε με τους "
+            : "By signing up you agree to our "}
+          <a class="text-amber-300 hover:underline" href="/terms" target="_blank" rel="noopener">{isEl ? "Όρους" : "Terms"}</a>
+          {isEl ? " και την " : " and "}
+          <a class="text-amber-300 hover:underline" href="/privacy" target="_blank" rel="noopener">{isEl ? "Πολιτική" : "Privacy"}</a>.
+        </p>
+        <button type="submit" id="startBtn" class="w-full rounded-xl bg-gradient-to-br from-amber-300 to-amber-500 text-black font-bold px-4 py-3 shadow-lg shadow-amber-500/20 active:scale-[0.99] transition">
+          {isEl ? `Δημιουργία λογαριασμού & ${giftLabel} →` : `Create account & claim ${giftLabel} →`}
+        </button>
+        <p id="startErr" class="text-xs text-rose-300 min-h-[1em] text-center"></p>
+      </form>
+
+      {/* STEP 2 — enter OTPs */}
+      <form id="verifyForm" class="hidden rounded-2xl border border-white/10 bg-white/[0.04] p-5 space-y-4">
+        <div>
+          <p id="verifyIntro" class="text-sm text-white/85 mb-1">{isEl ? "Σας στείλαμε τους κωδικούς επαλήθευσης." : "We just sent you the verification codes."}</p>
+          <p class="text-xs text-white/50">
+            <span id="emailMaskedWrap">📧 <span id="emailMasked">—</span></span>
+            <span id="maskedSep"> · </span>
+            <span id="phoneMaskedWrap">📱 <span id="phoneMasked">—</span></span>
+          </p>
+        </div>
+        <label id="emailOtpLabel" class="block">
+          <span class="text-xs text-white/60">📧 {isEl ? "Κωδικός από email" : "Code from email"}</span>
+          <input type="text" name="email_otp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="\d{4,8}" class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-3 text-center text-xl font-mono tracking-[0.5em] text-white focus:outline-none focus:border-amber-400/50" />
+        </label>
+        <label id="phoneOtpLabel" class="block">
+          <span class="text-xs text-white/60">📱 {isEl ? "Κωδικός από SMS" : "Code from SMS"}</span>
+          <input type="text" name="phone_otp" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="\d{4,8}" class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-3 text-center text-xl font-mono tracking-[0.5em] text-white focus:outline-none focus:border-amber-400/50" />
+        </label>
+        <button type="submit" id="verifyBtn" class="w-full rounded-xl bg-gradient-to-br from-amber-300 to-amber-500 text-black font-bold px-4 py-3 shadow-lg shadow-amber-500/20 active:scale-[0.99] transition">
+          ✓ {isEl ? "Επαλήθευση & απόκτηση κωδικού" : "Verify & claim my code"}
+        </button>
+        <p id="verifyErr" class="text-xs text-rose-300 min-h-[1em] text-center"></p>
+        <p class="text-[11px] text-white/40 text-center">
+          {isEl ? "Δεν τα βρίσκετε; Έλεγξε spam/junk. Λήγουν σε 10 λεπτά." : "Can't find them? Check your spam folder. Codes expire in 10 minutes."}
+        </p>
+      </form>
+
+      {/* STEP 3 — success */}
+      <div id="result" class="hidden mt-2 space-y-4">
+        <div class="rounded-2xl border border-emerald-400/40 bg-emerald-500/[0.08] p-5 text-center">
+          <p class="text-[10px] uppercase tracking-widest text-emerald-200 mb-1">✓ {isEl ? "Επαληθεύτηκαν email & τηλέφωνο" : "Email & phone verified"}</p>
+          <p class="text-sm text-white/80">
+            {isEl
+              ? "Ο λογαριασμός σας Sally's είναι έτοιμος. Ο κωδικός έχει σταλεί σε email και SMS."
+              : "Your Sally's account is ready. Your code has been sent to your email and SMS."}
+          </p>
+        </div>
+        <div class="rounded-2xl border border-amber-400/40 bg-gradient-to-br from-amber-500/20 to-amber-600/10 p-6 text-center">
+          <p class="text-xs uppercase tracking-widest text-amber-200/80 mb-2">
+            {isEl ? "Ο κωδικός σας" : "Your code"}
+          </p>
+          <p id="codeText" class="font-heading text-4xl md:text-5xl font-black tracking-widest text-amber-100 mb-3">—</p>
+          <p class="text-sm text-white/85 leading-relaxed">
+            {isEl
+              ? `Δείξτε τον κωδικό στο μπαρ στο Sally's για ${giftLabel} 🍹`
+              : `Show this code to the bar staff at Sally's for your ${giftLabel} 🍹`}
+          </p>
+        </div>
+        <a href="/account?signup=1#cardForm" class="block rounded-2xl bg-gradient-to-br from-amber-300 to-amber-500 text-black font-bold px-4 py-4 text-center shadow-lg shadow-amber-500/20 active:scale-[0.99] transition">
+          🎁 {isEl ? "Ενεργοποίηση κάρτας πιστότητας →" : "Activate my loyalty card →"}
+          <span class="block mt-1 text-[11px] font-medium opacity-75">
+            {isEl ? "Λίγα ακόμα στοιχεία για πόντους & εκπτώσεις" : "A few more details to start earning points & perks"}
+          </span>
+        </a>
+        <div class="grid grid-cols-2 gap-2">
+          <a href={site.mapsShareUrl} target="_blank" rel="noopener" class="rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-white/85 px-4 py-3 text-sm font-medium text-center transition">
+            📍 {isEl ? "Οδηγίες" : "Directions"}
+          </a>
+          <a href={`tel:${site.phoneE164}`} class="rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-white/85 px-4 py-3 text-sm font-medium text-center transition">
+            📞 {isEl ? "Κάλεσε" : "Call us"}
+          </a>
+        </div>
+      </div>
+
+      <p class="mt-8 text-[11px] text-white/40 text-center leading-relaxed">
+        {isEl
+          ? "Ένα ποτό ανά επισκέπτη. Ισχύει για τη διάρκεια της διαμονής σας στη Helen's."
+          : "One drink per guest. Valid for the duration of your Helen's stay."}
+      </p>
+    </main>
+
+    {/* Facebook OAuth — loads the Supabase browser client from CDN and wires
+        the button. Also detects an existing session (user returned from the
+        OAuth redirect) and pre-fills the form. */}
+    {allowFacebook && (
+      <script is:inline type="module" define:vars={{ supabaseUrl, supabaseAnonKey, isEl }}>
+        try {
+          const { createBrowserClient } = await import("https://esm.sh/@supabase/ssr@0.9.0");
+          const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey, {
+            cookieOptions: { maxAge: 60 * 60 * 24 * 365, path: "/", sameSite: "lax", secure: true },
+          });
+
+          const fbBtn      = document.getElementById("fbBtn");
+          const fbLoggedIn = document.getElementById("fbLoggedIn");
+          const fbName     = document.getElementById("fbName");
+          const fbLogout   = document.getElementById("fbLogout");
+          const form       = document.getElementById("signupForm");
+          const nameInput  = form.elements["full_name"];
+          const emailInput = form.elements["email"];
+          const pwInput    = form.elements["password"];
+          const pwLabel    = pwInput?.closest("label");
+
+          function applySession(user) {
+            if (!user) return;
+            const meta = user.user_metadata || {};
+            const full = meta.full_name || meta.name || "";
+            const mail = user.email || meta.email || "";
+            if (full && !nameInput.value)  nameInput.value  = full;
+            if (mail && !emailInput.value) emailInput.value = mail;
+            // Make name + email read-only and dim password (not needed when logged in)
+            if (full)  nameInput.readOnly = true;
+            if (mail)  emailInput.readOnly = true;
+            if (pwInput) {
+              pwInput.required = false;
+              pwInput.placeholder = isEl ? "(δεν χρειάζεται με Facebook)" : "(not needed with Facebook)";
+              if (pwLabel) pwLabel.classList.add("opacity-50");
+            }
+            fbBtn?.classList.add("hidden");
+            fbLoggedIn?.classList.remove("hidden");
+            fbName.textContent = full || mail;
+          }
+
+          // Detect existing session (e.g. user just returned from FB redirect)
+          const { data: { user } } = await supabase.auth.getUser();
+          applySession(user);
+
+          fbBtn?.addEventListener("click", async () => {
+            fbBtn.disabled = true;
+            const { error } = await supabase.auth.signInWithOAuth({
+              provider: "facebook",
+              options: {
+                redirectTo: window.location.origin + window.location.pathname,
+                scopes: "email public_profile",
+              },
+            });
+            if (error) {
+              alert("Facebook login failed: " + error.message);
+              fbBtn.disabled = false;
+            }
+          });
+
+          fbLogout?.addEventListener("click", async () => {
+            await supabase.auth.signOut();
+            location.reload();
+          });
+        } catch (e) {
+          console.warn("[welcome/helens] FB auth not wired:", e?.message || e);
+        }
+      </script>
+    )}
+
+    <script is:inline define:vars={{ isEl }}>
+      (function() {
+        const signupForm  = document.getElementById("signupForm");
+        const startBtn    = document.getElementById("startBtn");
+        const startErr    = document.getElementById("startErr");
+        const verifyForm  = document.getElementById("verifyForm");
+        const verifyBtn   = document.getElementById("verifyBtn");
+        const verifyErr   = document.getElementById("verifyErr");
+        const emailMasked = document.getElementById("emailMasked");
+        const phoneMasked = document.getElementById("phoneMasked");
+        const result      = document.getElementById("result");
+        const codeText    = document.getElementById("codeText");
+        const badges      = document.querySelectorAll(".step-badge");
+
+        function setStep(n) {
+          badges.forEach(b => {
+            const s = Number(b.dataset.step);
+            b.classList.toggle("active", s === n);
+            b.classList.toggle("border-amber-400/40", s === n);
+            b.classList.toggle("bg-amber-500/15",      s === n);
+            b.classList.toggle("border-white/10",      s !== n);
+            b.classList.toggle("bg-white/[0.04]",      s !== n);
+            const num = b.querySelector("div:first-child");
+            const txt = b.querySelector("div:last-child");
+            if (num) num.className = "font-bold text-base leading-none mb-1 " + (s <= n ? "text-amber-200" : "text-white/50");
+            if (txt) txt.className = "leading-snug "                          + (s <= n ? "text-white/80" : "text-white/60");
+          });
+        }
+
+        signupForm.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          startErr.textContent = "";
+          startBtn.disabled = true;
+          const origLabel = startBtn.textContent;
+          startBtn.textContent = isEl ? "Αποστολή…" : "Sending…";
+          const fd = new FormData(signupForm);
+          const cc    = String(fd.get("country_code") || "").trim();
+          const local = String(fd.get("phone_local") || "").replace(/[^\d]/g, "").replace(/^0+/, "");
+          const phone = cc + local;
+          if (!/^\+\d{8,15}$/.test(phone)) {
+            startErr.textContent = isEl ? "Ο αριθμός δεν φαίνεται σωστός." : "That phone number doesn't look right.";
+            startBtn.disabled = false; startBtn.textContent = origLabel;
+            return;
+          }
+          try {
+            const res = await fetch("/api/welcome/helens-start", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                full_name: fd.get("full_name"),
+                email:     String(fd.get("email") || "").trim().toLowerCase(),
+                password:  fd.get("password"),
+                phone,
+                marketing: fd.get("marketing") === "on",
+              }),
+            });
+            const j = await res.json().catch(() => ({}));
+            if (!res.ok || !j.ok) {
+              startErr.textContent = j?.message || j?.error || ("HTTP " + res.status);
+              startBtn.disabled = false; startBtn.textContent = origLabel;
+              return;
+            }
+            emailMasked.textContent = j.email_masked || "";
+            phoneMasked.textContent = j.phone_masked || "";
+
+            // If neither channel is required, verify immediately with empty
+            // OTPs — the server will skip both checks and issue the code.
+            const needEmail = !!j.require_email_otp;
+            const needPhone = !!j.require_phone_otp;
+            const emailLabel = document.getElementById("emailOtpLabel");
+            const phoneLabel = document.getElementById("phoneOtpLabel");
+            const emailWrap  = document.getElementById("emailMaskedWrap");
+            const phoneWrap  = document.getElementById("phoneMaskedWrap");
+            const sep        = document.getElementById("maskedSep");
+            const intro      = document.getElementById("verifyIntro");
+            const emailInp   = verifyForm.querySelector('input[name="email_otp"]');
+            const phoneInp   = verifyForm.querySelector('input[name="phone_otp"]');
+            emailLabel.classList.toggle("hidden", !needEmail);
+            phoneLabel.classList.toggle("hidden", !needPhone);
+            emailWrap.classList.toggle("hidden", !needEmail);
+            phoneWrap.classList.toggle("hidden", !needPhone);
+            sep.classList.toggle("hidden", !(needEmail && needPhone));
+            emailInp.required = needEmail;
+            phoneInp.required = needPhone;
+            if (needEmail && needPhone) {
+              intro.textContent = isEl ? "Σας στείλαμε δύο κωδικούς επαλήθευσης." : "We just sent you two verification codes.";
+            } else if (needEmail) {
+              intro.textContent = isEl ? "Σας στείλαμε κωδικό στο email." : "We just sent a code to your email.";
+            } else if (needPhone) {
+              intro.textContent = isEl ? "Σας στείλαμε κωδικό με SMS." : "We just sent a code by SMS.";
+            }
+
+            if (!needEmail && !needPhone) {
+              // Both disabled: auto-issue without showing step 2.
+              const vres = await fetch("/api/welcome/helens-verify", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email_otp: "", phone_otp: "" }),
+              });
+              const vj = await vres.json().catch(() => ({}));
+              if (!vres.ok || !vj.ok) {
+                startErr.textContent = vj?.message || vj?.error || ("HTTP " + vres.status);
+                startBtn.disabled = false; startBtn.textContent = origLabel;
+                return;
+              }
+              codeText.textContent = vj.code;
+              signupForm.classList.add("hidden");
+              result.classList.remove("hidden");
+              setStep(3);
+              window.scrollTo({ top: 0, behavior: "smooth" });
+              return;
+            }
+
+            signupForm.classList.add("hidden");
+            verifyForm.classList.remove("hidden");
+            setStep(2);
+            (needEmail ? emailInp : phoneInp).focus();
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          } catch (err) {
+            startErr.textContent = err?.message || "error";
+            startBtn.disabled = false; startBtn.textContent = origLabel;
+          }
+        });
+
+        verifyForm.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          verifyErr.textContent = "";
+          verifyBtn.disabled = true;
+          const origLabel = verifyBtn.textContent;
+          verifyBtn.textContent = isEl ? "Επαλήθευση…" : "Verifying…";
+          const fd = new FormData(verifyForm);
+          try {
+            const res = await fetch("/api/welcome/helens-verify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                email_otp: fd.get("email_otp"),
+                phone_otp: fd.get("phone_otp"),
+              }),
+            });
+            const j = await res.json().catch(() => ({}));
+            if (!res.ok || !j.ok) {
+              verifyErr.textContent = j?.message || j?.error || ("HTTP " + res.status);
+              verifyBtn.disabled = false; verifyBtn.textContent = origLabel;
+              return;
+            }
+            codeText.textContent = j.code;
+            verifyForm.classList.add("hidden");
+            result.classList.remove("hidden");
+            setStep(3);
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          } catch (err) {
+            verifyErr.textContent = err?.message || "error";
+            verifyBtn.disabled = false; verifyBtn.textContent = origLabel;
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>

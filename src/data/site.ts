@@ -33,6 +33,11 @@ export const site = {
     text_el: "Ανοιχτά καθημερινά 18:00–02:00 (καλοκαιρινή σεζόν)",
   },
 
+  // Hard cap on bookable tables per night. Counts every non-cancelled / non-
+  // rejected reservation (pending, pending_ai, confirmed) against the cap so
+  // the AI agent can't oversell while the owner is asleep.
+  dailyTableCapacity: 20,
+
   ratings: {
     google: { rating: 4.4, count: 174 },
   },

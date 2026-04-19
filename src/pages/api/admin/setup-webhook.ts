@@ -6,8 +6,10 @@ export const GET: APIRoute = async ({ request, locals }) => {
   }
 
   const token   = import.meta.env.TELEGRAM_BOT_TOKEN;
-  const origin  = new URL(request.url).origin;
-  const hookUrl = `${origin}/api/telegram-webhook`;
+  // Always register the canonical www origin. If the admin happened to open
+  // this page on the apex domain, the webhook would 301 to www — and Telegram
+  // does not follow redirects, so every callback_query would fail silently.
+  const hookUrl = "https://www.sallysbar.gr/api/telegram-webhook";
 
   const res = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, {
     method: "POST",

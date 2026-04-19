@@ -1,0 +1,526 @@
+---
+import "../../../styles/global.css";
+import Header from "../../../components/Header.astro";
+import AdminNav from "../../../components/AdminNav.astro";
+import { supabaseAdmin } from "../../../lib/supabase";
+import { withLangPrefix } from "../../../i18n";
+
+export const prerender = false;
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+
+if (!["admin", "super_admin"].includes(Astro.locals.role ?? "")) {
+  return Astro.redirect(withLangPrefix(lang, "/admin"));
+}
+
+const slug = String(Astro.params.slug ?? "").trim().toLowerCase();
+if (!/^[a-z0-9][a-z0-9-]{1,30}[a-z0-9]$/.test(slug)) {
+  return Astro.redirect(withLangPrefix(lang, "/admin/partners"));
+}
+
+const { data: partner } = await supabaseAdmin
+  .from("partners")
+  .select("*")
+  .eq("slug", slug)
+  .maybeSingle();
+
+if (!partner) {
+  return Astro.redirect(withLangPrefix(lang, "/admin/partners"));
+}
+
+// Filters for the signups list
+const url = new URL(Astro.request.url);
+const statusF = url.searchParams.get("status") ?? "all";
+const q       = (url.searchParams.get("q") ?? "").trim();
+
+let query = supabaseAdmin
+  .from("welcome_drinks")
+  .select("id, code, source, full_name, email, phone, status, issued_at, redeemed_at, user_id")
+  .eq("source", slug)
+  .order("issued_at", { ascending: false })
+  .limit(500);
+
+if (statusF !== "all" && ["issued","redeemed","expired"].includes(statusF)) {
+  query = query.eq("status", statusF);
+}
+
+const { data: rawRows } = await query;
+let rows = rawRows ?? [];
+if (q) {
+  const needle = q.toLowerCase();
+  rows = rows.filter(r =>
+    (r.full_name ?? "").toLowerCase().includes(needle) ||
+    (r.email ?? "").toLowerCase().includes(needle) ||
+    (r.phone ?? "").toLowerCase().includes(needle) ||
+    (r.code ?? "").toLowerCase().includes(needle)
+  );
+}
+
+const total = rows.length;
+const redeemed = rows.filter(r => r.status === "redeemed").length;
+const issued   = rows.filter(r => r.status === "issued").length;
+const conversion = total > 0 ? Math.round((redeemed / total) * 100) : 0;
+const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+const recent7 = rows.filter(r => new Date(r.issued_at).getTime() >= weekAgo).length;
+
+function fmt(d: string | null) {
+  if (!d) return "—";
+  return new Date(d).toLocaleString(isEl ? "el-GR" : "en-GB", {
+    day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+  });
+}
+
+const landingUrl   = `https://www.sallysbar.gr/welcome/${slug}`;
+const posterUrl    = `/admin/partner-poster?slug=${slug}`;
+const partnerJson  = JSON.stringify(partner);
+---
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{partner.name} — Admin</title>
+    <meta name="robots" content="noindex,nofollow" />
+  </head>
+  <body class="min-h-screen bg-[#0b0b10] text-white">
+    <Header />
+    <div class="h-20"></div>
+    <AdminNav active="partners" />
+
+    <main class="mx-auto max-w-6xl px-5 py-10">
+      <div class="flex items-center gap-2 text-sm text-white/50 mb-3">
+        <a href="/admin/partners" class="hover:text-amber-200">← {isEl ? "Όλοι οι συνεργάτες" : "All partners"}</a>
+      </div>
+
+      <div class="flex items-start justify-between gap-4 flex-wrap mb-6">
+        <div class="flex items-center gap-4 min-w-0">
+          {partner.logo_url ? (
+            <img src={partner.logo_url} alt={`${partner.name} logo`} class="h-14 w-14 rounded-xl object-cover bg-black/40 border border-white/10" />
+          ) : (
+            <div class="h-14 w-14 rounded-xl bg-gradient-to-br from-amber-300/30 to-amber-500/20 border border-amber-400/30 grid place-items-center text-amber-200 font-heading text-xl font-bold">
+              {partner.name?.[0] ?? "?"}
+            </div>
+          )}
+          <div class="min-w-0">
+            <h1 class="font-heading text-2xl md:text-3xl font-bold truncate">🤝 {partner.name}</h1>
+            <p class="text-xs text-white/50 mt-0.5">
+              <span class="font-mono">{partner.slug}</span>
+              {partner.city && <span> · 📍 {partner.city}</span>}
+              <span> · {isEl ? "Πρόθεμα" : "Prefix"}: <span class="text-amber-200 font-mono">{partner.code_prefix}</span></span>
+            </p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap">
+          <a href={posterUrl} class="rounded-xl border border-amber-400/40 bg-gradient-to-br from-amber-400/25 to-amber-500/15 hover:from-amber-400/35 text-amber-100 px-4 py-2 text-sm font-semibold transition">
+            🖨 {isEl ? "Αφίσα A4" : "A4 poster"}
+          </a>
+          <a href={landingUrl} target="_blank" rel="noopener" class="rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-white/85 px-4 py-2 text-sm font-semibold transition">
+            ↗ {isEl ? "Σελίδα εγγραφής" : "Signup page"}
+          </a>
+        </div>
+      </div>
+
+      {/* KPIs */}
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          <p class="text-[10px] uppercase tracking-wider text-white/50">{isEl ? "Συνολικά" : "Signups"}</p>
+          <p class="font-heading text-2xl font-bold mt-1">{total}</p>
+        </div>
+        <div class="rounded-2xl border border-amber-400/30 bg-amber-400/[0.06] p-4">
+          <p class="text-[10px] uppercase tracking-wider text-amber-300">{isEl ? "Εκκρεμή" : "Waiting"}</p>
+          <p class="font-heading text-2xl font-bold mt-1 text-amber-300">{issued}</p>
+        </div>
+        <div class="rounded-2xl border border-emerald-400/30 bg-emerald-400/[0.06] p-4">
+          <p class="text-[10px] uppercase tracking-wider text-emerald-300">{isEl ? "Εξαργυρωμένα" : "Redeemed"}</p>
+          <p class="font-heading text-2xl font-bold mt-1 text-emerald-300">{redeemed}<span class="text-sm text-white/50 ml-1">({conversion}%)</span></p>
+        </div>
+        <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          <p class="text-[10px] uppercase tracking-wider text-white/50">{isEl ? "Τελ. 7 ημ." : "Last 7 days"}</p>
+          <p class="font-heading text-2xl font-bold mt-1">{recent7}</p>
+        </div>
+      </div>
+
+      {/* Partner info — editable in place */}
+      <form id="infoForm" class="rounded-2xl border border-white/10 bg-white/[0.03] p-4 mb-4 space-y-3 text-sm">
+        <div class="flex items-center gap-2 mb-1">
+          <span class="text-amber-300">🏢</span>
+          <h3 class="text-sm font-semibold">{isEl ? "Στοιχεία συνεργάτη" : "Partner info"}</h3>
+        </div>
+        <div class="grid sm:grid-cols-2 gap-3">
+          <label class="block">
+            <span class="text-xs text-white/60">{isEl ? "Όνομα" : "Name"}</span>
+            <input required type="text" name="name" maxlength="120" value={partner.name} class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2" />
+          </label>
+          <label class="block">
+            <span class="text-xs text-white/60">{isEl ? "Πόλη" : "City"}</span>
+            <input type="text" name="city" maxlength="120" value={partner.city ?? ""} class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2" />
+          </label>
+        </div>
+        <label class="block">
+          <span class="text-xs text-white/60">{isEl ? "Απόσταση από το Sally's" : "Distance from Sally's"} <span class="text-white/40">({isEl ? "π.χ. «200μ με τα πόδια», «5 λεπτά»" : 'e.g. "200m walk", "5 min"'})</span></span>
+          <input type="text" name="distance_from_bar" maxlength="60" value={(partner as any).distance_from_bar ?? ""} placeholder={isEl ? "200μ με τα πόδια" : "200m walk"} class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2" />
+        </label>
+        <label class="block">
+          <span class="text-xs text-white/60">{isEl ? "Σύντομη περιγραφή" : "Short description"} <span class="text-white/40">({isEl ? "εμφανίζεται στην κάρτα λίστας" : "shown on the directory card"})</span></span>
+          <input type="text" name="short_description" maxlength="280" value={partner.short_description ?? ""} class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2" />
+        </label>
+        <label class="block">
+          <span class="text-xs text-white/60">{isEl ? "Αναλυτική περιγραφή" : "Long description"} <span class="text-white/40">({isEl ? "εμφανίζεται στη σελίδα λεπτομερειών" : "shown on the partner detail page"})</span></span>
+          <textarea name="long_description" rows="4" maxlength="2000" class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2">{partner.long_description ?? ""}</textarea>
+        </label>
+        <div class="grid sm:grid-cols-2 gap-3">
+          <label class="block">
+            <span class="text-xs text-white/60">{isEl ? "Ιστοσελίδα" : "Website URL"}</span>
+            <input type="url" name="website_url" maxlength="500" value={partner.website_url ?? ""} placeholder="https://…" class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2" />
+          </label>
+          <label class="block">
+            <span class="text-xs text-white/60">⭐ Google Business Profile</span>
+            <input type="url" name="google_business_url" maxlength="500" value={partner.google_business_url ?? ""} placeholder="https://maps.app.goo.gl/…" class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2" />
+          </label>
+        </div>
+        <label class="block">
+          <span class="text-xs text-white/60">📍 Google Maps URL</span>
+          <input type="url" name="google_maps_url" maxlength="1500" value={partner.google_maps_url ?? ""} placeholder="https://www.google.com/maps/dir//…" class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2" />
+        </label>
+        <div class="block">
+          <span class="text-xs text-white/60">{isEl ? "Φωτογραφία / Logo" : "Photo / Logo"}</span>
+          <div class="mt-1 flex items-center gap-3">
+            <div id="logoPreview" class="h-16 w-16 rounded-xl border border-white/10 bg-black/40 grid place-items-center text-white/30 text-[10px] overflow-hidden"></div>
+            <div class="flex-1 space-y-2">
+              <input type="url" name="logo_url" maxlength="500" value={partner.logo_url ?? ""} placeholder="https://…" class="w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2 text-sm" />
+              <div class="flex items-center gap-2">
+                <input type="file" id="logoFile" accept="image/jpeg,image/png,image/webp,image/gif" class="text-xs text-white/70 file:mr-2 file:rounded file:border-0 file:bg-white/10 file:hover:bg-white/15 file:px-3 file:py-1.5 file:text-white file:cursor-pointer" />
+                <span id="uploadStatus" class="text-[11px] text-white/50"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="grid sm:grid-cols-2 gap-3">
+          <label class="block">
+            <span class="text-xs text-white/60">{isEl ? "Πρόθεμα κωδικού" : "Code prefix"}</span>
+            <input type="text" name="code_prefix" maxlength="6" value={partner.code_prefix} class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2 font-mono uppercase" />
+          </label>
+          <label class="block">
+            <span class="text-xs text-white/60">{isEl ? "Σειρά εμφάνισης" : "Sort order"}</span>
+            <input type="number" name="sort_order" value={partner.sort_order} class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2" />
+          </label>
+        </div>
+        <div class="grid sm:grid-cols-2 gap-3">
+          <label class="block">
+            <span class="text-xs text-white/60">{isEl ? "Προμήθεια / εξαργύρωση (€)" : "Commission per redeem (€)"}</span>
+            <input type="number" step="0.01" name="commission_per_redeem_eur" value={partner.commission_per_redeem_eur} class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2" />
+          </label>
+          <label class="block">
+            <span class="text-xs text-white/60">{isEl ? "Email μηνιαίας αναφοράς" : "Monthly report email"}</span>
+            <input type="email" name="monthly_report_email" maxlength="160" value={partner.monthly_report_email ?? ""} class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2" />
+          </label>
+        </div>
+        <div class="grid sm:grid-cols-2 gap-3">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" name="active" class="h-4 w-4 accent-amber-500" checked={partner.active} />
+            <span class="text-xs text-white/80">{isEl ? "Ενεργός" : "Active"}</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" name="visible_on_public_page" class="h-4 w-4 accent-amber-500" checked={partner.visible_on_public_page} />
+            <span class="text-xs text-white/80">{isEl ? "Εμφανής στη δημόσια σελίδα" : "Visible on public page"}</span>
+          </label>
+        </div>
+        <label class="block">
+          <span class="text-xs text-white/60">{isEl ? "Σημειώσεις (admin)" : "Notes (admin)"}</span>
+          <textarea name="notes" rows="2" maxlength="2000" class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2">{partner.notes ?? ""}</textarea>
+        </label>
+        <div class="flex items-center gap-2 pt-1">
+          <button type="submit" id="saveInfoBtn" class="rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-sm font-bold px-4 py-2 transition">
+            {isEl ? "Αποθήκευση" : "Save"}
+          </button>
+          <p id="infoStatus" class="text-xs text-white/50 min-h-[1em]"></p>
+        </div>
+      </form>
+
+      {/* Gift + verification — same fields as partners table; updates partners row */}
+      <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4 mb-4">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="text-amber-300">🎁</span>
+          <h3 class="text-sm font-semibold">{isEl ? "Δώρο καλωσορίσματος" : "Welcome gift"}</h3>
+        </div>
+        <label class="block">
+          <span class="text-xs text-white/60">{isEl ? "Φράση" : "Phrase"}</span>
+          <input id="giftLabelInput" type="text" maxlength="120" value={partner.gift_label} class="mt-1 w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2" />
+        </label>
+        <p class="text-[11px] text-white/60 mt-2">
+          {isEl ? "Προεπισκόπηση SMS:" : "SMS preview:"}
+          <span class="text-white/80 italic"> "Show this code at the bar for your <span id="giftPhrasePreview">{partner.gift_label}</span>: {partner.code_prefix}-XXXX."</span>
+        </p>
+        <p id="giftStatus" class="text-[11px] text-white/40 mt-1 min-h-[1em]"></p>
+      </div>
+
+      <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4 mb-4">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="text-amber-300">🛡️</span>
+          <h3 class="text-sm font-semibold">{isEl ? "Απαίτηση επαλήθευσης" : "Verification required"}</h3>
+        </div>
+        <div class="grid sm:grid-cols-2 gap-3">
+          <label class="flex items-start gap-3 cursor-pointer rounded-xl border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] px-3 py-3 transition">
+            <input id="toggleEmail" type="checkbox" class="mt-0.5 h-4 w-4 accent-amber-500" checked={partner.require_email_otp} />
+            <span class="flex-1">
+              <span class="block text-sm text-white/90 font-medium">📧 {isEl ? "Επαλήθευση email" : "Email verification"}</span>
+              <span class="block text-[11px] text-white/50 mt-0.5">{isEl ? "6-ψήφιος κωδικός στο email" : "6-digit OTP via email"}</span>
+            </span>
+          </label>
+          <label class="flex items-start gap-3 cursor-pointer rounded-xl border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] px-3 py-3 transition">
+            <input id="togglePhone" type="checkbox" class="mt-0.5 h-4 w-4 accent-amber-500" checked={partner.require_phone_otp} />
+            <span class="flex-1">
+              <span class="block text-sm text-white/90 font-medium">📱 {isEl ? "Επαλήθευση τηλεφώνου" : "Phone verification"}</span>
+              <span class="block text-[11px] text-white/50 mt-0.5">{isEl ? "OTP με SMS μέσω Vonage" : "SMS OTP via Vonage"}</span>
+            </span>
+          </label>
+          <label class="flex items-start gap-3 cursor-pointer rounded-xl border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] px-3 py-3 transition sm:col-span-2">
+            <input id="toggleFacebook" type="checkbox" class="mt-0.5 h-4 w-4 accent-amber-500" checked={partner.allow_facebook_login ?? true} />
+            <span class="flex-1">
+              <span class="block text-sm text-white/90 font-medium">📘 {isEl ? "Σύνδεση με Facebook (γρήγορη συμπλήρωση)" : "Continue with Facebook (fast-fill)"}</span>
+              <span class="block text-[11px] text-white/50 mt-0.5">{isEl ? "Πλήκτρο «Continue with Facebook» στη σελίδα εγγραφής — ο χρήστης μπορεί να μπει με Facebook και να προ-συμπληρωθούν όνομα & email." : 'Shows a "Continue with Facebook" button on the signup page — prefills name & email automatically.'}</span>
+            </span>
+          </label>
+        </div>
+        <p id="settingsStatus" class="text-[11px] text-white/40 mt-2 min-h-[1em]"></p>
+      </div>
+
+      {/* QR + card copy */}
+      <details class="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 mb-4">
+        <summary class="cursor-pointer text-sm text-white/70 flex items-center gap-2 list-none">
+          <span class="text-amber-300">📄</span>
+          <span class="font-medium">{isEl ? "QR + κείμενο κάρτας για εκτύπωση" : "QR + card copy for printing"}</span>
+        </summary>
+        <div class="mt-3 grid md:grid-cols-2 gap-4 items-start">
+          <div class="rounded-xl bg-white p-3 text-center">
+            <img class="mx-auto" alt="QR code" width="220" height="220"
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=2&data=${encodeURIComponent(landingUrl)}`} />
+            <p class="mt-2 text-xs text-black/70 font-mono break-all">{landingUrl}</p>
+          </div>
+          <div class="text-sm text-white/80 leading-relaxed space-y-2">
+            <p class="text-xs uppercase tracking-wider text-white/50">{isEl ? "Κείμενο κάρτας" : "Card copy"}</p>
+            <div class="rounded-xl border border-white/10 bg-black/40 p-3 text-[13px] font-medium">
+              Welcome from {partner.name} & Sally's 🍹<br/>
+              Your {partner.gift_label} is on us.<br/>
+              Scan → sign up → show the code at the bar.
+            </div>
+            <p class="text-xs text-white/50">{isEl ? "Πατήστε «Αφίσα A4» πάνω για έτοιμη εκτύπωση." : 'Use the "A4 poster" button at top for the printable version.'}</p>
+          </div>
+        </div>
+      </details>
+
+      {/* Filters */}
+      <form method="get" class="rounded-2xl border border-white/10 bg-white/[0.03] p-4 mb-4 grid md:grid-cols-3 gap-2 items-end">
+        <label class="text-xs text-white/60">
+          <span class="block mb-1">{isEl ? "Αναζήτηση" : "Search"}</span>
+          <input name="q" value={q} placeholder={isEl ? "όνομα, email, κωδικός…" : "name, email, code…"} class="w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2 text-sm" />
+        </label>
+        <label class="text-xs text-white/60">
+          <span class="block mb-1">{isEl ? "Κατάσταση" : "Status"}</span>
+          <select name="status" class="w-full rounded-lg bg-black/40 border border-white/10 px-3 py-2 text-sm">
+            <option value="all"      selected={statusF === "all"}>{isEl ? "Όλες" : "All"}</option>
+            <option value="issued"   selected={statusF === "issued"}>{isEl ? "Εκκρεμή" : "Waiting"}</option>
+            <option value="redeemed" selected={statusF === "redeemed"}>{isEl ? "Εξαργυρωμένα" : "Redeemed"}</option>
+            <option value="expired"  selected={statusF === "expired"}>{isEl ? "Ληγμένα" : "Expired"}</option>
+          </select>
+        </label>
+        <div class="flex items-center gap-2">
+          <button class="rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold px-3 py-2">{isEl ? "Φίλτρο" : "Filter"}</button>
+          {(q || statusF !== "all") && (
+            <a href="?" class="text-xs text-white/50 hover:text-white/80">✕ {isEl ? "Καθ." : "Clear"}</a>
+          )}
+        </div>
+      </form>
+
+      {/* Signups list */}
+      {rows.length === 0 ? (
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-10 text-center text-white/40 text-sm">
+          {isEl ? "Καμία εγγραφή ακόμη." : "No signups yet."}
+        </div>
+      ) : (
+        <div class="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="border-b border-white/10 text-white/40 text-xs uppercase tracking-wider">
+                  <th class="text-left px-4 py-3">{isEl ? "Κωδικός" : "Code"}</th>
+                  <th class="text-left px-4 py-3">{isEl ? "Όνομα" : "Name"}</th>
+                  <th class="text-left px-4 py-3">Email</th>
+                  <th class="text-left px-4 py-3">{isEl ? "Τηλέφωνο" : "Phone"}</th>
+                  <th class="text-left px-4 py-3">{isEl ? "Κατάσταση" : "Status"}</th>
+                  <th class="text-left px-4 py-3">{isEl ? "Εγγραφή" : "Issued"}</th>
+                  <th class="text-left px-4 py-3">{isEl ? "Εξαργύρωση" : "Redeemed"}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r: any) => (
+                  <tr class="border-b border-white/5 hover:bg-white/[0.02] transition">
+                    <td class="px-4 py-3 font-mono text-amber-200">{r.code}</td>
+                    <td class="px-4 py-3 text-white/90 font-medium">{r.full_name}</td>
+                    <td class="px-4 py-3 text-white/60 text-xs">{r.email}</td>
+                    <td class="px-4 py-3 text-white/60 text-xs font-mono">{r.phone}</td>
+                    <td class="px-4 py-3">
+                      {r.status === "redeemed" && <span class="text-[11px] font-semibold rounded-full border border-emerald-400/40 bg-emerald-500/15 text-emerald-200 px-2 py-0.5">✓ {isEl ? "Εξαργυρώθηκε" : "Redeemed"}</span>}
+                      {r.status === "issued"   && <span class="text-[11px] font-semibold rounded-full border border-amber-400/40 bg-amber-500/15 text-amber-200 px-2 py-0.5">⏳ {isEl ? "Εκκρεμεί" : "Waiting"}</span>}
+                      {r.status === "expired"  && <span class="text-[11px] font-semibold rounded-full border border-rose-400/40 bg-rose-500/15 text-rose-200 px-2 py-0.5">{isEl ? "Έληξε" : "Expired"}</span>}
+                    </td>
+                    <td class="px-4 py-3 text-white/70 text-xs">{fmt(r.issued_at)}</td>
+                    <td class="px-4 py-3 text-white/70 text-xs">{fmt(r.redeemed_at)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </main>
+
+    <script is:inline define:vars={{ isEl, slug, partnerJson }}>
+      (function() {
+        const partner = JSON.parse(partnerJson);
+        const form = document.getElementById("infoForm");
+        const infoStatus = document.getElementById("infoStatus");
+        const logoPreview = document.getElementById("logoPreview");
+        const logoFile = document.getElementById("logoFile");
+        const uploadStatus = document.getElementById("uploadStatus");
+
+        function paintLogo(url) {
+          logoPreview.innerHTML = "";
+          if (url) {
+            const img = document.createElement("img");
+            img.src = url; img.alt = "logo";
+            img.className = "h-full w-full object-cover";
+            logoPreview.appendChild(img);
+          } else {
+            logoPreview.textContent = "—";
+          }
+        }
+        paintLogo(form.logo_url.value.trim());
+        form.logo_url.addEventListener("input", () => paintLogo(form.logo_url.value.trim()));
+
+        logoFile.addEventListener("change", async () => {
+          const f = logoFile.files?.[0]; if (!f) return;
+          uploadStatus.style.color = "rgba(255,255,255,0.6)";
+          uploadStatus.textContent = isEl ? "Μεταφόρτωση…" : "Uploading…";
+          try {
+            const fd = new FormData();
+            fd.append("file", f); fd.append("slug", slug);
+            const res = await fetch("/api/admin/partners/upload", { method: "POST", body: fd });
+            const j = await res.json().catch(() => ({}));
+            if (!res.ok || !j.url) throw new Error(j?.error || ("HTTP " + res.status));
+            form.logo_url.value = j.url;
+            paintLogo(j.url);
+            logoFile.value = "";
+            // Auto-save the new URL to the partner record so it shows on the
+            // public /partners page without needing a separate Save click.
+            uploadStatus.textContent = isEl ? "Αποθήκευση στη βάση…" : "Saving to DB…";
+            const save = await fetch("/api/admin/partners", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ slug, logo_url: j.url }),
+            });
+            const sj = await save.json().catch(() => ({}));
+            if (!save.ok || !sj.ok) throw new Error(sj?.error || ("HTTP " + save.status));
+            uploadStatus.style.color = "#6ee7b7";
+            uploadStatus.textContent = "✓ " + (isEl ? "Αποθηκεύτηκε και ζωντανό" : "Uploaded & live");
+          } catch (err) {
+            uploadStatus.style.color = "#fca5a5";
+            uploadStatus.textContent = "✕ " + (err?.message || "upload failed");
+          }
+        });
+
+        form.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          infoStatus.style.color = "rgba(255,255,255,0.5)";
+          infoStatus.textContent = isEl ? "Αποθήκευση…" : "Saving…";
+          const fd = new FormData(form);
+          const payload = {
+            slug,
+            name: fd.get("name"),
+            short_description: fd.get("short_description") || "",
+            long_description: fd.get("long_description") || "",
+            city: fd.get("city") || "",
+            distance_from_bar: fd.get("distance_from_bar") || "",
+            website_url: fd.get("website_url") || "",
+            google_business_url: fd.get("google_business_url") || "",
+            google_maps_url: fd.get("google_maps_url") || "",
+            logo_url: fd.get("logo_url") || "",
+            code_prefix: String(fd.get("code_prefix") || "").toUpperCase(),
+            sort_order: Number(fd.get("sort_order") || 100),
+            commission_per_redeem_eur: Number(fd.get("commission_per_redeem_eur") || 0),
+            monthly_report_email: fd.get("monthly_report_email") || "",
+            notes: fd.get("notes") || "",
+            active: form.active.checked,
+            visible_on_public_page: form.visible_on_public_page.checked,
+          };
+          try {
+            const res = await fetch("/api/admin/partners", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+            });
+            const j = await res.json().catch(() => ({}));
+            if (!res.ok || !j.ok) throw new Error(j?.error || ("HTTP " + res.status));
+            infoStatus.style.color = "#6ee7b7";
+            infoStatus.textContent = "✓ " + (isEl ? "Αποθηκεύτηκε" : "Saved");
+          } catch (err) {
+            infoStatus.style.color = "#fca5a5";
+            infoStatus.textContent = "✕ " + (err?.message || "error");
+          }
+        });
+
+        // Gift label autosave
+        const giftInput = document.getElementById("giftLabelInput");
+        const giftPreview = document.getElementById("giftPhrasePreview");
+        const giftStatus = document.getElementById("giftStatus");
+        let giftTimer = null;
+        async function saveGift() {
+          const v = String(giftInput.value || "").trim();
+          if (v.length < 2) { giftStatus.style.color="#fca5a5"; giftStatus.textContent = "✕ at least 2 chars"; return; }
+          giftStatus.style.color = "rgba(255,255,255,0.4)"; giftStatus.textContent = isEl ? "Αποθήκευση…" : "Saving…";
+          try {
+            const res = await fetch("/api/admin/partners", {
+              method: "PATCH", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ slug, gift_label: v }),
+            });
+            const j = await res.json().catch(() => ({}));
+            if (!res.ok || !j.ok) throw new Error(j?.error || ("HTTP " + res.status));
+            giftStatus.style.color = "#6ee7b7";
+            giftStatus.textContent = "✓ " + (isEl ? "Αποθηκεύτηκε" : "Saved");
+          } catch (err) { giftStatus.style.color = "#fca5a5"; giftStatus.textContent = "✕ " + (err?.message || "error"); }
+        }
+        giftInput?.addEventListener("input", () => {
+          giftPreview.textContent = giftInput.value.trim() || "free welcome drink";
+          clearTimeout(giftTimer); giftTimer = setTimeout(saveGift, 400);
+        });
+
+        // Verification toggles
+        const tE = document.getElementById("toggleEmail");
+        const tP = document.getElementById("togglePhone");
+        const tF = document.getElementById("toggleFacebook");
+        const settingsStatus = document.getElementById("settingsStatus");
+        let togTimer = null;
+        async function saveToggles() {
+          settingsStatus.style.color = "rgba(255,255,255,0.4)"; settingsStatus.textContent = isEl ? "Αποθήκευση…" : "Saving…";
+          try {
+            const res = await fetch("/api/admin/partners", {
+              method: "PATCH", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ slug, require_email_otp: tE.checked, require_phone_otp: tP.checked, allow_facebook_login: tF.checked }),
+            });
+            const j = await res.json().catch(() => ({}));
+            if (!res.ok || !j.ok) throw new Error(j?.error || ("HTTP " + res.status));
+            settingsStatus.style.color = "#6ee7b7";
+            const parts = [];
+            if (tE.checked) parts.push("email");
+            if (tP.checked) parts.push("phone");
+            settingsStatus.textContent = "✓ " + (parts.length ? "Required: " + parts.join(" + ") : "No verification (instant code)");
+          } catch (err) { settingsStatus.style.color = "#fca5a5"; settingsStatus.textContent = "✕ " + (err?.message || "error"); }
+        }
+        const sched = () => { clearTimeout(togTimer); togTimer = setTimeout(saveToggles, 250); };
+        tE?.addEventListener("change", sched);
+        tP?.addEventListener("change", sched);
+        tF?.addEventListener("change", sched);
+      })();
+    </script>
+  </body>
+</html>
