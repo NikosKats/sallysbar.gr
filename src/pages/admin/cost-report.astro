@@ -349,6 +349,70 @@ const tiers: Tier[] = [
       ["Updates to /admin/business — AI Receptionist callout + cluster 1 new line items", 3, 75],
     ],
   },
+  { n: 26, title: "Partners Platform + Welcome Drinks + Reservations v2 + Travel-hub", titleEl: "Πλατφόρμα Συνεργατών + Welcome Drinks + Κρατήσεις v2 + Travel-hub",
+    rows: [
+      // Partners schema + API
+      ["partners table + Storage bucket + auto-create via upload endpoint", 4, 95],
+      ["/api/admin/partners CRUD (POST/PATCH/DELETE) with slug + code-prefix validation", 10, 95],
+      ["/api/admin/partners/upload (5MB limit, MIME allow-list, auto-save URL to DB on upload)", 6, 95],
+      ["/api/admin/partners/import — URL scraper (Open Graph + JSON-LD LocalBusiness parser, 10s timeout, 1MB cap)", 12, 120],
+      // Partners admin UI
+      ["/admin/partners list + modal create/delete + Active/Public badges + inline delete confirm", 14, 75],
+      ["/admin/partners/[slug] full management (photo preview + auto-save · Google Business · Maps · distance · commission · monthly report · notes · 6 toggles)", 22, 75],
+      ["/admin/partner-poster A4 generator (QR via qrcode library, partner logo + gift, print CSS)", 8, 75],
+      // Public partner pages
+      ["/partners directory (clickable cards with 4:3 photo, city + distance, line-clamp description)", 10, 75],
+      ["/partners/[slug] detail page (16:9 hero, long description, 3-up CTA grid, OG tags, redirect guards)", 10, 75],
+      ["/api/partners/enquiry + 'Become a partner' form → Telegram (dedicated bot env + fallback)", 8, 95],
+      ["'Our Partners' nav item in public Header (bilingual)", 2, 55],
+      // Welcome drinks schema + settings
+      ["welcome_drinks + welcome_settings schemas + unique-per-email-source index", 6, 95],
+      ["welcome_settings: gift_label + require_email_otp + require_phone_otp toggles + presets UI", 8, 75],
+      // Welcome flow
+      ["/welcome/helens 2-step flow (country-code dropdown × 25, OTP inputs, step badges, auto-skip if both OTPs disabled)", 22, 75],
+      ["/api/welcome/helens-start (validate + dedupe by email+phone + createUser email_confirm:false + email OTP via Resend + Vonage verifyStart + stash in httpOnly cookies)", 18, 120],
+      ["/api/welcome/helens-verify (constant-time OTP compare + verifyCheck + profile upsert + auth email_confirm:true + welcome_drinks insert + SMS+email delivery via ctx.waitUntil)", 14, 120],
+      ["Facebook OAuth fast-fill (Supabase provider, session detection, readonly pre-fill, password becomes optional)", 10, 95],
+      // Staff redemption
+      ["/staff/welcome redemption screen (large input, guest details + gift label banner, double-redeem guard)", 8, 75],
+      ["/api/staff/welcome-redeem GET (lookup) + POST (mark redeemed)", 4, 95],
+      ["Admin nav '🍹 Helen's welcome code' added under Staff group", 1, 55],
+      // Customer manage/cancel
+      ["src/lib/booking-tokens.ts HMAC-SHA256 signer (16-char base64url, constant-time verify)", 5, 120],
+      ["/manage/[id]?t=<sig> customer booking page (details, directions, call, cancel, Google review CTA)", 10, 75],
+      ["/api/booking/cancel (HMAC verify, status flip, Telegram alert to booking channel)", 5, 95],
+      // SMS plumbing
+      ["src/lib/url-shortener.ts (idempotent server-side shortener, 5-char base36, reused by SMS flows)", 6, 95],
+      ["Country-code-aware phone validator (subscriber-length rules × 30 countries) in create-reservation", 4, 95],
+      // Capacity cap
+      ["src/lib/booking-capacity.ts + getDayCapacity helper (counts active statuses, excludeId option)", 5, 95],
+      ["Capacity guards wired into AI voice create-reservation + admin POST + un-cancel PATCH (with force override)", 8, 95],
+      ["/admin/reservations-calendar — month view, guest heatmap, pending-AI ring, FULL red badge, side panel", 22, 75],
+      // Reservations v2
+      ["/admin/reservations: + New reservation modal + Edit modal + PUT endpoint (edit name/email/phone/date/time/party/notes)", 16, 75],
+      ["POST /api/admin/reservations (admin-created, source='admin', optional capacity override)", 4, 95],
+      ["Toast notification system on admin/reservations (confirmed/cancelled/deleted + SMS status reasons)", 6, 75],
+      ["📱 Test SMS expandable panel + /api/admin/test-sms endpoint", 4, 75],
+      ["/api/ai-voice/vonage-diag (safe env inspector + header-auth test send, query-decoding fix)", 6, 95],
+      // Telegram fix
+      ["Telegram webhook: canonical www URL (setup-webhook.ts), handleBookingCallback uses cb.message.chat.id, SMS on confirm via Vonage (wasUnresolved gate)", 8, 95],
+      ["SMS body includes shortened manage/cancel link (short_links auto-shortener)", 3, 75],
+      // AI voice enhancements
+      ["AI voice create-reservation: ctx.waitUntil background notifications (sub-second tool response)", 4, 120],
+      ["Directions link + manage URL in confirmation SMS (both dashboard + Telegram paths)", 3, 75],
+      // Travel-hub
+      ["/visit landing page (16:9 hero, 2×2 info grid, CTAs, upcoming events auto-fetch, OG tags)", 8, 75],
+      ["/directions short redirect to Google Maps (1-file route)", 1, 55],
+      ["Marketing presets: ✈️ Just landed + 🚢 Just docked + 🤝 Our Partners + 🍹 Helen's Welcome (tracked UTM campaigns)", 3, 75],
+      // Admin polish
+      ["/admin/users DELETE: welcome_drinks cleanup (by user_id AND email fallback), super_admin role allow-list", 4, 95],
+      ["/admin/users PUT: sync auth.users.user_metadata.full_name with profiles.full_name so the dropdown updates", 3, 95],
+      ["Footer logo swap to match Header nav (logo-64.webp + 2x srcset)", 1, 55],
+      // Docs
+      ["/admin/help: 4 new bilingual sections (partners · welcome drinks · reservations v2 · travel-hub)", 10, 75],
+      ["Privacy update: AI call recording disclosure + retention + opt-out path", 3, 95],
+    ],
+  },
 ];
 
 function tierSum(t: Tier) {
@@ -460,6 +524,28 @@ const features: FeatureGroup[] = [
     { name: "Sales dashboard /admin/pistotita-os", desc: "Leads pipeline, WhatsApp/call scripts, territory rules, pricing cheat sheet.", aud: "A", hours: 14, rate: 75 },
     { name: "Pricing-justification PDF", desc: "Printable leave-behind with cost-vs-agency, ROI table, per-day math, closing question.", aud: "A", hours: 12, rate: 75 },
     { name: "Financial model + break-even", desc: "14-section Y1 cash flow, scenarios, sensitivity, levers (super-admin).", aud: "A", hours: 20, rate: 120 },
+  ]},
+  { icon: "🤝", title: "Partner Engagement Platform", items: [
+    { name: "Partner directory (/partners)", desc: "Public grid of partner apartments/businesses with 4:3 photos, city + distance, clickable to per-partner detail page.", aud: "C", hours: 18, rate: 75 },
+    { name: "Per-partner detail page (/partners/[slug])", desc: "Hero image, long description, Website / Directions / Reviews CTAs, SEO + OG tags.", aud: "C", hours: 10, rate: 75 },
+    { name: "In-room welcome drink flow (/welcome/[slug])", desc: "2-step signup: form (name/email/password/phone with country dropdown) + OTP verification (email via Resend + SMS via Vonage Verify) → unique HEL-XXXX code.", aud: "C", hours: 40, rate: 120 },
+    { name: "Facebook fast-fill login", desc: "Supabase OAuth provider — partner guests sign up with one tap, name + email pre-filled from FB.", aud: "C", hours: 10, rate: 95 },
+    { name: "Code delivery via SMS + email", desc: "Verified code arrives on both channels (behind ctx.waitUntil so the success screen renders instantly).", aud: "C", hours: 6, rate: 95 },
+    { name: "Staff redemption screen", desc: "/staff/welcome — big centred input, gift-label banner, double-redeem guard, works across all partner codes.", aud: "S", hours: 10, rate: 75 },
+    { name: "Manage-booking page (/manage/[id])", desc: "HMAC-signed URL in every confirmation SMS; customers see details, directions, Google review CTA, and can self-cancel.", aud: "C", hours: 16, rate: 95 },
+    { name: "Partner auto-import from URL", desc: "Paste a Google Business / Booking / website URL → scraper fills name, photo, description, city via Open Graph + JSON-LD LocalBusiness.", aud: "A", hours: 12, rate: 120 },
+    { name: "Per-partner admin dashboard", desc: "/admin/partners/[slug] — photo upload, Google Business + Maps, distance, commission, monthly report email, 6 toggles (OTPs / Facebook / active / public), signup stats.", aud: "A", hours: 30, rate: 75 },
+    { name: "A4 printable partner poster", desc: "Sally's-branded A4 with partner logo + gift + QR to /welcome/<slug> — ready for in-room placement.", aud: "A", hours: 8, rate: 75 },
+    { name: "Partner enquiry form", desc: "'Become a partner' form on /partners → Telegram notification via dedicated bot.", aud: "A", hours: 8, rate: 95 },
+    { name: "Travel-hub landing page (/visit)", desc: "Airport / port / taxi QR drops travellers on a branded Sally's page with directions, hours, Google rating, and upcoming events.", aud: "C", hours: 8, rate: 75 },
+  ]},
+  { icon: "📅", title: "Reservations v2 (capacity + calendar + manage)", items: [
+    { name: "Table capacity cap (20/night)", desc: "Configurable daily cap enforced across AI voice, admin create, un-cancel; fully-booked days show red FULL badge; agent refuses new bookings.", aud: "A", hours: 14, rate: 95 },
+    { name: "Reservations calendar (/admin/reservations-calendar)", desc: "Month-view heatmap with per-day badges (AI-pending / pending / confirmed / cancelled), click-for-side-panel with inline Confirm/Cancel.", aud: "A", hours: 22, rate: 75 },
+    { name: "New / Edit / Delete modals", desc: "In-place modals on /admin/reservations with E.164 phone validation, capacity override confirm, toast feedback on SMS status.", aud: "A", hours: 20, rate: 75 },
+    { name: "Customer manage + cancel flow", desc: "Signed URL in confirmation SMS lets guests self-manage; cancellation fires a Telegram alert to the booking channel.", aud: "C", hours: 16, rate: 95 },
+    { name: "Test SMS + Vonage diag", desc: "Admin test-SMS panel + /api/ai-voice/vonage-diag endpoint to inspect env vars and verify delivery without creating a reservation.", aud: "A", hours: 10, rate: 75 },
+    { name: "Telegram webhook reliability fix", desc: "Canonical www URL registration + cb.message.chat.id (not env) so booking confirms work across any Telegram channel + SMS on confirm via Vonage.", aud: "A", hours: 8, rate: 95 },
   ]},
   { icon: "🤖", title: "AI Voice Receptionist (Vapi)", items: [
     { name: "24/7 bilingual AI call answering", desc: "Vapi + GPT-4o-mini + ElevenLabs + Deepgram + Vonage. Answers EN/EL calls on both numbers, books tables, handles menu Q&A, warm-transfers to owner on request.", aud: "C", hours: 52, rate: 120 },

@@ -29,6 +29,9 @@ const bullets = [
   "Messenger / Instagram linking (+20 point booster)",
   "Profile completion bar (0–100% with CTA chips)",
   "Auto-STOP unsubscribe honoring",
+  "Partner engagement platform (in-room QR → signed-up loyalty + welcome drink)",
+  "Reservations calendar with nightly capacity cap + customer self-manage SMS",
+  "Travel-hub / visit landing page (airport + port QR campaigns)",
   "Priority support",
 ];
 
@@ -233,6 +236,24 @@ const isEl = lang === "el";
             <p class="text-white/70 text-xs leading-relaxed">{isEl
               ? "Εισερχόμενες κλήσεις στο Vonage number με NCCO greeting + record. Recording playback inline στο /admin/inbox μέσω JWT-signed proxy (RS256 via Web Crypto — άμεση πρόσβαση στο Vonage file υποστηρίζει μόνο JWT auth)."
               : "Inbound calls to your Vonage number with NCCO greeting + record. Recording plays inline at /admin/inbox via a JWT-signed proxy (RS256 via Web Crypto — direct Vonage file URLs only accept JWT auth)."}</p>
+          </div>
+          <div class="rounded-xl border border-white/10 bg-black/30 p-3">
+            <p class="font-heading font-bold text-amber-200 mb-1">🤝 Partner Engagement Platform</p>
+            <p class="text-white/70 text-xs leading-relaxed">{isEl
+              ? "Ξενοδοχεία / apartments που στέλνουν επισκέπτες με in-room QR → εγγραφή στην κάρτα πιστότητας με 2-step OTP (email + SMS) → δωρεάν καλωσόρισμα. Per-partner admin με photo upload, Google Business + Maps, auto-import από URL, A4 poster. Δημόσιο directory στο /partners. Κανένας ανταγωνιστής δεν έχει in-room partnership flow με loyalty integration."
+              : "Hotels / apartments drive guests via in-room QR → 2-step OTP signup (email + SMS) → free welcome drink. Per-partner admin with photo upload, Google Business + Maps, URL auto-import, A4 poster. Public directory at /partners. No competitor has an in-room partnership flow with loyalty integration baked in — unlocks hotel partnerships + recurring tourist cohort."}</p>
+          </div>
+          <div class="rounded-xl border border-white/10 bg-black/30 p-3">
+            <p class="font-heading font-bold text-sky-200 mb-1">📅 Reservations v2 (capacity + self-manage)</p>
+            <p class="text-white/70 text-xs leading-relaxed">{isEl
+              ? "Nightly cap (default 20) που εφαρμόζεται σε AI voice + admin + un-cancel. Month-view ημερολόγιο με heatmap (/admin/reservations-calendar). Κάθε επιβεβαιωμένη κράτηση στέλνει SMS με HMAC-signed manage link — οι πελάτες ακυρώνουν μόνοι τους, αυτόματη Telegram ειδοποίηση στο staff."
+              : "Nightly cap (default 20) enforced across AI voice + admin + un-cancel paths. Month-view calendar with heatmap (/admin/reservations-calendar). Every confirmed booking SMS includes an HMAC-signed self-manage link — customers cancel themselves, staff gets an auto Telegram alert. Ends the 'did the guest get our SMS?' ambiguity."}</p>
+          </div>
+          <div class="rounded-xl border border-white/10 bg-black/30 p-3">
+            <p class="font-heading font-bold text-violet-200 mb-1">✈️ Travel-hub QR (/visit)</p>
+            <p class="text-white/70 text-xs leading-relaxed">{isEl
+              ? "Αφίσες A4 σε αεροδρόμιο / λιμάνια / taxi ουρές. Ο ταξιδιώτης σκανάρει → πέφτει σε branded page με φωτό, ώρες, ratings, events, κουμπί Directions. UTM campaigns ξεχωριστά ανά τοποθεσία (airport / port)."
+              : "A4 posters at airport / ports / taxi queues. Traveller scans → lands on a branded page with photo, hours, rating, events, Get Directions CTA. UTM campaigns separated per placement (airport vs port) so you know which surface actually drives walk-ins."}</p>
           </div>
         </div>
         <p class="mt-4 text-[11px] text-white/50">{isEl
