@@ -17,7 +17,7 @@ let profile: any = null;
 try {
   const r = await supabaseAdmin
     .from("profiles")
-    .select("id, full_name, role, phone, gender, birthday, country, city, address, postal_code, bio, avatar_url, socials, marketing_consent, created_at, handle, card_public, card_visibility, card_issued_at")
+    .select("id, full_name, card_name, role, phone, gender, birthday, country, city, address, postal_code, bio, avatar_url, socials, marketing_consent, created_at, handle, card_public, card_visibility, card_issued_at")
     .eq("id", user.id)
     .maybeSingle();
   profile = r.data;
@@ -250,6 +250,14 @@ const ini = initialsOf(p.full_name ?? email);
 
           <div class="grid sm:grid-cols-[1fr_auto] gap-5 items-center">
             <div class="space-y-3">
+              <label class="block">
+                <span class="text-xs text-white/60 mb-1.5 block">{isEl ? "Όνομα στην κάρτα" : "Display name on card"}</span>
+                <input id="cardNameInput" name="card_name" type="text" maxlength="80" value={p.card_name ?? ""} placeholder={p.full_name ?? ""}
+                  class="w-full rounded-xl bg-white/5 border border-white/15 px-4 py-2.5 text-sm placeholder:text-white/30 focus:outline-none focus:border-amber-400/60" />
+                <span class="text-[11px] text-white/40 mt-1 block">{isEl
+                  ? "Μπορεί να είναι το brand σου (π.χ. «Hidden Gems of Greece»). Αν το αφήσεις κενό, εμφανίζεται το ονοματεπώνυμό σου."
+                  : "Can be a brand name (e.g. \"Hidden Gems of Greece\"). If left blank, your full name is shown."}</span>
+              </label>
               <label class="block">
                 <span class="text-xs text-white/60 mb-1.5 block">{isEl ? "Όνομα χρήστη (handle)" : "Username (handle)"}</span>
                 <div class="flex items-center rounded-xl bg-white/5 border border-white/15 focus-within:border-amber-400/60 overflow-hidden">

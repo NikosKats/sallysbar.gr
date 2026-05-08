@@ -1,0 +1,687 @@
+---
+import "../../styles/global.css";
+import AdminNav from "../../components/AdminNav.astro";
+import { withLangPrefix } from "../../i18n";
+
+export const prerender = false;
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+
+if (!["admin", "super_admin"].includes(Astro.locals.role ?? "")) {
+  return Astro.redirect(withLangPrefix(lang, "/admin"));
+}
+
+// Shared stock UI; this page is the inventory category.
+const CATEGORY = "inventory";
+const TITLE_EN = "Inventory stock";
+const TITLE_EL = "Απόθεμα Inventory";
+const ICON = "📦";
+const ACTIVE_KEY = "inventory";
+---
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{isEl ? TITLE_EL : TITLE_EN} — Admin</title>
+    <meta name="robots" content="noindex,nofollow" />
+  </head>
+  <body class="min-h-screen bg-[#0b0b10] text-white">
+    <AdminNav active={ACTIVE_KEY} />
+    <main class="mx-auto max-w-6xl px-3 sm:px-5 py-6 md:py-10 pb-24 md:pb-10">
+      <div class="text-xs uppercase tracking-[0.28em] text-amber-200/80 mb-3">{isEl ? "Διαχείριση" : "Management"}</div>
+      <h1 class="font-heading text-3xl md:text-4xl font-bold">{ICON} {isEl ? TITLE_EL : TITLE_EN}</h1>
+      <p class="mt-2 text-sm text-white/60 max-w-2xl">
+        {isEl ? "Παρακολούθηση αποθέματος και δημιουργία παραγγελιών προς προμηθευτές (PDF)." : "Track stock levels and compose purchase orders to suppliers (PDF)."}
+      </p>
+
+      <!-- Add new -->
+      <section class="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        <h2 class="font-heading text-lg font-semibold mb-3">{isEl ? "Νέο είδος" : "Add item"}</h2>
+        <div class="grid gap-3 md:grid-cols-6">
+          <label class="md:col-span-3 block">
+            <span class="text-xs uppercase tracking-wider text-white/50">{isEl ? "Όνομα (EL)" : "Name (EL)"} *</span>
+            <input id="newNameEl" type="text" class="mt-1 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 outline-none focus:border-amber-300/50" />
+          </label>
+          <label class="md:col-span-3 block">
+            <span class="text-xs uppercase tracking-wider text-white/50">{isEl ? "Όνομα (EN)" : "Name (EN)"} *</span>
+            <input id="newNameEn" type="text" class="mt-1 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 outline-none focus:border-amber-300/50" />
+          </label>
+          <label class="block">
+            <span class="text-xs uppercase tracking-wider text-white/50">{isEl ? "Μονάδα" : "Unit"}</span>
+            <input id="newUnit" type="text" placeholder="btl/kg/L" class="mt-1 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 outline-none focus:border-amber-300/50" />
+          </label>
+          <label class="block">
+            <span class="text-xs uppercase tracking-wider text-white/50">{isEl ? "Διαθέσιμο" : "Qty"}</span>
+            <input id="newQty" type="number" step="any" value="0" class="mt-1 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 outline-none focus:border-amber-300/50" />
+          </label>
+          <label class="block">
+            <span class="text-xs uppercase tracking-wider text-white/50">{isEl ? "Όριο" : "Reorder ≤"}</span>
+            <input id="newThreshold" type="number" step="any" value="0" class="mt-1 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 outline-none focus:border-amber-300/50" />
+          </label>
+          <label class="block">
+            <span class="text-xs uppercase tracking-wider text-white/50">{isEl ? "Πρότ. ποσ." : "Default order"}</span>
+            <input id="newOrderQty" type="number" step="any" value="0" class="mt-1 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 outline-none focus:border-amber-300/50" />
+          </label>
+          <label class="md:col-span-3 block">
+            <span class="text-xs uppercase tracking-wider text-white/50">{isEl ? "Προμηθευτής" : "Supplier"}</span>
+            <select id="newSupplier" class="mt-1 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 outline-none focus:border-amber-300/50">
+              <option value="">—</option>
+            </select>
+          </label>
+          <label class="block">
+            <span class="text-xs uppercase tracking-wider text-white/50">{isEl ? "Κόστος/μον." : "Unit cost €"}</span>
+            <input id="newCost" type="number" step="any" value="0" class="mt-1 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 outline-none focus:border-amber-300/50" />
+          </label>
+          <label class="block">
+            <span class="text-xs uppercase tracking-wider text-white/50">{isEl ? "Κατηγορία" : "Category"}</span>
+            <select id="newSubcategory" class="mt-1 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 outline-none focus:border-amber-300/50">
+              <option value="">—</option>
+            </select>
+          </label>
+          <label class="md:col-span-2 block">
+            <span class="text-xs uppercase tracking-wider text-white/50">{isEl ? "Σημείωση" : "Notes"}</span>
+            <input id="newNotes" type="text" class="mt-1 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 outline-none focus:border-amber-300/50" />
+          </label>
+        </div>
+        <div class="mt-4 flex justify-end">
+          <button id="addBtn" type="button" class="rounded-xl bg-gradient-to-br from-amber-200 to-amber-400 px-5 py-2.5 font-semibold text-black shadow-lg shadow-amber-500/20 hover:shadow-amber-500/40 transition">
+            {isEl ? "Προσθήκη" : "Add item"}
+          </button>
+        </div>
+        <p id="addStatus" class="mt-2 text-sm text-rose-300 hidden"></p>
+      </section>
+
+      <!-- Filters + actions -->
+      <section class="mt-6 md:mt-8 grid gap-3">
+        <div class="grid gap-2 sm:grid-cols-3">
+          <input id="searchInput" type="search" placeholder={isEl ? "Αναζήτηση…" : "Search…"} class="w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2.5 outline-none focus:border-amber-300/50" />
+          <select id="filterSupplier" class="w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2.5 outline-none focus:border-amber-300/50">
+            <option value="">{isEl ? "Όλοι οι προμηθευτές" : "All suppliers"}</option>
+          </select>
+          <select id="filterSubcategory" class="w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2.5 outline-none focus:border-amber-300/50">
+            <option value="">{isEl ? "Όλες οι κατηγορίες" : "All categories"}</option>
+          </select>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <label class="flex items-center gap-2 text-sm text-white/70 min-h-[44px]">
+            <input id="lowOnly" type="checkbox" class="h-5 w-5 accent-amber-300" />
+            {isEl ? "Μόνο χαμηλά" : "Low-stock only"}
+          </label>
+          <button id="selectLowBtn" type="button" class="ml-auto rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm hover:bg-white/10 min-h-[44px]">
+            {isEl ? "Επιλογή χαμηλών" : "Select low-stock"}
+          </button>
+          <button id="catToggleBtn" type="button" class="rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm hover:bg-white/10 min-h-[44px]">
+            {isEl ? "Κατηγορίες" : "Categories"}
+          </button>
+        </div>
+        <div class="grid grid-cols-2 gap-2 sm:flex sm:gap-2 sm:justify-end">
+          <button id="composeBtn" type="button" class="rounded-lg bg-amber-300 px-4 py-2.5 text-sm font-semibold text-black hover:bg-amber-200 disabled:opacity-50 min-h-[44px]" disabled>
+            {isEl ? "Παραγγελία" : "Compose"} <span id="selCount" class="ml-1 opacity-70">(0)</span>
+          </button>
+          <button id="saveListBtn" type="button" class="rounded-lg border border-amber-300/40 bg-amber-300/10 px-4 py-2.5 text-sm font-semibold text-amber-200 hover:bg-amber-300/20 disabled:opacity-50 min-h-[44px]" disabled>
+            {isEl ? "Αποθήκευση λίστας" : "Save as list"}
+          </button>
+        </div>
+      </section>
+
+      <!-- Manage categories panel (toggleable) -->
+      <section id="catPanel" class="mt-4 hidden rounded-2xl border border-amber-300/20 bg-amber-300/[0.04] p-5">
+        <h3 class="font-heading text-base font-semibold mb-3">{isEl ? "Κατηγορίες" : "Categories"}</h3>
+        <div class="flex flex-wrap items-end gap-3 mb-4">
+          <label class="block min-w-[180px]">
+            <span class="text-xs uppercase tracking-wider text-white/50">{isEl ? "Νέα (EL)" : "New (EL)"}</span>
+            <input id="newCatNameEl" type="text" placeholder={isEl ? "π.χ. Ποτά" : "e.g. Ποτά"} class="mt-1 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 outline-none focus:border-amber-300/50" />
+          </label>
+          <label class="block min-w-[180px]">
+            <span class="text-xs uppercase tracking-wider text-white/50">{isEl ? "Νέα (EN)" : "New (EN)"}</span>
+            <input id="newCatNameEn" type="text" placeholder={isEl ? "π.χ. Spirits" : "e.g. Spirits"} class="mt-1 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 outline-none focus:border-amber-300/50" />
+          </label>
+          <button id="addCatBtn" type="button" class="rounded-lg bg-amber-300 px-4 py-2 text-sm font-semibold text-black hover:bg-amber-200">
+            {isEl ? "Προσθήκη" : "Add"}
+          </button>
+          <p id="catStatus" class="text-sm text-rose-300 hidden"></p>
+        </div>
+        <div id="catList" class="flex flex-wrap gap-2"></div>
+      </section>
+
+      <!-- Items: cards on mobile, table on desktop -->
+      <section class="mt-4">
+        <div id="emptyState" class="hidden rounded-2xl border border-dashed border-white/15 bg-white/[0.02] p-8 text-center text-white/50">
+          {isEl ? "Δεν υπάρχουν είδη ακόμη." : "No items yet."}
+        </div>
+
+        <!-- Mobile select-all chip -->
+        <div class="md:hidden mb-2 flex items-center justify-between text-sm">
+          <label class="inline-flex items-center gap-2 text-white/70 min-h-[44px]">
+            <input id="selAllMobile" type="checkbox" class="h-5 w-5 accent-amber-300" />
+            {isEl ? "Επιλογή όλων (φιλτραρισμένων)" : "Select all (filtered)"}
+          </label>
+        </div>
+
+        <!-- Mobile cards -->
+        <div id="mobileCards" class="grid gap-3 md:hidden"></div>
+
+        <!-- Desktop table -->
+        <div class="hidden md:block overflow-x-auto rounded-2xl border border-white/10 bg-white/[0.02]">
+          <table class="w-full text-sm">
+            <thead class="bg-white/[0.04] text-left text-white/60">
+              <tr>
+                <th class="px-3 py-2 w-8"><input id="selAll" type="checkbox" class="h-4 w-4 accent-amber-300" /></th>
+                <th class="px-3 py-2">{isEl ? "Όνομα" : "Name"}</th>
+                <th class="px-3 py-2">{isEl ? "Κατηγορία" : "Category"}</th>
+                <th class="px-3 py-2">{isEl ? "Μον." : "Unit"}</th>
+                <th class="px-3 py-2 text-right">{isEl ? "Διαθέσιμο" : "Qty"}</th>
+                <th class="px-3 py-2 text-right">{isEl ? "Όριο" : "Reorder ≤"}</th>
+                <th class="px-3 py-2 text-right">{isEl ? "Πρότ. ποσ." : "Default order"}</th>
+                <th class="px-3 py-2 text-right">{isEl ? "Κόστος" : "Cost €"}</th>
+                <th class="px-3 py-2">{isEl ? "Προμηθευτής" : "Supplier"}</th>
+                <th class="px-3 py-2"></th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script is:inline define:vars={{ isEl, CATEGORY }}>
+      const T = {
+        edit: isEl ? "Επεξεργασία" : "Edit",
+        save: isEl ? "Αποθήκευση" : "Save",
+        cancel: isEl ? "Ακύρωση" : "Cancel",
+        del: isEl ? "Διαγραφή" : "Delete",
+        confirm: isEl ? "Σίγουρα διαγραφή;" : "Delete this item?",
+        none: isEl ? "—" : "—",
+        low: isEl ? "Χαμηλό" : "Low",
+      };
+      const $ = (id) => document.getElementById(id);
+      const rowsEl = $("rows");
+      const mobileCardsEl = $("mobileCards");
+      const emptyEl = $("emptyState");
+      const filterSupplierEl = $("filterSupplier");
+      const newSupplierEl = $("newSupplier");
+      const composeBtn = $("composeBtn");
+      const selCountEl = $("selCount");
+      const addStatus = $("addStatus");
+
+      let items = [];
+      let suppliers = [];
+      let categories = [];
+      let selected = new Set();
+
+      const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+      const num = (n) => Number(n ?? 0);
+      const fmt = (n) => {
+        const v = num(n);
+        return Number.isInteger(v) ? String(v) : v.toFixed(2);
+      };
+      const locName = (it) => {
+        const primary = isEl ? it.name_el : it.name_en;
+        return primary || it.name_en || it.name_el || it.name || "";
+      };
+      const altName = (it) => {
+        const alt = isEl ? it.name_en : it.name_el;
+        return alt || "";
+      };
+      const catLocName = (c) => {
+        const primary = isEl ? c.name_el : c.name_en;
+        return primary || c.name_en || c.name_el || c.name || "";
+      };
+
+      function isLow(it) { return num(it.current_qty) <= num(it.reorder_threshold); }
+
+      function visible() {
+        const q = $("searchInput").value.trim().toLowerCase();
+        const sup = filterSupplierEl.value;
+        const sub = $("filterSubcategory").value;
+        const lowOnly = $("lowOnly").checked;
+        return items.filter((it) => {
+          const haystack = [it.name, it.name_en, it.name_el, it.notes, it.subcategory].filter(Boolean).join(" ").toLowerCase();
+          if (q && !haystack.includes(q)) return false;
+          if (sup && it.supplier_id !== sup) return false;
+          if (sub && (it.subcategory ?? "") !== sub) return false;
+          if (lowOnly && !isLow(it)) return false;
+          return true;
+        });
+      }
+
+      function mobileCard(it) {
+        const low = isLow(it);
+        const supName = it.supplier?.name ?? "";
+        const checked = selected.has(it.id) ? "checked" : "";
+        return `
+          <div class="rounded-2xl border ${low ? "border-rose-400/30 bg-rose-500/[0.05]" : "border-white/10 bg-white/[0.03]"} p-4" data-id="${it.id}">
+            <div class="flex items-start gap-3">
+              <input type="checkbox" class="rowSel mt-1 h-5 w-5 accent-amber-300 shrink-0" ${checked} aria-label="Select" />
+              <div class="min-w-0 flex-1">
+                <div class="font-semibold text-base leading-tight break-words">${esc(locName(it))}</div>
+                ${altName(it) ? `<div class="text-xs text-white/40 mt-0.5 break-words">${esc(altName(it))}</div>` : ""}
+                <div class="mt-2 flex flex-wrap gap-1.5 text-[11px]">
+                  ${it.subcategory ? `<span class="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-white/70">${esc(it.subcategory)}</span>` : ""}
+                  ${supName ? `<span class="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-white/60">🏷️ ${esc(supName)}</span>` : ""}
+                </div>
+                ${it.notes ? `<div class="mt-1.5 text-xs text-white/50 break-words">${esc(it.notes)}</div>` : ""}
+              </div>
+              <div class="text-right shrink-0">
+                <div class="text-2xl font-bold leading-none ${low ? "text-rose-200" : ""}">${fmt(it.current_qty)}</div>
+                <div class="mt-0.5 text-[10px] uppercase tracking-wider text-white/50">${esc(it.unit)}</div>
+                ${low ? `<div class="mt-1 inline-block rounded bg-rose-400/20 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-rose-200">${esc(T.low)}</div>` : ""}
+              </div>
+            </div>
+
+            <div class="mt-3 grid grid-cols-3 gap-1 text-xs text-white/55 border-t border-white/5 pt-2">
+              <div><span class="block text-[10px] uppercase tracking-wider text-white/40">${isEl ? "Όριο" : "Reorder"}</span>${fmt(it.reorder_threshold)}</div>
+              <div><span class="block text-[10px] uppercase tracking-wider text-white/40">${isEl ? "Πρότ." : "Default"}</span>${fmt(it.default_order_qty)}</div>
+              <div><span class="block text-[10px] uppercase tracking-wider text-white/40">${isEl ? "Κόστος" : "Cost"}</span>€${fmt(it.unit_cost)}</div>
+            </div>
+
+            <div class="mt-3 flex gap-2">
+              <button class="editBtn flex-1 rounded-lg border border-white/15 bg-white/5 px-3 py-2.5 text-sm font-medium hover:bg-white/10 min-h-[44px]">${esc(T.edit)}</button>
+              <button class="delBtn rounded-lg border border-rose-400/30 bg-rose-400/10 px-4 py-2.5 text-sm text-rose-200 hover:bg-rose-400/20 min-h-[44px]" aria-label="${esc(T.del)}">✕</button>
+            </div>
+          </div>
+        `;
+      }
+
+      function mobileEditCard(it) {
+        const sel = `<select data-f="supplier_id" class="w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2.5 text-sm"><option value="">—</option>${suppliers.map(s => `<option value="${s.id}" ${s.id===it.supplier_id?"selected":""}>${esc(s.name)}</option>`).join("")}</select>`;
+        const subSel = `
+          <select data-f="subcategory" class="w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2.5 text-sm">
+            <option value="">—</option>
+            ${categories.map(c => `<option value="${esc(c.name)}" ${c.name === (it.subcategory ?? "") ? "selected" : ""}>${esc(catLocName(c))}</option>`).join("")}
+            ${it.subcategory && !categories.some(c => c.name === it.subcategory) ? `<option value="${esc(it.subcategory)}" selected>${esc(it.subcategory)} ⚠</option>` : ""}
+          </select>`;
+        return `
+          <div class="rounded-2xl border border-amber-300/30 bg-amber-300/[0.04] p-4" data-id="${it.id}">
+            <div class="grid gap-2">
+              <label class="block">
+                <span class="text-[10px] uppercase tracking-wider text-white/50">${isEl ? "Όνομα (EL)" : "Name (EL)"}</span>
+                <input data-f="name_el" value="${esc(it.name_el ?? "")}" class="mt-1 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2.5 text-base" />
+              </label>
+              <label class="block">
+                <span class="text-[10px] uppercase tracking-wider text-white/50">${isEl ? "Όνομα (EN)" : "Name (EN)"}</span>
+                <input data-f="name_en" value="${esc(it.name_en ?? it.name ?? "")}" class="mt-1 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2.5 text-base" />
+              </label>
+              <div class="grid grid-cols-2 gap-2">
+                <label class="block">
+                  <span class="text-[10px] uppercase tracking-wider text-white/50">${isEl ? "Μον." : "Unit"}</span>
+                  <input data-f="unit" value="${esc(it.unit)}" class="mt-1 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2.5 text-base" />
+                </label>
+                <label class="block">
+                  <span class="text-[10px] uppercase tracking-wider text-white/50">${isEl ? "Διαθέσιμο" : "Qty"}</span>
+                  <input data-f="current_qty" type="number" inputmode="decimal" step="any" value="${esc(it.current_qty)}" class="mt-1 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2.5 text-base" />
+                </label>
+                <label class="block">
+                  <span class="text-[10px] uppercase tracking-wider text-white/50">${isEl ? "Όριο" : "Reorder ≤"}</span>
+                  <input data-f="reorder_threshold" type="number" inputmode="decimal" step="any" value="${esc(it.reorder_threshold)}" class="mt-1 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2.5 text-base" />
+                </label>
+                <label class="block">
+                  <span class="text-[10px] uppercase tracking-wider text-white/50">${isEl ? "Πρότ. ποσ." : "Default order"}</span>
+                  <input data-f="default_order_qty" type="number" inputmode="decimal" step="any" value="${esc(it.default_order_qty)}" class="mt-1 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2.5 text-base" />
+                </label>
+                <label class="block">
+                  <span class="text-[10px] uppercase tracking-wider text-white/50">${isEl ? "Κόστος" : "Cost €"}</span>
+                  <input data-f="unit_cost" type="number" inputmode="decimal" step="any" value="${esc(it.unit_cost)}" class="mt-1 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2.5 text-base" />
+                </label>
+                <label class="block">
+                  <span class="text-[10px] uppercase tracking-wider text-white/50">${isEl ? "Κατηγορία" : "Category"}</span>
+                  ${subSel}
+                </label>
+              </div>
+              <label class="block">
+                <span class="text-[10px] uppercase tracking-wider text-white/50">${isEl ? "Προμηθευτής" : "Supplier"}</span>
+                ${sel}
+              </label>
+            </div>
+            <div class="mt-3 grid grid-cols-2 gap-2">
+              <button class="cancelBtn rounded-lg border border-white/15 bg-white/5 px-3 py-2.5 text-sm font-medium hover:bg-white/10 min-h-[44px]">${esc(T.cancel)}</button>
+              <button class="saveBtn rounded-lg bg-amber-300 px-3 py-2.5 text-sm font-semibold text-black hover:bg-amber-200 min-h-[44px]">${esc(T.save)}</button>
+            </div>
+          </div>
+        `;
+      }
+
+      function render() {
+        const list = visible();
+        if (!list.length) {
+          rowsEl.innerHTML = "";
+          mobileCardsEl.innerHTML = "";
+          emptyEl.classList.remove("hidden");
+        } else {
+          emptyEl.classList.add("hidden");
+          mobileCardsEl.innerHTML = list.map(mobileCard).join("");
+          rowsEl.innerHTML = list.map((it) => {
+            const low = isLow(it);
+            const supName = it.supplier?.name ?? T.none;
+            const checked = selected.has(it.id) ? "checked" : "";
+            return `
+              <tr class="border-t border-white/5 ${low ? "bg-rose-500/[0.04]" : ""}" data-id="${it.id}">
+                <td class="px-3 py-2"><input type="checkbox" class="rowSel h-4 w-4 accent-amber-300" ${checked} /></td>
+                <td class="px-3 py-2">
+                  <div class="font-medium">${esc(locName(it))} ${low ? `<span class="ml-1 rounded bg-rose-400/20 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-rose-200">${esc(T.low)}</span>` : ""}</div>
+                  ${altName(it) ? `<div class="text-[11px] text-white/40">${esc(altName(it))}</div>` : ""}
+                  ${it.notes ? `<div class="text-[11px] text-white/50">${esc(it.notes)}</div>` : ""}
+                </td>
+                <td class="px-3 py-2 text-white/70">${it.subcategory ? `<span class="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px]">${esc(it.subcategory)}</span>` : `<span class="text-white/30">—</span>`}</td>
+                <td class="px-3 py-2">${esc(it.unit)}</td>
+                <td class="px-3 py-2 text-right ${low ? "text-rose-200 font-semibold" : ""}">${fmt(it.current_qty)}</td>
+                <td class="px-3 py-2 text-right text-white/60">${fmt(it.reorder_threshold)}</td>
+                <td class="px-3 py-2 text-right text-white/60">${fmt(it.default_order_qty)}</td>
+                <td class="px-3 py-2 text-right text-white/60">${fmt(it.unit_cost)}</td>
+                <td class="px-3 py-2 text-white/70">${esc(supName)}</td>
+                <td class="px-3 py-2 text-right whitespace-nowrap">
+                  <button class="editBtn rounded-md border border-white/15 bg-white/5 px-2 py-1 text-xs hover:bg-white/10">${esc(T.edit)}</button>
+                  <button class="delBtn rounded-md border border-rose-400/30 bg-rose-400/10 px-2 py-1 text-xs text-rose-200 hover:bg-rose-400/20">${esc(T.del)}</button>
+                </td>
+              </tr>
+            `;
+          }).join("");
+        }
+        composeBtn.disabled = selected.size === 0;
+        const sl = document.getElementById("saveListBtn"); if (sl) sl.disabled = selected.size === 0;
+        selCountEl.textContent = `(${selected.size})`;
+      }
+
+      function editRow(it) {
+        const sel = (id) => `<select data-f="supplier_id" class="w-full rounded border border-white/15 bg-white/5 px-2 py-1 text-xs"><option value="">—</option>${suppliers.map(s => `<option value="${s.id}" ${s.id===it.supplier_id?"selected":""}>${esc(s.name)}</option>`).join("")}</select>`;
+        return `
+          <tr class="border-t border-amber-300/20 bg-amber-300/[0.03]" data-id="${it.id}">
+            <td class="px-3 py-2"></td>
+            <td class="px-3 py-2">
+              <input data-f="name_el" placeholder="EL" value="${esc(it.name_el ?? "")}" class="w-full rounded border border-white/15 bg-white/5 px-2 py-1 text-xs" />
+              <input data-f="name_en" placeholder="EN" value="${esc(it.name_en ?? it.name ?? "")}" class="mt-1 w-full rounded border border-white/15 bg-white/5 px-2 py-1 text-xs" />
+            </td>
+            <td class="px-3 py-2">
+              <select data-f="subcategory" class="w-full rounded border border-white/15 bg-white/5 px-2 py-1 text-xs">
+                <option value="">—</option>
+                ${categories.map(c => `<option value="${esc(c.name)}" ${c.name === (it.subcategory ?? "") ? "selected" : ""}>${esc(c.name)}</option>`).join("")}
+                ${it.subcategory && !categories.some(c => c.name === it.subcategory) ? `<option value="${esc(it.subcategory)}" selected>${esc(it.subcategory)} ⚠</option>` : ""}
+              </select>
+            </td>
+            <td class="px-3 py-2"><input data-f="unit" value="${esc(it.unit)}" class="w-16 rounded border border-white/15 bg-white/5 px-2 py-1 text-xs" /></td>
+            <td class="px-3 py-2 text-right"><input data-f="current_qty" type="number" step="any" value="${esc(it.current_qty)}" class="w-20 rounded border border-white/15 bg-white/5 px-2 py-1 text-xs text-right" /></td>
+            <td class="px-3 py-2 text-right"><input data-f="reorder_threshold" type="number" step="any" value="${esc(it.reorder_threshold)}" class="w-20 rounded border border-white/15 bg-white/5 px-2 py-1 text-xs text-right" /></td>
+            <td class="px-3 py-2 text-right"><input data-f="default_order_qty" type="number" step="any" value="${esc(it.default_order_qty)}" class="w-20 rounded border border-white/15 bg-white/5 px-2 py-1 text-xs text-right" /></td>
+            <td class="px-3 py-2 text-right"><input data-f="unit_cost" type="number" step="any" value="${esc(it.unit_cost)}" class="w-20 rounded border border-white/15 bg-white/5 px-2 py-1 text-xs text-right" /></td>
+            <td class="px-3 py-2">${sel()}</td>
+            <td class="px-3 py-2 text-right whitespace-nowrap">
+              <button class="saveBtn rounded-md bg-amber-300 px-2 py-1 text-xs font-semibold text-black hover:bg-amber-200">${esc(T.save)}</button>
+              <button class="cancelBtn rounded-md border border-white/15 bg-white/5 px-2 py-1 text-xs hover:bg-white/10">${esc(T.cancel)}</button>
+            </td>
+          </tr>
+        `;
+      }
+
+      function syncSelectionUI() {
+        // Reflect selection state in any matching checkboxes that exist (mobile + desktop).
+        items.forEach(it => {
+          document.querySelectorAll(`[data-id="${it.id}"] .rowSel`).forEach(cb => { cb.checked = selected.has(it.id); });
+        });
+        composeBtn.disabled = selected.size === 0;
+        const sl = document.getElementById("saveListBtn"); if (sl) sl.disabled = selected.size === 0;
+        selCountEl.textContent = `(${selected.size})`;
+      }
+
+      async function handleRowClick(e) {
+        if (e.target.classList.contains("rowSel")) {
+          const host = e.target.closest("[data-id]"); const id = host?.dataset.id;
+          if (!id) return;
+          if (e.target.checked) selected.add(id); else selected.delete(id);
+          syncSelectionUI();
+          return;
+        }
+        const btn = e.target.closest("button");
+        if (!btn) return;
+        const host = btn.closest("[data-id]"); const id = host?.dataset.id;
+        const it = items.find(x => x.id === id);
+        if (!it) return;
+
+        if (btn.classList.contains("editBtn")) {
+          const isCard = host.tagName !== "TR";
+          const tmp = document.createElement(isCard ? "div" : "tbody");
+          tmp.innerHTML = isCard ? mobileEditCard(it) : editRow(it);
+          host.replaceWith(tmp.firstElementChild);
+          return;
+        }
+        if (btn.classList.contains("cancelBtn")) {
+          render(); return;
+        }
+        if (btn.classList.contains("saveBtn")) {
+          const inputs = host.querySelectorAll("[data-f]");
+          const payload = { id };
+          inputs.forEach((el) => { payload[el.dataset.f] = el.value; });
+          btn.disabled = true; btn.textContent = "...";
+          const r = await fetch("/api/admin/stock-items", { method: "PUT", headers: {"Content-Type":"application/json"}, body: JSON.stringify(payload) });
+          const j = await r.json();
+          if (!r.ok) { alert(j.error ?? "Error"); btn.disabled = false; btn.textContent = T.save; return; }
+          const idx = items.findIndex(x => x.id === id);
+          items[idx] = j.item;
+          fillSubcategoryOptions();
+          render();
+          return;
+        }
+        if (btn.classList.contains("delBtn")) {
+          if (!confirm(T.confirm)) return;
+          btn.disabled = true;
+          const r = await fetch("/api/admin/stock-items", { method: "DELETE", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ id }) });
+          const j = await r.json();
+          if (!r.ok) { alert(j.error ?? "Error"); btn.disabled = false; return; }
+          items = items.filter(x => x.id !== id);
+          selected.delete(id);
+          render();
+        }
+      }
+      rowsEl.addEventListener("click", handleRowClick);
+      mobileCardsEl.addEventListener("click", handleRowClick);
+
+      function handleSelectAll(e) {
+        const list = visible();
+        if (e.target.checked) list.forEach(it => selected.add(it.id));
+        else list.forEach(it => selected.delete(it.id));
+        // Mirror to the other select-all checkbox
+        const other = e.target.id === "selAll" ? $("selAllMobile") : $("selAll");
+        if (other) other.checked = e.target.checked;
+        render();
+      }
+      $("selAll").addEventListener("change", handleSelectAll);
+      const selAllMobile = $("selAllMobile");
+      if (selAllMobile) selAllMobile.addEventListener("change", handleSelectAll);
+
+      $("selectLowBtn").addEventListener("click", () => {
+        items.filter(isLow).forEach(it => selected.add(it.id));
+        render();
+      });
+
+      composeBtn.addEventListener("click", () => {
+        if (selected.size === 0) return;
+        const params = new URLSearchParams({ category: CATEGORY, items: [...selected].join(",") });
+        window.open(`/admin/stock-order?${params.toString()}`, "_blank");
+      });
+
+      const saveListBtn = $("saveListBtn");
+      saveListBtn.addEventListener("click", async () => {
+        if (selected.size === 0) return;
+        const defaultName = (isEl ? "Λίστα " : "List ") + new Date().toLocaleDateString(isEl ? "el-GR" : "en-GB");
+        const name = prompt(isEl ? "Όνομα λίστας:" : "List name:", defaultName);
+        if (!name || !name.trim()) return;
+        const selectedItems = items.filter(it => selected.has(it.id)).map(it => ({
+          stock_item_id: it.id,
+          name: it.name,
+          name_en: it.name_en,
+          name_el: it.name_el,
+          unit: it.unit,
+          subcategory: it.subcategory,
+          unit_cost: it.unit_cost,
+          qty: Number(it.default_order_qty) > 0 ? Number(it.default_order_qty) : Math.max(0, Number(it.reorder_threshold) - Number(it.current_qty)),
+          inventory_qty: Number(it.current_qty) || 0,
+          supplier_name: it.supplier?.name ?? null,
+        }));
+        saveListBtn.disabled = true;
+        const r = await fetch("/api/admin/stock-lists", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ name: name.trim(), scope: CATEGORY, items: selectedItems }) });
+        const j = await r.json();
+        saveListBtn.disabled = false;
+        if (!r.ok) { alert(j.error ?? "Error"); return; }
+        const langPrefix = isEl ? "/el" : "";
+        window.location.href = `${langPrefix}/admin/lists/${j.list.id}`;
+      });
+
+      ["searchInput","filterSupplier","filterSubcategory","lowOnly"].forEach(id => $(id).addEventListener("input", render));
+      $("filterSupplier").addEventListener("change", render);
+      $("filterSubcategory").addEventListener("change", render);
+      $("lowOnly").addEventListener("change", render);
+
+      $("addBtn").addEventListener("click", async () => {
+        addStatus.classList.add("hidden");
+        const nameEl = $("newNameEl").value.trim();
+        const nameEn = $("newNameEn").value.trim();
+        const payload = {
+          category: CATEGORY,
+          name_el: nameEl,
+          name_en: nameEn,
+          unit: $("newUnit").value || "btl",
+          current_qty: $("newQty").value || 0,
+          reorder_threshold: $("newThreshold").value || 0,
+          default_order_qty: $("newOrderQty").value || 0,
+          unit_cost: $("newCost").value || 0,
+          supplier_id: $("newSupplier").value || null,
+          subcategory: $("newSubcategory").value,
+          notes: $("newNotes").value,
+        };
+        if (!nameEl && !nameEn) { addStatus.textContent = isEl ? "Απαιτείται όνομα (EL ή EN)." : "Name required (EL or EN)."; addStatus.classList.remove("hidden"); return; }
+        const btn = $("addBtn"); btn.disabled = true;
+        const r = await fetch("/api/admin/stock-items", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(payload) });
+        const j = await r.json();
+        btn.disabled = false;
+        if (!r.ok) { addStatus.textContent = j.error ?? "Error"; addStatus.classList.remove("hidden"); return; }
+        items.push(j.item);
+        items.sort((a,b) => locName(a).localeCompare(locName(b)));
+        ["newNameEl","newNameEn","newUnit","newNotes","newSubcategory"].forEach(id => $(id).value = "");
+        ["newQty","newThreshold","newOrderQty","newCost"].forEach(id => $(id).value = "0");
+        $("newSupplier").value = "";
+        fillSubcategoryOptions();
+        render();
+      });
+
+      function fillSupplierOptions() {
+        const opts = ['<option value="">—</option>']
+          .concat(suppliers.map(s => `<option value="${s.id}">${esc(s.name)}</option>`));
+        newSupplierEl.innerHTML = opts.join("");
+        const cur = filterSupplierEl.value;
+        filterSupplierEl.innerHTML = [`<option value="">${isEl ? "Όλοι οι προμηθευτές" : "All suppliers"}</option>`]
+          .concat(suppliers.map(s => `<option value="${s.id}">${esc(s.name)}</option>`)).join("");
+        if (cur) filterSupplierEl.value = cur;
+      }
+
+      function fillSubcategoryOptions() {
+        // Dropdown shows the localized label, but the value (saved into stock_items.subcategory) is the canonical `name`.
+        const opts = categories.map(c => ({ value: c.name, label: catLocName(c) }));
+
+        const newEl = $("newSubcategory");
+        const curNew = newEl.value;
+        newEl.innerHTML = [`<option value="">—</option>`]
+          .concat(opts.map(o => `<option value="${esc(o.value)}">${esc(o.label)}</option>`)).join("");
+        if (curNew && opts.some(o => o.value === curNew)) newEl.value = curNew;
+
+        const filterEl = $("filterSubcategory");
+        const curFilter = filterEl.value;
+        filterEl.innerHTML = [`<option value="">${isEl ? "Όλες οι κατηγορίες" : "All categories"}</option>`]
+          .concat(opts.map(o => `<option value="${esc(o.value)}">${esc(o.label)}</option>`)).join("");
+        if (curFilter && opts.some(o => o.value === curFilter)) filterEl.value = curFilter;
+      }
+
+      function renderCatList() {
+        const list = $("catList");
+        if (!categories.length) {
+          list.innerHTML = `<p class="text-sm text-white/40">${isEl ? "Δεν υπάρχουν ακόμη κατηγορίες." : "No categories yet."}</p>`;
+          return;
+        }
+        list.innerHTML = categories.map(c => `
+          <div class="rounded-lg border border-white/10 bg-white/[0.04] px-2 py-1.5 flex items-center gap-1.5" data-cat-id="${c.id}">
+            <span class="catName text-sm">${esc(catLocName(c))}</span>
+            <span class="text-[10px] text-white/40">${esc((isEl ? c.name_en : c.name_el) ?? "")}</span>
+            <button class="renameCatBtn rounded p-1 text-xs text-white/60 hover:text-white" title="${isEl ? "Μετονομασία" : "Rename"}">✎</button>
+            <button class="delCatBtn rounded p-1 text-xs text-rose-300 hover:text-rose-200" title="${isEl ? "Διαγραφή" : "Delete"}">✕</button>
+          </div>
+        `).join("");
+      }
+
+      $("catToggleBtn").addEventListener("click", () => {
+        $("catPanel").classList.toggle("hidden");
+      });
+
+      $("addCatBtn").addEventListener("click", async () => {
+        const nameEl = $("newCatNameEl").value.trim();
+        const nameEn = $("newCatNameEn").value.trim();
+        const status = $("catStatus");
+        status.classList.add("hidden");
+        if (!nameEl && !nameEn) { status.textContent = isEl ? "Συμπληρώστε EL ή EN." : "Provide EL or EN."; status.classList.remove("hidden"); return; }
+        const r = await fetch("/api/admin/stock-categories", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ scope: CATEGORY, name_el: nameEl, name_en: nameEn }) });
+        const j = await r.json();
+        if (!r.ok) { status.textContent = j.error ?? "Error"; status.classList.remove("hidden"); return; }
+        categories.push(j.category);
+        categories.sort((a,b) => catLocName(a).localeCompare(catLocName(b)));
+        $("newCatNameEl").value = "";
+        $("newCatNameEn").value = "";
+        renderCatList();
+        fillSubcategoryOptions();
+      });
+
+      $("catList").addEventListener("click", async (e) => {
+        const btn = e.target.closest("button"); if (!btn) return;
+        const wrap = btn.closest("[data-cat-id]"); const id = wrap?.dataset.catId;
+        const cat = categories.find(c => c.id === id); if (!cat) return;
+
+        if (btn.classList.contains("renameCatBtn")) {
+          const newEl = prompt(isEl ? "Όνομα (EL):" : "Name (EL):", cat.name_el ?? "");
+          if (newEl === null) return;
+          const newEn = prompt(isEl ? "Όνομα (EN):" : "Name (EN):", cat.name_en ?? "");
+          if (newEn === null) return;
+          const trimmedEl = newEl.trim();
+          const trimmedEn = newEn.trim();
+          if (!trimmedEl && !trimmedEn) { alert(isEl ? "Πρέπει να υπάρχει EL ή EN." : "EL or EN required."); return; }
+          const r = await fetch("/api/admin/stock-categories", { method: "PUT", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ id, name_el: trimmedEl, name_en: trimmedEn }) });
+          const j = await r.json();
+          if (!r.ok) { alert(j.error ?? "Error"); return; }
+          // Update local state: rename in categories + cascade in items.
+          const oldName = cat.name;
+          Object.assign(cat, j.category);
+          items.forEach(it => { if (it.category === CATEGORY && it.subcategory === oldName) it.subcategory = cat.name; });
+          categories.sort((a,b) => catLocName(a).localeCompare(catLocName(b)));
+          renderCatList();
+          fillSubcategoryOptions();
+          render();
+        }
+
+        if (btn.classList.contains("delCatBtn")) {
+          if (!confirm(isEl ? `Διαγραφή κατηγορίας "${cat.name}";` : `Delete category "${cat.name}"?`)) return;
+          const r = await fetch("/api/admin/stock-categories", { method: "DELETE", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ id }) });
+          const j = await r.json();
+          if (!r.ok) { alert(j.error ?? "Error"); return; }
+          // Null out items locally and remove the category.
+          items.forEach(it => { if (it.category === CATEGORY && it.subcategory === cat.name) it.subcategory = null; });
+          categories = categories.filter(c => c.id !== id);
+          renderCatList();
+          fillSubcategoryOptions();
+          render();
+        }
+      });
+
+      async function load() {
+        const [si, ss, sc] = await Promise.all([
+          fetch(`/api/admin/stock-items?category=${CATEGORY}`).then(r => r.json()),
+          fetch(`/api/admin/suppliers`).then(r => r.json()),
+          fetch(`/api/admin/stock-categories?scope=${CATEGORY}`).then(r => r.json()),
+        ]);
+        items = si.items ?? [];
+        suppliers = ss.suppliers ?? [];
+        categories = sc.categories ?? [];
+        fillSupplierOptions();
+        fillSubcategoryOptions();
+        renderCatList();
+        render();
+      }
+      load();
+    </script>
+  </body>
+</html>

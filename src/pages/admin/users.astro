@@ -61,9 +61,12 @@ function roleBadge(role: string) {
     super_admin: "bg-gradient-to-br from-rose-400/20 to-fuchsia-400/20 text-rose-200 border border-rose-400/40",
     admin:       "bg-amber-400/10 text-amber-400 border border-amber-400/20",
     employee:    "bg-sky-400/10 text-sky-400 border border-sky-400/20",
+    staff:       "bg-sky-400/10 text-sky-400 border border-sky-400/20",
+    waiter:      "bg-orange-400/10 text-orange-300 border border-orange-400/25",
+    barman:      "bg-fuchsia-400/10 text-fuchsia-300 border border-fuchsia-400/25",
     customer:    "bg-white/5 text-white/40 border border-white/10",
   };
-  return map[role] ?? "bg-white/5 text-white/40";
+  return map[role] ?? "bg-white/5 text-white/40 border border-white/10";
 }
 function roleLabel(role: string, isEl: boolean) {
   if (role === "super_admin") return isEl ? "🔐 Super" : "🔐 Super";
@@ -155,21 +158,32 @@ function fmtDate(d: string) {
       </div>
 
       <!-- User sections -->
-      {(["super_admin", "admin", "employee", "customer"] as const).map(roleGroup => {
-        const group = users.filter(u => u.role === roleGroup);
+      {(["super_admin", "admin", "waiter", "barman", "employee", "staff", "customer", "other"] as const).map(roleGroup => {
+        const KNOWN = ["super_admin","admin","waiter","barman","employee","staff","customer"];
+        const group = roleGroup === "other"
+          ? users.filter(u => !KNOWN.includes(u.role))
+          : users.filter(u => u.role === roleGroup);
         if (!group.length) return null;
         const sectionColors = {
           super_admin: "text-rose-300 border-rose-400/30",
           admin:       "text-amber-400 border-amber-400/20",
+          waiter:      "text-orange-300 border-orange-400/25",
+          barman:      "text-fuchsia-300 border-fuchsia-400/25",
           employee:    "text-sky-400 border-sky-400/20",
+          staff:       "text-sky-400 border-sky-400/20",
           customer:    "text-white/40 border-white/10",
-        } as const;
+          other:       "text-white/50 border-white/10",
+        } as any;
         const sectionLabel = {
           super_admin: lang === "el" ? "🔐 Super Admins" : "🔐 Super Admins",
           admin:       lang === "el" ? "Διαχειριστές" : "Admins",
-          employee:    lang === "el" ? "Προσωπικό" : "Employees",
+          waiter:      lang === "el" ? "🧑‍🍳 Σερβιτόροι" : "🧑‍🍳 Waiters",
+          barman:      lang === "el" ? "🍸 Μπάρμαν" : "🍸 Barmen",
+          employee:    lang === "el" ? "Προσωπικό (όλα)" : "Employees (all)",
+          staff:       lang === "el" ? "Staff" : "Staff",
           customer:    lang === "el" ? "Πελάτες" : "Customers",
-        } as const;
+          other:       lang === "el" ? "Άλλοι ρόλοι" : "Other roles",
+        } as any;
         return (
           <div>
             <div class="flex items-center gap-3 mb-3">
@@ -264,8 +278,11 @@ function fmtDate(d: string) {
         <label>{t.admin.role}</label>
         <select id="editRole">
           <option value="customer">customer</option>
-          <option value="employee">employee</option>
+          <option value="waiter">waiter 🧑‍🍳</option>
+          <option value="barman">barman 🍸</option>
+          <option value="employee">employee (all staff)</option>
           <option value="admin">admin</option>
+          <option value="super_admin">super_admin</option>
         </select>
       </div>
       <div class="modal-actions">

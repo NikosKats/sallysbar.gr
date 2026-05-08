@@ -177,6 +177,46 @@ export const PATCH: APIRoute = async ({ request, cookies }) => {
 
   if (!order) return json({ error: "Order not found" }, 404);
 
+  // ── Barman: accept round → preparing (pending only) ────────────────────────
+  if (action === "preparing" || action === "prepare") {
+    if (order.status !== "pending") {
+      return json({ error: "Only pending orders can be moved to preparing" }, 400);
+    }
+    await supabaseAdmin.from("orders").update({
+      status: "preparing",
+      prepared_at: new Date().toISOString(),
+    }).eq("id", id);
+    await pushOrderStatus({ id: order.id, table_number: order.table_number, status: "preparing" });
+    return json({ ok: true, status: "preparing" });
+  }
+
+  // ── Barman: mark ready (preparing only) ────────────────────────────────────
+  if (action === "ready") {
+    if (order.status !== "preparing") {
+      return json({ error: "Only preparing orders can be marked ready" }, 400);
+    }
+    await supabaseAdmin.from("orders").update({
+      status: "ready",
+      ready_at: new Date().toISOString(),
+    }).eq("id", id);
+    await pushOrderStatus({ id: order.id, table_number: order.table_number, status: "ready" });
+    return json({ ok: true, status: "ready" });
+  }
+
+  // ── Waiter: mark delivered (ready only — legacy orders without prep might
+  // also move from pending → delivered; we accept both to match Telegram flow) ─
+  if (action === "delivered" || action === "deliver") {
+    if (!["ready", "preparing", "pending"].includes(order.status)) {
+      return json({ error: `Can't deliver from status '${order.status}'` }, 400);
+    }
+    await supabaseAdmin.from("orders").update({
+      status: "delivered",
+      delivered_at: new Date().toISOString(),
+    }).eq("id", id);
+    await pushOrderStatus({ id: order.id, table_number: order.table_number, status: "delivered" });
+    return json({ ok: true, status: "delivered" });
+  }
+
   // ── Cancel (pending only) ──────────────────────────────────────────────────
   if (action === "cancel") {
     if (order.status !== "pending") {

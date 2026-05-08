@@ -199,6 +199,7 @@ function timeAgo(dateStr: string) {
                           type="button"
                           data-action="dec"
                           data-id={item.id}
+                          data-name={item.name}
                           class="qty-btn w-8 h-8 rounded-full border border-white/15 bg-white/5 text-white/80 hover:bg-white/10 flex items-center justify-center text-lg leading-none transition"
                         >−</button>
                         <span id={`qty-${item.id}`} class="w-5 text-center text-sm font-semibold">0</span>
@@ -249,6 +250,9 @@ function timeAgo(dateStr: string) {
         {t.staff.orderError}
       </div>
     </main>
+
+    <!-- Toast host for item add/remove feedback -->
+    <div id="orderToastHost" class="fixed top-20 left-1/2 -translate-x-1/2 z-[90] flex flex-col items-center gap-2 pointer-events-none w-[min(92vw,420px)]"></div>
 
     <!-- Native submit bar (shown in browser, hidden in Telegram) -->
     <div id="native-submit-bar" class="fixed bottom-0 inset-x-0 border-t border-white/10 bg-[#0b0b10]/95 backdrop-blur px-6 py-4">
@@ -410,6 +414,32 @@ function timeAgo(dateStr: string) {
       }
 
       // Qty buttons
+      // Toast helper — brief notification centred near the top for add/remove
+      const toastHost = document.getElementById("orderToastHost");
+      function showToast(text, tone) {
+        if (!toastHost) return;
+        const tones = {
+          add:    "border-emerald-400/40 bg-emerald-500/20 text-emerald-50",
+          remove: "border-amber-400/40  bg-amber-500/20 text-amber-50",
+        };
+        const el = document.createElement("div");
+        el.className =
+          "pointer-events-auto rounded-full border px-4 py-2 text-sm font-medium shadow-xl backdrop-blur-sm " +
+          "transition-all duration-300 translate-y-0 opacity-100 " + (tones[tone] || tones.add);
+        el.textContent = text;
+        toastHost.appendChild(el);
+        // enter animation
+        requestAnimationFrame(() => {
+          el.style.transform = "translateY(0)";
+        });
+        // auto-dismiss
+        setTimeout(() => {
+          el.style.opacity = "0";
+          el.style.transform = "translateY(-10px)";
+          setTimeout(() => el.remove(), 300);
+        }, 1400);
+      }
+
       document.querySelectorAll(".qty-btn").forEach(btn => {
         btn.addEventListener("click", () => {
           const id     = btn.dataset.id;
@@ -419,11 +449,17 @@ function timeAgo(dateStr: string) {
 
           if (!quantities[id]) quantities[id] = { name, qty: 0, price_cents: price };
 
-          if (action === "inc") quantities[id].qty++;
-          if (action === "dec" && quantities[id].qty > 0) quantities[id].qty--;
+          let changed = false;
+          if (action === "inc") { quantities[id].qty++; changed = true; }
+          if (action === "dec" && quantities[id].qty > 0) { quantities[id].qty--; changed = true; }
 
           const display = document.getElementById(`qty-${id}`);
           display.textContent = String(quantities[id].qty);
+
+          if (changed) {
+            if (action === "inc") showToast(`✓ Added · ${name}`, "add");
+            else                  showToast(`− Removed · ${name}`, "remove");
+          }
 
           updateSummary();
         });

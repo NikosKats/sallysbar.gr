@@ -12,7 +12,7 @@ let profile: any = null;
 if (/^[a-z0-9_.\-]{3,40}$/i.test(raw)) {
   const { data } = await supabaseAdmin
     .from("profiles")
-    .select("id, full_name, role, bio, avatar_url, socials, handle, card_public, card_visibility, city, country, phone")
+    .select("id, full_name, card_name, role, bio, avatar_url, socials, handle, card_public, card_visibility, city, country, phone")
     .eq("handle", raw.toLowerCase())
     .maybeSingle();
   profile = data;
@@ -21,7 +21,7 @@ if (!profile) {
   // UUID fallback (first 8 of id)
   const { data } = await supabaseAdmin
     .from("profiles")
-    .select("id, full_name, role, bio, avatar_url, socials, handle, card_public, card_visibility, city, country, phone")
+    .select("id, full_name, card_name, role, bio, avatar_url, socials, handle, card_public, card_visibility, city, country, phone")
     .ilike("id", `${raw}%`)
     .limit(1)
     .maybeSingle();
@@ -35,7 +35,7 @@ if (!profile || profile.card_public === false) {
 const socials = (profile.socials ?? {}) as Record<string, string>;
 const vis: any = profile.card_visibility ?? { avatar: true, bio: true, location: true, phone: false, role_badge: true, socials: { instagram: true, facebook: true, tiktok: true, x: true, linkedin: true, youtube: true, website: true } };
 const socialVis: Record<string, boolean> = vis.socials ?? {};
-const personName = profile.full_name ?? "Member";
+const personName = (profile.card_name && profile.card_name.trim()) || profile.full_name || "Member";
 const bio  = vis.bio !== false ? (profile.bio ?? "") : "";
 const showPhone = !!vis.phone && !!profile.phone;
 const cardUrl = new URL(Astro.request.url).toString();
@@ -62,6 +62,30 @@ const socialLinks = [
   { key: "youtube",   label: "YouTube",   color: "from-red-500 to-red-700",                    icon: `<rect x="3" y="6" width="18" height="12" rx="3" stroke="currentColor" stroke-width="1.6"/><path d="M10 9l5 3-5 3V9z" fill="currentColor"/>` },
   { key: "website",   label: isEl ? "Ιστοσελίδα" : "Website", color: "from-emerald-400 to-teal-600", icon: `<circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18" stroke="currentColor" stroke-width="1.6"/>` },
 ].filter(s => socials[s.key] && socialVis[s.key] !== false);
+
+function prettySocialLabel(key: string, url: string): string {
+  try {
+    const u = new URL(url.startsWith("http") ? url : `https://${url}`);
+    const host = u.hostname.replace(/^www\./, "");
+    const path = u.pathname.replace(/^\/+|\/+$/g, "");
+    if (!path) return host;
+    if (["instagram", "tiktok", "youtube", "x", "twitter"].includes(key)) {
+      const first = path.split("/")[0].replace(/^@/, "");
+      return first ? `@${first}` : host;
+    }
+    if (key === "facebook") {
+      return path.split("/")[0] || host;
+    }
+    if (key === "linkedin") {
+      const parts = path.split("/");
+      const i = parts.indexOf("in");
+      return i >= 0 && parts[i + 1] ? `@${parts[i + 1]}` : (parts.pop() || host);
+    }
+    return host + (path ? `/${path}` : "");
+  } catch {
+    return url.replace(/^https?:\/\/(www\.)?/, "");
+  }
+}
 
 const T = {
   shareCard:  isEl ? "Κοινοποίησε" : "Share card",
@@ -126,17 +150,17 @@ const T = {
 
         <!-- Socials -->
         {socialLinks.length > 0 && (
-          <div class="px-5 pb-5 grid grid-cols-1 gap-2">
+          <div class="px-5 pb-5 grid grid-cols-1 gap-2 min-w-0">
             {socialLinks.map(s => (
               <a href={socials[s.key]} target="_blank" rel="noopener"
-                class={`group flex items-center gap-3 rounded-2xl p-[1.5px] bg-gradient-to-br ${s.color} hover:scale-[1.01] active:scale-[0.99] transition`}>
-                <span class="flex-1 flex items-center gap-3 rounded-2xl bg-[#0e0e16] px-4 py-3">
+                class={`group flex min-w-0 items-center gap-3 rounded-2xl p-[1.5px] bg-gradient-to-br ${s.color} hover:scale-[1.01] active:scale-[0.99] transition`}>
+                <span class="flex-1 min-w-0 flex items-center gap-3 rounded-2xl bg-[#0e0e16] px-4 py-3">
                   <span class={`h-9 w-9 shrink-0 rounded-xl bg-gradient-to-br ${s.color} flex items-center justify-center text-white`}>
                     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" set:html={s.icon}></svg>
                   </span>
-                  <span class="flex-1 min-w-0">
-                    <p class="text-sm font-semibold text-white leading-tight">{s.label}</p>
-                    <p class="text-[11px] text-white/45 truncate">{socials[s.key]}</p>
+                  <span class="flex-1 min-w-0 overflow-hidden">
+                    <p class="text-sm font-semibold text-white leading-tight truncate">{s.label}</p>
+                    <p class="text-[11px] text-white/45 truncate">{prettySocialLabel(s.key, socials[s.key])}</p>
                   </span>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="shrink-0 text-white/40 group-hover:text-white transition"><path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
                 </span>
@@ -159,11 +183,11 @@ const T = {
         </div>
 
         <!-- QR mini -->
-        <div class="border-t border-white/10 bg-black/20 px-5 py-4 flex items-center gap-3">
+        <div class="border-t border-white/10 bg-black/20 px-5 py-4 flex items-center gap-3 min-w-0">
           <img src={qrImageUrl} alt="QR" class="shrink-0 rounded-lg bg-white p-1.5" style="width:64px;height:64px;" loading="lazy" />
-          <div class="flex-1 min-w-0">
+          <div class="flex-1 min-w-0 overflow-hidden">
             <p class="text-[10px] uppercase tracking-wider text-white/50 font-semibold">{isEl ? "Σκάναρε ή δείξε αυτό" : "Scan or show this"}</p>
-            <p class="text-xs text-white/70 truncate break-all">{cardUrl}</p>
+            <p class="text-xs text-white/70 truncate">{cardUrl.replace(/^https?:\/\/(www\.)?/, "")}</p>
           </div>
         </div>
 

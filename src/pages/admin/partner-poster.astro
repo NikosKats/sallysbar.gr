@@ -77,16 +77,33 @@ const landingUrl = `https://www.sallysbar.gr/welcome/${p.slug}`;
         .toolbar { display: none; }
         .stage { padding: 0; }
         body { background: white; }
+        html, body, .poster, .poster::before, .title, .scan-cta, .brand, .kicker {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        /* Print-safe title: solid gold, no gradient clip. Browsers drop
+           backgrounds on print unless explicitly forced — fallback avoids
+           invisible text if color-adjust is disabled by the user. */
+        .title {
+          background: none !important;
+          -webkit-background-clip: initial !important;
+          background-clip: initial !important;
+          color: #d97706 !important;
+          -webkit-text-fill-color: #d97706 !important;
+        }
       }
     </style>
   </head>
   <body>
     <div class="toolbar">
       <a class="back" href={`/admin/partners/${p.slug}`}>← {isEl ? "Πίσω" : "Back"}</a>
-      <button class="print-btn" onclick="window.print()">🖨 {isEl ? "Εκτύπωση A4" : "Print A4"}</button>
+      <div style="display:flex;gap:8px;">
+        <button id="pngBtn" class="print-btn" style="background:#fff;color:#000;">⬇ {isEl ? "PNG" : "Download PNG"}</button>
+        <button class="print-btn" onclick="window.print()">🖨 {isEl ? "Εκτύπωση A4" : "Print A4"}</button>
+      </div>
     </div>
     <div class="stage">
-      <div class="poster">
+      <div id="posterEl" class="poster">
         <div class="brand">{p.name} · Sally's Bar · {p.city ?? "Skala"}</div>
         {p.logo_url && <img class="partner-logo" src={p.logo_url} alt={p.name + " logo"} />}
         <div class="kicker">{isEl ? "Καλωσήρθατε" : "Welcome"}</div>
@@ -119,6 +136,57 @@ const landingUrl = `https://www.sallysbar.gr/welcome/${p.slug}`;
           width: 460, margin: 1, color: { dark: "#0a0a0f", light: "#ffffff" }, errorCorrectionLevel: "H",
         }).catch((e: unknown) => console.error("QR render failed", e));
       }
+    </script>
+
+    <script is:inline>
+      (function () {
+        const btn = document.getElementById("pngBtn");
+        const poster = document.getElementById("posterEl");
+        if (!btn || !poster) return;
+        btn.addEventListener("click", async () => {
+          const origLabel = btn.textContent;
+          btn.disabled = true;
+          btn.textContent = "…";
+          try {
+            if (!window.html2canvas) {
+              await new Promise(function (resolve, reject) {
+                var s = document.createElement("script");
+                s.src = "https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js";
+                s.onload = resolve; s.onerror = reject;
+                document.head.appendChild(s);
+              });
+            }
+            var canvas = await window.html2canvas(poster, {
+              backgroundColor: "#0f0f18", scale: 2, useCORS: true, logging: false,
+              windowWidth: poster.scrollWidth, windowHeight: poster.scrollHeight,
+              // html2canvas doesn't render `background-clip: text` — the
+              // gradient title would come out as an empty gold rectangle.
+              // Swap to solid gold only in the cloned DOM used for capture.
+              onclone: function (doc) {
+                var titles = doc.querySelectorAll(".title");
+                for (var i = 0; i < titles.length; i++) {
+                  var el = titles[i];
+                  el.style.background = "none";
+                  el.style.backgroundClip = "initial";
+                  el.style.webkitBackgroundClip = "initial";
+                  el.style.color = "#fbbf24";
+                  el.style.webkitTextFillColor = "#fbbf24";
+                }
+              },
+            });
+            var url = canvas.toDataURL("image/png");
+            var a = document.createElement("a");
+            a.href = url;
+            a.download = "sallys-partner-poster.png";
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+          } catch (e) {
+            alert("Couldn't export PNG: " + (e?.message || e));
+          } finally {
+            btn.disabled = false;
+            btn.textContent = origLabel;
+          }
+        });
+      })();
     </script>
   </body>
 </html>

@@ -40,7 +40,7 @@ export const PUT: APIRoute = async ({ request, cookies }) => {
   // Update profile (name + role)
   const profileUpdate: Record<string, string> = {};
   if (name !== undefined) profileUpdate.full_name = name;
-  if (role && ["customer", "employee", "staff", "admin", "super_admin"].includes(role)) {
+  if (role && ["customer", "employee", "staff", "waiter", "barman", "admin", "super_admin"].includes(role)) {
     profileUpdate.role = role;
   }
 

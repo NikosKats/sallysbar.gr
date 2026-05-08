@@ -63,7 +63,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   // Protect staff routes
   const isStaffRoute = STAFF_ROUTES.some((r) => pathname.startsWith(r));
-  if (isStaffRoute && !["employee", "admin", "super_admin"].includes(locals.role ?? "")) {
+  if (isStaffRoute && !["employee", "staff", "waiter", "barman", "admin", "super_admin"].includes(locals.role ?? "")) {
     return redirect(`/login?next=${encodeURIComponent(pathname)}`);
   }
 

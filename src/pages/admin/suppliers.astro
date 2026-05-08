@@ -1,0 +1,209 @@
+---
+import "../../styles/global.css";
+import AdminNav from "../../components/AdminNav.astro";
+import { withLangPrefix } from "../../i18n";
+
+export const prerender = false;
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+
+if (!["admin", "super_admin"].includes(Astro.locals.role ?? "")) {
+  return Astro.redirect(withLangPrefix(lang, "/admin"));
+}
+---
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{isEl ? "Προμηθευτές" : "Suppliers"} — Admin</title>
+    <meta name="robots" content="noindex,nofollow" />
+  </head>
+  <body class="min-h-screen bg-[#0b0b10] text-white">
+    <AdminNav active="suppliers" />
+    <main class="mx-auto max-w-5xl px-3 sm:px-5 py-6 md:py-10 pb-24 md:pb-10">
+      <div class="text-xs uppercase tracking-[0.28em] text-amber-200/80 mb-3">{isEl ? "Διαχείριση" : "Management"}</div>
+      <h1 class="font-heading text-3xl md:text-4xl font-bold">🏷️ {isEl ? "Προμηθευτές" : "Suppliers"}</h1>
+      <p class="mt-2 text-sm text-white/60 max-w-2xl">
+        {isEl ? "Λίστα προμηθευτών για παραγγελίες αποθέματος." : "Your supplier directory — used when composing stock orders."}
+      </p>
+
+      <!-- Add new supplier -->
+      <section class="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        <h2 class="font-heading text-lg font-semibold mb-3">{isEl ? "Νέος προμηθευτής" : "Add supplier"}</h2>
+        <div class="grid gap-3 md:grid-cols-2">
+          <label class="block">
+            <span class="text-xs uppercase tracking-wider text-white/50">{isEl ? "Όνομα" : "Name"} *</span>
+            <input id="newName" type="text" class="mt-1 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-white outline-none focus:border-amber-300/50" />
+          </label>
+          <label class="block">
+            <span class="text-xs uppercase tracking-wider text-white/50">{isEl ? "Επαφή" : "Contact name"}</span>
+            <input id="newContact" type="text" class="mt-1 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-white outline-none focus:border-amber-300/50" />
+          </label>
+          <label class="block">
+            <span class="text-xs uppercase tracking-wider text-white/50">Email</span>
+            <input id="newEmail" type="email" class="mt-1 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-white outline-none focus:border-amber-300/50" />
+          </label>
+          <label class="block">
+            <span class="text-xs uppercase tracking-wider text-white/50">{isEl ? "Τηλέφωνο" : "Phone"}</span>
+            <input id="newPhone" type="tel" class="mt-1 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-white outline-none focus:border-amber-300/50" />
+          </label>
+          <label class="block md:col-span-2">
+            <span class="text-xs uppercase tracking-wider text-white/50">{isEl ? "Σημειώσεις" : "Notes"}</span>
+            <textarea id="newNotes" rows="2" class="mt-1 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-white outline-none focus:border-amber-300/50"></textarea>
+          </label>
+        </div>
+        <div class="mt-4 flex justify-end">
+          <button id="addBtn" type="button" class="rounded-xl bg-gradient-to-br from-amber-200 to-amber-400 px-5 py-2.5 font-semibold text-black shadow-lg shadow-amber-500/20 hover:shadow-amber-500/40 transition">
+            {isEl ? "Προσθήκη" : "Add supplier"}
+          </button>
+        </div>
+        <p id="addStatus" class="mt-2 text-sm text-rose-300 hidden"></p>
+      </section>
+
+      <!-- List -->
+      <section class="mt-8">
+        <h2 class="font-heading text-lg font-semibold mb-3">{isEl ? "Λίστα προμηθευτών" : "Supplier list"}</h2>
+        <div id="emptyState" class="hidden rounded-2xl border border-dashed border-white/15 bg-white/[0.02] p-8 text-center text-white/50">
+          {isEl ? "Δεν έχετε προσθέσει ακόμη προμηθευτές." : "No suppliers yet."}
+        </div>
+        <div id="list" class="grid gap-3"></div>
+      </section>
+    </main>
+
+    <script is:inline define:vars={{ isEl }}>
+      const T = {
+        edit:    isEl ? "Επεξεργασία" : "Edit",
+        save:    isEl ? "Αποθήκευση" : "Save",
+        cancel:  isEl ? "Ακύρωση" : "Cancel",
+        del:     isEl ? "Διαγραφή" : "Delete",
+        confirm: isEl ? "Σίγουρα διαγραφή;" : "Delete this supplier?",
+        name:    isEl ? "Όνομα" : "Name",
+        contact: isEl ? "Επαφή" : "Contact",
+        phone:   isEl ? "Τηλέφωνο" : "Phone",
+        notes:   isEl ? "Σημειώσεις" : "Notes",
+      };
+      const list = document.getElementById("list");
+      const emptyState = document.getElementById("emptyState");
+      const addStatus = document.getElementById("addStatus");
+      const $ = (id) => document.getElementById(id);
+
+      let suppliers = [];
+
+      const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+
+      function render() {
+        if (!suppliers.length) {
+          list.innerHTML = "";
+          emptyState.classList.remove("hidden");
+          return;
+        }
+        emptyState.classList.add("hidden");
+        list.innerHTML = suppliers.map((s) => `
+          <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4" data-id="${s.id}">
+            <div class="min-w-0">
+              <p class="font-heading text-base sm:text-lg font-semibold break-words">${esc(s.name)}</p>
+              <div class="mt-1.5 grid gap-1 text-sm">
+                ${s.contact_name ? `<div class="text-white/70"><span class="text-white/40 text-xs uppercase tracking-wider">${esc(T.contact)}:</span> ${esc(s.contact_name)}</div>` : ""}
+                ${s.email      ? `<a class="block text-amber-300 hover:underline break-all" href="mailto:${esc(s.email)}">📧 ${esc(s.email)}</a>` : ""}
+                ${s.phone      ? `<a class="block text-white/85 hover:underline" href="tel:${esc(s.phone)}">📞 ${esc(s.phone)}</a>` : ""}
+              </div>
+              ${s.notes ? `<p class="mt-2 text-sm text-white/60 whitespace-pre-wrap">${esc(s.notes)}</p>` : ""}
+            </div>
+            <div class="mt-3 grid grid-cols-2 gap-2 sm:flex sm:justify-end">
+              <button class="editBtn rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm hover:bg-white/10 min-h-[44px]">${esc(T.edit)}</button>
+              <button class="delBtn rounded-lg border border-rose-400/30 bg-rose-400/10 px-3 py-2 text-sm text-rose-200 hover:bg-rose-400/20 min-h-[44px]">${esc(T.del)}</button>
+            </div>
+          </div>
+        `).join("");
+      }
+
+      function editForm(s) {
+        return `
+          <div class="rounded-2xl border border-amber-300/30 bg-amber-300/[0.03] p-4" data-id="${s.id}">
+            <div class="grid gap-2 md:grid-cols-2">
+              <input data-f="name"         placeholder="${esc(T.name)} *" value="${esc(s.name)}"    class="rounded-lg border border-white/15 bg-white/5 px-3 py-2 outline-none focus:border-amber-300/50" />
+              <input data-f="contact_name" placeholder="${esc(T.contact)}" value="${esc(s.contact_name ?? "")}" class="rounded-lg border border-white/15 bg-white/5 px-3 py-2 outline-none focus:border-amber-300/50" />
+              <input data-f="email"        placeholder="Email"             value="${esc(s.email ?? "")}"        class="rounded-lg border border-white/15 bg-white/5 px-3 py-2 outline-none focus:border-amber-300/50" />
+              <input data-f="phone"        placeholder="${esc(T.phone)}"   value="${esc(s.phone ?? "")}"        class="rounded-lg border border-white/15 bg-white/5 px-3 py-2 outline-none focus:border-amber-300/50" />
+              <textarea data-f="notes"     placeholder="${esc(T.notes)}" rows="2" class="md:col-span-2 rounded-lg border border-white/15 bg-white/5 px-3 py-2 outline-none focus:border-amber-300/50">${esc(s.notes ?? "")}</textarea>
+            </div>
+            <div class="mt-3 flex justify-end gap-2">
+              <button class="cancelBtn rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10">${esc(T.cancel)}</button>
+              <button class="saveBtn rounded-lg bg-amber-300 px-3 py-1.5 text-sm font-semibold text-black hover:bg-amber-200">${esc(T.save)}</button>
+            </div>
+          </div>
+        `;
+      }
+
+      list.addEventListener("click", async (e) => {
+        const btn = e.target.closest("button"); if (!btn) return;
+        const card = btn.closest("[data-id]"); const id = card?.dataset.id;
+        const s = suppliers.find(x => x.id === id);
+        if (!s) return;
+
+        if (btn.classList.contains("editBtn")) {
+          const wrapper = document.createElement("div");
+          wrapper.innerHTML = editForm(s);
+          card.replaceWith(wrapper.firstElementChild);
+          return;
+        }
+        if (btn.classList.contains("cancelBtn")) {
+          render();
+          return;
+        }
+        if (btn.classList.contains("saveBtn")) {
+          const inputs = card.querySelectorAll("[data-f]");
+          const payload = { id };
+          inputs.forEach((el) => { payload[el.dataset.f] = el.value; });
+          btn.disabled = true; btn.textContent = "...";
+          const r = await fetch("/api/admin/suppliers", { method: "PUT", headers: {"Content-Type":"application/json"}, body: JSON.stringify(payload) });
+          const j = await r.json();
+          if (!r.ok) { alert(j.error ?? "Error"); btn.disabled = false; btn.textContent = T.save; return; }
+          const idx = suppliers.findIndex(x => x.id === id);
+          suppliers[idx] = j.supplier;
+          render();
+          return;
+        }
+        if (btn.classList.contains("delBtn")) {
+          if (!confirm(T.confirm)) return;
+          btn.disabled = true;
+          const r = await fetch("/api/admin/suppliers", { method: "DELETE", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ id }) });
+          const j = await r.json();
+          if (!r.ok) { alert(j.error ?? "Error"); btn.disabled = false; return; }
+          suppliers = suppliers.filter(x => x.id !== id);
+          render();
+        }
+      });
+
+      $("addBtn").addEventListener("click", async () => {
+        addStatus.classList.add("hidden");
+        const payload = {
+          name:         $("newName").value,
+          contact_name: $("newContact").value,
+          email:        $("newEmail").value,
+          phone:        $("newPhone").value,
+          notes:        $("newNotes").value,
+        };
+        if (!payload.name.trim()) { addStatus.textContent = "Name required."; addStatus.classList.remove("hidden"); return; }
+        const btn = $("addBtn"); btn.disabled = true;
+        const r = await fetch("/api/admin/suppliers", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify(payload) });
+        const j = await r.json();
+        btn.disabled = false;
+        if (!r.ok) { addStatus.textContent = j.error ?? "Error"; addStatus.classList.remove("hidden"); return; }
+        suppliers.push(j.supplier);
+        suppliers.sort((a,b) => a.name.localeCompare(b.name));
+        ["newName","newContact","newEmail","newPhone","newNotes"].forEach(id => $(id).value = "");
+        render();
+      });
+
+      async function load() {
+        const r = await fetch("/api/admin/suppliers");
+        const j = await r.json();
+        suppliers = j.suppliers ?? [];
+        render();
+      }
+      load();
+    </script>
+  </body>
+</html>

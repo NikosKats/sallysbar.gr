@@ -7,7 +7,7 @@ export type OrderItem = { name: string; qty: number; price_cents: number };
 
 export const POST: APIRoute = async ({ request, locals }) => {
   // Only authenticated staff can submit orders
-  if (!locals.role || !["employee", "admin", "super_admin"].includes(locals.role)) {
+  if (!locals.role || !["employee", "staff", "waiter", "barman", "admin", "super_admin"].includes(locals.role)) {
     return json({ error: "Unauthorized" }, 401);
   }
 
@@ -82,55 +82,105 @@ export const POST: APIRoute = async ({ request, locals }) => {
     return json({ error: "Database error" }, 500);
   }
 
-  // Format Telegram message with prices
-  const itemLines = items
-    .map((i) => `  • ${i.qty}× ${i.name}  <i>€${((i.qty * i.price_cents) / 100).toFixed(2)}</i>`)
-    .join("\n");
+  // Wrap the whole Telegram fan-out in try/catch so a Telegram outage or
+  // malformed response never blocks the waiter from placing the order.
+  try {
+    const itemLines = items
+      .map((i) => `  • ${i.qty}× ${i.name}  <i>€${((i.qty * i.price_cents) / 100).toFixed(2)}</i>`)
+      .join("\n");
 
-  const totalFormatted = `€${(total_cents / 100).toFixed(2)}`;
-  const roundLabel = roundNumber > 1 ? ` — Round ${roundNumber}` : "";
+    const totalFormatted = `€${(total_cents / 100).toFixed(2)}`;
+    const roundLabel = roundNumber > 1 ? ` — Round ${roundNumber}` : "";
 
-  const text =
-    `🍹 <b>New Order${roundLabel} — Table ${table}</b>\n\n` +
-    `${itemLines}\n\n` +
-    `💶 <b>Total: ${totalFormatted}</b>` +
-    (note ? `\n\n📝 <i>${note}</i>` : "") +
-    `\n\n<code>#${order.id.slice(0, 8)}</code>`;
+    // Date/time in Athens tz, defensive against ICU quirks on the edge runtime.
+    let when = "";
+    try {
+      when = new Date((order as any).created_at ?? Date.now()).toLocaleString("en-GB", {
+        weekday: "short", day: "numeric", month: "short",
+        hour: "2-digit", minute: "2-digit",
+        timeZone: "Europe/Athens", hour12: false,
+      });
+    } catch {
+      when = new Date().toISOString().slice(0, 16).replace("T", " ") + " UTC";
+    }
 
-  const [barmanMsg, waiterMsg] = await Promise.all([
-    sendMessage(
-      import.meta.env.TELEGRAM_BARMAN_CHAT_ID,
-      text,
-      {
-        reply_markup: {
-          inline_keyboard: [
-            [
-              { text: "🔄 Preparing", callback_data: `preparing:${order.id}` },
-              { text: "❌ Cancel", callback_data: `cancel:${order.id}` },
+    const seq = (order as any).seq as number | null | undefined;
+    const shortId = String(order.id ?? "").slice(0, 8).toUpperCase();
+
+    // Compute a "daily" order number that resets at Athens midnight.
+    // We count orders for the same Athens-local day with created_at <= this order's,
+    // so two orders never collide on the same number even under concurrent inserts
+    // (later one always sees the earlier one in the count).
+    let dailySeq = 1;
+    try {
+      const orderCreatedAt = new Date((order as any).created_at ?? Date.now());
+      const ymd = new Intl.DateTimeFormat("sv-SE", {
+        timeZone: "Europe/Athens",
+        year: "numeric", month: "2-digit", day: "2-digit",
+      }).format(orderCreatedAt);
+      const utcMidnight = new Date(`${ymd}T00:00:00Z`);
+      const athensHour = Number(new Intl.DateTimeFormat("en-US", {
+        timeZone: "Europe/Athens", hour: "2-digit", hour12: false,
+      }).format(utcMidnight));
+      const startOfAthensDay = new Date(utcMidnight.getTime() - athensHour * 3600_000);
+      const { count } = await supabaseAdmin
+        .from("orders")
+        .select("id", { count: "exact", head: true })
+        .gte("created_at", startOfAthensDay.toISOString())
+        .lte("created_at", (order as any).created_at);
+      if (count && count > 0) dailySeq = count;
+    } catch (e: any) {
+      console.warn("[order] daily seq calc failed:", e?.message);
+    }
+
+    // Primary number resets per day; keep the global seq / short UUID as a stable secondary.
+    const primaryNum = `#${dailySeq}`;
+    const secondary  = (seq != null) ? ` · global #${seq} · ${shortId}` : ` · ${shortId}`;
+
+    const text =
+      `🍹 <b>New Order${roundLabel} — Table ${table}</b>\n` +
+      `🕒 ${when}  ·  🔖 <b>${primaryNum}</b>${secondary}\n\n` +
+      `${itemLines}\n\n` +
+      `💶 <b>Total: ${totalFormatted}</b>` +
+      (note ? `\n\n📝 <i>${note}</i>` : "") +
+      `\n\n<code>${primaryNum}</code>`;
+
+    const [barmanMsg, waiterMsg] = await Promise.all([
+      sendMessage(
+        import.meta.env.TELEGRAM_BARMAN_CHAT_ID,
+        text,
+        {
+          reply_markup: {
+            inline_keyboard: [
+              [
+                { text: "🔄 Preparing", callback_data: `preparing:${order.id}` },
+                { text: "❌ Cancel", callback_data: `cancel:${order.id}` },
+              ],
             ],
-          ],
-        },
-      }
-    ),
-    sendMessage(
-      import.meta.env.TELEGRAM_WAITER_CHAT_ID,
-      text,
-      {
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: "❌ Cancel", callback_data: `cancel:${order.id}` }],
-          ],
-        },
-      }
-    ),
-  ]);
+          },
+        }
+      ).catch((e) => { console.warn("[order] barman tg failed:", e?.message); return { ok: false }; }),
+      sendMessage(
+        import.meta.env.TELEGRAM_WAITER_CHAT_ID,
+        text,
+        {
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: "❌ Cancel", callback_data: `cancel:${order.id}` }],
+            ],
+          },
+        }
+      ).catch((e) => { console.warn("[order] waiter tg failed:", e?.message); return { ok: false }; }),
+    ]);
 
-  // Store message IDs so we can edit them later
-  const updates: Record<string, number> = {};
-  if (barmanMsg.ok) updates.barman_message_id = barmanMsg.result.message_id;
-  if (waiterMsg.ok) updates.waiter_message_id = waiterMsg.result.message_id;
-  if (Object.keys(updates).length) {
-    await supabaseAdmin.from("orders").update(updates).eq("id", order.id);
+    const updates: Record<string, number> = {};
+    if ((barmanMsg as any)?.ok) updates.barman_message_id = (barmanMsg as any).result.message_id;
+    if ((waiterMsg as any)?.ok) updates.waiter_message_id = (waiterMsg as any).result.message_id;
+    if (Object.keys(updates).length) {
+      await supabaseAdmin.from("orders").update(updates).eq("id", order.id);
+    }
+  } catch (e: any) {
+    console.error("[order] telegram/notify block failed — order still saved:", e?.message);
   }
 
   await pushOrderCreated({

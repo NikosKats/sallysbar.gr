@@ -1,0 +1,201 @@
+---
+import "../../styles/global.css";
+import AdminNav from "../../components/AdminNav.astro";
+import { withLangPrefix } from "../../i18n";
+
+export const prerender = false;
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+
+if (!["admin", "super_admin"].includes(Astro.locals.role ?? "")) {
+  return Astro.redirect(withLangPrefix(lang, "/admin"));
+}
+
+const url = new URL(Astro.request.url);
+const itemIds = (url.searchParams.get("items") ?? "").split(",").filter(Boolean);
+const category = url.searchParams.get("category") ?? "";
+---
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{isEl ? "Παραγγελία προς προμηθευτή" : "Purchase order"} — Sally's Bar</title>
+    <meta name="robots" content="noindex,nofollow" />
+    <style>
+      @media print {
+        @page { size: A4; margin: 14mm 14mm 14mm 14mm; }
+        html, body { background: white !important; color: black !important; margin: 0 !important; padding: 0 !important; }
+        .no-print { display: none !important; }
+        .order-page {
+          break-after: page !important;
+          page-break-after: always !important;
+        }
+        .order-page:last-child { break-after: auto !important; page-break-after: auto !important; }
+      }
+    </style>
+  </head>
+  <body class="min-h-screen bg-[#0b0b10] text-white print:bg-white print:text-black">
+    <div class="no-print">
+      <AdminNav active="bar-stock" />
+    </div>
+
+    <main class="mx-auto max-w-4xl px-5 py-10 print:px-0 print:py-0 print:max-w-none">
+
+      <!-- Toolbar (screen only) -->
+      <div class="no-print mb-6 flex items-center gap-3">
+        <a href={withLangPrefix(lang, category === "inventory" ? "/admin/inventory" : "/admin/bar-stock")}
+           class="rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm hover:bg-white/10">
+          ← {isEl ? "Πίσω" : "Back"}
+        </a>
+        <h1 class="font-heading text-2xl font-bold">{isEl ? "Παραγγελία προς προμηθευτή" : "Purchase order"}</h1>
+        <span class="ml-auto"></span>
+        <button id="printBtn" type="button"
+          class="rounded-xl bg-gradient-to-br from-amber-200 to-amber-400 px-5 py-2.5 font-semibold text-black shadow-lg shadow-amber-500/20 hover:shadow-amber-500/40 transition">
+          🖨 {isEl ? "Εκτύπωση / Αποθήκευση PDF" : "Print / Save as PDF"}
+        </button>
+      </div>
+
+      <p class="no-print mb-4 text-sm text-white/60">
+        {isEl ? "Τα στοιχεία ομαδοποιούνται ανά προμηθευτή — μία σελίδα ανά προμηθευτή." : "Items are grouped by supplier — one page per supplier."}
+      </p>
+
+      <div id="orderRoot"></div>
+    </main>
+
+    <script is:inline define:vars={{ isEl, itemIds }}>
+      const T = {
+        po:       isEl ? "Παραγγελία" : "Purchase Order",
+        date:     isEl ? "Ημερομηνία" : "Date",
+        supplier: isEl ? "Προμηθευτής" : "Supplier",
+        contact:  isEl ? "Επαφή" : "Contact",
+        from:     isEl ? "Από" : "From",
+        item:     isEl ? "Είδος" : "Item",
+        unit:     isEl ? "Μον." : "Unit",
+        qty:      isEl ? "Ποσότητα" : "Qty",
+        cost:     isEl ? "Κόστος/μον. €" : "Unit € ",
+        total:    isEl ? "Σύνολο €" : "Total €",
+        notes:    isEl ? "Σημειώσεις" : "Notes",
+        page:     isEl ? "Σελίδα" : "Page",
+        sumTotal: isEl ? "Συνολικό κόστος" : "Order total",
+        noItems:  isEl ? "Δεν επιλέχθηκαν είδη" : "No items selected",
+        noSupplier: isEl ? "Χωρίς προμηθευτή" : "No supplier",
+      };
+
+      const root = document.getElementById("orderRoot");
+      const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+      const num = (n) => Number(n ?? 0);
+      const fmt = (n) => {
+        const v = num(n);
+        return Number.isInteger(v) ? String(v) : v.toFixed(2);
+      };
+      const money = (n) => num(n).toFixed(2);
+
+      function pageHeader(supplier, idx, total, dateStr) {
+        return `
+          <header class="flex items-start justify-between border-b border-black/20 pb-3 mb-4">
+            <div>
+              <p class="text-[11px] uppercase tracking-[0.3em] text-black/60 print:text-black/70">${esc(T.po)}</p>
+              <h2 class="font-heading text-2xl font-bold mt-1">${esc(supplier?.name ?? T.noSupplier)}</h2>
+              ${supplier?.contact_name ? `<p class="text-sm mt-1">${esc(T.contact)}: ${esc(supplier.contact_name)}</p>` : ""}
+              ${supplier?.email ? `<p class="text-sm">Email: ${esc(supplier.email)}</p>` : ""}
+              ${supplier?.phone ? `<p class="text-sm">${esc(T.from === "Από" ? "Τηλ" : "Phone")}: ${esc(supplier.phone)}</p>` : ""}
+            </div>
+            <div class="text-right">
+              <p class="font-heading text-xl font-bold">Sally's Bar</p>
+              <p class="text-sm text-black/60 print:text-black/80">Skala, Kefalonia</p>
+              <p class="text-sm mt-2"><span class="text-black/60 print:text-black/70">${esc(T.date)}:</span> ${esc(dateStr)}</p>
+              <p class="text-xs text-black/50 print:text-black/60 mt-1">${esc(T.page)} ${idx} / ${total}</p>
+            </div>
+          </header>
+        `;
+      }
+
+      function pageBody(items) {
+        let total = 0;
+        const rows = items.map((it) => {
+          const qty = num(it.default_order_qty) > 0 ? num(it.default_order_qty) : Math.max(0, num(it.reorder_threshold) - num(it.current_qty));
+          const cost = num(it.unit_cost);
+          const line = qty * cost;
+          total += line;
+          return `
+            <tr class="border-b border-black/10">
+              <td class="px-2 py-2 align-top">${esc(it.name)}${it.notes ? `<div class="text-[11px] text-black/50">${esc(it.notes)}</div>` : ""}</td>
+              <td class="px-2 py-2 align-top">${esc(it.unit)}</td>
+              <td class="px-2 py-2 align-top text-right">${fmt(qty)}</td>
+              <td class="px-2 py-2 align-top text-right">${money(cost)}</td>
+              <td class="px-2 py-2 align-top text-right">${money(line)}</td>
+            </tr>
+          `;
+        }).join("");
+        return `
+          <table class="w-full text-sm">
+            <thead class="text-left">
+              <tr class="border-b border-black/40 text-[11px] uppercase tracking-wider text-black/70 print:text-black/80">
+                <th class="px-2 py-2">${esc(T.item)}</th>
+                <th class="px-2 py-2">${esc(T.unit)}</th>
+                <th class="px-2 py-2 text-right">${esc(T.qty)}</th>
+                <th class="px-2 py-2 text-right">${esc(T.cost)}</th>
+                <th class="px-2 py-2 text-right">${esc(T.total)}</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+            <tfoot>
+              <tr>
+                <td colspan="4" class="px-2 py-3 text-right font-semibold">${esc(T.sumTotal)}</td>
+                <td class="px-2 py-3 text-right font-bold text-lg">€${money(total)}</td>
+              </tr>
+            </tfoot>
+          </table>
+          <div class="mt-10 grid grid-cols-2 gap-8 text-sm">
+            <div>
+              <div class="border-t border-black/40 pt-1 text-black/60 print:text-black/80">${isEl ? "Υπογραφή προμηθευτή" : "Supplier signature"}</div>
+            </div>
+            <div>
+              <div class="border-t border-black/40 pt-1 text-black/60 print:text-black/80">${isEl ? "Υπογραφή παραλήπτη" : "Receiver signature"}</div>
+            </div>
+          </div>
+        `;
+      }
+
+      async function load() {
+        const ids = itemIds;
+        if (!ids.length) {
+          root.innerHTML = `<p class="text-white/60">${esc(T.noItems)}.</p>`;
+          return;
+        }
+        const r = await fetch(`/api/admin/stock-items`);
+        const j = await r.json();
+        const all = j.items ?? [];
+        const idSet = new Set(ids);
+        const selected = all.filter(it => idSet.has(it.id));
+
+        // Group by supplier_id (null bucket allowed)
+        const groups = new Map();
+        for (const it of selected) {
+          const key = it.supplier_id ?? "__none__";
+          if (!groups.has(key)) groups.set(key, { supplier: it.supplier, items: [] });
+          groups.get(key).items.push(it);
+        }
+
+        const dateStr = new Date().toLocaleDateString(isEl ? "el-GR" : "en-GB");
+        const totalPages = groups.size;
+        const html = [];
+        let i = 1;
+        for (const { supplier, items } of groups.values()) {
+          html.push(`
+            <article class="order-page rounded-2xl bg-white text-black p-8 print:p-0 print:rounded-none mb-6">
+              ${pageHeader(supplier, i, totalPages, dateStr)}
+              ${pageBody(items)}
+            </article>
+          `);
+          i++;
+        }
+        root.innerHTML = html.join("");
+      }
+
+      document.getElementById("printBtn").addEventListener("click", () => window.print());
+      load();
+    </script>
+  </body>
+</html>

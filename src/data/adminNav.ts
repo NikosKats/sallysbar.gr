@@ -30,12 +30,20 @@ export const I = {
   activeOrders: `<path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><rect x="9" y="3" width="6" height="4" rx="1" stroke="currentColor" stroke-width="1.6"/><path d="M9 12h6M9 16h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>`,
   newOrder:     `<circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M12 8v8M8 12h8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>`,
   chat:         `<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>`,
+  stock:        `<path d="M3 7l9-4 9 4-9 4-9-4z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M3 12l9 4 9-4M3 17l9 4 9-4" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>`,
+  supplier:     `<path d="M3 7h13l3 4v6h-3a2 2 0 1 1-4 0H10a2 2 0 1 1-4 0H3V7z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="8" cy="17" r="1.5" stroke="currentColor" stroke-width="1.6"/><circle cx="17" cy="17" r="1.5" stroke="currentColor" stroke-width="1.6"/>`,
 };
 
 export function getAdminNavGroups(lang: "en" | "el", t: any, role?: string | null): AdminNavGroup[] {
   const isEl = lang === "el";
   const isSuper = role === "super_admin";
   const groups: AdminNavGroup[] = [
+    { title: isEl ? "Απόθεμα" : "Inventory", items: [
+      { key: "bar-stock", label: isEl ? "🥃 Απόθεμα μπαρ"   : "🥃 Bar drinks stock", href: withLangPrefix(lang, "/admin/bar-stock"), icon: I.stock },
+      { key: "inventory", label: isEl ? "📦 Inventory"       : "📦 Inventory stock",  href: withLangPrefix(lang, "/admin/inventory"), icon: I.stock },
+      { key: "lists",     label: isEl ? "📝 Λίστες"          : "📝 Lists",            href: withLangPrefix(lang, "/admin/lists"),     icon: I.editMenu },
+      { key: "suppliers", label: isEl ? "🏷️ Προμηθευτές"     : "🏷️ Suppliers",        href: withLangPrefix(lang, "/admin/suppliers"), icon: I.supplier },
+    ]},
     { title: isEl ? "Πίνακας" : "Dashboard", items: [
       { key: "overview",  label: t.admin.nav.overview,  href: withLangPrefix(lang, "/admin"),          icon: I.overview },
       { key: "analytics", label: t.admin.nav.analytics, href: withLangPrefix(lang, "/admin/analytics"), icon: I.analytics },

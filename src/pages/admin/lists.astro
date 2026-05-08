@@ -1,0 +1,168 @@
+---
+import "../../styles/global.css";
+import AdminNav from "../../components/AdminNav.astro";
+import { withLangPrefix } from "../../i18n";
+
+export const prerender = false;
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+
+if (!["admin", "super_admin"].includes(Astro.locals.role ?? "")) {
+  return Astro.redirect(withLangPrefix(lang, "/admin"));
+}
+---
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{isEl ? "Λίστες" : "Lists"} — Admin</title>
+    <meta name="robots" content="noindex,nofollow" />
+  </head>
+  <body class="min-h-screen bg-[#0b0b10] text-white">
+    <AdminNav active="lists" />
+    <main class="mx-auto max-w-5xl px-3 sm:px-5 py-6 md:py-10 pb-24 md:pb-10">
+      <div class="text-xs uppercase tracking-[0.28em] text-amber-200/80 mb-3">{isEl ? "Διαχείριση" : "Management"}</div>
+      <h1 class="font-heading text-3xl md:text-4xl font-bold">📝 {isEl ? "Αποθηκευμένες λίστες" : "Saved lists"}</h1>
+      <p class="mt-2 text-sm text-white/60 max-w-2xl">
+        {isEl ? "Δημιουργήστε λίστες παραγγελίας από το απόθεμα. Κάθε λίστα μπορεί να εκτυπωθεί ή να μοιραστεί δημόσια με σύνδεσμο." : "Create order/shopping lists from your stock. Each list can be printed or shared publicly via a link."}
+      </p>
+
+      <!-- Create new list -->
+      <section class="mt-6 md:mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-5">
+        <h2 class="font-heading text-lg font-semibold mb-3">{isEl ? "Νέα λίστα" : "New list"}</h2>
+        <div class="grid gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end">
+          <label class="block">
+            <span class="text-xs uppercase tracking-wider text-white/50">{isEl ? "Όνομα" : "Name"}</span>
+            <input id="newName" type="text" placeholder={isEl ? "π.χ. Παραγγελία Δευτέρας" : "e.g. Monday order"} class="mt-1 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-3 text-base outline-none focus:border-amber-300/50" />
+          </label>
+          <label class="block">
+            <span class="text-xs uppercase tracking-wider text-white/50">{isEl ? "Πεδίο" : "Scope"}</span>
+            <select id="newScope" class="mt-1 w-full sm:w-auto rounded-lg border border-white/15 bg-white/5 px-3 py-3 text-base outline-none focus:border-amber-300/50">
+              <option value="mixed">{isEl ? "Μικτό" : "Mixed"}</option>
+              <option value="bar">{isEl ? "Μπαρ" : "Bar"}</option>
+              <option value="inventory">Inventory</option>
+            </select>
+          </label>
+          <button id="addBtn" type="button" class="rounded-xl bg-gradient-to-br from-amber-200 to-amber-400 px-5 py-3 font-semibold text-black shadow-lg shadow-amber-500/20 hover:shadow-amber-500/40 transition min-h-[44px]">
+            {isEl ? "Δημιουργία" : "Create list"}
+          </button>
+        </div>
+        <p id="addStatus" class="mt-2 text-sm text-rose-300 hidden"></p>
+      </section>
+
+      <!-- Lists -->
+      <section class="mt-8">
+        <div id="emptyState" class="hidden rounded-2xl border border-dashed border-white/15 bg-white/[0.02] p-8 text-center text-white/50">
+          {isEl ? "Δεν υπάρχουν λίστες ακόμη." : "No lists yet."}
+        </div>
+        <div id="lists" class="grid gap-3"></div>
+      </section>
+    </main>
+
+    <script is:inline define:vars={{ isEl, lang }}>
+      const T = {
+        items:    isEl ? "είδη" : "items",
+        total:    isEl ? "Σύνολο" : "Total",
+        open:     isEl ? "Άνοιγμα" : "Open",
+        del:      isEl ? "Διαγραφή" : "Delete",
+        confirm:  isEl ? "Σίγουρα διαγραφή λίστας;" : "Delete this list?",
+        share:    isEl ? "Αντιγραφή συνδέσμου" : "Copy share link",
+        copied:   isEl ? "Αντιγράφηκε!" : "Copied!",
+        bar:      isEl ? "Μπαρ" : "Bar",
+        inventory: "Inventory",
+        mixed:    isEl ? "Μικτό" : "Mixed",
+      };
+      const $ = (id) => document.getElementById(id);
+      const listsEl = $("lists");
+      const emptyEl = $("emptyState");
+      const addStatus = $("addStatus");
+      const langPrefix = lang === "el" ? "/el" : "";
+
+      const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+      const money = (n) => Number(n ?? 0).toFixed(2);
+      const scopeLabel = (s) => s === "bar" ? T.bar : s === "inventory" ? T.inventory : T.mixed;
+      const fmtDate = (s) => s ? new Date(s).toLocaleString(isEl ? "el-GR" : "en-GB", { dateStyle: "medium", timeStyle: "short" }) : "";
+
+      let lists = [];
+
+      function render() {
+        if (!lists.length) {
+          listsEl.innerHTML = "";
+          emptyEl.classList.remove("hidden");
+          return;
+        }
+        emptyEl.classList.add("hidden");
+        listsEl.innerHTML = lists.map((l) => `
+          <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4" data-id="${l.id}">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0 flex-1">
+                <p class="font-heading text-base sm:text-lg font-semibold truncate">${esc(l.name)}</p>
+                <p class="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-white/50">
+                  <span class="rounded-full border border-white/10 bg-white/5 px-2 py-0.5">${esc(scopeLabel(l.scope))}</span>
+                  <span>${l.item_count ?? 0} ${esc(T.items)}</span>
+                  <span>·</span>
+                  <span class="text-amber-200/80">€${money(l.total)}</span>
+                </p>
+                <p class="mt-1 text-[11px] text-white/35">${esc(fmtDate(l.updated_at))}</p>
+              </div>
+              <a href="${langPrefix}/admin/lists/${l.id}" class="shrink-0 inline-flex items-center justify-center rounded-lg border border-amber-300/40 bg-amber-300/10 px-3 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-300/20 min-h-[44px]" aria-label="${esc(T.open)}">${esc(T.open)} →</a>
+            </div>
+            <div class="mt-3 grid grid-cols-2 gap-2 sm:flex sm:justify-end">
+              <button class="shareBtn rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm hover:bg-white/10 min-h-[44px]" data-token="${esc(l.share_token)}">🔗 ${esc(T.share)}</button>
+              <button class="delBtn rounded-lg border border-rose-400/30 bg-rose-400/10 px-3 py-2 text-sm text-rose-200 hover:bg-rose-400/20 min-h-[44px]">${esc(T.del)}</button>
+            </div>
+          </div>
+        `).join("");
+      }
+
+      listsEl.addEventListener("click", async (e) => {
+        const btn = e.target.closest("button"); if (!btn) return;
+        const card = btn.closest("[data-id]"); const id = card?.dataset.id;
+        const l = lists.find(x => x.id === id); if (!l) return;
+
+        if (btn.classList.contains("shareBtn")) {
+          const url = `${window.location.origin}/list/${btn.dataset.token}`;
+          try {
+            await navigator.clipboard.writeText(url);
+            const orig = btn.textContent;
+            btn.textContent = "✓ " + T.copied;
+            setTimeout(() => { btn.textContent = orig; }, 1500);
+          } catch {
+            prompt(T.share, url);
+          }
+        }
+
+        if (btn.classList.contains("delBtn")) {
+          if (!confirm(T.confirm)) return;
+          btn.disabled = true;
+          const r = await fetch("/api/admin/stock-lists", { method: "DELETE", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ id }) });
+          const j = await r.json();
+          if (!r.ok) { alert(j.error ?? "Error"); btn.disabled = false; return; }
+          lists = lists.filter(x => x.id !== id);
+          render();
+        }
+      });
+
+      $("addBtn").addEventListener("click", async () => {
+        addStatus.classList.add("hidden");
+        const name = $("newName").value.trim();
+        const scope = $("newScope").value;
+        if (!name) { addStatus.textContent = "Name required."; addStatus.classList.remove("hidden"); return; }
+        const r = await fetch("/api/admin/stock-lists", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ name, scope }) });
+        const j = await r.json();
+        if (!r.ok) { addStatus.textContent = j.error ?? "Error"; addStatus.classList.remove("hidden"); return; }
+        // Open the new list immediately
+        window.location.href = `${langPrefix}/admin/lists/${j.list.id}`;
+      });
+
+      async function load() {
+        const r = await fetch("/api/admin/stock-lists");
+        const j = await r.json();
+        lists = j.lists ?? [];
+        render();
+      }
+      load();
+    </script>
+  </body>
+</html>

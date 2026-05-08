@@ -71,7 +71,25 @@ async function handleUpdate(body: Record<string, unknown>, locals: any): Promise
 
   const itemLines = formatItems(order.items);
   const noteBlock = order.note ? `\n\n📝 <i>${order.note}</i>` : "";
-  const idTag     = `\n\n<code>#${orderId.slice(0, 8)}</code>`;
+  const shortId   = orderId.slice(0, 8).toUpperCase();
+  const seq       = (order as any).seq as number | null | undefined;
+  const primaryNum = (seq != null) ? `#${seq}` : `#${shortId}`;
+  const secondary  = (seq != null) ? ` · ${shortId}` : "";
+  const idTag     = `\n\n<code>${primaryNum}</code>`;
+  // Order datetime header (Athens tz) — kept consistent on every status edit
+  // so the message preserves when the round was placed, not when it moved.
+  const createdAt = order.created_at ? new Date(order.created_at) : new Date();
+  let whenStr = "";
+  try {
+    whenStr = createdAt.toLocaleString("en-GB", {
+      weekday: "short", day: "numeric", month: "short",
+      hour: "2-digit", minute: "2-digit",
+      timeZone: "Europe/Athens", hour12: false,
+    });
+  } catch {
+    whenStr = createdAt.toISOString().slice(0, 16).replace("T", " ") + " UTC";
+  }
+  const metaLine = `\n🕒 ${whenStr}  ·  🔖 <b>${primaryNum}</b>${secondary}`;
 
   if (action === "preparing") {
     await supabaseAdmin
@@ -82,7 +100,7 @@ async function handleUpdate(body: Record<string, unknown>, locals: any): Promise
     await editMessageText(
       import.meta.env.TELEGRAM_BARMAN_CHAT_ID,
       cb.message.message_id,
-      `🔄 <b>Preparing — Table ${order.table_number}</b>\n\n${itemLines}${noteBlock}${idTag}`,
+      `🔄 <b>Preparing — Table ${order.table_number}</b>${metaLine}\n\n${itemLines}${noteBlock}${idTag}`,
       {
         reply_markup: {
           inline_keyboard: [
@@ -96,7 +114,7 @@ async function handleUpdate(body: Record<string, unknown>, locals: any): Promise
       await editMessageText(
         import.meta.env.TELEGRAM_WAITER_CHAT_ID,
         order.waiter_message_id,
-        `🔄 <b>Preparing — Table ${order.table_number}</b>\n\n${itemLines}${noteBlock}${idTag}`
+        `🔄 <b>Preparing — Table ${order.table_number}</b>${metaLine}\n\n${itemLines}${noteBlock}${idTag}`
       );
     }
 
@@ -113,13 +131,13 @@ async function handleUpdate(body: Record<string, unknown>, locals: any): Promise
     await editMessageText(
       import.meta.env.TELEGRAM_BARMAN_CHAT_ID,
       cb.message.message_id,
-      `✅ <b>Ready — Table ${order.table_number}</b>\n\n${itemLines}${noteBlock}${idTag}`,
+      `✅ <b>Ready — Table ${order.table_number}</b>${metaLine}\n\n${itemLines}${noteBlock}${idTag}`,
       { reply_markup: { inline_keyboard: [] } }
     );
 
     const waiterMsg = await sendMessage(
       import.meta.env.TELEGRAM_WAITER_CHAT_ID,
-      `✅ <b>Order ready — Table ${order.table_number}</b>\n\n${itemLines}\n\nDeliver to table ${order.table_number}! 🚀`,
+      `✅ <b>Order ready — Table ${order.table_number}</b>${metaLine}\n\n${itemLines}\n\nDeliver to table ${order.table_number}! 🚀${idTag}`,
       {
         reply_markup: {
           inline_keyboard: [
@@ -149,7 +167,7 @@ async function handleUpdate(body: Record<string, unknown>, locals: any): Promise
     await editMessageText(
       import.meta.env.TELEGRAM_WAITER_CHAT_ID,
       cb.message.message_id,
-      `📦 <b>Delivered — Table ${order.table_number}</b>\n\n${itemLines}${idTag}\n\n<i>Mark as paid from the app.</i>`,
+      `📦 <b>Delivered — Table ${order.table_number}</b>${metaLine}\n\n${itemLines}${idTag}\n\n<i>Mark as paid from the app.</i>`,
       { reply_markup: { inline_keyboard: [] } }
     );
 
@@ -163,7 +181,7 @@ async function handleUpdate(body: Record<string, unknown>, locals: any): Promise
       .update({ status: "cancelled" })
       .eq("id", orderId);
 
-    const cancelledText = `❌ <b>Cancelled — Table ${order.table_number}</b>\n\n${itemLines}${noteBlock}${idTag}`;
+    const cancelledText = `❌ <b>Cancelled — Table ${order.table_number}</b>${metaLine}\n\n${itemLines}${noteBlock}${idTag}`;
     const noButtons = { reply_markup: { inline_keyboard: [] } };
 
     await Promise.all([

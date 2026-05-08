@@ -504,5 +504,56 @@ const sectLabels = isEl ? {
         }, INTERVAL);
       })();
     </script>
+
+    {/* OAuth error catcher — Supabase redirects here (Site URL) when a
+        provider fails. We surface a friendly, actionable toast instead of
+        leaving the ugly error hash in the URL. */}
+    <script is:inline>
+      (function () {
+        try {
+          var rawHash = (location.hash || "").replace(/^#/, "");
+          var rawQs   = location.search.replace(/^\?/, "");
+          var combined = rawHash + "&" + rawQs;
+          if (!/error_description=/.test(combined)) return;
+          var params = new URLSearchParams(combined);
+          var desc = params.get("error_description") || "";
+          var msg = "";
+          var lower = desc.toLowerCase();
+          if (lower.includes("email from external provider")) {
+            msg = "Facebook didn't share your email with us, so we couldn't create your account. " +
+                  "Open Facebook → Settings → Apps and Websites → Sally's Bar Login → Remove. " +
+                  "Then try again and tap ALLOW EMAIL on the consent screen. " +
+                  "Or sign up with email + password below.";
+          } else if (desc) {
+            msg = "Sign-in failed: " + desc.replace(/\+/g, " ");
+          }
+          if (!msg) return;
+
+          // Strip the error params from the URL so refresh doesn't re-fire
+          history.replaceState(null, "", location.pathname);
+
+          var wrap = document.createElement("div");
+          wrap.style.cssText =
+            "position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:99999;" +
+            "max-width:min(92vw,520px);padding:14px 18px 14px 16px;border-radius:14px;" +
+            "border:1px solid rgba(248,113,113,0.5);background:rgba(30,6,6,0.95);" +
+            "color:#fecaca;font:500 13px/1.5 system-ui,-apple-system,sans-serif;" +
+            "box-shadow:0 12px 40px rgba(0,0,0,0.5);backdrop-filter:blur(10px);";
+          wrap.innerHTML =
+            '<div style="display:flex;gap:10px;align-items:flex-start">' +
+              '<div style="font-size:18px;line-height:1">⚠️</div>' +
+              '<div style="flex:1"><b style="color:#fca5a5">Facebook sign-in couldn\'t complete</b><br>' +
+                '<span style="color:rgba(254,202,202,0.9)">' + msg + '</span>' +
+              '</div>' +
+              '<button aria-label="Close" style="background:none;border:0;color:#f87171;font-size:22px;line-height:1;cursor:pointer;padding:0 4px">×</button>' +
+            '</div>';
+          var closeBtn = wrap.querySelector("button");
+          if (closeBtn) closeBtn.addEventListener("click", function () { wrap.remove(); });
+          document.body.appendChild(wrap);
+          // auto-dismiss after 18s
+          setTimeout(function () { try { wrap.remove(); } catch (e) {} }, 18000);
+        } catch (e) { /* ignore */ }
+      })();
+    </script>
   </body>
 </html>

@@ -475,8 +475,10 @@ import CustomerPwa from "./CustomerPwa.astro";
       </div>
 
       <!-- Footer actions -->
-      <div class="shrink-0 border-t border-white/10 p-3 space-y-2">
-        <a href={switchHref} class="flex items-center justify-center gap-2 rounded-xl bg-white/5 hover:bg-white/10 px-3 py-2.5 text-sm text-white/80 transition">
+      <div class="shrink-0 border-t border-white/10 p-3 space-y-2" style="pointer-events:auto;">
+        <a href={switchHref} id="mobileLangSwitch" data-href={switchHref}
+           class="relative z-[1] flex items-center justify-center gap-2 rounded-xl bg-white/5 hover:bg-white/10 px-3 py-3 text-sm text-white/90 transition"
+           style="touch-action:manipulation; min-height:44px; -webkit-tap-highlight-color: rgba(251,191,36,0.3);">
           🌐 {switchLabel}
         </a>
         {!user ? (
@@ -519,6 +521,16 @@ import CustomerPwa from "./CustomerPwa.astro";
       document.addEventListener("click", (e) => {
         const t = e.target;
         if (!(t instanceof Element)) return;
+        // Language switch — navigate directly so the drawer can't eat the tap.
+        const langLink = t.closest("#mobileLangSwitch");
+        if (langLink) {
+          e.preventDefault();
+          const href = langLink.getAttribute("data-href") || langLink.getAttribute("href") || "/";
+          closeMenu();
+          // Use replace so back-button goes to the previous real page, not the mid-toggle state.
+          window.location.assign(href);
+          return;
+        }
         if (t.closest("#mobileMenuBtn")) {
           const menu = document.getElementById("mobileMenu");
           if (menu?.classList.contains("hidden")) openMenu(); else closeMenu();

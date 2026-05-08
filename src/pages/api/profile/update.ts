@@ -20,6 +20,7 @@ export const POST: APIRoute = async ({ locals, request }) => {
   const update: Record<string, any> = {};
 
   if ("full_name" in body)          update.full_name         = cleanString(body.full_name, 120);
+  if ("card_name" in body)          update.card_name         = cleanString(body.card_name, 80);
   if ("phone" in body)              update.phone             = cleanString(body.phone, 40);
   if ("gender" in body)             update.gender            = cleanString(body.gender, 20);
   if ("country" in body)            update.country           = cleanString(body.country, 60);

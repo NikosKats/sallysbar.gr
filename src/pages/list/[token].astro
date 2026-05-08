@@ -1,0 +1,124 @@
+---
+import "../../styles/global.css";
+import { supabaseAdmin } from "../../lib/supabase";
+
+export const prerender = false;
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+const token = Astro.params.token ?? "";
+
+const { data: list } = await supabaseAdmin
+  .from("stock_lists").select("*").eq("share_token", token).single();
+
+if (!list) {
+  return new Response("Not found", { status: 404 });
+}
+
+const { data: items } = await supabaseAdmin
+  .from("stock_list_items").select("*").eq("list_id", list.id).order("position", { ascending: true });
+
+const total = (items ?? []).reduce((s, it) => s + Number(it.qty ?? 0) * Number(it.unit_cost ?? 0), 0);
+const fmt = (n: number) => Number.isInteger(n) ? String(n) : n.toFixed(2);
+const money = (n: number) => Number(n ?? 0).toFixed(2);
+const dateStr = new Date(list.updated_at).toLocaleString(isEl ? "el-GR" : "en-GB", { dateStyle: "medium", timeStyle: "short" });
+const locName = (it: any): string => {
+  const primary = isEl ? it.name_el : it.name_en;
+  return primary || it.name_en || it.name_el || it.name || "";
+};
+const altName = (it: any): string => (isEl ? it.name_en : it.name_el) || "";
+---
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <title>{list.name}</title>
+    <meta name="robots" content="noindex,nofollow" />
+    <style>
+      @media print {
+        @page { size: A4; margin: 14mm; }
+        html, body { background: white !important; color: black !important; margin: 0; padding: 0; }
+        .no-print { display: none !important; }
+      }
+    </style>
+  </head>
+  <body class="min-h-screen bg-neutral-50 text-neutral-900">
+    <main class="mx-auto max-w-3xl px-5 py-10 print:px-0 print:py-0 print:max-w-none">
+
+      <!-- Toolbar (screen only) -->
+      <div class="no-print mb-6 flex items-center gap-3 flex-wrap">
+        <p class="text-xs uppercase tracking-[0.28em] text-neutral-500">{isEl ? "Δημόσια λίστα" : "Public list"}</p>
+        <span class="ml-auto"></span>
+        <button id="printBtn" type="button" class="rounded-xl bg-amber-500 px-5 py-2.5 font-semibold text-white shadow hover:bg-amber-600 transition">
+          🖨 {isEl ? "Εκτύπωση / PDF" : "Print / PDF"}
+        </button>
+      </div>
+
+      <header class="mb-6 border-b border-neutral-200 pb-4 print:border-black/40">
+        <div class="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h1 class="font-heading text-3xl md:text-4xl font-bold">{list.name}</h1>
+            <p class="mt-1 text-sm text-neutral-500 print:text-black/70">{isEl ? "Ενημερώθηκε" : "Updated"}: {dateStr}</p>
+          </div>
+          <div class="text-right">
+            <p class="font-heading text-xl font-bold">Sally's Bar</p>
+            <p class="text-sm text-neutral-500 print:text-black/70">Skala, Kefalonia</p>
+          </div>
+        </div>
+      </header>
+
+      {(items ?? []).length === 0 ? (
+        <p class="text-neutral-500">{isEl ? "Η λίστα είναι άδεια." : "List is empty."}</p>
+      ) : (
+        <div class="overflow-x-auto rounded-2xl border border-neutral-200 print:border-black/30">
+          <table class="w-full text-sm">
+            <thead class="bg-neutral-100 text-left text-neutral-600 print:bg-transparent print:text-black/70">
+              <tr>
+                <th class="px-3 py-2">{isEl ? "Είδος" : "Item"}</th>
+                <th class="px-3 py-2">{isEl ? "Μον." : "Unit"}</th>
+                <th class="px-3 py-2">{isEl ? "Προμηθευτής" : "Supplier"}</th>
+                <th class="px-3 py-2 text-right">{isEl ? "Απόθεμα" : "Inventory"}</th>
+                <th class="px-3 py-2 text-right">{isEl ? "Παραγγελία" : "Order qty"}</th>
+                <th class="px-3 py-2 text-right">{isEl ? "Κόστος/μον. €" : "Unit €"}</th>
+                <th class="px-3 py-2 text-right">{isEl ? "Σύνολο €" : "Total €"}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(items ?? []).map((it) => {
+                const line = Number(it.qty ?? 0) * Number(it.unit_cost ?? 0);
+                return (
+                  <tr class="border-t border-neutral-200 print:border-black/15">
+                    <td class="px-3 py-2 align-top">
+                      <div class="font-medium">{locName(it)}</div>
+                      {altName(it) && <div class="text-[11px] text-neutral-400 print:text-black/60">{altName(it)}</div>}
+                      {it.subcategory && <div class="text-[11px] text-neutral-500 print:text-black/60">{it.subcategory}</div>}
+                    </td>
+                    <td class="px-3 py-2 align-top">{it.unit ?? ""}</td>
+                    <td class="px-3 py-2 align-top text-neutral-600 print:text-black/70">{it.supplier_name ?? ""}</td>
+                    <td class="px-3 py-2 align-top text-right text-neutral-600 print:text-black/70">{fmt(Number(it.inventory_qty ?? 0))}</td>
+                    <td class="px-3 py-2 align-top text-right font-semibold">{fmt(Number(it.qty ?? 0))}</td>
+                    <td class="px-3 py-2 align-top text-right">{money(Number(it.unit_cost ?? 0))}</td>
+                    <td class="px-3 py-2 align-top text-right">{money(line)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr class="border-t-2 border-neutral-300 print:border-black/40">
+                <td colspan="6" class="px-3 py-3 text-right font-semibold">{isEl ? "Συνολικό κόστος" : "Order total"}</td>
+                <td class="px-3 py-3 text-right font-bold text-lg">€{money(total)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      )}
+
+      <footer class="mt-10 text-xs text-neutral-400 print:hidden">
+        {isEl ? "Αυτός ο σύνδεσμος είναι ιδιωτικός — μη μοιράζεστε δημόσια." : "This link is private — share carefully."}
+      </footer>
+    </main>
+
+    <script is:inline>
+      document.getElementById("printBtn").addEventListener("click", () => window.print());
+    </script>
+  </body>
+</html>

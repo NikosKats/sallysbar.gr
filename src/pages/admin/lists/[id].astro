@@ -1,0 +1,438 @@
+---
+import "../../../styles/global.css";
+import AdminNav from "../../../components/AdminNav.astro";
+import { withLangPrefix } from "../../../i18n";
+
+export const prerender = false;
+
+const lang = Astro.locals.lang ?? "en";
+const isEl = lang === "el";
+
+if (!["admin", "super_admin"].includes(Astro.locals.role ?? "")) {
+  return Astro.redirect(withLangPrefix(lang, "/admin"));
+}
+
+const listId = Astro.params.id ?? "";
+---
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{isEl ? "Λίστα" : "List"} — Admin</title>
+    <meta name="robots" content="noindex,nofollow" />
+    <style>
+      @media print {
+        @page { size: A4; margin: 14mm; }
+        html, body { background: white !important; color: black !important; }
+        .no-print { display: none !important; }
+        .print-clean { color: black !important; }
+        .print-clean a { color: black !important; text-decoration: none !important; }
+        .print-clean .border-white\/10, .print-clean .border-white\/5 { border-color: rgba(0,0,0,0.2) !important; }
+        .print-clean .bg-white\/\[0\.03\], .print-clean .bg-white\/\[0\.04\] { background: transparent !important; }
+        .print-clean .text-white\/60, .print-clean .text-white\/50, .print-clean .text-white\/70 { color: rgba(0,0,0,0.7) !important; }
+      }
+    </style>
+  </head>
+  <body class="min-h-screen bg-[#0b0b10] text-white print:bg-white print:text-black">
+    <div class="no-print">
+      <AdminNav active="lists" />
+    </div>
+    <main class="mx-auto max-w-5xl px-3 sm:px-5 py-6 md:py-10 pb-24 md:pb-10 print:px-0 print:py-0 print:max-w-none print-clean">
+
+      <!-- Toolbar (screen only) — stacks on mobile -->
+      <div class="no-print mb-4 md:mb-6 grid gap-2 md:flex md:items-center md:gap-3 md:flex-wrap">
+        <a href={withLangPrefix(lang, "/admin/lists")} class="inline-flex items-center justify-center rounded-lg border border-white/15 bg-white/5 px-3 py-2.5 text-sm hover:bg-white/10 min-h-[44px]">← {isEl ? "Όλες οι λίστες" : "All lists"}</a>
+        <span class="hidden md:inline-block md:ml-auto"></span>
+        <div class="grid grid-cols-2 gap-2 md:flex md:gap-2">
+          <button id="shareBtn" type="button" class="rounded-lg border border-white/15 bg-white/5 px-3 py-2.5 text-sm hover:bg-white/10 min-h-[44px]">🔗 <span class="hidden sm:inline">{isEl ? "Αντιγραφή" : "Copy"}</span><span class="sm:hidden">{isEl ? "Σύνδεσμος" : "Link"}</span></button>
+          <a id="publicLink" href="#" target="_blank" class="inline-flex items-center justify-center rounded-lg border border-white/15 bg-white/5 px-3 py-2.5 text-sm hover:bg-white/10 min-h-[44px]">{isEl ? "Προβολή" : "View"} ↗</a>
+        </div>
+        <div class="grid grid-cols-2 gap-2 md:flex md:gap-2">
+          <button id="rotateBtn" type="button" class="rounded-lg border border-white/15 bg-white/5 px-3 py-2.5 text-sm hover:bg-white/10 min-h-[44px]" title={isEl ? "Νέος σύνδεσμος (ακυρώνει τον προηγούμενο)" : "Rotate share token"}>↻ {isEl ? "Νέος" : "Rotate"}</button>
+          <button id="printBtn" type="button" class="rounded-xl bg-gradient-to-br from-amber-200 to-amber-400 px-4 py-2.5 font-semibold text-black shadow-lg shadow-amber-500/20 hover:shadow-amber-500/40 transition min-h-[44px]">🖨 {isEl ? "PDF" : "PDF"}</button>
+        </div>
+      </div>
+
+      <!-- Title (editable) -->
+      <header class="mb-4">
+        <input id="listName" type="text" class="w-full bg-transparent font-heading text-2xl sm:text-3xl md:text-4xl font-bold outline-none border-b border-transparent focus:border-amber-300/40 print:border-0" />
+        <p id="metaLine" class="mt-2 text-sm text-white/50"></p>
+      </header>
+
+      <!-- Add item from stock -->
+      <section class="no-print mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-4 sm:p-5">
+        <h2 class="font-heading text-base font-semibold mb-3">{isEl ? "Προσθήκη είδους" : "Add item"}</h2>
+        <div class="grid gap-3">
+          <label class="block">
+            <span class="text-xs uppercase tracking-wider text-white/50">{isEl ? "Από απόθεμα" : "From stock"}</span>
+            <select id="addFromStock" class="mt-1 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-3 text-base outline-none focus:border-amber-300/50">
+              <option value="">—</option>
+            </select>
+          </label>
+          <div class="flex gap-2">
+            <label class="block w-28 sm:w-32">
+              <span class="text-xs uppercase tracking-wider text-white/50">{isEl ? "Ποσότητα" : "Qty"}</span>
+              <input id="addQty" type="number" step="any" value="1" inputmode="decimal" class="mt-1 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-3 text-base outline-none focus:border-amber-300/50" />
+            </label>
+            <button id="addStockBtn" type="button" class="mt-5 flex-1 rounded-lg bg-amber-300 px-4 py-3 text-sm font-semibold text-black hover:bg-amber-200 min-h-[44px]">{isEl ? "Προσθήκη" : "Add to list"}</button>
+          </div>
+          <div class="flex items-center gap-2 text-xs uppercase tracking-wider text-white/40 my-1">
+            <span class="flex-1 h-px bg-white/10"></span>
+            <span>{isEl ? "ή χειροκίνητα" : "or manually"}</span>
+            <span class="flex-1 h-px bg-white/10"></span>
+          </div>
+          <div class="flex gap-2">
+            <input id="addFree" type="text" placeholder={isEl ? "Όνομα είδους" : "Item name"} class="flex-1 rounded-lg border border-white/15 bg-white/5 px-3 py-3 text-base outline-none focus:border-amber-300/50" />
+            <button id="addFreeBtn" type="button" class="rounded-lg border border-white/15 bg-white/5 px-4 py-3 text-sm font-semibold hover:bg-white/10 min-h-[44px]">{isEl ? "Προσθήκη" : "Add"}</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Items: cards on mobile, table on desktop -->
+      <section class="mt-6">
+        <div id="emptyItems" class="hidden rounded-2xl border border-dashed border-white/15 bg-white/[0.02] p-8 text-center text-white/50">
+          {isEl ? "Η λίστα είναι άδεια." : "List is empty."}
+        </div>
+
+        <!-- Mobile cards -->
+        <div id="mobileCards" class="grid gap-3 md:hidden print:hidden"></div>
+        <div id="mobileTotal" class="md:hidden print:hidden mt-3 rounded-2xl border border-amber-300/20 bg-amber-300/[0.04] px-4 py-3 flex items-center justify-between">
+          <span class="text-sm font-semibold text-white/80">{isEl ? "Συνολικό κόστος" : "Order total"}</span>
+          <span id="grandTotalMobile" class="font-bold text-xl text-amber-200">€0.00</span>
+        </div>
+
+        <!-- Desktop table -->
+        <div class="hidden md:block overflow-x-auto rounded-2xl border border-white/10 bg-white/[0.02] print:block print:border print:border-black/20">
+          <table class="w-full text-sm">
+            <thead class="bg-white/[0.04] text-left text-white/60 print:bg-transparent print:text-black/70">
+              <tr>
+                <th class="px-3 py-2">{isEl ? "Είδος" : "Item"}</th>
+                <th class="px-3 py-2">{isEl ? "Μον." : "Unit"}</th>
+                <th class="px-3 py-2">{isEl ? "Προμηθευτής" : "Supplier"}</th>
+                <th class="px-3 py-2 text-center">{isEl ? "Απόθεμα" : "Inventory"}</th>
+                <th class="px-3 py-2 text-center">{isEl ? "Παραγγελία" : "Order qty"}</th>
+                <th class="px-3 py-2 text-right">{isEl ? "Κόστος/μον." : "Unit €"}</th>
+                <th class="px-3 py-2 text-right">{isEl ? "Σύνολο" : "Total"}</th>
+                <th class="px-3 py-2 no-print"></th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+            <tfoot>
+              <tr class="border-t border-white/10 print:border-black/40">
+                <td colspan="6" class="px-3 py-3 text-right font-semibold">{isEl ? "Συνολικό κόστος" : "Order total"}</td>
+                <td id="grandTotal" class="px-3 py-3 text-right font-bold text-lg">€0.00</td>
+                <td class="no-print"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script is:inline define:vars={{ isEl, lang, listId }}>
+      const T = {
+        items:    isEl ? "είδη" : "items",
+        copied:   isEl ? "Αντιγράφηκε!" : "Copied!",
+        share:    isEl ? "Αντιγραφή συνδέσμου" : "Copy share link",
+        rotate:   isEl ? "Δημιουργία νέου συνδέσμου; Ο παλιός θα ακυρωθεί." : "Generate new share link? The old link will stop working.",
+        del:      isEl ? "Αφαίρεση" : "Remove",
+        confirmDel: isEl ? "Αφαίρεση αυτού του είδους;" : "Remove this item?",
+      };
+      const $ = (id) => document.getElementById(id);
+      const rowsEl = $("rows");
+      const mobileEl = $("mobileCards");
+      const emptyEl = $("emptyItems");
+      const langPrefix = lang === "el" ? "/el" : "";
+
+      const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+      const money = (n) => Number(n ?? 0).toFixed(2);
+      const fmt = (n) => { const v = Number(n ?? 0); return Number.isInteger(v) ? String(v) : v.toFixed(2); };
+      const locName = (it) => {
+        const primary = isEl ? it.name_el : it.name_en;
+        return primary || it.name_en || it.name_el || it.name || "";
+      };
+      const altName = (it) => (isEl ? it.name_en : it.name_el) || "";
+
+      let list = null;
+      let items = [];
+      let stockItems = [];
+
+      function renderToolbar() {
+        const url = `${window.location.origin}/list/${list.share_token}`;
+        $("publicLink").href = url;
+      }
+
+      function recalcTotal() {
+        const total = items.reduce((s, it) => s + Number(it.qty ?? 0) * Number(it.unit_cost ?? 0), 0);
+        $("grandTotal").textContent = "€" + money(total);
+        $("grandTotalMobile").textContent = "€" + money(total);
+      }
+
+      const T_inv = isEl ? "Απόθεμα" : "Inventory";
+      const T_ord = isEl ? "Παραγγελία" : "Order qty";
+
+      function qtyControl(it, field) {
+        const val = it[field] ?? 0;
+        return `
+          <div class="flex items-stretch gap-1.5">
+            <button class="qtyBtn h-11 w-11 rounded-lg border border-white/15 bg-white/5 text-xl leading-none hover:bg-white/10 active:bg-white/20 no-print" data-field="${field}" data-delta="-1">−</button>
+            <input class="numInput w-full min-w-0 rounded-lg border border-white/15 bg-white/5 px-2 py-2 text-center text-base font-semibold outline-none focus:border-amber-300/50" data-field="${field}" type="number" inputmode="decimal" step="any" value="${esc(val)}" />
+            <button class="qtyBtn h-11 w-11 rounded-lg border border-white/15 bg-white/5 text-xl leading-none hover:bg-white/10 active:bg-white/20 no-print" data-field="${field}" data-delta="1">+</button>
+          </div>
+        `;
+      }
+
+      function mobileCard(it) {
+        const line = Number(it.qty ?? 0) * Number(it.unit_cost ?? 0);
+        return `
+          <div class="rounded-2xl border border-white/10 bg-white/[0.04] p-4" data-id="${it.id}">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0 flex-1">
+                <div class="font-semibold text-base leading-tight">${esc(locName(it))}</div>
+                ${altName(it) ? `<div class="text-xs text-white/40 mt-0.5">${esc(altName(it))}</div>` : ""}
+                <div class="mt-2 flex flex-wrap gap-1.5 text-[11px]">
+                  ${it.unit ? `<span class="rounded-full border border-white/10 bg-white/5 px-2 py-0.5">${esc(it.unit)}</span>` : ""}
+                  ${it.subcategory ? `<span class="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-white/60">${esc(it.subcategory)}</span>` : ""}
+                  ${it.supplier_name ? `<span class="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-white/60">🏷️ ${esc(it.supplier_name)}</span>` : ""}
+                </div>
+              </div>
+              <button class="delBtn h-9 w-9 rounded-lg border border-rose-400/30 bg-rose-400/10 text-rose-200 hover:bg-rose-400/20 shrink-0" aria-label="${isEl ? "Αφαίρεση" : "Remove"}">✕</button>
+            </div>
+
+            <div class="mt-3 grid grid-cols-2 gap-3">
+              <div>
+                <div class="text-[10px] uppercase tracking-wider text-white/50 mb-1">${T_inv}</div>
+                ${qtyControl(it, "inventory_qty")}
+              </div>
+              <div>
+                <div class="text-[10px] uppercase tracking-wider text-white/50 mb-1">${T_ord}</div>
+                ${qtyControl(it, "qty")}
+              </div>
+            </div>
+
+            <div class="mt-3 flex items-center justify-between text-sm border-t border-white/5 pt-2">
+              <span class="text-white/50">${money(it.unit_cost)} × ${fmt(it.qty)}</span>
+              <span class="font-semibold lineCellMobile">€${money(line)}</span>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderRows() {
+        if (!items.length) {
+          rowsEl.innerHTML = "";
+          mobileEl.innerHTML = "";
+          $("mobileTotal").classList.add("hidden");
+          emptyEl.classList.remove("hidden");
+          recalcTotal();
+          return;
+        }
+        emptyEl.classList.add("hidden");
+        $("mobileTotal").classList.remove("hidden");
+        mobileEl.innerHTML = items.map(mobileCard).join("");
+        rowsEl.innerHTML = items.map(it => {
+          const line = Number(it.qty ?? 0) * Number(it.unit_cost ?? 0);
+          return `
+            <tr class="border-t border-white/5 print:border-black/10" data-id="${it.id}">
+              <td class="px-3 py-2 align-top">
+                <div class="font-medium">${esc(locName(it))}</div>
+                ${altName(it) ? `<div class="text-[11px] text-white/40 print:text-black/60">${esc(altName(it))}</div>` : ""}
+                ${it.subcategory ? `<div class="text-[11px] text-white/50 print:text-black/60">${esc(it.subcategory)}</div>` : ""}
+              </td>
+              <td class="px-3 py-2 align-top">${esc(it.unit ?? "")}</td>
+              <td class="px-3 py-2 align-top text-white/70 print:text-black/70">${esc(it.supplier_name ?? "")}</td>
+              <td class="px-3 py-2 align-top text-center">
+                <div class="inline-flex items-center gap-1">
+                  <button class="qtyBtn rounded-md border border-white/15 bg-white/5 px-2 py-1 text-sm hover:bg-white/10 no-print" data-field="inventory_qty" data-delta="-1">−</button>
+                  <input class="numInput w-16 rounded border border-white/15 bg-white/5 px-2 py-1 text-sm text-center" data-field="inventory_qty" type="number" step="any" value="${esc(it.inventory_qty ?? 0)}" />
+                  <button class="qtyBtn rounded-md border border-white/15 bg-white/5 px-2 py-1 text-sm hover:bg-white/10 no-print" data-field="inventory_qty" data-delta="1">+</button>
+                </div>
+                <span class="hidden print:inline">${fmt(it.inventory_qty ?? 0)}</span>
+              </td>
+              <td class="px-3 py-2 align-top text-center">
+                <div class="inline-flex items-center gap-1">
+                  <button class="qtyBtn rounded-md border border-white/15 bg-white/5 px-2 py-1 text-sm hover:bg-white/10 no-print" data-field="qty" data-delta="-1">−</button>
+                  <input class="numInput w-16 rounded border border-white/15 bg-white/5 px-2 py-1 text-sm text-center" data-field="qty" type="number" step="any" value="${esc(it.qty)}" />
+                  <button class="qtyBtn rounded-md border border-white/15 bg-white/5 px-2 py-1 text-sm hover:bg-white/10 no-print" data-field="qty" data-delta="1">+</button>
+                </div>
+                <span class="hidden print:inline">${fmt(it.qty)}</span>
+              </td>
+              <td class="px-3 py-2 align-top text-right">${money(it.unit_cost)}</td>
+              <td class="px-3 py-2 align-top text-right lineCell">${money(line)}</td>
+              <td class="px-3 py-2 align-top text-right no-print">
+                <button class="delBtn rounded-md border border-rose-400/30 bg-rose-400/10 px-2 py-1 text-xs text-rose-200 hover:bg-rose-400/20">✕</button>
+              </td>
+            </tr>
+          `;
+        }).join("");
+        recalcTotal();
+      }
+
+      // Debounced PUT keyed by (id, field) so qty + inventory_qty don't collide.
+      const pending = new Map();
+      function scheduleFieldPut(id, field, value) {
+        const key = `${id}:${field}`;
+        clearTimeout(pending.get(key));
+        const handle = setTimeout(async () => {
+          await fetch("/api/admin/stock-list-items", { method: "PUT", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ id, [field]: value }) });
+        }, 350);
+        pending.set(key, handle);
+      }
+
+      function syncCellsFor(it, field) {
+        // Update inputs in both the desktop row and the mobile card so qty stays consistent across views.
+        document.querySelectorAll(`[data-id="${it.id}"]`).forEach(host => {
+          const input = host.querySelector(`.numInput[data-field="${field}"]`);
+          if (input && Number(input.value) !== Number(it[field])) input.value = it[field];
+        });
+        if (field === "qty") {
+          const line = Number(it.qty ?? 0) * Number(it.unit_cost ?? 0);
+          document.querySelectorAll(`[data-id="${it.id}"] .lineCell`).forEach(c => c.textContent = money(line));
+          document.querySelectorAll(`[data-id="${it.id}"] .lineCellMobile`).forEach(c => c.textContent = "€" + money(line));
+        }
+      }
+
+      function applyFieldChange(it, field, value) {
+        it[field] = value;
+        syncCellsFor(it, field);
+        if (field === "qty") recalcTotal();
+        scheduleFieldPut(it.id, field, value);
+      }
+
+      async function handleClick(e) {
+        const btn = e.target.closest("button"); if (!btn) return;
+        const host = btn.closest("[data-id]"); const id = host?.dataset.id;
+        const it = items.find(x => x.id === id); if (!it) return;
+
+        if (btn.classList.contains("qtyBtn")) {
+          const field = btn.dataset.field || "qty";
+          const delta = Number(btn.dataset.delta);
+          const next = Math.max(0, Number(it[field] ?? 0) + delta);
+          applyFieldChange(it, field, next);
+        }
+
+        if (btn.classList.contains("delBtn")) {
+          if (!confirm(T.confirmDel)) return;
+          btn.disabled = true;
+          const r = await fetch("/api/admin/stock-list-items", { method: "DELETE", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ id }) });
+          const j = await r.json();
+          if (!r.ok) { alert(j.error ?? "Error"); btn.disabled = false; return; }
+          items = items.filter(x => x.id !== id);
+          renderRows();
+        }
+      }
+
+      function handleInput(e) {
+        if (!e.target.classList.contains("numInput")) return;
+        const host = e.target.closest("[data-id]"); const id = host?.dataset.id;
+        const it = items.find(x => x.id === id); if (!it) return;
+        const field = e.target.dataset.field || "qty";
+        const next = Math.max(0, Number(e.target.value) || 0);
+        applyFieldChange(it, field, next);
+      }
+
+      rowsEl.addEventListener("click", handleClick);
+      mobileEl.addEventListener("click", handleClick);
+      rowsEl.addEventListener("input", handleInput);
+      mobileEl.addEventListener("input", handleInput);
+
+      // Title rename (debounced)
+      let nameHandle;
+      $("listName").addEventListener("input", (e) => {
+        clearTimeout(nameHandle);
+        const name = e.target.value;
+        nameHandle = setTimeout(async () => {
+          await fetch("/api/admin/stock-lists", { method: "PUT", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ id: listId, name }) });
+        }, 400);
+      });
+
+      $("printBtn").addEventListener("click", () => window.print());
+      $("shareBtn").addEventListener("click", async () => {
+        const url = `${window.location.origin}/list/${list.share_token}`;
+        try {
+          await navigator.clipboard.writeText(url);
+          const orig = $("shareBtn").textContent;
+          $("shareBtn").textContent = "✓ " + T.copied;
+          setTimeout(() => { $("shareBtn").textContent = orig; }, 1500);
+        } catch { prompt(T.share, url); }
+      });
+      $("rotateBtn").addEventListener("click", async () => {
+        if (!confirm(T.rotate)) return;
+        const r = await fetch("/api/admin/stock-lists", { method: "PUT", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ id: listId, rotate_token: true }) });
+        const j = await r.json();
+        if (!r.ok) { alert(j.error ?? "Error"); return; }
+        list = j.list;
+        renderToolbar();
+        alert(isEl ? "Νέος σύνδεσμος δημιουργήθηκε." : "New share link generated.");
+      });
+
+      // Add from stock
+      $("addStockBtn").addEventListener("click", async () => {
+        const stockItemId = $("addFromStock").value;
+        const qty = Math.max(0, Number($("addQty").value) || 0);
+        if (!stockItemId) return;
+        const stock = stockItems.find(s => s.id === stockItemId); if (!stock) return;
+        const r = await fetch("/api/admin/stock-list-items", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({
+          list_id: listId,
+          stock_item_id: stock.id,
+          name: stock.name,
+          name_en: stock.name_en,
+          name_el: stock.name_el,
+          unit: stock.unit,
+          subcategory: stock.subcategory,
+          unit_cost: stock.unit_cost,
+          qty,
+          inventory_qty: stock.current_qty ?? 0,
+          supplier_name: stock.supplier?.name ?? null,
+        }) });
+        const j = await r.json();
+        if (!r.ok) { alert(j.error ?? "Error"); return; }
+        items.push(j.item);
+        renderRows();
+        $("addFromStock").value = "";
+        $("addQty").value = "1";
+      });
+
+      // Add manually
+      $("addFreeBtn").addEventListener("click", async () => {
+        const name = $("addFree").value.trim();
+        if (!name) return;
+        const r = await fetch("/api/admin/stock-list-items", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({
+          list_id: listId, name, qty: 1
+        }) });
+        const j = await r.json();
+        if (!r.ok) { alert(j.error ?? "Error"); return; }
+        items.push(j.item);
+        renderRows();
+        $("addFree").value = "";
+      });
+
+      function fillStockOptions() {
+        const opts = [`<option value="">—</option>`].concat(
+          stockItems.map(s => {
+            const tag = s.category === "bar" ? "🥃" : "📦";
+            return `<option value="${s.id}">${tag} ${esc(locName(s))}${s.unit ? " · " + esc(s.unit) : ""}${s.supplier?.name ? " — " + esc(s.supplier.name) : ""}</option>`;
+          })
+        );
+        $("addFromStock").innerHTML = opts.join("");
+      }
+
+      async function load() {
+        const [lr, sr] = await Promise.all([
+          fetch(`/api/admin/stock-lists?id=${listId}`).then(r => r.json()),
+          fetch(`/api/admin/stock-items`).then(r => r.json()),
+        ]);
+        if (!lr.list) { document.body.innerHTML = `<div class="p-10 text-white">List not found.</div>`; return; }
+        list = lr.list;
+        items = lr.items ?? [];
+        stockItems = sr.items ?? [];
+        $("listName").value = list.name;
+        $("metaLine").textContent = (isEl ? "Ενημερώθηκε: " : "Updated: ") + new Date(list.updated_at).toLocaleString(isEl ? "el-GR" : "en-GB");
+        renderToolbar();
+        fillStockOptions();
+        renderRows();
+      }
+      load();
+    </script>
+  </body>
+</html>

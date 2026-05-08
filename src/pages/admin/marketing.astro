@@ -17,6 +17,12 @@ const { data: campaigns } = await supabaseAdmin
   .select("*")
   .order("created_at", { ascending: false });
 
+const { data: wifiPartners } = await supabaseAdmin
+  .from("partners")
+  .select("slug, name, city, logo_url, active")
+  .eq("active", true)
+  .order("sort_order", { ascending: true });
+
 const origin = "https://sallysbar.gr";
 const whatsapp = `https://wa.me/${site.phoneE164.replace(/\D/g, "")}`;
 const instaUrl = "https://www.instagram.com/sallys_bar/";
@@ -136,6 +142,176 @@ const presets = [
             </button>
           ))}
         </div>
+      </section>
+
+      <!-- Sally's Bar WiFi QR -->
+      <section class="rounded-2xl border border-amber-400/30 bg-gradient-to-br from-amber-500/10 to-white/5 p-5 space-y-3">
+        <div>
+          <h2 class="text-xs font-semibold uppercase tracking-widest text-amber-200">
+            🍹 {isEl ? "QR WiFi για το Sally's Bar" : "Sally's Bar WiFi QR"}
+          </h2>
+          <p class="text-xs text-white/50 mt-1 max-w-2xl">
+            {isEl
+              ? "Αφίσα WiFi για τους πελάτες του bar. Σκανάρουν — συνδέονται αυτόματα."
+              : "Printable WiFi poster for bar customers. Scan — auto-connect. Drop on tables or by the bar."}
+          </p>
+        </div>
+
+        <form id="sallysWifiForm" class="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-3">
+          <input type="hidden" name="slug" value="" />
+          <input type="hidden" name="name" value={site.name} />
+          <input type="hidden" name="logo" value="https://sallysbar.gr/icon-customer-512.png" />
+
+          <div class="flex items-center gap-3">
+            <img src="/icon-customer-512.png" alt="Sally's Bar logo" class="sallys-logo-preview h-12 w-12 rounded-lg object-cover bg-black/40 border border-white/10" />
+            <div class="min-w-0 flex-1">
+              <p class="font-semibold text-sm text-white truncate">{site.name}</p>
+              <p class="text-[11px] text-white/50 truncate">{isEl ? "Σκάλα, Κεφαλονιά" : "Skala, Kefalonia"}</p>
+              <label class="inline-flex items-center gap-1 mt-1 text-[11px] text-amber-300/80 hover:text-amber-200 cursor-pointer">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <span class="sallys-upload-label">{isEl ? "Ανέβασμα άλλου λογότυπου" : "Upload different logo"}</span>
+                <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" class="sallys-logo-file hidden" />
+              </label>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <label class="block">
+              <span class="text-[11px] text-white/50">{isEl ? "Όνομα WiFi (SSID)" : "WiFi name (SSID)"} *</span>
+              <input name="ssid" required placeholder="SallysBar"
+                class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-amber-400/50" />
+            </label>
+            <label class="block">
+              <span class="text-[11px] text-white/50">{isEl ? "Κωδικός" : "Password"}</span>
+              <input name="password" placeholder="wifi-password"
+                class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-amber-400/50" />
+            </label>
+          </div>
+
+          <div class="flex items-center gap-3 flex-wrap">
+            <label class="flex items-center gap-2 text-xs text-white/70">
+              <span class="text-white/50">{isEl ? "Σχέδιο" : "Template"}</span>
+              <select name="template" class="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs text-white">
+                <option value="elegant">{isEl ? "🌿 Κομψό (κρεμ)" : "🌿 Elegant (cream)"}</option>
+                <option value="noir">{isEl ? "🖤 Noir (μαύρο & χρυσό)" : "🖤 Noir (black & gold)"}</option>
+                <option value="aegean">{isEl ? "🇬🇷 Αιγαίο" : "🇬🇷 Aegean (Greek isle)"}</option>
+                <option value="minimal">{isEl ? "⬜ Minimal (λευκό)" : "⬜ Minimal (white)"}</option>
+                <option value="dark" selected>{isEl ? "🌙 Σκοτεινό (μπλε)" : "🌙 Dark (navy)"}</option>
+              </select>
+            </label>
+            <label class="flex items-center gap-2 text-xs text-white/70">
+              <span class="text-white/50">{isEl ? "Ασφάλεια" : "Security"}</span>
+              <select name="security" class="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs text-white">
+                <option value="WPA">WPA / WPA2</option>
+                <option value="WEP">WEP</option>
+                <option value="nopass">{isEl ? "Χωρίς κωδικό" : "Open (no password)"}</option>
+              </select>
+            </label>
+            <label class="flex items-center gap-2 text-xs text-white/70">
+              <input type="checkbox" name="hidden" class="h-3.5 w-3.5" />
+              {isEl ? "Κρυφό SSID" : "Hidden SSID"}
+            </label>
+          </div>
+
+          <button type="submit"
+            class="w-full rounded-xl bg-amber-400 text-black px-4 py-2 text-sm font-semibold hover:bg-amber-300 transition">
+            🍹 {isEl ? "Άνοιγμα αφίσας Sally's WiFi" : "Open Sally's WiFi poster"}
+          </button>
+        </form>
+      </section>
+
+      <!-- Partner WiFi QR -->
+      <section class="rounded-2xl border border-sky-400/20 bg-gradient-to-br from-sky-500/5 to-white/5 p-5 space-y-3">
+        <div class="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <h2 class="text-xs font-semibold uppercase tracking-widest text-sky-200">
+              📶 {isEl ? "QR WiFi για Συνεργάτες (Καταλύματα)" : "Partner WiFi QR (Apartments)"}
+            </h2>
+            <p class="text-xs text-white/50 mt-1 max-w-2xl">
+              {isEl
+                ? "Φτιάξτε μια αφίσα WiFi με το λογότυπο του συνεργάτη. Οι επισκέπτες σκανάρουν και συνδέονται αυτόματα — δεν χρειάζεται να πληκτρολογήσουν τίποτα. Κάτω από τον κωδικό εμφανίζεται «wifi: όνομα» και «password: κωδικός» για χειροκίνητη σύνδεση."
+                : "Build a WiFi poster with the partner's logo. Guests scan and connect automatically — no typing needed. Below the code shows \"wifi: name\" and \"password: password\" for manual connect."}
+            </p>
+          </div>
+        </div>
+
+        {(wifiPartners ?? []).length === 0 ? (
+          <p class="text-sm text-white/50">
+            {isEl ? "Δεν υπάρχουν ενεργοί συνεργάτες. Πρόσθεσε στο " : "No active partners. Add one in "}
+            <a href="/admin/partners" class="text-sky-300 hover:underline">/admin/partners</a>.
+          </p>
+        ) : (
+          <div class="grid md:grid-cols-2 gap-3">
+            {(wifiPartners ?? []).map(p => (
+              <form class="wifi-form rounded-2xl border border-white/10 bg-white/5 p-4 space-y-3" data-slug={p.slug} data-name={p.name}>
+                <input type="hidden" name="logo" value={p.logo_url ?? ""} />
+                <div class="flex items-center gap-3">
+                  <div class="wifi-logo-wrap relative shrink-0">
+                    {p.logo_url ? (
+                      <img class="wifi-logo-preview h-12 w-12 rounded-lg object-cover bg-black/40 border border-white/10" src={p.logo_url} alt={`${p.name} logo`} />
+                    ) : (
+                      <div class="wifi-logo-placeholder h-12 w-12 rounded-lg bg-gradient-to-br from-sky-400/30 to-sky-600/20 border border-sky-400/30 grid place-items-center text-sky-200 font-bold">
+                        {p.name.charAt(0)}
+                      </div>
+                    )}
+                  </div>
+                  <div class="min-w-0 flex-1">
+                    <p class="font-semibold text-sm text-white truncate">{p.name}</p>
+                    <p class="text-[11px] text-white/50 truncate">{p.city ?? p.slug}</p>
+                    <label class="inline-flex items-center gap-1 mt-1 text-[11px] text-sky-300/80 hover:text-sky-200 cursor-pointer">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                      <span class="wifi-upload-label">{isEl ? "Ανέβασμα λογότυπου" : "Upload logo"}</span>
+                      <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" class="wifi-logo-file hidden" />
+                    </label>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <label class="block">
+                    <span class="text-[11px] text-white/50">{isEl ? "Όνομα WiFi (SSID)" : "WiFi name (SSID)"} *</span>
+                    <input name="ssid" required placeholder="HelensWiFi"
+                      class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-sky-400/50" />
+                  </label>
+                  <label class="block">
+                    <span class="text-[11px] text-white/50">{isEl ? "Κωδικός" : "Password"}</span>
+                    <input name="password" placeholder="wifi-password"
+                      class="w-full mt-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-sky-400/50" />
+                  </label>
+                </div>
+
+                <div class="flex items-center gap-3 flex-wrap">
+                  <label class="flex items-center gap-2 text-xs text-white/70">
+                    <span class="text-white/50">{isEl ? "Σχέδιο" : "Template"}</span>
+                    <select name="template" class="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs text-white">
+                      <option value="elegant">{isEl ? "🌿 Κομψό (κρεμ)" : "🌿 Elegant (cream)"}</option>
+                      <option value="noir">{isEl ? "🖤 Noir (μαύρο & χρυσό)" : "🖤 Noir (black & gold)"}</option>
+                      <option value="aegean">{isEl ? "🇬🇷 Αιγαίο" : "🇬🇷 Aegean (Greek isle)"}</option>
+                      <option value="minimal">{isEl ? "⬜ Minimal (λευκό)" : "⬜ Minimal (white)"}</option>
+                      <option value="dark">{isEl ? "🌙 Σκοτεινό (μπλε)" : "🌙 Dark (navy)"}</option>
+                    </select>
+                  </label>
+                  <label class="flex items-center gap-2 text-xs text-white/70">
+                    <span class="text-white/50">{isEl ? "Ασφάλεια" : "Security"}</span>
+                    <select name="security" class="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs text-white">
+                      <option value="WPA">WPA / WPA2</option>
+                      <option value="WEP">WEP</option>
+                      <option value="nopass">{isEl ? "Χωρίς κωδικό" : "Open (no password)"}</option>
+                    </select>
+                  </label>
+                  <label class="flex items-center gap-2 text-xs text-white/70">
+                    <input type="checkbox" name="hidden" class="h-3.5 w-3.5" />
+                    {isEl ? "Κρυφό SSID" : "Hidden SSID"}
+                  </label>
+                </div>
+
+                <button type="submit"
+                  class="w-full rounded-xl bg-sky-400 text-black px-4 py-2 text-sm font-semibold hover:bg-sky-300 transition">
+                  📶 {isEl ? "Άνοιγμα αφίσας WiFi" : "Open WiFi poster"}
+                </button>
+              </form>
+            ))}
+          </div>
+        )}
       </section>
 
       <!-- Existing campaigns -->
@@ -323,6 +499,133 @@ const presets = [
         document.getElementById("campClose").addEventListener("click", closeModal);
         document.getElementById("campCancel").addEventListener("click", closeModal);
         modal.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
+
+        const sallysForm = document.getElementById("sallysWifiForm");
+        if (sallysForm) {
+          const fileInput = sallysForm.querySelector(".sallys-logo-file");
+          const preview = sallysForm.querySelector(".sallys-logo-preview");
+          const labelSpan = sallysForm.querySelector(".sallys-upload-label");
+          const origLabel = labelSpan ? labelSpan.textContent : "";
+          if (fileInput) {
+            fileInput.addEventListener("change", async () => {
+              const file = fileInput.files && fileInput.files[0];
+              if (!file) return;
+              if (file.size > 5 * 1024 * 1024) {
+                alert(isEl ? "Αρχείο πολύ μεγάλο (max 5MB)" : "File too large (max 5MB)");
+                fileInput.value = "";
+                return;
+              }
+              if (labelSpan) labelSpan.textContent = isEl ? "Ανέβασμα…" : "Uploading…";
+              try {
+                const fd = new FormData();
+                fd.append("file", file);
+                fd.append("slug", "sallys");
+                const res = await fetch("/api/admin/partners/upload", { method: "POST", body: fd });
+                const j = await res.json().catch(() => ({}));
+                if (!res.ok || !j.url) {
+                  alert((isEl ? "Σφάλμα ανεβάσματος: " : "Upload failed: ") + (j.error ?? res.status));
+                  if (labelSpan) labelSpan.textContent = origLabel;
+                  return;
+                }
+                sallysForm.elements.logo.value = j.url;
+                if (preview) preview.src = j.url;
+                if (labelSpan) labelSpan.textContent = isEl ? "Αλλαγή λογότυπου" : "Change logo";
+              } catch {
+                alert(isEl ? "Σφάλμα δικτύου" : "Network error");
+                if (labelSpan) labelSpan.textContent = origLabel;
+              } finally {
+                fileInput.value = "";
+              }
+            });
+          }
+          sallysForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+            const fd = new FormData(sallysForm);
+            const ssid = String(fd.get("ssid") ?? "").trim();
+            const password = String(fd.get("password") ?? "");
+            const security = String(fd.get("security") ?? "WPA");
+            const hidden = fd.get("hidden") === "on" ? "1" : "";
+            const template = String(fd.get("template") ?? "dark");
+            const name = String(fd.get("name") ?? "");
+            const logo = String(fd.get("logo") ?? "");
+            if (!ssid) { alert(isEl ? "Βάλε το όνομα WiFi" : "Enter the WiFi name"); return; }
+            if (security !== "nopass" && !password) {
+              if (!confirm(isEl ? "Χωρίς κωδικό; Άλλαξε Ασφάλεια σε «Χωρίς κωδικό» ή πρόσθεσε κωδικό." : "No password set — switch Security to \"Open\" or add a password.")) return;
+            }
+            const qs = new URLSearchParams({ ssid, password, security, template, selfpromo: "1" });
+            if (name) qs.set("name", name);
+            if (logo) qs.set("logo", logo);
+            if (hidden) qs.set("hidden", "1");
+            window.open(`/admin/wifi-poster?${qs.toString()}`, "_blank", "noopener");
+          });
+        }
+
+        document.querySelectorAll(".wifi-form").forEach((formEl) => {
+          const fileInput = formEl.querySelector(".wifi-logo-file");
+          const logoWrap = formEl.querySelector(".wifi-logo-wrap");
+          const labelSpan = formEl.querySelector(".wifi-upload-label");
+          const origLabel = labelSpan ? labelSpan.textContent : "";
+
+          if (fileInput) {
+            fileInput.addEventListener("change", async () => {
+              const file = fileInput.files && fileInput.files[0];
+              if (!file) return;
+              if (file.size > 5 * 1024 * 1024) {
+                alert(isEl ? "Αρχείο πολύ μεγάλο (max 5MB)" : "File too large (max 5MB)");
+                fileInput.value = "";
+                return;
+              }
+              if (labelSpan) labelSpan.textContent = isEl ? "Ανέβασμα…" : "Uploading…";
+              try {
+                const fd = new FormData();
+                fd.append("file", file);
+                fd.append("slug", formEl.dataset.slug ?? "misc");
+                const res = await fetch("/api/admin/partners/upload", { method: "POST", body: fd });
+                const j = await res.json().catch(() => ({}));
+                if (!res.ok || !j.url) {
+                  alert((isEl ? "Σφάλμα ανεβάσματος: " : "Upload failed: ") + (j.error ?? res.status));
+                  if (labelSpan) labelSpan.textContent = origLabel;
+                  return;
+                }
+                formEl.elements.logo.value = j.url;
+                if (logoWrap) {
+                  logoWrap.innerHTML = "";
+                  const img = document.createElement("img");
+                  img.src = j.url;
+                  img.alt = "logo";
+                  img.className = "wifi-logo-preview h-12 w-12 rounded-lg object-cover bg-black/40 border border-white/10";
+                  logoWrap.appendChild(img);
+                }
+                if (labelSpan) labelSpan.textContent = isEl ? "Αλλαγή λογότυπου" : "Change logo";
+              } catch (err) {
+                alert(isEl ? "Σφάλμα δικτύου" : "Network error");
+                if (labelSpan) labelSpan.textContent = origLabel;
+              } finally {
+                fileInput.value = "";
+              }
+            });
+          }
+
+          formEl.addEventListener("submit", (e) => {
+            e.preventDefault();
+            const slug = formEl.dataset.slug ?? "";
+            const fd = new FormData(formEl);
+            const ssid = String(fd.get("ssid") ?? "").trim();
+            const password = String(fd.get("password") ?? "");
+            const security = String(fd.get("security") ?? "WPA");
+            const hidden = fd.get("hidden") === "on" ? "1" : "";
+            const logo = String(fd.get("logo") ?? "").trim();
+            if (!ssid) { alert(isEl ? "Βάλε το όνομα WiFi" : "Enter the WiFi name"); return; }
+            if (security !== "nopass" && !password) {
+              if (!confirm(isEl ? "Χωρίς κωδικό; Άλλαξε Ασφάλεια σε «Χωρίς κωδικό» ή πρόσθεσε κωδικό." : "No password set — switch Security to \"Open\" or add a password.")) return;
+            }
+            const template = String(fd.get("template") ?? "elegant");
+            const qs = new URLSearchParams({ slug, ssid, password, security, template });
+            if (hidden) qs.set("hidden", "1");
+            if (logo) qs.set("logo", logo);
+            window.open(`/admin/wifi-poster?${qs.toString()}`, "_blank", "noopener");
+          });
+        });
 
         document.querySelectorAll(".preset-btn").forEach((btn) => {
           btn.addEventListener("click", () => {

@@ -16,7 +16,284 @@ const origin = new URL(Astro.request.url).origin;
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Table QR Codes — Sally's Bar</title>
     <meta name="robots" content="noindex,nofollow" />
-    <style>
+    <style is:global>
+      /* ============================================================
+         DESIGN TEMPLATES (apply on screen + print)
+         Each .qr-sheet gets one of: design-classic / design-bold /
+         design-elegant / design-minimal
+         ============================================================ */
+
+      .qr-sheet {
+        background: #ffffff;
+        color: #0a0a0f;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .qr-sheet .brand,
+      .qr-sheet .table-num,
+      .qr-sheet .scan-cta,
+      .qr-sheet .qr-url { color: #0a0a0f; }
+      .qr-sheet .gradient-num {
+        background-clip: text;
+        -webkit-background-clip: text;
+        color: transparent;
+        -webkit-text-fill-color: transparent;
+      }
+
+      /* --- Classic: clean, current look refined --- */
+      .design-classic .brand        { letter-spacing: 0.3em; font-weight: 600; opacity: 0.7; }
+      .design-classic .table-num    { font-weight: 800; }
+      .design-classic .scan-cta     { font-weight: 600; }
+      .design-classic .divider      { display: none; }
+
+      /* --- Bold: huge TABLE N at top, small QR, big CTA --- */
+      .design-bold .brand           { display: none; }
+      .design-bold .table-num       { font-weight: 900; letter-spacing: -0.02em; line-height: 1; }
+      .design-bold .scan-cta        { font-weight: 700; }
+      .design-bold .qr-url          { display: none; }
+      .design-bold .divider         { display: none; }
+
+      /* --- Elegant: serif feel, divider lines, framed look --- */
+      .design-elegant               { font-family: Georgia, "Times New Roman", serif; }
+      .design-elegant .brand        { letter-spacing: 0.4em; text-transform: uppercase; font-weight: 500; }
+      .design-elegant .table-num    { font-weight: 700; font-style: italic; }
+      .design-elegant .divider      { display: block; height: 1px; background: #0a0a0f; opacity: 0.5; width: 60%; margin: 4mm auto; }
+      .design-elegant .scan-cta     { font-style: italic; font-weight: 600; }
+
+      /* --- Minimal: only big number + tiny QR --- */
+      .design-minimal .brand        { display: none; }
+      .design-minimal .qr-url       { display: none; }
+      .design-minimal .divider      { display: none; }
+      .design-minimal .table-num    { font-weight: 900; line-height: 1; letter-spacing: -0.03em; }
+      .design-minimal .scan-cta     { font-weight: 600; opacity: 0.85; }
+
+      /* --- Sunset: warm amber→pink gradient on type --- */
+      .design-sunset .brand        { color: #d97706; letter-spacing: 0.3em; font-weight: 700; }
+      .design-sunset .table-num    {
+        font-weight: 900; letter-spacing: -0.02em; line-height: 1;
+        background-image: linear-gradient(135deg, #f59e0b 0%, #ef4444 50%, #ec4899 100%);
+        -webkit-background-clip: text; background-clip: text;
+        color: transparent; -webkit-text-fill-color: transparent;
+      }
+      .design-sunset .divider      { display: block; height: 1.6mm; width: 55%; margin: 3mm auto;
+        background-image: linear-gradient(90deg, #fbbf24, #f97316, #ec4899); border-radius: 999px; }
+      .design-sunset .scan-cta     { color: #c2410c; font-weight: 700; }
+      .design-sunset .qr-url       { color: #9a3412; }
+
+      /* --- Ocean: cool teal→indigo --- */
+      .design-ocean .brand         { color: #0891b2; letter-spacing: 0.3em; font-weight: 700; }
+      .design-ocean .table-num     {
+        font-weight: 900; letter-spacing: -0.02em; line-height: 1;
+        background-image: linear-gradient(135deg, #06b6d4 0%, #1e40af 50%, #312e81 100%);
+        -webkit-background-clip: text; background-clip: text;
+        color: transparent; -webkit-text-fill-color: transparent;
+      }
+      .design-ocean .divider       { display: block; height: 1.6mm; width: 55%; margin: 3mm auto;
+        background-image: linear-gradient(90deg, #22d3ee, #0891b2, #1e40af); border-radius: 999px; }
+      .design-ocean .scan-cta      { color: #155e75; font-weight: 700; }
+      .design-ocean .qr-url        { color: #0e7490; }
+
+      /* --- Berry: pink→purple→indigo --- */
+      .design-berry .brand         { color: #a855f7; letter-spacing: 0.3em; font-weight: 700; }
+      .design-berry .table-num     {
+        font-weight: 900; letter-spacing: -0.02em; line-height: 1;
+        background-image: linear-gradient(135deg, #ec4899 0%, #a855f7 50%, #6366f1 100%);
+        -webkit-background-clip: text; background-clip: text;
+        color: transparent; -webkit-text-fill-color: transparent;
+      }
+      .design-berry .divider       { display: block; height: 1.6mm; width: 55%; margin: 3mm auto;
+        background-image: linear-gradient(90deg, #f472b6, #a855f7, #6366f1); border-radius: 999px; }
+      .design-berry .scan-cta      { color: #7e22ce; font-weight: 700; }
+      .design-berry .qr-url        { color: #6b21a8; }
+
+      /* --- Vibrant: full-bleed colored card, white type, QR on white tile --- */
+      .design-vibrant              {
+        background-image: linear-gradient(135deg, #f59e0b 0%, #ec4899 50%, #6366f1 100%) !important;
+        color: #ffffff !important;
+      }
+      .design-vibrant .brand,
+      .design-vibrant .table-num,
+      .design-vibrant .scan-cta    { color: #ffffff !important; }
+      .design-vibrant .qr-url      { color: rgba(255,255,255,0.85) !important; }
+      .design-vibrant .table-num   { font-weight: 900; letter-spacing: -0.02em; }
+      .design-vibrant .scan-cta    { font-weight: 700; }
+      .design-vibrant .divider     { display: block; height: 1.4mm; width: 50%; margin: 3mm auto;
+        background: rgba(255,255,255,0.85); border-radius: 999px; }
+      .design-vibrant .qr-canvas   { background: #ffffff; padding: 2.5mm; border-radius: 3mm; }
+
+      /* ============================================================
+         ELEGANT COLOURED DESIGNS — refined, muted palettes, serif
+         ============================================================ */
+
+      /* --- Champagne: soft cream + antique gold --- */
+      .design-champagne            {
+        background-image: linear-gradient(180deg, #fdf8e7 0%, #f7ecc6 100%) !important;
+        font-family: Georgia, "Times New Roman", serif;
+      }
+      .design-champagne .brand     { color: #8b6914; letter-spacing: 0.45em; font-weight: 500; text-transform: uppercase; }
+      .design-champagne .table-num {
+        font-weight: 700; font-style: italic; letter-spacing: -0.01em;
+        background-image: linear-gradient(135deg, #b8860b 0%, #8b6914 100%);
+        -webkit-background-clip: text; background-clip: text;
+        color: transparent; -webkit-text-fill-color: transparent;
+      }
+      .design-champagne .divider   { display: block; height: 0.6mm; width: 45%; margin: 4mm auto;
+        background-image: linear-gradient(90deg, transparent, #c9a96e 20%, #c9a96e 80%, transparent); }
+      .design-champagne .scan-cta  { color: #6b4423; font-style: italic; font-weight: 600; }
+      .design-champagne .qr-url    { color: #8b6914; }
+
+      /* --- Noir: black card + gold typography (premium, ink-heavy) --- */
+      .design-noir                 {
+        background: #0a0a0a !important;
+        color: #f5e1a0 !important;
+        font-family: Georgia, "Times New Roman", serif;
+      }
+      .design-noir .brand          { color: #d4af37 !important; letter-spacing: 0.5em; font-weight: 500; text-transform: uppercase; }
+      .design-noir .table-num      {
+        font-weight: 700; font-style: italic; letter-spacing: -0.01em;
+        background-image: linear-gradient(135deg, #f5e1a0 0%, #d4af37 50%, #b8860b 100%);
+        -webkit-background-clip: text; background-clip: text;
+        color: transparent !important; -webkit-text-fill-color: transparent;
+      }
+      .design-noir .divider        { display: block; height: 0.5mm; width: 50%; margin: 4mm auto;
+        background-image: linear-gradient(90deg, transparent, #d4af37 20%, #d4af37 80%, transparent); }
+      .design-noir .scan-cta       { color: #e8c97a !important; font-style: italic; font-weight: 600; }
+      .design-noir .qr-url         { color: #b8860b !important; }
+      .design-noir .qr-canvas      { background: #ffffff; padding: 2.5mm; border-radius: 2mm; }
+
+      /* --- Emerald: deep emerald + gold --- */
+      .design-emerald              {
+        background-image: linear-gradient(180deg, #ffffff 0%, #ecf6f1 100%) !important;
+        font-family: Georgia, "Times New Roman", serif;
+      }
+      .design-emerald .brand       { color: #047857; letter-spacing: 0.45em; font-weight: 500; text-transform: uppercase; }
+      .design-emerald .table-num   {
+        font-weight: 700; font-style: italic; letter-spacing: -0.01em;
+        background-image: linear-gradient(135deg, #064e3b 0%, #047857 60%, #b8860b 100%);
+        -webkit-background-clip: text; background-clip: text;
+        color: transparent; -webkit-text-fill-color: transparent;
+      }
+      .design-emerald .divider     { display: block; height: 0.6mm; width: 45%; margin: 4mm auto;
+        background-image: linear-gradient(90deg, transparent, #b8860b 20%, #047857 80%, transparent); }
+      .design-emerald .scan-cta    { color: #064e3b; font-style: italic; font-weight: 600; }
+      .design-emerald .qr-url      { color: #047857; }
+
+      /* --- Bordeaux: wine red + warm cream --- */
+      .design-bordeaux             {
+        background-image: linear-gradient(180deg, #fdf6f0 0%, #f7e6da 100%) !important;
+        font-family: Georgia, "Times New Roman", serif;
+      }
+      .design-bordeaux .brand      { color: #7a1f3d; letter-spacing: 0.45em; font-weight: 500; text-transform: uppercase; }
+      .design-bordeaux .table-num  {
+        font-weight: 700; font-style: italic; letter-spacing: -0.01em;
+        background-image: linear-gradient(135deg, #7a1f3d 0%, #5c0e2c 100%);
+        -webkit-background-clip: text; background-clip: text;
+        color: transparent; -webkit-text-fill-color: transparent;
+      }
+      .design-bordeaux .divider    { display: block; height: 0.6mm; width: 45%; margin: 4mm auto;
+        background-image: linear-gradient(90deg, transparent, #7a1f3d 20%, #7a1f3d 80%, transparent); }
+      .design-bordeaux .scan-cta   { color: #5c0e2c; font-style: italic; font-weight: 600; }
+      .design-bordeaux .qr-url     { color: #7a1f3d; }
+
+      /* ============================================================
+         PREMIUM DESIGNS — luxury palettes, serif italic, metallics
+         ============================================================ */
+
+      /* --- Onyx: jet black + rose gold --- */
+      .design-onyx                 {
+        background-image: linear-gradient(180deg, #0a0a0a 0%, #1a1414 100%) !important;
+        color: #f5d0c5 !important;
+        font-family: Georgia, "Times New Roman", serif;
+      }
+      .design-onyx .brand          { color: #d4a59a !important; letter-spacing: 0.5em; font-weight: 500; text-transform: uppercase; }
+      .design-onyx .table-num      {
+        font-weight: 700; font-style: italic; letter-spacing: -0.01em;
+        background-image: linear-gradient(135deg, #f5d0c5 0%, #b76e79 50%, #8b4f5a 100%);
+        -webkit-background-clip: text; background-clip: text;
+        color: transparent !important; -webkit-text-fill-color: transparent;
+      }
+      .design-onyx .divider        { display: block; height: 0.4mm; width: 50%; margin: 4mm auto;
+        background-image: linear-gradient(90deg, transparent, #b76e79 20%, #b76e79 80%, transparent); }
+      .design-onyx .scan-cta       { color: #e8b4a8 !important; font-style: italic; font-weight: 600; }
+      .design-onyx .qr-url         { color: #b76e79 !important; }
+      .design-onyx .qr-canvas      { background: #ffffff; padding: 2.5mm; border-radius: 2mm; }
+
+      /* --- Sapphire: deep navy + gold --- */
+      .design-sapphire             {
+        background-image: linear-gradient(180deg, #0c1f3d 0%, #1a2f54 100%) !important;
+        color: #f5e1a0 !important;
+        font-family: Georgia, "Times New Roman", serif;
+      }
+      .design-sapphire .brand      { color: #d4af37 !important; letter-spacing: 0.5em; font-weight: 500; text-transform: uppercase; }
+      .design-sapphire .table-num  {
+        font-weight: 700; font-style: italic; letter-spacing: -0.01em;
+        background-image: linear-gradient(135deg, #f5e1a0 0%, #d4af37 50%, #b8860b 100%);
+        -webkit-background-clip: text; background-clip: text;
+        color: transparent !important; -webkit-text-fill-color: transparent;
+      }
+      .design-sapphire .divider    { display: block; height: 0.4mm; width: 50%; margin: 4mm auto;
+        background-image: linear-gradient(90deg, transparent, #d4af37 20%, #d4af37 80%, transparent); }
+      .design-sapphire .scan-cta   { color: #e8c97a !important; font-style: italic; font-weight: 600; }
+      .design-sapphire .qr-url     { color: #b8860b !important; }
+      .design-sapphire .qr-canvas  { background: #ffffff; padding: 2.5mm; border-radius: 2mm; }
+
+      /* --- Velvet: aubergine + champagne gold --- */
+      .design-velvet               {
+        background-image: linear-gradient(180deg, #2d1b3c 0%, #1f0f2e 100%) !important;
+        color: #f5e1a0 !important;
+        font-family: Georgia, "Times New Roman", serif;
+      }
+      .design-velvet .brand        { color: #d4af37 !important; letter-spacing: 0.5em; font-weight: 500; text-transform: uppercase; }
+      .design-velvet .table-num    {
+        font-weight: 700; font-style: italic; letter-spacing: -0.01em;
+        background-image: linear-gradient(135deg, #f5e1a0 0%, #d4af37 50%, #b8860b 100%);
+        -webkit-background-clip: text; background-clip: text;
+        color: transparent !important; -webkit-text-fill-color: transparent;
+      }
+      .design-velvet .divider      { display: block; height: 0.4mm; width: 50%; margin: 4mm auto;
+        background-image: linear-gradient(90deg, transparent, #d4af37 20%, #d4af37 80%, transparent); }
+      .design-velvet .scan-cta     { color: #e8c97a !important; font-style: italic; font-weight: 600; }
+      .design-velvet .qr-url       { color: #b8860b !important; }
+      .design-velvet .qr-canvas    { background: #ffffff; padding: 2.5mm; border-radius: 2mm; }
+
+      /* --- Platinum: polished steel, charcoal type on silver --- */
+      .design-platinum             {
+        background-image: linear-gradient(180deg, #f5f5f5 0%, #d6d8db 100%) !important;
+        font-family: Georgia, "Times New Roman", serif;
+      }
+      .design-platinum .brand      { color: #4b5563; letter-spacing: 0.5em; font-weight: 500; text-transform: uppercase; }
+      .design-platinum .table-num  {
+        font-weight: 700; font-style: italic; letter-spacing: -0.01em;
+        background-image: linear-gradient(135deg, #6b7280 0%, #1f2937 50%, #6b7280 100%);
+        -webkit-background-clip: text; background-clip: text;
+        color: transparent; -webkit-text-fill-color: transparent;
+      }
+      .design-platinum .divider    { display: block; height: 0.4mm; width: 50%; margin: 4mm auto;
+        background-image: linear-gradient(90deg, transparent, #4b5563 20%, #4b5563 80%, transparent); }
+      .design-platinum .scan-cta   { color: #1f2937; font-style: italic; font-weight: 600; }
+      .design-platinum .qr-url     { color: #4b5563; }
+
+      /* --- Copper: cream + copper-bronze --- */
+      .design-copper               {
+        background-image: linear-gradient(180deg, #fdf6e9 0%, #f5e8c9 100%) !important;
+        font-family: Georgia, "Times New Roman", serif;
+      }
+      .design-copper .brand        { color: #b87333; letter-spacing: 0.45em; font-weight: 500; text-transform: uppercase; }
+      .design-copper .table-num    {
+        font-weight: 700; font-style: italic; letter-spacing: -0.01em;
+        background-image: linear-gradient(135deg, #d2691e 0%, #b87333 50%, #8b4513 100%);
+        -webkit-background-clip: text; background-clip: text;
+        color: transparent; -webkit-text-fill-color: transparent;
+      }
+      .design-copper .divider      { display: block; height: 0.6mm; width: 45%; margin: 4mm auto;
+        background-image: linear-gradient(90deg, transparent, #b87333 20%, #d2691e 80%, transparent); }
+      .design-copper .scan-cta     { color: #8b4513; font-style: italic; font-weight: 600; }
+      .design-copper .qr-url       { color: #b87333; }
+
+      /* ============================================================
+         PRINT LAYOUTS — N per page
+         (sizes tuned: bigger text, smaller QR)
+         ============================================================ */
       @media print {
         @page { size: A4; margin: 0; }
         html, body { background: white !important; color: black !important; margin: 0 !important; padding: 0 !important; }
@@ -29,77 +306,89 @@ const origin = new URL(Astro.request.url).origin;
           page-break-inside: avoid !important;
           border: none !important;
           border-radius: 0 !important;
-          background: white !important;
           box-shadow: none !important;
           margin: 0 !important;
-          display: block !important;
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: center !important;
+          justify-content: center !important;
           text-align: center !important;
           overflow: hidden !important;
         }
-        .qr-sheet > * { display: block !important; margin-left: auto !important; margin-right: auto !important; }
-        .qr-sheet > div:first-child { margin-top: 0 !important; }
-        .qr-sheet h3, .qr-sheet p, .qr-sheet .table-num, .qr-sheet div { color: black !important; }
+        .qr-sheet > * { margin-left: auto !important; margin-right: auto !important; }
         .qr-sheet canvas, .qr-sheet img, .qr-sheet svg { margin: 2mm auto !important; }
 
         /* 1 per page — full A4 */
         #qrGrid.layout-1 { display: block !important; }
-        #qrGrid.layout-1 .qr-sheet { width: 210mm !important; height: 297mm !important; padding: 25mm !important;
+        #qrGrid.layout-1 .qr-sheet { width: 210mm !important; height: 297mm !important; padding: 30mm 25mm !important;
           break-after: page !important; page-break-after: always !important; }
         #qrGrid.layout-1 .qr-sheet:last-child { break-after: auto !important; page-break-after: auto !important; }
-        #qrGrid.layout-1 .qr-sheet .table-num { font-size: 40pt !important; margin: 8mm 0 !important; }
-        #qrGrid.layout-1 .qr-sheet > div:first-child { font-size: 12pt !important; }
-        #qrGrid.layout-1 .qr-sheet p { font-size: 13pt !important; margin: 4mm 0 !important; }
+        #qrGrid.layout-1 .qr-sheet .brand     { font-size: 14pt !important; }
+        #qrGrid.layout-1 .qr-sheet .table-num { font-size: 64pt !important; margin: 6mm 0 !important; }
+        #qrGrid.layout-1 .qr-sheet .scan-cta  { font-size: 18pt !important; margin: 6mm 0 !important; line-height: 1.3 !important; }
+        #qrGrid.layout-1 .qr-sheet .qr-url    { font-size: 11pt !important; margin: 4mm 0 !important; }
         #qrGrid.layout-1 .qr-sheet canvas,
         #qrGrid.layout-1 .qr-sheet img,
-        #qrGrid.layout-1 .qr-sheet svg { width: 140mm !important; height: 140mm !important; }
+        #qrGrid.layout-1 .qr-sheet svg { width: 90mm !important; height: 90mm !important; }
 
         /* 2 per page — half A4 stacked */
         #qrGrid.layout-2 { display: block !important; }
-        #qrGrid.layout-2 .qr-sheet { width: 210mm !important; height: 148mm !important; padding: 8mm 10mm !important; }
+        #qrGrid.layout-2 .qr-sheet { width: 210mm !important; height: 148mm !important; padding: 10mm 14mm !important; }
         #qrGrid.layout-2 .qr-sheet:nth-child(2n) { break-after: page !important; page-break-after: always !important; }
         #qrGrid.layout-2 .qr-sheet:last-child { break-after: auto !important; page-break-after: auto !important; }
-        #qrGrid.layout-2 .qr-sheet .table-num { font-size: 22pt !important; margin: 2mm 0 3mm !important; }
-        #qrGrid.layout-2 .qr-sheet > div:first-child { font-size: 8pt !important; }
-        #qrGrid.layout-2 .qr-sheet p { font-size: 9pt !important; margin: 2mm 0 0 !important; line-height: 1.3 !important; }
+        #qrGrid.layout-2 .qr-sheet .brand     { font-size: 10pt !important; }
+        #qrGrid.layout-2 .qr-sheet .table-num { font-size: 36pt !important; margin: 2mm 0 3mm !important; }
+        #qrGrid.layout-2 .qr-sheet .scan-cta  { font-size: 13pt !important; margin: 3mm 0 !important; line-height: 1.3 !important; }
+        #qrGrid.layout-2 .qr-sheet .qr-url    { font-size: 8pt !important; margin: 2mm 0 !important; }
         #qrGrid.layout-2 .qr-sheet canvas,
         #qrGrid.layout-2 .qr-sheet img,
-        #qrGrid.layout-2 .qr-sheet svg { width: 70mm !important; height: 70mm !important; }
+        #qrGrid.layout-2 .qr-sheet svg { width: 55mm !important; height: 55mm !important; }
 
         /* 4 per page — 2×2 */
         #qrGrid.layout-4 { display: grid !important; grid-template-columns: 105mm 105mm !important; grid-auto-rows: 148mm !important; }
-        #qrGrid.layout-4 .qr-sheet { width: 105mm !important; height: 148mm !important; padding: 6mm !important; }
+        #qrGrid.layout-4 .qr-sheet { width: 105mm !important; height: 148mm !important; padding: 8mm 6mm !important; }
         #qrGrid.layout-4 .qr-sheet:nth-child(4n) { break-after: page !important; page-break-after: always !important; }
         #qrGrid.layout-4 .qr-sheet:last-child { break-after: auto !important; page-break-after: auto !important; }
-        #qrGrid.layout-4 .qr-sheet .table-num { font-size: 18pt !important; margin: 1mm 0 2mm !important; }
-        #qrGrid.layout-4 .qr-sheet > div:first-child { font-size: 7pt !important; }
-        #qrGrid.layout-4 .qr-sheet p { font-size: 7.5pt !important; margin: 1.5mm 0 0 !important; line-height: 1.2 !important; }
+        #qrGrid.layout-4 .qr-sheet .brand     { font-size: 8pt !important; }
+        #qrGrid.layout-4 .qr-sheet .table-num { font-size: 28pt !important; margin: 1mm 0 2mm !important; }
+        #qrGrid.layout-4 .qr-sheet .scan-cta  { font-size: 11pt !important; margin: 2mm 0 !important; line-height: 1.25 !important; }
+        #qrGrid.layout-4 .qr-sheet .qr-url    { font-size: 7pt !important; margin: 1.5mm 0 !important; }
         #qrGrid.layout-4 .qr-sheet canvas,
         #qrGrid.layout-4 .qr-sheet img,
-        #qrGrid.layout-4 .qr-sheet svg { width: 65mm !important; height: 65mm !important; margin: 1mm auto !important; }
+        #qrGrid.layout-4 .qr-sheet svg { width: 48mm !important; height: 48mm !important; margin: 1mm auto !important; }
 
         /* 6 per page — 2×3 */
         #qrGrid.layout-6 { display: grid !important; grid-template-columns: 105mm 105mm !important; grid-auto-rows: 99mm !important; }
-        #qrGrid.layout-6 .qr-sheet { width: 105mm !important; height: 99mm !important; padding: 4mm !important; }
+        #qrGrid.layout-6 .qr-sheet { width: 105mm !important; height: 99mm !important; padding: 5mm !important; }
         #qrGrid.layout-6 .qr-sheet:nth-child(6n) { break-after: page !important; page-break-after: always !important; }
         #qrGrid.layout-6 .qr-sheet:last-child { break-after: auto !important; page-break-after: auto !important; }
-        #qrGrid.layout-6 .qr-sheet .table-num { font-size: 14pt !important; margin: 0 0 1mm !important; }
-        #qrGrid.layout-6 .qr-sheet > div:first-child { font-size: 6pt !important; }
-        #qrGrid.layout-6 .qr-sheet p { font-size: 6.5pt !important; margin: 0.5mm 0 0 !important; line-height: 1.15 !important; }
+        #qrGrid.layout-6 .qr-sheet .brand     { font-size: 7pt !important; }
+        #qrGrid.layout-6 .qr-sheet .table-num { font-size: 22pt !important; margin: 0 0 1mm !important; }
+        #qrGrid.layout-6 .qr-sheet .scan-cta  { font-size: 9pt !important; margin: 1mm 0 !important; line-height: 1.2 !important; }
+        #qrGrid.layout-6 .qr-sheet .qr-url    { font-size: 6pt !important; margin: 0.5mm 0 !important; }
         #qrGrid.layout-6 .qr-sheet canvas,
         #qrGrid.layout-6 .qr-sheet img,
-        #qrGrid.layout-6 .qr-sheet svg { width: 50mm !important; height: 50mm !important; margin: 1mm auto !important; }
+        #qrGrid.layout-6 .qr-sheet svg { width: 38mm !important; height: 38mm !important; margin: 1mm auto !important; }
 
-        /* 8 per page — 2×4 */
-        #qrGrid.layout-8 { display: grid !important; grid-template-columns: 105mm 105mm !important; grid-auto-rows: 74mm !important; }
-        #qrGrid.layout-8 .qr-sheet { width: 105mm !important; height: 74mm !important; padding: 3mm !important; }
+        /* 8 per page — 2×4 (rows pinned, comfortable margin so printer hardware margins don't push the 4th row off) */
+        #qrGrid.layout-8 {
+          display: grid !important;
+          grid-template-columns: 105mm 105mm !important;
+          grid-template-rows: repeat(4, 70mm) !important;
+          grid-auto-rows: 70mm !important;
+          align-content: start !important;
+          justify-content: start !important;
+        }
+        #qrGrid.layout-8 .qr-sheet { width: 105mm !important; height: 70mm !important; padding: 3mm !important; box-sizing: border-box !important; }
         #qrGrid.layout-8 .qr-sheet:nth-child(8n) { break-after: page !important; page-break-after: always !important; }
         #qrGrid.layout-8 .qr-sheet:last-child { break-after: auto !important; page-break-after: auto !important; }
-        #qrGrid.layout-8 .qr-sheet .table-num { font-size: 11pt !important; margin: 0 !important; }
-        #qrGrid.layout-8 .qr-sheet > div:first-child { font-size: 5pt !important; }
-        #qrGrid.layout-8 .qr-sheet p { font-size: 5.5pt !important; margin: 0.5mm 0 0 !important; line-height: 1.1 !important; }
+        #qrGrid.layout-8 .qr-sheet .brand     { font-size: 6pt !important; }
+        #qrGrid.layout-8 .qr-sheet .table-num { font-size: 15pt !important; margin: 0 !important; line-height: 1 !important; }
+        #qrGrid.layout-8 .qr-sheet .scan-cta  { font-size: 7pt !important; margin: 0.5mm 0 !important; line-height: 1.15 !important; }
+        #qrGrid.layout-8 .qr-sheet .qr-url    { font-size: 5pt !important; margin: 0.5mm 0 !important; }
         #qrGrid.layout-8 .qr-sheet canvas,
         #qrGrid.layout-8 .qr-sheet img,
-        #qrGrid.layout-8 .qr-sheet svg { width: 38mm !important; height: 38mm !important; margin: 0.5mm auto !important; }
+        #qrGrid.layout-8 .qr-sheet svg { width: 28mm !important; height: 28mm !important; margin: 0.5mm auto !important; }
       }
     </style>
   </head>
@@ -129,14 +418,14 @@ const origin = new URL(Astro.request.url).origin;
 
         <!-- Controls card -->
         <div class="mt-8 rounded-3xl border border-white/10 bg-white/[0.03] backdrop-blur p-6">
-          <div class="grid gap-4 md:grid-cols-[1fr_1fr_1fr_auto] items-end">
+          <div class="grid gap-4 md:grid-cols-[1fr_1fr_1fr_1fr_1fr_auto] items-end">
             <div>
-              <label class="block text-xs uppercase tracking-wider text-white/50 mb-2" for="fromInput">From table #</label>
+              <label class="block text-xs uppercase tracking-wider text-white/50 mb-2" for="fromInput">From #</label>
               <input id="fromInput" type="number" min="1" max="999" value="1"
                 class="w-full rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-white outline-none focus:border-amber-300/50 focus:bg-amber-300/5 transition" />
             </div>
             <div>
-              <label class="block text-xs uppercase tracking-wider text-white/50 mb-2" for="toInput">To table #</label>
+              <label class="block text-xs uppercase tracking-wider text-white/50 mb-2" for="toInput">To #</label>
               <input id="toInput" type="number" min="1" max="999" value="20"
                 class="w-full rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-white outline-none focus:border-amber-300/50 focus:bg-amber-300/5 transition" />
             </div>
@@ -147,6 +436,40 @@ const origin = new URL(Astro.request.url).origin;
                 <option value="">Auto (device)</option>
                 <option value="en">English</option>
                 <option value="el">Ελληνικά</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs uppercase tracking-wider text-white/50 mb-2" for="designSelect">Design</label>
+              <select id="designSelect"
+                class="w-full rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-white outline-none focus:border-amber-300/50 transition">
+                <option value="classic">Classic</option>
+                <option value="bold">Bold</option>
+                <option value="elegant">Elegant</option>
+                <option value="minimal">Minimal</option>
+                <option value="sunset">Sunset</option>
+                <option value="ocean">Ocean</option>
+                <option value="berry">Berry</option>
+                <option value="vibrant">Vibrant</option>
+                <option value="champagne">Champagne</option>
+                <option value="noir">Noir</option>
+                <option value="emerald">Emerald</option>
+                <option value="bordeaux">Bordeaux</option>
+                <option value="onyx">Onyx</option>
+                <option value="sapphire">Sapphire</option>
+                <option value="velvet">Velvet</option>
+                <option value="platinum">Platinum</option>
+                <option value="copper">Copper</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs uppercase tracking-wider text-white/50 mb-2" for="layoutSelect">Per page</label>
+              <select id="layoutSelect"
+                class="w-full rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-white outline-none focus:border-amber-300/50 transition">
+                <option value="1">1 (full A4)</option>
+                <option value="2">2</option>
+                <option value="4" selected>4</option>
+                <option value="6">6</option>
+                <option value="8">8</option>
               </select>
             </div>
             <div class="flex gap-2">
@@ -160,6 +483,65 @@ const origin = new URL(Astro.request.url).origin;
               </button>
             </div>
           </div>
+
+          <!-- Design preview chips -->
+          <div class="mt-6">
+            <div class="text-xs uppercase tracking-wider text-white/50 mb-3">Pick a design</div>
+            <div id="designChips" class="flex flex-wrap gap-2">
+              <button type="button" data-design="classic" class="design-chip rounded-xl border border-amber-300/60 bg-amber-300/10 px-4 py-2 text-sm font-medium hover:bg-amber-300/20 transition">
+                Classic <span class="text-white/40 ml-1">— clean, balanced</span>
+              </button>
+              <button type="button" data-design="bold" class="design-chip rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium hover:bg-white/10 transition">
+                Bold <span class="text-white/40 ml-1">— giant TABLE N</span>
+              </button>
+              <button type="button" data-design="elegant" class="design-chip rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium hover:bg-white/10 transition">
+                Elegant <span class="text-white/40 ml-1">— serif, bordered</span>
+              </button>
+              <button type="button" data-design="minimal" class="design-chip rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium hover:bg-white/10 transition">
+                Minimal <span class="text-white/40 ml-1">— just the number</span>
+              </button>
+              <button type="button" data-design="sunset" class="design-chip rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium hover:bg-white/10 transition">
+                <span class="bg-gradient-to-r from-amber-400 via-orange-500 to-pink-500 bg-clip-text text-transparent font-semibold">Sunset</span> <span class="text-white/40 ml-1">— amber → pink</span>
+              </button>
+              <button type="button" data-design="ocean" class="design-chip rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium hover:bg-white/10 transition">
+                <span class="bg-gradient-to-r from-cyan-400 via-blue-600 to-indigo-700 bg-clip-text text-transparent font-semibold">Ocean</span> <span class="text-white/40 ml-1">— teal → indigo</span>
+              </button>
+              <button type="button" data-design="berry" class="design-chip rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium hover:bg-white/10 transition">
+                <span class="bg-gradient-to-r from-pink-400 via-purple-500 to-indigo-500 bg-clip-text text-transparent font-semibold">Berry</span> <span class="text-white/40 ml-1">— pink → purple</span>
+              </button>
+              <button type="button" data-design="vibrant" class="design-chip rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium hover:bg-white/10 transition">
+                <span class="bg-gradient-to-r from-amber-400 via-pink-500 to-indigo-500 bg-clip-text text-transparent font-semibold">Vibrant</span> <span class="text-white/40 ml-1">— full color card</span>
+              </button>
+              <button type="button" data-design="champagne" class="design-chip rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium hover:bg-white/10 transition">
+                <span class="bg-gradient-to-r from-yellow-200 via-amber-300 to-yellow-600 bg-clip-text text-transparent font-semibold italic" style="font-family: Georgia, serif;">Champagne</span> <span class="text-white/40 ml-1">— cream &amp; antique gold</span>
+              </button>
+              <button type="button" data-design="noir" class="design-chip rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium hover:bg-white/10 transition">
+                <span class="bg-gradient-to-r from-yellow-100 via-yellow-400 to-yellow-700 bg-clip-text text-transparent font-semibold italic" style="font-family: Georgia, serif;">Noir</span> <span class="text-white/40 ml-1">— black &amp; gold</span>
+              </button>
+              <button type="button" data-design="emerald" class="design-chip rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium hover:bg-white/10 transition">
+                <span class="bg-gradient-to-r from-emerald-700 via-emerald-500 to-yellow-600 bg-clip-text text-transparent font-semibold italic" style="font-family: Georgia, serif;">Emerald</span> <span class="text-white/40 ml-1">— deep green &amp; gold</span>
+              </button>
+              <button type="button" data-design="bordeaux" class="design-chip rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium hover:bg-white/10 transition">
+                <span class="bg-gradient-to-r from-rose-300 via-rose-700 to-red-900 bg-clip-text text-transparent font-semibold italic" style="font-family: Georgia, serif;">Bordeaux</span> <span class="text-white/40 ml-1">— wine &amp; cream</span>
+              </button>
+              <button type="button" data-design="onyx" class="design-chip rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium hover:bg-white/10 transition">
+                <span class="bg-gradient-to-r from-rose-200 via-rose-400 to-rose-700 bg-clip-text text-transparent font-semibold italic" style="font-family: Georgia, serif;">Onyx</span> <span class="text-white/40 ml-1">— black &amp; rose gold</span>
+              </button>
+              <button type="button" data-design="sapphire" class="design-chip rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium hover:bg-white/10 transition">
+                <span class="bg-gradient-to-r from-yellow-200 via-amber-400 to-yellow-700 bg-clip-text text-transparent font-semibold italic" style="font-family: Georgia, serif;">Sapphire</span> <span class="text-white/40 ml-1">— navy &amp; gold</span>
+              </button>
+              <button type="button" data-design="velvet" class="design-chip rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium hover:bg-white/10 transition">
+                <span class="bg-gradient-to-r from-yellow-200 via-amber-400 to-yellow-700 bg-clip-text text-transparent font-semibold italic" style="font-family: Georgia, serif;">Velvet</span> <span class="text-white/40 ml-1">— aubergine &amp; gold</span>
+              </button>
+              <button type="button" data-design="platinum" class="design-chip rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium hover:bg-white/10 transition">
+                <span class="bg-gradient-to-r from-slate-300 via-slate-500 to-slate-800 bg-clip-text text-transparent font-semibold italic" style="font-family: Georgia, serif;">Platinum</span> <span class="text-white/40 ml-1">— polished steel</span>
+              </button>
+              <button type="button" data-design="copper" class="design-chip rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-medium hover:bg-white/10 transition">
+                <span class="bg-gradient-to-r from-orange-300 via-orange-600 to-amber-800 bg-clip-text text-transparent font-semibold italic" style="font-family: Georgia, serif;">Copper</span> <span class="text-white/40 ml-1">— cream &amp; bronze</span>
+              </button>
+            </div>
+          </div>
+
           <p class="mt-4 text-xs text-white/40">
             Tip: after generating, click <span class="text-amber-300">Print</span> and choose "Save as PDF" to export, or print directly onto A4 and cut along the borders.
           </p>
@@ -179,36 +561,66 @@ const origin = new URL(Astro.request.url).origin;
       const fromInput    = document.getElementById("fromInput") as HTMLInputElement;
       const toInput      = document.getElementById("toInput") as HTMLInputElement;
       const langSelect   = document.getElementById("langSelect") as HTMLSelectElement;
+      const designSelect = document.getElementById("designSelect") as HTMLSelectElement;
+      const layoutSelect = document.getElementById("layoutSelect") as HTMLSelectElement;
       const generateBtn  = document.getElementById("generateBtn")!;
       const printBtn     = document.getElementById("printBtn")!;
-      grid.classList.add("layout-4");
+      const chipsBox     = document.getElementById("designChips")!;
+
+      type Design = "classic" | "bold" | "elegant" | "minimal" | "sunset" | "ocean" | "berry" | "vibrant" | "champagne" | "noir" | "emerald" | "bordeaux" | "onyx" | "sapphire" | "velvet" | "platinum" | "copper";
+      const DESIGNS: Design[] = ["classic", "bold", "elegant", "minimal", "sunset", "ocean", "berry", "vibrant", "champagne", "noir", "emerald", "bordeaux", "onyx", "sapphire", "velvet", "platinum", "copper"];
+
+      function applyLayoutClass() {
+        DESIGNS.forEach(d => grid.classList.remove(`design-${d}`));
+        for (const c of [...grid.classList]) if (c.startsWith("layout-")) grid.classList.remove(c);
+        grid.classList.add(`layout-${layoutSelect.value}`);
+      }
+
+      function applyDesignChips() {
+        const current = designSelect.value;
+        chipsBox.querySelectorAll<HTMLButtonElement>(".design-chip").forEach(btn => {
+          const isActive = btn.dataset.design === current;
+          btn.classList.toggle("border-amber-300/60", isActive);
+          btn.classList.toggle("bg-amber-300/10", isActive);
+          btn.classList.toggle("border-white/15", !isActive);
+          btn.classList.toggle("bg-white/5", !isActive);
+        });
+      }
 
       function qrUrl(tableNum: number) {
         const langParam = langSelect.value ? `?lang=${langSelect.value}` : "";
         return `${origin}/table/${tableNum}${langParam}`;
       }
 
+      function cardMarkup(n: number, url: string) {
+        return `
+          <div class="brand text-[10px] uppercase tracking-[0.3em] text-neutral-500">Sally's Bar · Skala</div>
+          <div class="table-num font-heading text-3xl font-bold text-neutral-900">Table ${n}</div>
+          <div class="divider"></div>
+          <canvas class="qr-canvas" width="220" height="220"></canvas>
+          <p class="qr-url text-[11px] text-neutral-600 leading-snug break-all">${url}</p>
+          <p class="scan-cta text-xs text-neutral-700 leading-snug">📱 Scan to see menu,<br/>call waiter to order or pay</p>
+        `;
+      }
+
       async function renderQRs() {
-        const from = Math.max(1, Math.min(999, Number(fromInput.value) || 1));
-        const to   = Math.max(from, Math.min(999, Number(toInput.value) || from));
+        const from   = Math.max(1, Math.min(999, Number(fromInput.value) || 1));
+        const to     = Math.max(from, Math.min(999, Number(toInput.value) || from));
+        const design = designSelect.value as Design;
+        applyLayoutClass();
+        applyDesignChips();
         grid.innerHTML = "";
 
         for (let n = from; n <= to; n++) {
           const url = qrUrl(n);
           const card = document.createElement("div");
-          card.className = "qr-sheet rounded-3xl border border-white/10 bg-white p-5 flex flex-col items-center gap-3 text-center";
-          card.innerHTML = `
-            <div class="text-[10px] uppercase tracking-[0.3em] text-neutral-500">Sally's Bar · Skala</div>
-            <div class="table-num font-heading text-3xl font-bold text-neutral-900">Table ${n}</div>
-            <canvas class="qr-canvas" width="260" height="260"></canvas>
-            <p class="text-[11px] text-neutral-600 leading-snug break-all">${url}</p>
-            <p class="text-xs text-neutral-700 font-medium leading-snug">📱 Scan to see menu,<br/>call waiter to order or pay</p>
-          `;
+          card.className = `qr-sheet design-${design} rounded-3xl border border-white/10 bg-white p-5 flex flex-col items-center gap-3 text-center`;
+          card.innerHTML = cardMarkup(n, url);
           grid.appendChild(card);
           const canvas = card.querySelector(".qr-canvas") as HTMLCanvasElement;
           try {
             await QRCode.toCanvas(canvas, url, {
-              width: 260,
+              width: 220,
               margin: 1,
               color: { dark: "#0a0a0f", light: "#ffffff" },
               errorCorrectionLevel: "M",
@@ -221,6 +633,16 @@ const origin = new URL(Astro.request.url).origin;
 
       generateBtn.addEventListener("click", renderQRs);
       printBtn.addEventListener("click", () => window.print());
+      designSelect.addEventListener("change", renderQRs);
+      layoutSelect.addEventListener("change", () => { applyLayoutClass(); });
+
+      chipsBox.addEventListener("click", e => {
+        const btn = (e.target as HTMLElement).closest<HTMLButtonElement>(".design-chip");
+        const d = btn?.dataset.design;
+        if (!d) return;
+        designSelect.value = d;
+        renderQRs();
+      });
 
       renderQRs();
     </script>
